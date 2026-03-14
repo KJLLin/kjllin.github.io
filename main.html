@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的个人主页 | GitHub Pages</title>
+    <!-- 引入Tailwind CSS（无需本地安装，CDN直接使用） -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标库（用于社交图标、功能图标） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- 自定义Tailwind配置（主题色、字体等） -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF', // 主色调（蓝）
+                        secondary: '#7B61FF', // 辅助色（紫）
+                        dark: '#1E293B', // 深色背景
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 少量自定义样式（补充Tailwind） -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-gradient {
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .bg-gradient-primary {
+                background: linear-gradient(135deg, #165DFF 0%, #7B61FF 100%);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <!-- 导航栏（响应式，移动端自动折叠） -->
+    <nav class="fixed w-full bg-white/90 backdrop-blur-sm shadow-sm z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="#" class="text-xl font-bold text-gradient bg-gradient-to-r from-primary to-secondary">MyPortfolio</a>
+            
+            <!-- 桌面端导航 -->
+            <div class="hidden md:flex space-x-8">
+                <a href="#home" class="text-gray-700 hover:text-primary transition-colors">首页</a>
+                <a href="#about" class="text-gray-700 hover:text-primary transition-colors">关于我</a>
+                <a href="#projects" class="text-gray-700 hover:text-primary transition-colors">项目</a>
+                <a href="#contact" class="text-gray-700 hover:text-primary transition-colors">联系我</a>
+            </div>
+            
+            <!-- 移动端菜单按钮 -->
+            <button id="menuBtn" class="md:hidden text-gray-700 focus:outline-none">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- 移动端导航菜单（默认隐藏） -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white shadow-md px-4 py-2">
+            <div class="flex flex-col space-y-3 pb-3">
+                <a href="#home" class="text-gray-700 hover:text-primary transition-colors">首页</a>
+                <a href="#about" class="text-gray-700 hover:text-primary transition-colors">关于我</a>
+                <a href="#projects" class="text-gray-700 hover:text-primary transition-colors">项目</a>
+                <a href="#contact" class="text-gray-700 hover:text-primary transition-colors">联系我</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区（首页banner） -->
+    <section id="home" class="pt-32 pb-20 bg-gradient-to-br from-gray-100 to-gray-200">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 mb-10 md:mb-0">
+                <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold leading-tight mb-4">
+                    你好，我是 <span class="text-gradient bg-gradient-primary">开发者</span>
+                </h1>
+                <p class="text-lg text-gray-600 mb-8 max-w-lg">
+                    专注于前端开发 / 全栈开发（可修改为你的方向），热爱开源与技术分享，这是我的GitHub Pages个人主页。
+                </p>
+                <div class="flex space-x-4">
+                    <a href="#projects" class="bg-gradient-primary text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">
+                        查看我的项目
+                    </a>
+                    <a href="https://github.com/你的用户名" target="_blank" class="border border-primary text-primary px-6 py-3 rounded-lg font-medium hover:bg-primary/5 transition-colors">
+                        <i class="fa-brands fa-github mr-2"></i>GitHub
+                    </a>
+                </div>
+            </div>
+            <div class="md:w-1/2 flex justify-center">
+                <!-- 现代风格的插画（SVG） -->
+                <svg width="400" height="350" viewBox="0 0 400 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="300" height="250" rx="20" fill="url(#rectGradient)" />
+                    <circle cx="150" cy="150" r="40" fill="#165DFF" opacity="0.8" />
+                    <circle cx="250" cy="180" r="60" fill="#7B61FF" opacity="0.7" />
+                    <path d="M100 220 L300 220 L280 180 L120 180 Z" fill="white" opacity="0.9" />
+                    <defs>
+                        <linearGradient id="rectGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#F8FAFC" />
+                            <stop offset="100%" stop-color="#E2E8F0" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- 关于我板块 -->
+    <section id="about" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-16">关于我</h2>
+            <div class="max-w-3xl mx-auto">
+                <div class="bg-gray-50 rounded-2xl p-8 shadow-sm mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-dark">个人简介</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        我是一名热爱编程的开发者，擅长HTML/CSS/JavaScript、Python（可修改为你的技术栈），
+                        喜欢通过代码解决实际问题，乐于分享技术知识。这个主页是基于GitHub Pages搭建的，
+                        用于展示我的项目和学习成果。
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- 技能卡片 -->
+                    <div class="bg-gray-50 rounded-xl p-6 text-center shadow-sm hover:shadow-md transition-shadow">
+                        <i class="fa-brands fa-html5 text-3xl text-orange-500 mb-3"></i>
+                        <h4 class="font-medium">HTML5</h4>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-6 text-center shadow-sm hover:shadow-md transition-shadow">
+                        <i class="fa-brands fa-css3-alt text-3xl text-blue-500 mb-3"></i>
+                        <h4 class="font-medium">CSS3</h4>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-6 text-center shadow-sm hover:shadow-md transition-shadow">
+                        <i class="fa-brands fa-js text-3xl text-yellow-500 mb-3"></i>
+                        <h4 class="font-medium">JavaScript</h4>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-6 text-center shadow-sm hover:shadow-md transition-shadow">
+                        <i class="fa-brands fa-github text-3xl text-gray-800 mb-3"></i>
+                        <h4 class="font-medium">Git/GitHub</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 项目展示板块 -->
+    <section id="projects" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-16">我的项目</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- 项目卡片1 -->
+                <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div class="h-48 bg-gradient-primary flex items-center justify-center">
+                        <span class="text-white text-2xl font-medium">项目截图</span>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">项目名称1</h3>
+                        <p class="text-gray-600 mb-4">这是项目的简短描述，说明项目的功能和技术栈（如：基于Python的数据分析工具）。</p>
+                        <a href="https://github.com/你的用户名/项目名" target="_blank" class="text-primary font-medium hover:underline flex items-center">
+                            <i class="fa-brands fa-github mr-2"></i> 查看源码
+                        </a>
+                    </div>
+                </div>
+                <!-- 项目卡片2 -->
+                <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div class="h-48 bg-gradient-to-r from-secondary to-primary flex items-center justify-center">
+                        <span class="text-white text-2xl font-medium">项目截图</span>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">项目名称2</h3>
+                        <p class="text-gray-600 mb-4">这是项目的简短描述，说明项目的功能和技术栈（如：前端交互组件库）。</p>
+                        <a href="https://github.com/你的用户名/项目名" target="_blank" class="text-primary font-medium hover:underline flex items-center">
+                            <i class="fa-brands fa-github mr-2"></i> 查看源码
+                        </a>
+                    </div>
+                </div>
+                <!-- 项目卡片3 -->
+                <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div class="h-48 bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
+                        <span class="text-white text-2xl font-medium">项目截图</span>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">项目名称3</h3>
+                        <p class="text-gray-600 mb-4">这是项目的简短描述，说明项目的功能和技术栈（如：GitHub Pages个人主页）。</p>
+                        <a href="https://github.com/你的用户名/项目名" target="_blank" class="text-primary font-medium hover:underline flex items-center">
+                            <i class="fa-brands fa-github mr-2"></i> 查看源码
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 联系我板块 -->
+    <section id="contact" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-16">联系我</h2>
+            <div class="max-w-xl mx-auto bg-gray-50 rounded-2xl p-8 shadow-sm">
+                <div class="flex flex-col space-y-6">
+                    <a href="mailto:你的邮箱@example.com" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                        <i class="fa-solid fa-envelope text-primary text-xl w-8 text-center"></i>
+                        <span class="ml-4">你的邮箱@example.com</span>
+                    </a>
+                    <a href="https://github.com/你的用户名" target="_blank" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                        <i class="fa-brands fa-github text-primary text-xl w-8 text-center"></i>
+                        <span class="ml-4">github.com/你的用户名</span>
+                    </a>
+                    <a href="https://linkedin.com/in/你的用户名" target="_blank" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                        <i class="fa-brands fa-linkedin text-primary text-xl w-8 text-center"></i>
+                        <span class="ml-4">linkedin.com/in/你的用户名</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-10">
+        <div class="container mx-auto px-4 text-center">
+            <p class="mb-4">© 2026 我的个人主页 | 基于GitHub Pages搭建</p>
+            <div class="flex justify-center space-x-6">
+                <a href="https://github.com/你的用户名" target="_blank" class="text-gray-300 hover:text-white transition-colors">
+                    <i class="fa-brands fa-github text-xl"></i>
+                </a>
+                <a href="https://twitter.com/你的用户名" target="_blank" class="text-gray-300 hover:text-white transition-colors">
+                    <i class="fa-brands fa-twitter text-xl"></i>
+                </a>
+                <a href="https://zhihu.com/people/你的用户名" target="_blank" class="text-gray-300 hover:text-white transition-colors">
+                    <i class="fa-brands fa-zhihu text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 移动端菜单交互脚本 -->
+    <script>
+        // 移动端菜单切换
+        const menuBtn = document.getElementById('menuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            // 切换菜单图标（汉堡/叉号）
+            const icon = menuBtn.querySelector('i');
+            if (icon.classList.contains('fa-bars')) {
+                icon.classList.replace('fa-bars', 'fa-xmark');
+            } else {
+                icon.classList.replace('fa-xmark', 'fa-bars');
+            }
+        });
+
+        // 平滑滚动（点击导航链接）
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80, // 避开固定导航栏
+                        behavior: 'smooth'
+                    });
+                    // 关闭移动端菜单（如果打开）
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                        menuBtn.querySelector('i').classList.replace('fa-xmark', 'fa-bars');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
