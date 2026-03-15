@@ -1,6 +1,7 @@
+/* 全局主题变量（浅色/暗黑双模式） */
 :root {
   --bg: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-  --card: rgba(255,255,255,0.92);
+  --card: rgba(255, 255, 255, 0.92);
   --text: #1e293b;
   --sub: #64748b;
   --border: #e2e8f0;
@@ -12,12 +13,12 @@
   --me: #3b82f6;
   --other: #f1f5f9;
   --radius: 18px;
-  --shadow: 0 8px 30px rgba(0,59,117,0.08);
-  --float-shadow: 0 12px 36px rgba(0,59,117,0.12);
+  --shadow: 0 8px 30px rgba(0, 59, 117, 0.08);
+  --float-shadow: 0 12px 36px rgba(0, 59, 117, 0.12);
 }
 [data-theme="dark"] {
   --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --card: rgba(30,41,59,0.95);
+  --card: rgba(30, 41, 59, 0.95);
   --text: #f1f5f9;
   --sub: #cbd5e1;
   --border: #334155;
@@ -28,22 +29,36 @@
   --dark: #475569;
   --me: #60a5fa;
   --other: #334155;
-  --shadow: 0 8px 30px rgba(0,0,0,0.2);
-  --float-shadow: 0 12px 36px rgba(0,0,0,0.3);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  --float-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
 }
 
+/* 基础重置 - 修复 iPad 溢出核心 */
 * {
-  margin: 0; padding: 0; box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-html, body { height: 100%; }
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
 body {
-  background: var(--bg); color: var(--text);
-  display: grid; place-items: center; padding: 10px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
   backdrop-filter: blur(10px);
+  -webkit-overflow-scrolling: touch;
 }
 
+/* 动画 */
 .fade { opacity: 0; animation: fadeIn 0.4s forwards; }
 .slide-right { transform: translateX(100%); animation: slideIn 0.35s forwards; }
 .hover-float:hover { transform: translateY(-4px); box-shadow: var(--float-shadow); }
@@ -53,124 +68,339 @@ body {
 @keyframes bounce { 0%,100%{transform:scale(1);}50%{transform:scale(1.05);} }
 
 .hidden { display: none !important; }
-.mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(3px); z-index: 90; }
+
+/* 遮罩 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(3px);
+  z-index: 90;
+}
+
+/* 侧边栏 - iPad 适配宽度 */
 .slide-panel {
-  position: fixed; top:0; right:0; width: 350px; height: 100vh;
-  background: var(--card); box-shadow: -4px 0 25px rgba(0,0,0,0.15);
-  z-index: 99; padding: 26px; overflow-y: auto;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100vh;
+  background: var(--card);
+  box-shadow: -4px 0 25px rgba(0,0,0,0.15);
+  z-index: 99;
+  padding: 20px;
+  overflow-y: auto;
 }
-.panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
-.close-btn { background: none; border: none; font-size: 26px; cursor: pointer; color: var(--text); }
-.set-item { margin-bottom: 24px; }
-.set-item label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--sub); }
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text);
+}
+.set-item {
+  margin-bottom: 18px;
+}
+.set-item label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sub);
+}
 .set-item input {
-  width: 100%; padding: 13px; border: 1px solid var(--border);
-  border-radius: 12px; background: transparent; color: var(--text); margin-bottom: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-size: 14px;
 }
+
+/* 按钮 */
 .btn {
-  border: none; border-radius: 12px; padding: 13px; cursor: pointer;
-  font-weight: 500; width: 100%; color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px;
+  cursor: pointer;
+  font-weight: 500;
+  width: 100%;
+  color: #fff;
+  font-size: 14px;
 }
 .btn:hover { transform: scale(0.97); opacity: 0.9; }
 .pri { background: var(--pri); }
 .sec { background: var(--sec); }
-.warn { background: var(--warn); }
+.warn { background: var(--warn); color:#000; }
 .danger { background: var(--danger); }
 .dark { background: var(--dark); }
+.mini {
+  padding: 4px 8px;
+  font-size: 11px;
+  width: auto;
+  border-radius: 6px;
+}
+
+/* 用户列表 */
 .user-box {
-  background: var(--bg); border-radius: 10px; padding: 10px;
-  max-height: 180px; overflow-y: auto; font-size: 13px;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+  font-size: 12px;
 }
 .user-item {
-  padding: 8px; border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
-.mini { padding: 5px 8px; font-size: 12px; width: auto; }
+.user-item:last-child { border:0; }
 
-.auth-page { width: 100%; max-width: 420px; }
+/* 登录注册卡片 - iPad 完美居中 */
+.auth-page {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px;
+}
 .auth-card {
-  background: var(--card); padding: 46px 34px; border-radius: var(--radius);
-  box-shadow: var(--shadow); text-align: center;
+  background: var(--card);
+  padding: 30px 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+  width: 100%;
 }
-.logo { font-size: 48px; margin-bottom: 14px; }
-.auth-card h3 { margin-bottom: 24px; font-size: 20px; }
+.logo {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+.auth-card h3 {
+  margin-bottom: 20px;
+  font-size: 18px;
+}
 .input-item {
-  width: 100%; padding: 15px; margin: 10px 0;
-  border: 1px solid var(--border); border-radius: 14px;
-  background: transparent; color: var(--text);
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
 }
-.btn-group { display: flex; gap: 12px; margin-top: 18px; }
-.tips { margin-top: 16px; font-size: 13px; color: var(--danger); min-height: 16px; }
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.tips {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--danger);
+  min-height: 16px;
+}
 
+/* 聊天主界面 - 修复 iPad 布局错乱核心 */
 .chat-page {
-  width: 100%; max-width: 920px; height: 93vh;
-  background: var(--card); border-radius: var(--radius);
-  box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  height: calc(100vh - 16px);
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
+
+/* 头部 */
 .chat-header {
-  padding: 22px 26px; background: var(--pri); color: #fff;
-  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px;
+  background: var(--pri);
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
-.left h2 { font-size: 20px; margin-bottom: 6px; }
-.left p { font-size: 13px; opacity: 0.9; }
-.admin-tag { color: #fbbf24; font-weight: bold; }
-.header-btns { display: flex; gap: 10px; }
-.set-btn, .admin-btn { padding: 9px 15px; font-size: 14px; }
-.admin-btn { background: #fbbf24; color: #000; }
+.left h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.left p {
+  font-size: 12px;
+  opacity: 0.9;
+}
+.admin-tag {
+  color: #fbbf24;
+  font-weight: bold;
+  font-size: 12px;
+}
+.header-btns {
+  display: flex;
+  gap: 8px;
+}
+.set-btn, .admin-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+.admin-btn {
+  background: #fbbf24;
+  color: #000;
+}
+
+/* 公告 */
 .announce-bar {
-  padding: 10px 26px; background: #fffbeb; color: #92400e;
-  font-size: 13px; text-align: center; border-bottom: 1px solid #fef3c7;
+  padding: 8px 20px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  text-align: center;
+  border-bottom: 1px solid #fef3c7;
 }
-[data-theme="dark"] .announce-bar { background: #475569; color: #fbbf24; }
+[data-theme="dark"] .announce-bar {
+  background: #475569;
+  color: #fbbf24;
+}
+
+/* 状态条 */
 .status-bar {
-  padding: 10px 26px; font-size: 13px; color: var(--sub);
-  border-bottom: 1px solid var(--border); display: flex; gap: 20px;
+  padding: 8px 20px;
+  font-size: 12px;
+  color: var(--sub);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
+
+/* 消息区域 */
 .msg-box {
-  flex: 1; padding: 26px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 16px;
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 .msg-item {
-  display: flex; gap: 10px; max-width: 75%; align-items: flex-end;
-  opacity: 0; transform: translateY(10px); animation: msgPop 0.3s forwards;
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+  align-items: flex-end;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: msgPop 0.3s forwards;
 }
 @keyframes msgPop { to { opacity:1; transform:translateY(0); } }
-.msg-me { flex-direction: row-reverse; align-self: flex-end; }
-.avatar {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--pri); color: #fff; display: grid; place-items: center;
-  font-weight: bold; flex-shrink: 0;
+.msg-me {
+  flex-direction: row-reverse;
+  align-self: flex-end;
 }
-.bubble { padding: 11px 15px; border-radius: 14px; line-height: 1.5; font-size: 14px; position: relative; }
-.msg-me .bubble { background: var(--me); color: #fff; border-bottom-right-radius: 4px; }
-.msg-other .bubble { background: var(--other); border-bottom-left-radius: 4px; }
-.name { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
-.time { font-size: 11px; opacity: 0.6; text-align: right; margin-top: 4px; }
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pri);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.bubble {
+  padding: 10px 12px;
+  border-radius: 12px;
+  line-height: 1.4;
+  font-size: 14px;
+  position: relative;
+}
+.msg-me .bubble {
+  background: var(--me);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg-other .bubble {
+  background: var(--other);
+  border-bottom-left-radius: 4px;
+}
+.name { font-size: 11px; opacity: 0.7; margin-bottom: 4px; }
+.time { font-size: 10px; opacity: 0.6; text-align: right; margin-top: 4px; }
 .del-btn {
-  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
-  border-radius: 50%; background: var(--danger); color: #fff;
-  border: none; font-size: 11px; cursor: pointer; display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  font-size: 10px;
+  cursor: pointer;
+  display: none;
 }
 .msg-item:hover .del-btn { display: block; }
 
+/* 发送区域 - iPad 不错位核心 */
 .send-container {
-  display: flex; flex-direction: column;
-  padding: 12px 16px; gap: 6px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px;
+  gap: 6px;
   border-top: 1px solid var(--border);
 }
 .send-input {
-  height: 46px; padding: 0 14px;
-  border: 1px solid var(--border); border-radius: 12px;
-  background: transparent; color: var(--text);
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
 }
 .send-status {
-  height: 18px; line-height: 18px;
-  font-size: 12px; text-align: center;
+  height: 16px;
+  line-height: 16px;
+  font-size: 11px;
+  text-align: center;
 }
 .send-status.loading { color: var(--pri); }
 .send-status.success { color: #10b981; }
 .send-status.error { color: var(--danger); }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+/* 滚动条美化 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ========== iPad 专属适配 - 横竖屏都完美 ========== */
+@media only screen and (min-width: 768px) and (max-width: 1024px) {
+  .chat-page {
+    max-width: 96%;
+    height: calc(100vh - 20px);
+  }
+  .slide-panel {
+    width: 300px;
+  }
+  .msg-item {
+    max-width: 80%;
+  }
+}
