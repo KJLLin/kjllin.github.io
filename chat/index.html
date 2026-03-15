@@ -3,108 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KJL在线聊天系统</title>
+  <title>在线聊天系统</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <!-- 全局状态通知（核心新增） -->
+  <div id="globalNotify" class="notify hidden"></div>
 
-<!-- 遮罩 默认隐藏 -->
-<div id="mask" class="mask hidden" onclick="closeAllPanel()"></div>
+  <!-- 遮罩 -->
+  <div id="mask" class="mask hidden" onclick="closeAllPanel()"></div>
 
-<!-- 设置面板 -->
-<aside id="settingPanel" class="slide-panel slide-right hidden">
-  <div class="panel-head">
-    <h2>⚙️ 个人中心</h2>
-    <button class="close-btn" onclick="closeAllPanel()">×</button>
-  </div>
-  <div class="panel-body">
-    <div class="set-item">
-      <label>自定义昵称</label>
-      <input type="text" id="nickInput" placeholder="输入昵称">
-      <button class="btn pri" onclick="saveNick()">保存昵称</button>
+  <!-- 设置面板 -->
+  <aside id="settingPanel" class="slide-panel slide-right hidden">
+    <div class="panel-head">
+      <h2>⚙️ 个人中心</h2>
+      <button class="close-btn" onclick="closeAllPanel()">×</button>
     </div>
-    <div class="set-item">
-      <label>主题模式</label>
-      <button class="btn sec" onclick="toggleTheme()">切换暗黑/浅色</button>
+    <div class="panel-body">
+      <div class="set-item">
+        <label>自定义昵称</label>
+        <input type="text" id="nickInput" placeholder="输入昵称">
+        <button class="btn pri" onclick="saveNick()">保存昵称</button>
+      </div>
+      <div class="set-item">
+        <label>主题模式</label>
+        <button class="btn sec" onclick="toggleTheme()">切换暗黑/浅色</button>
+      </div>
+      <div class="set-item">
+        <label>修改密码</label>
+        <input type="password" id="newPwd" placeholder="≥8位新密码">
+        <button class="btn warn" onclick="updatePwd()">修改密码</button>
+      </div>
+      <div class="set-item">
+        <label>登录日志</label>
+        <button class="btn sec" onclick="showMyLoginLog()">查看我的登录记录</button>
+      </div>
+      <div class="set-item">
+        <label>清空本地记录</label>
+        <button class="btn danger" onclick="clearLocalMsg()">清空聊天</button>
+      </div>
+      <div class="set-item">
+        <label>退出登录</label>
+        <button class="btn dark" onclick="userLogout()">安全退出</button>
+      </div>
     </div>
-    <div class="set-item">
-      <label>修改密码</label>
-      <input type="password" id="newPwd" placeholder="≥8位新密码">
-      <button class="btn warn" onclick="updatePwd()">修改密码</button>
-    </div>
-    <div class="set-item">
-      <label>登录日志</label>
-      <button class="btn sec" onclick="showMyLoginLog()">查看我的登录记录</button>
-    </div>
-    <div class="set-item">
-      <label>清空本地记录</label>
-      <button class="btn danger" onclick="clearLocalMsg()">清空聊天</button>
-    </div>
-    <div class="set-item">
-      <label>退出登录</label>
-      <button class="btn dark" onclick="userLogout()">安全退出</button>
-    </div>
-  </div>
-</aside>
+  </aside>
 
-<!-- 管理员面板 -->
-<aside id="adminPanel" class="slide-panel slide-right hidden">
-  <div class="panel-head">
-    <h2>🔧 管理员后台</h2>
-    <button class="close-btn" onclick="closeAllPanel()">×</button>
-  </div>
-  <div class="panel-body">
-    <div class="set-item"><label>📝 注册审核</label><div id="verifyList" class="user-box"></div></div>
-    <div class="set-item"><label>👥 全部用户</label><div id="allUserList" class="user-box"></div></div>
-    <div class="set-item"><label>🔍 登录日志审计</label><div id="loginLogPanel" class="user-box"></div></div>
-    <div class="set-item"><label>🚨 敏感词过滤</label><input type="text" id="swInput" placeholder="逗号分隔"><button class="btn pri" onclick="setSensitiveWords()">保存</button></div>
-    <div class="set-item"><label>📢 全局公告</label><input type="text" id="annInput" placeholder="输入公告"><button class="btn pri" onclick="sendAnnounce()">推送公告</button></div>
-  </div>
-</aside>
-
-<!-- 登录注册页 -->
-<section id="authPage" class="auth-page">
-  <div class="auth-card">
-    <div class="logo">💬 在线聊天系统（演示版）</div>
-    <h3>登录 / 注册</h3>
-    <input type="text" id="nick" placeholder="用户名（注册必填）" class="input-item">
-    <input type="email" id="email" placeholder="邮箱账号" class="input-item">
-    <input type="password" id="pwd" placeholder="密码≥8位" class="input-item">
-    <div class="btn-group">
-      <button id="regBtn" class="btn dark" onclick="register()">注册新账号</button>
-      <button id="loginBtn" class="btn pri" onclick="login()">立即登录</button>
+  <!-- 管理员面板 -->
+  <aside id="adminPanel" class="slide-panel slide-right hidden">
+    <div class="panel-head">
+      <h2>🔧 管理员后台</h2>
+      <button class="close-btn" onclick="closeAllPanel()">×</button>
     </div>
-    <p id="tips" class="tips"></p>
-  </div>
-</section>
-
-<!-- 聊天页面 -->
-<main id="chatPage" class="chat-page hidden">
-  <header class="chat-header">
-    <div class="left">
-      <h2>聊天室</h2>
-      <p id="userTag">加载中...</p>
-      <p id="adminTag" class="admin-tag hidden">【管理员】</p>
+    <div class="panel-body">
+      <div class="set-item"><label>📝 注册审核</label><div id="verifyList" class="user-box"></div></div>
+      <div class="set-item"><label>👥 全部用户</label><div id="allUserList" class="user-box"></div></div>
+      <div class="set-item"><label>🔍 登录日志审计</label><div id="loginLogPanel" class="user-box"></div></div>
+      <div class="set-item"><label>🚨 敏感词过滤</label><input type="text" id="swInput" placeholder="逗号分隔"><button class="btn pri" onclick="setSensitiveWords()">保存</button></div>
+      <div class="set-item"><label>📢 全局公告</label><input type="text" id="annInput" placeholder="输入公告"><button class="btn pri" onclick="sendAnnounce()">推送公告</button></div>
     </div>
-    <div class="header-btns">
-      <button id="adminBtn" class="btn admin-btn hidden" onclick="openAdmin()">管理后台</button>
-      <button class="btn set-btn" onclick="openSetting()">个人设置</button>
+  </aside>
+
+  <!-- 登录页（默认显示） -->
+  <section id="loginPage" class="auth-page">
+    <div class="auth-card">
+      <div class="logo">💬 在线聊天系统（演示版）</div>
+      <h3>用户登录</h3>
+      <input type="email" id="loginEmail" placeholder="请输入邮箱账号" class="input-item">
+      <input type="password" id="loginPwd" placeholder="请输入密码（≥8位）" class="input-item">
+      <button id="loginBtn" class="btn pri full" onclick="login()">立即登录</button>
+      <p class="switch-auth" onclick="switchToRegister()">还没有账号？点击注册</p>
+      <p id="loginTips" class="tips"></p>
     </div>
-  </header>
+  </section>
 
-  <div id="announceBar" class="announce-bar hidden"></div>
-  <div class="status-bar"><span>在线：<span id="onlineNum">0</span></span><span id="userStatus">状态检测中...</span></div>
+  <!-- 注册页（默认隐藏） -->
+  <section id="registerPage" class="auth-page hidden">
+    <div class="auth-card">
+      <div class="logo">💬 安全聊天室</div>
+      <h3>账号注册</h3>
+      <input type="text" id="regNick" placeholder="请输入用户名（必填）" class="input-item">
+      <input type="email" id="regEmail" placeholder="请输入邮箱账号" class="input-item">
+      <input type="password" id="regPwd" placeholder="请输入密码（≥8位）" class="input-item">
+      <button id="regBtn" class="btn dark full" onclick="register()">注册新账号</button>
+      <p class="switch-auth" onclick="switchToLogin()">已有账号？点击登录</p>
+      <p id="regTips" class="tips"></p>
+    </div>
+  </section>
 
-  <div id="msgBox" class="msg-box"></div>
+  <!-- 聊天页面 -->
+  <main id="chatPage" class="chat-page hidden">
+    <header class="chat-header">
+      <div class="left">
+        <h2>在线聊天系统</h2>
+        <p id="userTag">加载中...</p>
+        <p id="adminTag" class="admin-tag hidden">【管理员】</p>
+      </div>
+      <div class="header-btns">
+        <button id="adminBtn" class="btn admin-btn hidden" onclick="openAdmin()">管理后台</button>
+        <button class="btn set-btn" onclick="openSetting()">个人设置</button>
+      </div>
+    </header>
 
-  <div class="send-container">
-    <input type="text" id="msgInput" placeholder="输入消息，回车发送" class="send-input">
-    <button class="btn pri" onclick="sendMsg()">发送</button>
-    <div id="sendStatus" class="send-status"></div>
-  </div>
-</main>
+    <div id="announceBar" class="announce-bar hidden"></div>
+    <div class="status-bar"><span>在线：<span id="onlineNum">0</span></span><span id="userStatus">状态检测中...</span></div>
 
-<script src="app.js"></script>
+    <div id="msgBox" class="msg-box"></div>
+
+    <div class="send-container">
+      <input type="text" id="msgInput" placeholder="输入消息，回车发送" class="send-input">
+      <button class="btn pri" onclick="sendMsg()">发送</button>
+      <div id="sendStatus" class="send-status"></div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
 </body>
 </html>
