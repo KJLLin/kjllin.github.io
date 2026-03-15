@@ -2,16 +2,18 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>全能安全聊天系统</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>在线聊天系统</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<div id="mask" class="mask fade" onclick="closeAllPanel()"></div>
+<!-- 遮罩 默认隐藏 -->
+<div id="mask" class="mask hidden" onclick="closeAllPanel()"></div>
 
-<aside id="settingPanel" class="slide-panel slide-right">
+<!-- 设置面板 默认隐藏 -->
+<aside id="settingPanel" class="slide-panel slide-right hidden">
   <div class="panel-head">
     <h2>⚙️ 个人中心</h2>
     <button class="close-btn" onclick="closeAllPanel()">×</button>
@@ -46,7 +48,8 @@
   </div>
 </aside>
 
-<aside id="adminPanel" class="slide-panel slide-right">
+<!-- 管理员面板 默认隐藏 -->
+<aside id="adminPanel" class="slide-panel slide-right hidden">
   <div class="panel-head">
     <h2>🔧 管理员后台</h2>
     <button class="close-btn" onclick="closeAllPanel()">×</button>
@@ -60,9 +63,10 @@
   </div>
 </aside>
 
-<section id="authPage" class="auth-page fade">
-  <div class="auth-card hover-float">
-    <div class="logo bounce">💬 安全聊天系统</div>
+<!-- 登录页 默认显示 -->
+<section id="authPage" class="auth-page">
+  <div class="auth-card">
+    <div class="logo">💬 安全聊天系统</div>
     <h3>登录 / 注册</h3>
     <input type="text" id="nick" placeholder="用户名（注册必填）" class="input-item">
     <input type="email" id="email" placeholder="邮箱账号" class="input-item">
@@ -75,10 +79,11 @@
   </div>
 </section>
 
-<main id="chatPage" class="chat-page fade">
+<!-- 聊天页 默认隐藏 -->
+<main id="chatPage" class="chat-page hidden">
   <header class="chat-header">
     <div class="left">
-      <h2>全能安全聊天室</h2>
+      <h2>安全聊天室</h2>
       <p id="userTag">加载中...</p>
       <p id="adminTag" class="admin-tag hidden">【管理员】</p>
     </div>
