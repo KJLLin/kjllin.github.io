@@ -1,17 +1,18 @@
-/* 全局重置 */
+/* 全局强制重置 */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  transition: all 0.3s ease;
+  -webkit-font-smoothing: antialiased;
 }
 html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
   position: fixed;
-  touch-action: manipulation;
+  top: 0;
+  left: 0;
 }
 body {
   background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
@@ -19,14 +20,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 8px;
 }
 [data-theme="dark"] body {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #f1f5f9;
 }
 
-/* 强制隐藏 - 最高优先级 */
+/* 强制隐藏 */
 .hidden {
   display: none !important;
 }
@@ -109,7 +110,10 @@ body {
   color: #fff;
   font-weight: 500;
   cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
 }
+.btn:active { transform: scale(0.96); }
 .btn.pri { background: #3b82f6; }
 .btn.sec { background: #64748b; }
 .btn.warn { background: #f59e0b; color: #000; }
@@ -146,7 +150,7 @@ body {
   border-color: #475569;
 }
 
-/* 登录注册页 - iPad 完美居中 */
+/* 登录卡片 */
 .auth-page {
   width: 100%;
   max-width: 380px;
@@ -177,6 +181,7 @@ body {
   border-radius: 12px;
   background: transparent;
   color: inherit;
+  font-size: 14px;
 }
 [data-theme="dark"] .input-item {
   border-color: #334155;
@@ -190,9 +195,11 @@ body {
   margin-top: 12px;
   font-size: 12px;
   color: #ef4444;
+  min-height: 16px;
+  line-height: 1.4;
 }
 
-/* 聊天页面 - 修复iPad错乱 */
+/* 聊天页面 */
 .chat-page {
   width: 100%;
   height: 100vh;
@@ -365,6 +372,7 @@ body {
   border-radius: 12px;
   background: transparent;
   color: inherit;
+  font-size: 14px;
 }
 [data-theme="dark"] .send-input {
   border-color: #334155;
@@ -378,14 +386,14 @@ body {
 .send-status.success { color: #10b981; }
 .send-status.error { color: #ef4444; }
 
-/* iPad 专属完美适配 */
+/* iPad 完美适配 */
 @media only screen and (min-width: 768px) and (max-width: 1024px) {
   .chat-page {
     max-width: 95%;
     height: 97vh;
     margin: 0 auto;
+    border-radius: 20px;
   }
-  .slide-panel {
-    width: 300px;
-  }
+  .slide-panel { width: 300px; }
+  .msg-item { max-width: 75%; }
 }
