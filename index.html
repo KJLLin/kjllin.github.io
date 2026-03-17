@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>KJLLin | 个人主页</title>
+  <style>
+    /* ====================== Windows 11 全局样式（稳定兼容版） ====================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      transition: 
+        background-color 0.28s ease,
+        color 0.28s ease,
+        border-color 0.28s ease,
+        transform 0.22s ease,
+        box-shadow 0.28s ease;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: #f3f3f3;
+      color: #1a1a1a;
+      position: relative;
+    }
+
+    [data-theme="dark"] body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+    }
+
+    /* Win11 磨砂背景 */
+    .win11-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 22% 22%, rgba(0, 120, 212, 0.04), transparent 55%),
+        radial-gradient(circle at 78% 72%, rgba(255, 140, 0, 0.04), transparent 45%);
+      z-index: -2;
+    }
+
+    /* 磨砂玻璃遮罩层 */
+    .glass {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    [data-theme="dark"] .glass {
+      background: rgba(26, 26, 26, 0.88);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    /* ====================== 布局容器 ====================== */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 28px 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ====================== Win11 导航栏 ====================== */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 26px;
+      border-radius: 14px;
+      margin-bottom: 52px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06);
+    }
+
+    .logo-text {
+      font-size: 23px;
+      font-weight: 600;
+      color: #0078d7;
+      letter-spacing: 0.4px;
+    }
+
+    /* 主题切换按钮 */
+    .theme-toggle {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: none;
+      font-size: 19px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(228, 228, 228, 0.6);
+    }
+
+    [data-theme="dark"] .theme-toggle {
+      background: rgba(44, 44, 44, 0.6);
+      color: #ffd700;
+    }
+
+    .theme-toggle:active {
+      transform: scale(0.94);
+    }
+
+    /* ====================== 个人信息区域 ====================== */
+    .profile {
+      text-align: center;
+      margin-bottom: 60px;
+      animation: fadeInUp 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .avatar {
+      width: 108px;
+      height: 108px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
+      background: #0078d7;
+      color: #fff;
+      font-size: 40px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0, 120, 212, 0.22);
+    }
+
+    .username {
+      font-size: 36px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .bio {
+      font-size: 16px;
+      color: #555;
+      max-width: 620px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    [data-theme="dark"] .bio {
+      color: #a0a0a0;
+    }
+
+    /* ====================== 项目卡片布局 ====================== */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 50px;
+    }
+
+    /* Win11 风格项目卡片 */
+    .project-card {
+      padding: 32px 28px;
+      border-radius: 18px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      display: block;
+    }
+
+    .project-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.12);
+    }
+
+    [data-theme="dark"] .project-card:hover {
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-icon {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #0078d7;
+    }
+
+    .card-desc {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.55;
+    }
+
+    [data-theme="dark"] .card-desc {
+      color: #a0a0a0;
+    }
+
+    /* ====================== 页脚 ====================== */
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      font-size: 14px;
+      color: #777;
+    }
+
+    [data-theme="dark"] .footer {
+      color: #666;
+    }
+
+    /* ====================== 移动端兼容优化 ====================== */
+    @media (max-width: 768px) {
+      .container {
+        padding: 22px 16px;
+      }
+
+      .navbar {
+        padding: 16px 20px;
+        margin-bottom: 42px;
+      }
+
+      .username {
+        font-size: 30px;
+      }
+
+      .bio {
+        font-size: 15px;
+      }
+
+      .card-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .project-card {
+        padding: 28px 24px;
+      }
+
+      .avatar {
+        width: 96px;
+        height: 96px;
+        font-size: 36px;
+      }
+    }
+
+    /* 防止点击高亮 */
+    a, button {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Win11 磨砂背景 -->
+  <div class="win11-bg"></div>
+
+  <div class="container">
+    <!-- 导航栏 -->
+    <div class="navbar glass">
+      <div class="logo-text">KJLLin</div>
+      <button id="themeBtn" class="theme-toggle">🌙</button>
+    </div>
+
+    <!-- 个人信息 -->
+    <div class="profile">
+      <div class="avatar">K</div>
+      <h1 class="username">KJLLin</h1>
+      <p class="bio">独立开发者 | 前端创作者 | 专注简洁稳定的 Web 应用<br>欢迎体验我的作品：在线聊天、小游戏开发</p>
+    </div>
+
+    <!-- 项目卡片 -->
+    <div class="card-grid">
+      <!-- 在线聊天系统 -->
+      <a href="/chat" class="project-card glass">
+        <div class="card-icon">💬</div>
+        <h3 class="card-title">在线聊天系统</h3>
+        <p class="card-desc">基于 Supabase 开发的实时聊天平台，支持账号系统、管理员后台、消息过滤、深色模式，Windows11 风格界面。</p>
+      </a>
+
+      <!-- 恐龙快跑升级版 -->
+      <a href="/game" class="project-card glass">
+        <div class="card-icon">🦖</div>
+        <h3 class="card-title">恐龙快跑升级版</h3>
+        <p class="card-desc">Chrome 小恐龙升级版，流畅跑酷体验，优化操作手感与视觉效果，一键开局，轻松上手。</p>
+      </a>
+    </div>
+
+    <!-- 页脚 -->
+    <div class="footer">© 2025 KJLLin · All Rights Reserved</div>
+  </div>
+
+  <script>
+    // ====================== 主题切换（修复版：无卡顿、无失效） ======================
+    const themeBtn = document.getElementById('themeBtn');
+    const root = document.documentElement;
+
+    // 初始化读取本地存储
+    try {
+      if (localStorage.getItem('theme') === 'dark') {
+        root.dataset.theme = 'dark';
+        themeBtn.textContent = '☀️';
+      } else {
+        themeBtn.textContent = '🌙';
+      }
+    } catch (e) {
+      // 容错：本地存储不可用时降级
+      themeBtn.textContent = '🌙';
+    }
+
+    // 点击切换（绑定原生 click，修复无响应）
+    themeBtn.addEventListener('click', () => {
+      try {
+        if (root.dataset.theme) {
+          root.dataset.theme = '';
+          localStorage.removeItem('theme');
+          themeBtn.textContent = '🌙';
+        } else {
+          root.dataset.theme = 'dark';
+          localStorage.setItem('theme', 'dark');
+          themeBtn.textContent = '☀️';
+        }
+      } catch (e) {
+        // 异常兜底
+        console.log('主题切换异常');
+      }
+    });
+
+    // 触摸兼容（移动端）
+    themeBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      themeBtn.click();
+    });
+  </script>
+</body>
+</html>
