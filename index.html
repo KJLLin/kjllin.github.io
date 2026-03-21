@@ -9,14 +9,16 @@
   <meta name="description" content="KJLLin 个人主页">
   <title>KJLLin · 个人主页</title>
   <style>
-    /* 全局统一过渡规则 - 解决Safari切换不同步核心 */
+    /* 全局基础规则 - 兼容优先，GPU加速 */
     html {
-      --transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition: 0.32s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --fast-transition: 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
       transition: background-color var(--transition);
       -webkit-transition: background-color var(--transition);
+      scroll-behavior: smooth;
     }
 
-    /* 所有元素继承过渡，禁止单独延迟 */
+    /* 所有元素继承过渡，禁止重排属性动画 */
     * {
       margin: 0;
       padding: 0;
@@ -26,37 +28,48 @@
       outline: none;
       transition: inherit;
       -webkit-transition: inherit;
-      touch-action: manipulation; /* 解决Safari点击延迟/误触 */
+      touch-action: manipulation;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* 深浅模式全局变量 - 统一管理，确保同步 */
     :root {
       --bg-body: #f8f9fc;
       --bg-glass: rgba(255, 255, 255, 0.92);
+      --bg-glass-scroll: rgba(255, 255, 255, 0.96);
       --border-glass: rgba(0, 0, 0, 0.05);
+      --border-glass-hover: rgba(0, 120, 212, 0.15);
       --text-main: #1c1c1e;
       --text-sub: #5c5c5c;
       --text-desc: #888888;
       --text-foot: #888888;
       --accent: #0078d7;
+      --accent-light: #0099ff;
       --accent-glow: rgba(0, 120, 212, 0.12);
+      --accent-glow-weak: rgba(0, 120, 212, 0.06);
       --shadow-normal: 0 8px 24px rgba(0, 0, 0, 0.07);
-      --shadow-hover: 0 14px 36px rgba(0, 0, 0, 0.12);
+      --shadow-scroll: 0 12px 32px rgba(0, 0, 0, 0.1);
+      --shadow-hover: 0 16px 40px rgba(0, 0, 0, 0.12);
       --scroll-bar: #c1c1c1;
     }
 
     [data-theme="dark"]:root {
       --bg-body: #0f0f0f;
       --bg-glass: rgba(20, 20, 20, 0.92);
+      --bg-glass-scroll: rgba(20, 20, 20, 0.96);
       --border-glass: rgba(255, 255, 255, 0.08);
+      --border-glass-hover: rgba(0, 120, 212, 0.25);
       --text-main: #eaeaea;
       --text-sub: #b0b0b0;
       --text-desc: #999999;
       --text-foot: #666666;
       --accent: #0078d7;
+      --accent-light: #0099ff;
       --accent-glow: rgba(0, 120, 212, 0.18);
+      --accent-glow-weak: rgba(0, 120, 212, 0.08);
       --shadow-normal: 0 8px 24px rgba(0, 0, 0, 0.25);
-      --shadow-hover: 0 14px 36px rgba(0, 0, 0, 0.35);
+      --shadow-scroll: 0 12px 32px rgba(0, 0, 0, 0.35);
+      --shadow-hover: 0 16px 40px rgba(0, 0, 0, 0.35);
       --scroll-bar: #444444;
     }
 
@@ -64,25 +77,69 @@
       width: 100%;
       min-height: 100vh;
       overflow-x: hidden;
-      scroll-behavior: smooth;
       position: relative;
     }
 
     body {
       background: var(--bg-body);
       color: var(--text-main);
-      -webkit-font-smoothing: antialiased;
     }
 
-    /* 独立背景层 - 解决Safari伪元素不更新BUG */
-    .bg-layer {
+    /* 独立背景层 - 解决Safari切换不同步，升级云母质感 */
+    .bg-base {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at 20% 20%, var(--accent-glow), transparent 50%);
+      background: var(--bg-body);
+      z-index: -3;
+      pointer-events: none;
+    }
+    .bg-glow-1 {
+      position: fixed;
+      top: -10%;
+      left: -10%;
+      width: 50%;
+      height: 50%;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%);
       z-index: -2;
       pointer-events: none;
       transition: background var(--transition);
       -webkit-transition: background var(--transition);
+      animation: float1 12s ease-in-out infinite;
+      -webkit-animation: float1 12s ease-in-out infinite;
+    }
+    .bg-glow-2 {
+      position: fixed;
+      bottom: -10%;
+      right: -10%;
+      width: 60%;
+      height: 60%;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-glow-weak), transparent 70%);
+      z-index: -2;
+      pointer-events: none;
+      transition: background var(--transition);
+      -webkit-transition: background var(--transition);
+      animation: float2 15s ease-in-out infinite;
+      -webkit-animation: float2 15s ease-in-out infinite;
+    }
+
+    /* 背景浮动动画 - GPU加速 */
+    @keyframes float1 {
+      0%,100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(5%, 5%) scale(1.05); }
+    }
+    @-webkit-keyframes float1 {
+      0%,100% { -webkit-transform: translate(0, 0) scale(1); }
+      50% { -webkit-transform: translate(5%, 5%) scale(1.05); }
+    }
+    @keyframes float2 {
+      0%,100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-5%, -5%) scale(0.95); }
+    }
+    @-webkit-keyframes float2 {
+      0%,100% { -webkit-transform: translate(0, 0) scale(1); }
+      50% { -webkit-transform: translate(-5%, -5%) scale(0.95); }
     }
 
     /* 加载遮罩 */
@@ -94,8 +151,8 @@
       place-items: center;
       z-index: 9999;
       transition: opacity 0.3s ease;
+      -webkit-transition: opacity 0.3s ease;
     }
-
     .loader-spin {
       width: 42px;
       height: 42px;
@@ -105,19 +162,14 @@
       animation: spin 0.8s linear infinite;
       -webkit-animation: spin 0.8s linear infinite;
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    @-webkit-keyframes spin {
-      to { -webkit-transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
 
     /* 磨砂玻璃 - Safari专属兼容 */
     .glass {
       background: var(--bg-glass);
-      -webkit-backdrop-filter: blur(24px);
-      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(28px);
+      backdrop-filter: blur(28px);
       border: 1px solid var(--border-glass);
     }
 
@@ -130,7 +182,7 @@
       z-index: 1;
     }
 
-    /* 导航栏 */
+    /* 导航栏 - 升级滚动动态效果 */
     .navbar {
       display: flex;
       justify-content: space-between;
@@ -142,15 +194,22 @@
       position: sticky;
       top: 16px;
       z-index: 90;
+      will-change: box-shadow, background, transform;
     }
-
+    .navbar.scrolled {
+      background: var(--bg-glass-scroll);
+      box-shadow: var(--shadow-scroll);
+      transform: translateY(-2px);
+      -webkit-transform: translateY(-2px);
+    }
     .logo {
       font-size: 23px;
       font-weight: 700;
       color: var(--accent);
+      letter-spacing: 0.3px;
     }
 
-    /* 主题切换按钮 */
+    /* 主题切换按钮 - 升级微动效 */
     .theme-btn {
       width: 40px;
       height: 40px;
@@ -164,26 +223,25 @@
       cursor: pointer;
       -webkit-user-select: none;
       user-select: none;
+      will-change: transform;
     }
-
     [data-theme="dark"] .theme-btn {
       background: rgba(40, 40, 40, 0.4);
       color: #ffd700;
     }
-
     .theme-btn:active {
-      transform: scale(0.95);
-      -webkit-transform: scale(0.95);
+      transform: scale(0.92);
+      -webkit-transform: scale(0.92);
     }
 
-    /* 个人信息区域 */
+    /* 个人信息区域 - 升级视差效果 */
     .profile {
       text-align: center;
       margin-bottom: 70px;
-      animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      -webkit-animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: fadeUp 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+      -webkit-animation: fadeUp 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+      will-change: transform, opacity;
     }
-
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
@@ -193,19 +251,18 @@
       to { opacity: 1; -webkit-transform: translateY(0); }
     }
 
-    /* 头像 + 呼吸动画 */
+    /* 头像 - 升级双渐变呼吸光效 */
     .avatar-box {
       width: 110px;
       height: 110px;
       margin: 0 auto 24px;
       position: relative;
     }
-
     .avatar {
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
       color: #fff;
       font-size: 42px;
       font-weight: 700;
@@ -215,8 +272,7 @@
       position: relative;
       z-index: 2;
     }
-
-    .avatar-box::after {
+    .avatar-box::after, .avatar-box::before {
       content: '';
       position: absolute;
       inset: -6px;
@@ -224,11 +280,16 @@
       background: var(--accent);
       z-index: 1;
       opacity: 0.2;
-      animation: pulse 3s infinite ease-in-out;
-      -webkit-animation: pulse 3s infinite ease-in-out;
       pointer-events: none;
     }
-
+    .avatar-box::after {
+      animation: pulse 3s ease-in-out infinite;
+      -webkit-animation: pulse 3s ease-in-out infinite;
+    }
+    .avatar-box::before {
+      animation: pulse 3s ease-in-out 1.5s infinite;
+      -webkit-animation: pulse 3s ease-in-out 1.5s infinite;
+    }
     @keyframes pulse {
       0%,100% { transform: scale(1); opacity: 0.2; }
       50% { transform: scale(1.08); opacity: 0.1; }
@@ -242,8 +303,12 @@
       font-size: 38px;
       font-weight: 700;
       margin-bottom: 12px;
+      background: linear-gradient(90deg, var(--text-main), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
     }
-
     .desc {
       font-size: 17px;
       color: var(--text-sub);
@@ -263,7 +328,7 @@
       -webkit-animation: fadeUp 0.7s forwards 0.2s;
     }
 
-    /* 卡片网格 - 解决点击错位核心 */
+    /* 卡片网格 - 保留防串跳布局 */
     .card-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -271,7 +336,7 @@
       margin-bottom: 80px;
     }
 
-    /* 项目卡片 - 彻底解决点击串跳 */
+    /* 项目卡片 - 升级微立体悬浮动效 */
     .project-card {
       display: block;
       padding: 34px 30px;
@@ -288,14 +353,13 @@
       -webkit-user-select: none;
       user-select: none;
       z-index: 1;
+      will-change: transform, box-shadow;
     }
-
     .project-card:nth-child(1) { animation-delay: 0.3s; -webkit-animation-delay: 0.3s; }
     .project-card:nth-child(2) { animation-delay: 0.4s; -webkit-animation-delay: 0.4s; }
 
     /* 卡片光效 - 禁止接收点击事件 */
-    .project-card::before {
-      content: '';
+    .card-shine {
       position: absolute;
       top: 0;
       left: -100%;
@@ -307,12 +371,12 @@
       pointer-events: none;
       z-index: 0;
     }
-
-    .project-card:hover::before { left: 100%; }
+    .project-card:hover .card-shine { left: 100%; }
     .project-card:hover {
-      transform: translateY(-6px);
-      -webkit-transform: translateY(-6px);
+      transform: translateY(-8px);
+      -webkit-transform: translateY(-8px);
       box-shadow: var(--shadow-hover);
+      border-color: var(--border-glass-hover);
     }
 
     .card-icon {
@@ -321,11 +385,12 @@
       position: relative;
       z-index: 2;
       pointer-events: none;
+      transition: transform var(--fast-transition);
+      -webkit-transition: transform var(--fast-transition);
     }
-
     .project-card:hover .card-icon {
-      transform: scale(1.1);
-      -webkit-transform: scale(1.1);
+      transform: scale(1.12) translateY(-2px);
+      -webkit-transform: scale(1.12) translateY(-2px);
     }
 
     .card-title {
@@ -337,7 +402,6 @@
       z-index: 2;
       pointer-events: none;
     }
-
     .card-desc {
       font-size: 15px;
       color: var(--text-desc);
@@ -347,7 +411,7 @@
       pointer-events: none;
     }
 
-    /* 返回顶部按钮 */
+    /* 返回顶部按钮 - 升级微动效 */
     #backTop {
       position: fixed;
       right: 24px;
@@ -361,13 +425,17 @@
       opacity: 0;
       pointer-events: none;
       z-index: 80;
-      transition: opacity 0.3s ease;
-      -webkit-transition: opacity 0.3s ease;
+      transition: opacity var(--fast-transition), transform var(--fast-transition);
+      -webkit-transition: opacity var(--fast-transition), transform var(--fast-transition);
+      will-change: opacity, transform;
     }
-
     #backTop.show {
       opacity: 1;
       pointer-events: all;
+    }
+    #backTop:active {
+      transform: scale(0.92);
+      -webkit-transform: scale(0.92);
     }
 
     /* 页脚 */
@@ -387,16 +455,17 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
 
-    /* 移动端专属适配 */
+    /* 移动端专属适配 - 保留防串跳1列布局 */
     @media (max-width: 768px) {
       .container { padding: 24px 16px; }
       .navbar { padding: 16px 20px; margin-bottom: 40px; top: 12px; }
       .name { font-size: 32px; }
-      /* 强制1列，彻底解决卡片重叠 */
       .card-grid { grid-template-columns: 1fr; gap: 20px; }
       .avatar-box { width: 100px; height: 100px; }
       .avatar { font-size: 38px; }
       .project-card { padding: 28px 24px; }
+      /* 移动端禁用视差动画，保障性能 */
+      .bg-glow-1, .bg-glow-2 { animation: none; -webkit-animation: none; }
     }
 
     /* 禁止非输入框选中 */
@@ -412,8 +481,10 @@
 </head>
 
 <body>
-  <!-- 独立背景层 - 解决Safari切换不同步 -->
-  <div class="bg-layer"></div>
+  <!-- 独立背景层 - 解决Safari切换不同步，升级云母质感 -->
+  <div class="bg-base"></div>
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
 
   <!-- 加载遮罩 -->
   <div id="loader">
@@ -422,13 +493,13 @@
 
   <div class="container">
     <!-- 导航栏 -->
-    <div class="navbar glass">
+    <div class="navbar glass" id="navbar">
       <div class="logo">KJLLin</div>
       <button id="themeBtn" class="theme-btn">🌙</button>
     </div>
 
     <!-- 个人信息 -->
-    <div class="profile">
+    <div class="profile" id="profile">
       <div class="avatar-box">
         <div class="avatar">K</div>
       </div>
@@ -440,12 +511,14 @@
     <h2 class="section-title">我的作品</h2>
     <div class="card-grid">
       <a href="/chat" class="project-card glass" id="cardChat">
+        <div class="card-shine"></div>
         <div class="card-icon">💬</div>
         <h3 class="card-title">在线聊天系统</h3>
         <p class="card-desc">Windows11 风格实时聊天平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容稳定运行。</p>
       </a>
 
       <a href="/game" class="project-card glass" id="cardGame">
+        <div class="card-shine"></div>
         <div class="card-icon">🦖</div>
         <h3 class="card-title">恐龙快跑升级版</h3>
         <p class="card-desc">Chrome 小恐龙深度优化版，升级操作手感、视觉效果与流畅度，一键开局，休闲跑酷最佳选择。</p>
@@ -454,7 +527,7 @@
 
     <!-- 页脚 -->
     <div class="footer">
-      © 2025 KJLLin · All Rights Reserved
+      © 2026 KJLLin · All Rights Reserved      v2.0
     </div>
   </div>
 
@@ -471,13 +544,14 @@
     const metaTheme = $('meta[name="theme-color"]');
     const cardChat = $('#cardChat');
     const cardGame = $('#cardGame');
+    const navbar = $('#navbar');
 
     // 页面加载完成关闭遮罩
     window.addEventListener('load', () => {
       setTimeout(() => {
         loader.style.opacity = 0;
         setTimeout(() => loader.remove(), 300);
-      }, 300);
+      }, 400);
     });
 
     // 主题初始化 - 解决Safari加载闪烁
@@ -527,9 +601,13 @@
       }
     }
 
-    // 滚动监听
+    // 滚动监听 - 新增导航栏动态效果
     function handleScroll() {
-      backTop.classList.toggle('show', window.scrollY > 300);
+      const scrollTop = window.scrollY;
+      // 返回顶部显示控制
+      backTop.classList.toggle('show', scrollTop > 300);
+      // 导航栏滚动效果
+      navbar.classList.toggle('scrolled', scrollTop > 20);
     }
     window.addEventListener('scroll', handleScroll);
 
@@ -538,7 +616,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // 事件绑定 - 解决Safari点击串跳/无响应
+    // 事件绑定 - 保留防串跳、防误触逻辑
     // 主题按钮
     themeBtn.addEventListener('click', toggleTheme);
     themeBtn.addEventListener('touchend', (e) => {
@@ -562,7 +640,7 @@
       window.location.href = '/game';
     });
 
-    // 返回顶部
+    // 返回顶部触摸兼容
     backTop.addEventListener('touchend', (e) => {
       e.preventDefault();
       e.stopPropagation();
