@@ -6,51 +6,58 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f8f9fc">
-  <meta name="description" content="KJLLin 的个人主页 | 在线聊天系统 | 恐龙快跑升级版">
+  <meta name="description" content="KJLLin 个人主页">
   <title>KJLLin · 个人主页</title>
   <style>
-    /* 全局统一变量 · 彻底解决深浅色同步问题 */
-    :root {
-      --bg-body: #f8f9fc;
-      --bg-glass: rgba(255, 255, 255, 0.9);
-      --bg-glass-hover: rgba(255, 255, 255, 0.95);
-      --border-color: rgba(0, 0, 0, 0.06);
-      --text-main: #1c1c1e;
-      --text-secondary: #5c5c5c;
-      --text-desc: #888888;
-      --text-footer: #888888;
-      --accent-blue: #0078d7;
-      --accent-glow: rgba(0, 120, 212, 0.15);
-      --shadow-light: 0 8px 26px rgba(0, 0, 0, 0.07);
-      --shadow-hover: 0 14px 40px rgba(0, 0, 0, 0.13);
-      --scroll-bar: #c1c1c1;
-      --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    /* 全局统一过渡规则 - 解决Safari切换不同步核心 */
+    html {
+      --transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background-color var(--transition);
+      -webkit-transition: background-color var(--transition);
     }
 
-    [data-theme="dark"]:root {
-      --bg-body: #0f0f0f;
-      --bg-glass: rgba(20, 20, 20, 0.9);
-      --bg-glass-hover: rgba(26, 26, 26, 0.95);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-main: #f0f0f0;
-      --text-secondary: #b0b0b0;
-      --text-desc: #909090;
-      --text-footer: #666666;
-      --accent-blue: #0078d7;
-      --accent-glow: rgba(0, 120, 212, 0.2);
-      --shadow-light: 0 8px 26px rgba(0, 0, 0, 0.25);
-      --shadow-hover: 0 14px 40px rgba(0, 0, 0, 0.35);
-      --scroll-bar: #444444;
-    }
-
+    /* 所有元素继承过渡，禁止单独延迟 */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
       -webkit-tap-highlight-color: transparent;
       outline: none;
-      transition: var(--transition-smooth);
+      transition: inherit;
+      -webkit-transition: inherit;
+      touch-action: manipulation; /* 解决Safari点击延迟/误触 */
+    }
+
+    /* 深浅模式全局变量 - 统一管理，确保同步 */
+    :root {
+      --bg-body: #f8f9fc;
+      --bg-glass: rgba(255, 255, 255, 0.92);
+      --border-glass: rgba(0, 0, 0, 0.05);
+      --text-main: #1c1c1e;
+      --text-sub: #5c5c5c;
+      --text-desc: #888888;
+      --text-foot: #888888;
+      --accent: #0078d7;
+      --accent-glow: rgba(0, 120, 212, 0.12);
+      --shadow-normal: 0 8px 24px rgba(0, 0, 0, 0.07);
+      --shadow-hover: 0 14px 36px rgba(0, 0, 0, 0.12);
+      --scroll-bar: #c1c1c1;
+    }
+
+    [data-theme="dark"]:root {
+      --bg-body: #0f0f0f;
+      --bg-glass: rgba(20, 20, 20, 0.92);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --text-main: #eaeaea;
+      --text-sub: #b0b0b0;
+      --text-desc: #999999;
+      --text-foot: #666666;
+      --accent: #0078d7;
+      --accent-glow: rgba(0, 120, 212, 0.18);
+      --shadow-normal: 0 8px 24px rgba(0, 0, 0, 0.25);
+      --shadow-hover: 0 14px 36px rgba(0, 0, 0, 0.35);
+      --scroll-bar: #444444;
     }
 
     html, body {
@@ -58,24 +65,24 @@
       min-height: 100vh;
       overflow-x: hidden;
       scroll-behavior: smooth;
+      position: relative;
     }
 
     body {
       background: var(--bg-body);
       color: var(--text-main);
-      position: relative;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Win11 云母动态背景 */
-    body::before {
-      content: '';
+    /* 独立背景层 - 解决Safari伪元素不更新BUG */
+    .bg-layer {
       position: fixed;
       inset: 0;
-      background:
-              radial-gradient(circle at 20% 20%, var(--accent-glow), transparent 50%),
-              radial-gradient(circle at 80% 80%, rgba(255,120,0,0.08), transparent 40%);
+      background: radial-gradient(circle at 20% 20%, var(--accent-glow), transparent 50%);
       z-index: -2;
-      opacity: 0.9;
+      pointer-events: none;
+      transition: background var(--transition);
+      -webkit-transition: background var(--transition);
     }
 
     /* 加载遮罩 */
@@ -86,38 +93,39 @@
       display: grid;
       place-items: center;
       z-index: 9999;
+      transition: opacity 0.3s ease;
     }
 
     .loader-spin {
-      width: 44px;
-      height: 44px;
+      width: 42px;
+      height: 42px;
       border: 3px solid var(--accent-glow);
-      border-top: 3px solid var(--accent-blue);
+      border-top: 3px solid var(--accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
+      -webkit-animation: spin 0.8s linear infinite;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-
-    /* 磨砂玻璃基础样式 */
-    .glass {
-      background: var(--bg-glass);
-      -webkit-backdrop-filter: blur(30px);
-      backdrop-filter: blur(30px);
-      border: 1px solid var(--border-color);
+    @-webkit-keyframes spin {
+      to { -webkit-transform: rotate(360deg); }
     }
 
-    .glass:hover {
-      background: var(--bg-glass-hover);
+    /* 磨砂玻璃 - Safari专属兼容 */
+    .glass {
+      background: var(--bg-glass);
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glass);
     }
 
     /* 布局容器 */
     .container {
-      max-width: 1000px;
+      max-width: 960px;
       margin: 0 auto;
-      padding: 32px 20px;
+      padding: 28px 16px;
       position: relative;
       z-index: 1;
     }
@@ -127,56 +135,65 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 26px;
+      padding: 16px 22px;
       border-radius: 14px;
-      margin-bottom: 60px;
-      box-shadow: var(--shadow-light);
+      margin-bottom: 50px;
+      box-shadow: var(--shadow-normal);
       position: sticky;
-      top: 20px;
-      z-index: 99;
+      top: 16px;
+      z-index: 90;
     }
 
     .logo {
-      font-size: 24px;
+      font-size: 23px;
       font-weight: 700;
-      color: var(--accent-blue);
+      color: var(--accent);
     }
 
     /* 主题切换按钮 */
     .theme-btn {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 10px;
       border: none;
-      font-size: 20px;
-      cursor: pointer;
+      font-size: 19px;
+      background: rgba(220, 220, 220, 0.4);
+      color: #333;
       display: grid;
       place-items: center;
-      background: rgba(220, 220, 220, 0.5);
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     [data-theme="dark"] .theme-btn {
-      background: rgba(40, 40, 40, 0.5);
+      background: rgba(40, 40, 40, 0.4);
       color: #ffd700;
     }
 
     .theme-btn:active {
       transform: scale(0.95);
+      -webkit-transform: scale(0.95);
     }
 
     /* 个人信息区域 */
     .profile {
       text-align: center;
       margin-bottom: 70px;
-      animation: fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
+      animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      -webkit-animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @-webkit-keyframes fadeUp {
+      from { opacity: 0; -webkit-transform: translateY(30px); }
+      to { opacity: 1; -webkit-transform: translateY(0); }
+    }
 
-    /* 头像 + 呼吸光环 */
+    /* 头像 + 呼吸动画 */
     .avatar-box {
       width: 110px;
       height: 110px;
@@ -188,7 +205,7 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: var(--accent-blue);
+      background: var(--accent);
       color: #fff;
       font-size: 42px;
       font-weight: 700;
@@ -204,15 +221,21 @@
       position: absolute;
       inset: -6px;
       border-radius: 50%;
-      background: var(--accent-blue);
+      background: var(--accent);
       z-index: 1;
       opacity: 0.2;
       animation: pulse 3s infinite ease-in-out;
+      -webkit-animation: pulse 3s infinite ease-in-out;
+      pointer-events: none;
     }
 
     @keyframes pulse {
-      0%,100%{ transform: scale(1); opacity:0.2; }
-      50%{ transform: scale(1.08); opacity:0.1; }
+      0%,100% { transform: scale(1); opacity: 0.2; }
+      50% { transform: scale(1.08); opacity: 0.1; }
+    }
+    @-webkit-keyframes pulse {
+      0%,100% { -webkit-transform: scale(1); opacity: 0.2; }
+      50% { -webkit-transform: scale(1.08); opacity: 0.1; }
     }
 
     .name {
@@ -223,13 +246,13 @@
 
     .desc {
       font-size: 17px;
-      color: var(--text-secondary);
+      color: var(--text-sub);
       max-width: 600px;
       margin: 0 auto;
       line-height: 1.7;
     }
 
-    /* 项目区域 */
+    /* 项目标题 */
     .section-title {
       font-size: 26px;
       font-weight: 600;
@@ -237,8 +260,10 @@
       text-align: center;
       opacity: 0;
       animation: fadeUp 0.7s forwards 0.2s;
+      -webkit-animation: fadeUp 0.7s forwards 0.2s;
     }
 
+    /* 卡片网格 - 解决点击错位核心 */
     .card-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -246,22 +271,29 @@
       margin-bottom: 80px;
     }
 
-    /* 项目卡片 */
+    /* 项目卡片 - 彻底解决点击串跳 */
     .project-card {
+      display: block;
       padding: 34px 30px;
       border-radius: 18px;
-      box-shadow: var(--shadow-light);
+      box-shadow: var(--shadow-normal);
       text-decoration: none;
       color: inherit;
       cursor: pointer;
       position: relative;
+      overflow: hidden;
       opacity: 0;
       animation: fadeUp 0.7s forwards;
+      -webkit-animation: fadeUp 0.7s forwards;
+      -webkit-user-select: none;
+      user-select: none;
+      z-index: 1;
     }
 
-    .project-card:nth-child(1) { animation-delay: 0.3s; }
-    .project-card:nth-child(2) { animation-delay: 0.4s; }
+    .project-card:nth-child(1) { animation-delay: 0.3s; -webkit-animation-delay: 0.3s; }
+    .project-card:nth-child(2) { animation-delay: 0.4s; -webkit-animation-delay: 0.4s; }
 
+    /* 卡片光效 - 禁止接收点击事件 */
     .project-card::before {
       content: '';
       position: absolute;
@@ -271,29 +303,48 @@
       height: 100%;
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
       transition: left 0.7s ease;
+      -webkit-transition: left 0.7s ease;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .project-card:hover::before { left: 100%; }
-    .project-card:hover { transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-hover); }
+    .project-card:hover {
+      transform: translateY(-6px);
+      -webkit-transform: translateY(-6px);
+      box-shadow: var(--shadow-hover);
+    }
 
     .card-icon {
       font-size: 38px;
       margin-bottom: 20px;
+      position: relative;
+      z-index: 2;
+      pointer-events: none;
     }
 
-    .project-card:hover .card-icon { transform: scale(1.1); }
+    .project-card:hover .card-icon {
+      transform: scale(1.1);
+      -webkit-transform: scale(1.1);
+    }
 
     .card-title {
       font-size: 21px;
       font-weight: 600;
       margin-bottom: 10px;
-      color: var(--accent-blue);
+      color: var(--accent);
+      position: relative;
+      z-index: 2;
+      pointer-events: none;
     }
 
     .card-desc {
       font-size: 15px;
       color: var(--text-desc);
       line-height: 1.6;
+      position: relative;
+      z-index: 2;
+      pointer-events: none;
     }
 
     /* 返回顶部按钮 */
@@ -309,7 +360,9 @@
       cursor: pointer;
       opacity: 0;
       pointer-events: none;
-      z-index: 98;
+      z-index: 80;
+      transition: opacity 0.3s ease;
+      -webkit-transition: opacity 0.3s ease;
     }
 
     #backTop.show {
@@ -322,164 +375,202 @@
       text-align: center;
       padding: 30px 20px;
       font-size: 14px;
-      color: var(--text-footer);
-      border-top: 1px solid var(--border-color);
+      color: var(--text-foot);
+      border-top: 1px solid var(--border-glass);
     }
 
     /* 滚动条美化 */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scroll-bar);
+      border-radius: 3px;
+    }
     ::-webkit-scrollbar-track { background: transparent; }
 
-    /* 移动端适配 */
+    /* 移动端专属适配 */
     @media (max-width: 768px) {
       .container { padding: 24px 16px; }
       .navbar { padding: 16px 20px; margin-bottom: 40px; top: 12px; }
       .name { font-size: 32px; }
+      /* 强制1列，彻底解决卡片重叠 */
       .card-grid { grid-template-columns: 1fr; gap: 20px; }
       .avatar-box { width: 100px; height: 100px; }
       .avatar { font-size: 38px; }
       .project-card { padding: 28px 24px; }
     }
 
-    /* 禁用不必要的选中 */
-    * { user-select: none; -webkit-user-select: none; }
-    input, textarea { user-select: text; -webkit-user-select: text; }
+    /* 禁止非输入框选中 */
+    * {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+    }
   </style>
 </head>
 
 <body>
-<!-- 加载遮罩 -->
-<div id="loader">
-  <div class="loader-spin"></div>
-</div>
+  <!-- 独立背景层 - 解决Safari切换不同步 -->
+  <div class="bg-layer"></div>
 
-<div class="container">
-  <!-- 导航栏 -->
-  <div class="navbar glass">
-    <div class="logo">KJLLin</div>
-    <button id="themeBtn" class="theme-btn">🌙</button>
+  <!-- 加载遮罩 -->
+  <div id="loader">
+    <div class="loader-spin"></div>
   </div>
 
-  <!-- 个人信息 -->
-  <div class="profile">
-    <div class="avatar-box">
-      <div class="avatar">K</div>
+  <div class="container">
+    <!-- 导航栏 -->
+    <div class="navbar glass">
+      <div class="logo">KJLLin</div>
+      <button id="themeBtn" class="theme-btn">🌙</button>
     </div>
-    <h1 class="name">KJLLin</h1>
-    <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
+
+    <!-- 个人信息 -->
+    <div class="profile">
+      <div class="avatar-box">
+        <div class="avatar">K</div>
+      </div>
+      <h1 class="name">KJLLin</h1>
+      <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
+    </div>
+
+    <!-- 项目展示 -->
+    <h2 class="section-title">我的作品</h2>
+    <div class="card-grid">
+      <a href="/chat" class="project-card glass" id="cardChat">
+        <div class="card-icon">💬</div>
+        <h3 class="card-title">在线聊天系统</h3>
+        <p class="card-desc">Windows11 风格实时聊天平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容稳定运行。</p>
+      </a>
+
+      <a href="/game" class="project-card glass" id="cardGame">
+        <div class="card-icon">🦖</div>
+        <h3 class="card-title">恐龙快跑升级版</h3>
+        <p class="card-desc">Chrome 小恐龙深度优化版，升级操作手感、视觉效果与流畅度，一键开局，休闲跑酷最佳选择。</p>
+      </a>
+    </div>
+
+    <!-- 页脚 -->
+    <div class="footer">
+      © 2025 KJLLin · All Rights Reserved
+    </div>
   </div>
 
-  <!-- 项目展示 -->
-  <h2 class="section-title">我的作品</h2>
-  <div class="card-grid">
-    <a href="/chat" class="project-card glass">
-      <div class="card-icon">💬</div>
-      <h3 class="card-title">在线聊天系统</h3>
-      <p class="card-desc">Windows11 风格实时聊天平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容稳定运行。</p>
-    </a>
+  <!-- 返回顶部按钮 -->
+  <button id="backTop" class="glass">↑</button>
 
-    <a href="/game" class="project-card glass">
-      <div class="card-icon">🦖</div>
-      <h3 class="card-title">恐龙快跑升级版</h3>
-      <p class="card-desc">Chrome 小恐龙深度优化版，升级操作手感、视觉效果与流畅度，一键开局，休闲跑酷最佳选择。</p>
-    </a>
-  </div>
+  <script>
+    // 工具函数
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const themeBtn = $('#themeBtn');
+    const loader = $('#loader');
+    const backTop = $('#backTop');
+    const metaTheme = $('meta[name="theme-color"]');
+    const cardChat = $('#cardChat');
+    const cardGame = $('#cardGame');
 
-  <!-- 页脚 -->
-  <div class="footer">
-    © 2025 KJLLin · All Rights Reserved
-  </div>
-</div>
+    // 页面加载完成关闭遮罩
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        loader.style.opacity = 0;
+        setTimeout(() => loader.remove(), 300);
+      }, 300);
+    });
 
-<!-- 返回顶部按钮 -->
-<button id="backTop" class="glass">↑</button>
+    // 主题初始化 - 解决Safari加载闪烁
+    function initTheme() {
+      try {
+        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const localDark = localStorage.getItem('theme') === 'dark';
+        const useDark = localDark || sysDark;
 
-<script>
-  // 工具函数提前定义，修复变量提升报错
-  const $ = s => document.querySelector(s);
-  const $$ = s => document.querySelectorAll(s);
-
-  // 核心元素获取
-  const root = document.documentElement;
-  const themeBtn = $('#themeBtn');
-  const loader = $('#loader');
-  const backTop = $('#backTop');
-  const metaTheme = $('meta[name="theme-color"]');
-
-  // 页面加载完成关闭遮罩
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      loader.style.opacity = 0;
-      setTimeout(() => loader.remove(), 300);
-    }, 300);
-  });
-
-  // 主题初始化（系统跟随+本地记忆）
-  function initTheme() {
-    try {
-      const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const localDark = localStorage.getItem('theme') === 'dark';
-      const useDark = localDark || sysDark;
-
-      if (useDark) {
-        root.dataset.theme = 'dark';
-        themeBtn.textContent = '☀️';
-        metaTheme.content = '#0f0f0f';
-      } else {
+        if (useDark) {
+          root.dataset.theme = 'dark';
+          themeBtn.textContent = '☀️';
+          metaTheme.content = '#0f0f0f';
+        } else {
+          themeBtn.textContent = '🌙';
+          metaTheme.content = '#f8f9fc';
+        }
+        // 强制Safari重绘
+        document.body.offsetHeight;
+      } catch (e) {
         themeBtn.textContent = '🌙';
-        metaTheme.content = '#f8f9fc';
       }
-    } catch (e) {
-      themeBtn.textContent = '🌙';
     }
-  }
-  initTheme();
+    initTheme();
 
-  // 主题切换（修复同步问题）
-  function toggleTheme() {
-    try {
-      const isDark = root.dataset.theme === 'dark';
-      if (isDark) {
-        root.dataset.theme = '';
-        localStorage.removeItem('theme');
-        themeBtn.textContent = '🌙';
-        metaTheme.content = '#f8f9fc';
-      } else {
-        root.dataset.theme = 'dark';
-        localStorage.setItem('theme', 'dark');
-        themeBtn.textContent = '☀️';
-        metaTheme.content = '#0f0f0f';
+    // 主题切换 - 彻底解决Safari不同步
+    function toggleTheme() {
+      try {
+        const isDark = root.dataset.theme === 'dark';
+        if (isDark) {
+          root.dataset.theme = '';
+          localStorage.removeItem('theme');
+          themeBtn.textContent = '🌙';
+          metaTheme.content = '#f8f9fc';
+        } else {
+          root.dataset.theme = 'dark';
+          localStorage.setItem('theme', 'dark');
+          themeBtn.textContent = '☀️';
+          metaTheme.content = '#0f0f0f';
+        }
+        // 强制Safari重绘，确保所有元素同步更新
+        document.body.style.display = 'none';
+        document.body.offsetHeight;
+        document.body.style.display = '';
+      } catch(e) {
+        console.error('主题切换异常', e);
       }
-    } catch(e) {
-      console.error('主题切换异常', e);
     }
-  }
 
-  // 滚动监听（返回顶部显示）
-  function handleScroll() {
-    backTop.classList.toggle('show', window.scrollY > 300);
-  }
-  window.addEventListener('scroll', handleScroll);
+    // 滚动监听
+    function handleScroll() {
+      backTop.classList.toggle('show', window.scrollY > 300);
+    }
+    window.addEventListener('scroll', handleScroll);
 
-  // 返回顶部功能
-  backTop.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+    // 返回顶部
+    backTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
-  // 事件绑定（修复移动端点击无响应）
-  themeBtn.addEventListener('click', toggleTheme);
-  themeBtn.addEventListener('touchstart', e => {
-    e.preventDefault();
-    toggleTheme();
-  });
-  backTop.addEventListener('touchstart', e => {
-    e.preventDefault();
-    backTop.click();
-  });
+    // 事件绑定 - 解决Safari点击串跳/无响应
+    // 主题按钮
+    themeBtn.addEventListener('click', toggleTheme);
+    themeBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleTheme();
+    });
 
-  // 系统主题变化自动跟随
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
-</script>
+    // 卡片点击 - 独立绑定，防止事件穿透
+    cardChat.addEventListener('click', () => window.location.href = '/chat');
+    cardChat.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = '/chat';
+    });
+
+    cardGame.addEventListener('click', () => window.location.href = '/game');
+    cardGame.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = '/game';
+    });
+
+    // 返回顶部
+    backTop.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // 系统主题变化自动跟随
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
+  </script>
 </body>
 </html>
