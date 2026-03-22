@@ -5,7 +5,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // 全局初始化
 let sb = null;
-// 安全选择器：元素不存在也不会报错
+// 安全选择器
 const $ = s => {
   const el = document.querySelector(s);
   return el || {
@@ -31,8 +31,7 @@ let onlineChannel = null;
 let configChannel = null;
 let touchStartData = {};
 
-// ====================== 工具函数（全量异常兜底） ======================
-// 全局通知
+// ====================== 工具函数 ======================
 function showNotify(type, text) {
   try {
     if (notifyTimer) clearTimeout(notifyTimer);
@@ -46,7 +45,6 @@ function showNotify(type, text) {
   }
 }
 
-// 页面切换（容错优化）
 function showPage(pageId) {
   try {
     $$(".page").forEach(page => {
@@ -63,7 +61,6 @@ function showPage(pageId) {
   }
 }
 
-// 触摸事件防误触
 function handleTouchStart(e) {
   try {
     touchStartData = {
@@ -92,7 +89,6 @@ function isVaildClick(e) {
   }
 }
 
-// 安全绑定事件
 function bindEvent(el, handler) {
   try {
     if (!el || typeof handler !== 'function') return;
@@ -114,7 +110,6 @@ function bindEvent(el, handler) {
   }
 }
 
-// 释放锁工具函数（确保失败时一定释放）
 function releaseLock() {
   isProcessing = false;
   $("#loginBtn").disabled = false;
@@ -186,7 +181,6 @@ async function doLogin() {
       return;
     }
 
-    // 登录账号
     const { data: authData, error: authError } = await sb.auth.signInWithPassword({
       email, password: pwd
     });
@@ -220,11 +214,9 @@ async function doRegister() {
       return;
     }
 
-    // 读取注册审核配置
     const { data: config } = await sb.from("system_config").select("require_verify").single();
     const needVerify = config?.require_verify || false;
 
-    // 注册账号
     const { error } = await sb.auth.signUp({
       email, password: pwd,
       options: { data: { nick } }
@@ -237,7 +229,6 @@ async function doRegister() {
       showNotify("success", "注册成功，已自动激活账号，请登录");
     }
 
-    // 清空表单，返回登录页
     $("#regNick").value = "";
     $("#regEmail").value = "";
     $("#regPwd").value = "";
@@ -249,32 +240,27 @@ async function doRegister() {
   }
 }
 
-// 登录状态变化处理
 async function handleAuthChange(event, session) {
   try {
     currentUser = session?.user || null;
 
-    // 清理旧通道
     if (msgChannel) sb.removeChannel(msgChannel);
     if (onlineChannel) sb.removeChannel(onlineChannel);
     if (configChannel) sb.removeChannel(configChannel);
 
     if (currentUser) {
-      // 登录成功，初始化聊天
       const isSuccess = await initAfterLogin();
       if (isSuccess) {
         showPage("chatPage");
         showNotify("success", "登录成功，欢迎使用在线聊天系统");
       }
     } else {
-      // 未登录，显示登录页
       showPage("loginPage");
     }
   } catch (e) {
     console.error("登录状态处理异常", e);
     showPage("loginPage");
   } finally {
-    // 关闭加载页
     setTimeout(() => {
       $("#loadingPage").style.opacity = 0;
       setTimeout(() => $("#loadingPage").classList.add("hidden"), 300);
@@ -282,17 +268,15 @@ async function handleAuthChange(event, session) {
   }
 }
 
-// ====================== 登录后初始化（优化兜底逻辑） ======================
+// ====================== 登录后初始化 ======================
 async function initAfterLogin() {
   try {
-    // 1. 查询用户信息（修复后无递归，可正常查询）
     let { data: userInfo, error: userError } = await sb
       .from("users")
       .select("*")
       .eq("id", currentUser.id)
       .single();
 
-    // 2. 兜底：用户记录不存在，自动补插入
     if (userError || !userInfo) {
       console.warn("用户记录不存在，自动补插入");
       const { data: newUser, error: insertError } = await sb
@@ -310,7 +294,6 @@ async function initAfterLogin() {
       userInfo = newUser;
     }
 
-    // 3. 账号状态校验
     if (userInfo.status === "pending") {
       showNotify("error", "账号待管理员审核，暂无法登录");
       await sb.auth.signOut();
@@ -322,11 +305,9 @@ async function initAfterLogin() {
       return false;
     }
 
-    // 4. 初始化用户信息
     userNick = localStorage.getItem("nick") || userInfo.nick;
     $("#userTag").innerText = `用户：${userNick}`;
 
-    // 5. 管理员权限判断
     if (userInfo.is_admin) {
       $("#adminBtn").classList.remove("hidden");
       currentUser.isAdmin = true;
@@ -335,9 +316,12 @@ async function initAfterLogin() {
       currentUser.isAdmin = false;
     }
 
-    // 6. 初始化功能
     await recordLoginLog();
+    // 先加载一次历史消息，再开启实时监听
+    await loadInitialMessages();
     loadMessages();
+    // 先标记在线，再开启实时监听
+    await markOnline();
     monitorOnline();
     loadSystemConfig();
     loadAnnouncement();
@@ -348,6 +332,47 @@ async function initAfterLogin() {
     showNotify("error", `初始化失败：${e.message}`);
     await sb.auth.signOut();
     return false;
+  }
+}
+
+// ====================== 核心修复：先加载历史消息 ======================
+async function loadInitialMessages() {
+  try {
+    const { data: msgList } = await sb
+      .from("messages")
+      .select("*")
+      .order("id", { ascending: true })
+      .limit(200);
+
+    renderMessages(msgList || []);
+  } catch (e) {
+    console.error("历史消息加载异常", e);
+  }
+}
+
+// 渲染消息（独立函数，避免重复代码）
+function renderMessages(msgList) {
+  try {
+    const msgBox = $("#msgBox");
+    let html = "";
+    msgList.forEach(msg => {
+      const isMe = msg.user_id === currentUser.id;
+      html += `
+        <div class="msg-item ${isMe ? 'msg-me' : 'msg-other'}">
+          <div class="avatar">${msg.nick.charAt(0)}</div>
+          <div>
+            <div class="msg-name">${msg.nick}</div>
+            <div class="bubble">${msg.text}</div>
+            <div class="msg-time">${msg.time}</div>
+          </div>
+          ${currentUser.isAdmin ? `<button class="win-btn small danger" onclick="deleteMsg(${msg.id})">删除</button>` : ''}
+        </div>
+      `;
+    });
+    msgBox.innerHTML = html;
+    msgBox.scrollTop = msgBox.scrollHeight;
+  } catch (e) {
+    console.error("消息渲染异常", e);
   }
 }
 
@@ -363,24 +388,7 @@ function loadMessages() {
             .order("id", { ascending: true })
             .limit(200);
 
-          const msgBox = $("#msgBox");
-          let html = "";
-          msgList.forEach(msg => {
-            const isMe = msg.user_id === currentUser.id;
-            html += `
-              <div class="msg-item ${isMe ? 'msg-me' : 'msg-other'}">
-                <div class="avatar">${msg.nick.charAt(0)}</div>
-                <div>
-                  <div class="msg-name">${msg.nick}</div>
-                  <div class="bubble">${msg.text}</div>
-                  <div class="msg-time">${msg.time}</div>
-                </div>
-                ${currentUser.isAdmin ? `<button class="win-btn small danger" onclick="deleteMsg(${msg.id})">删除</button>` : ''}
-              </div>
-            `;
-          });
-          msgBox.innerHTML = html;
-          msgBox.scrollTop = msgBox.scrollHeight;
+          renderMessages(msgList || []);
         } catch (e) {
           console.error("消息加载异常", e);
         }
@@ -405,14 +413,12 @@ async function sendMessage() {
   $("#sendBtn").innerText = "发送中...";
 
   try {
-    // 检查禁言
     const { data: userInfo } = await sb.from("users").select("is_mute").eq("id", currentUser.id).single();
     if (userInfo.is_mute) {
       showNotify("error", "你已被管理员禁言，无法发送消息");
       return;
     }
 
-    // 敏感词过滤
     const { data: config } = await sb.from("system_config").select("sensitive_words").single();
     let content = text;
     const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
@@ -420,7 +426,6 @@ async function sendMessage() {
       content = content.replaceAll(word, "***");
     });
 
-    // 发送消息
     await sb.from("messages").insert([{
       user_id: currentUser.id,
       nick: userNick,
@@ -436,21 +441,45 @@ async function sendMessage() {
   }
 }
 
-function monitorOnline() {
+// ====================== 核心修复：先标记在线 ======================
+async function markOnline() {
   try {
-    // 标记在线
-    sb.from("online_users").upsert({
+    console.log("正在标记在线状态...");
+    const { error } = await sb.from("online_users").upsert({
       user_id: currentUser.id,
       nick: userNick,
       last_active: new Date().toISOString()
-    }).catch(() => {});
+    });
 
-    // 监听在线人数
+    if (error) {
+      console.error("标记在线失败", error);
+    } else {
+      console.log("在线状态标记成功");
+      // 标记成功后立即刷新一次在线人数
+      await refreshOnlineCount();
+    }
+  } catch (e) {
+    console.error("标记在线异常", e);
+  }
+}
+
+// 刷新在线人数（独立函数）
+async function refreshOnlineCount() {
+  try {
+    const { data } = await sb.from("online_users").select("*");
+    $("#onlineNum").innerText = data?.length || 0;
+    console.log("在线人数刷新为", data?.length || 0);
+  } catch (e) {
+    console.error("在线人数刷新异常", e);
+  }
+}
+
+function monitorOnline() {
+  try {
     onlineChannel = sb.channel("online_channel")
       .on("postgres_changes", { event: "*", schema: "public", table: "online_users" }, async () => {
         try {
-          const { data } = await sb.from("online_users").select("*");
-          $("#onlineNum").innerText = data?.length || 0;
+          await refreshOnlineCount();
         } catch (e) {
           console.error("在线状态异常", e);
         }
@@ -573,6 +602,7 @@ async function showMyLoginLogs() {
 
 async function userLogout() {
   try {
+    // 先删除在线状态
     await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
     await sb.auth.signOut();
     showNotify("info", "已安全退出登录");
@@ -589,13 +619,11 @@ async function loadAdminData() {
   }
 
   try {
-    // 加载系统配置
     const { data: config } = await sb.from("system_config").select("*").single();
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
 
-    // 加载待审核用户
     const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending");
     let verifyHtml = "";
     verifyUsers.forEach(user => {
@@ -611,7 +639,6 @@ async function loadAdminData() {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-    // 加载全部用户
     const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false });
     let userHtml = "";
     allUsers.forEach(user => {
@@ -632,7 +659,6 @@ async function loadAdminData() {
     });
     $("#allUserList").innerHTML = userHtml;
 
-    // 加载登录日志
     const { data: allLogs } = await sb
       .from("login_logs")
       .select("*, users!login_logs_user_id_fkey(email, nick)")
@@ -766,7 +792,6 @@ async function clearAllMessages() {
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     initTheme();
-    // 初始化Supabase
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         autoRefreshToken: true,
@@ -774,9 +799,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         detectSessionInUrl: true
       }
     });
-    // 绑定所有事件
     bindAllEvents();
-    // 监听登录状态
     sb.auth.onAuthStateChange(handleAuthChange);
   } catch (e) {
     console.error("初始化异常", e);
@@ -786,43 +809,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// 所有事件绑定
 function bindAllEvents() {
-  // 登录/注册切换
   bindEvent($("#toRegisterBtn"), () => showPage("registerPage"));
   bindEvent($("#toLoginBtn"), () => showPage("loginPage"));
-
-  // 登录/注册功能
   bindEvent($("#loginBtn"), doLogin);
   bindEvent($("#regBtn"), doRegister);
   $("#loginPwd").addEventListener("keydown", (e) => e.key === "Enter" && doLogin());
   $("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && doRegister());
-
-  // 聊天功能
   bindEvent($("#sendBtn"), sendMessage);
   $("#msgInput").addEventListener("keydown", (e) => e.key === "Enter" && sendMessage());
-
-  // 页面跳转
   bindEvent($("#settingBtn"), () => showPage("settingPage"));
   bindEvent($("#adminBtn"), () => { loadAdminData(); showPage("adminPage"); });
   bindEvent($("#backToChatBtn"), () => showPage("chatPage"));
   bindEvent($("#backToChatFromAdminBtn"), () => showPage("chatPage"));
-
-  // 设置功能
   bindEvent($("#saveNickBtn"), saveNickname);
   bindEvent($("#toggleThemeBtn"), toggleTheme);
   bindEvent($("#updatePwdBtn"), updatePassword);
   bindEvent($("#showLoginLogBtn"), showMyLoginLogs);
   bindEvent($("#logoutBtn"), userLogout);
-
-  // 管理员功能
   bindEvent($("#saveConfigBtn"), saveSystemConfig);
   bindEvent($("#saveSwBtn"), saveSensitiveWords);
   bindEvent($("#saveAnnounceBtn"), saveAnnouncement);
   bindEvent($("#clearAllMsgBtn"), clearAllMessages);
 }
 
-// 页面关闭清理
 window.addEventListener("beforeunload", async () => {
   try {
     if (currentUser) {
@@ -836,5 +846,4 @@ window.addEventListener("beforeunload", async () => {
   }
 });
 
-// 系统主题变化自动跟随
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", initTheme);
