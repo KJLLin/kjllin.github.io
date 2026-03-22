@@ -78,7 +78,7 @@ body {
   transition: background var(--transition-normal);
 }
 
-/* 页面切换 */
+/* 页面切换 - 修复白屏核心：确保页面始终渲染，只是可见性变化 */
 .page {
   width: 100%;
   height: 100%;
@@ -93,12 +93,17 @@ body {
   flex-direction: column;
 }
 
+/* 修复active优先级，确保页面正常显示 */
 .page.active {
-  opacity: 1;
-  visibility: visible;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
 }
 
-.hidden { display: none !important; }
+/* 修复hidden类，不会覆盖active */
+.hidden {
+  display: none !important;
+}
 
 /* 加载页 */
 .loading-page {
@@ -157,18 +162,6 @@ body {
 @keyframes notifyIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes notifyOut { to { opacity: 0; transform: translateY(-20px); } }
 
-/* 遮罩 */
-.mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 100;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.mask.active { opacity: 1; }
-
 /* 云母卡片 */
 .win-card {
   width: 100%;
@@ -216,6 +209,11 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.win-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .win-btn:active { transform: scale(0.98); }
@@ -271,6 +269,7 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
+  flex-wrap: wrap;
 }
 
 .config-item label {
@@ -455,6 +454,10 @@ body {
     max-width: 90%;
   }
   .list-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .config-item {
     flex-direction: column;
     align-items: flex-start;
   }
