@@ -1,12 +1,12 @@
-// ====================== 你的 Supabase 配置（已填好） ======================
+// ====================== 你的 Supabase 配置 ======================
 const SUPABASE_URL = "https://ayavdkodhdmcxfufnnxo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc";
 // ==========================================================================
 
 // 全局初始化
 let sb = null;
+// 安全选择器：元素不存在也不会报错
 const $ = s => {
-  // 元素获取容错，不会返回null报错
   const el = document.querySelector(s);
   return el || {
     addEventListener: () => {},
@@ -15,15 +15,16 @@ const $ = s => {
     innerHTML: '',
     value: '',
     disabled: false,
-    classList: { add: () => {}, remove: () => {}, toggle: () => {} }
+    checked: false,
+    classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false }
   };
 };
-const $$ = s => document.querySelectorAll(s);
+const $$ = s => document.querySelectorAll(s) || [];
 
 // 全局状态
 let currentUser = null;
 let userNick = localStorage.getItem("nick") || "";
-let isProcessing = false; // 防重复提交锁
+let isProcessing = false;
 let notifyTimer = null;
 let msgChannel = null;
 let onlineChannel = null;
@@ -45,7 +46,7 @@ function showNotify(type, text) {
   }
 }
 
-// 页面切换（核心修复：容错+优先级保证）
+// 页面切换（容错优化）
 function showPage(pageId) {
   try {
     $$(".page").forEach(page => {
@@ -55,7 +56,6 @@ function showPage(pageId) {
     const targetPage = $(`#${pageId}`);
     targetPage.classList.remove("hidden");
     targetPage.classList.add("active");
-    // 强制页面滚动到顶部
     targetPage.scrollTop = 0;
   } catch (e) {
     console.error("页面切换异常", e);
@@ -63,7 +63,7 @@ function showPage(pageId) {
   }
 }
 
-// 触摸事件判定（防误触+防报错）
+// 触摸事件防误触
 function handleTouchStart(e) {
   try {
     touchStartData = {
@@ -92,17 +92,15 @@ function isVaildClick(e) {
   }
 }
 
-// 安全绑定事件（容错+双端兼容）
+// 安全绑定事件
 function bindEvent(el, handler) {
   try {
     if (!el || typeof handler !== 'function') return;
-    // 点击事件
     el.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       handler();
     });
-    // 触摸事件
     el.addEventListener("touchstart", handleTouchStart);
     el.addEventListener("touchend", (e) => {
       if (isVaildClick(e)) {
@@ -116,7 +114,7 @@ function bindEvent(el, handler) {
   }
 }
 
-// 释放锁的工具函数（确保失败时一定释放锁）
+// 释放锁工具函数（确保失败时一定释放）
 function releaseLock() {
   isProcessing = false;
   $("#loginBtn").disabled = false;
@@ -173,7 +171,7 @@ function toggleTheme() {
   }
 }
 
-// ====================== 登录/注册核心逻辑（修复白屏核心） ======================
+// ====================== 登录/注册核心逻辑 ======================
 async function doLogin() {
   if (isProcessing) return;
   isProcessing = true;
@@ -188,8 +186,13 @@ async function doLogin() {
       return;
     }
 
-    const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
-    if (error) throw new Error(error.message);
+    // 登录账号
+    const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+      email, password: pwd
+    });
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("登录失败，未获取到用户信息");
+
   } catch (e) {
     showNotify("error", `登录失败：${e.message}`);
   } finally {
@@ -217,7 +220,7 @@ async function doRegister() {
       return;
     }
 
-    // 读取系统配置
+    // 读取注册审核配置
     const { data: config } = await sb.from("system_config").select("require_verify").single();
     const needVerify = config?.require_verify || false;
 
@@ -226,7 +229,6 @@ async function doRegister() {
       email, password: pwd,
       options: { data: { nick } }
     });
-
     if (error) throw new Error(error.message);
 
     if (needVerify) {
@@ -258,12 +260,14 @@ async function handleAuthChange(event, session) {
     if (configChannel) sb.removeChannel(configChannel);
 
     if (currentUser) {
+      // 登录成功，初始化聊天
       const isSuccess = await initAfterLogin();
       if (isSuccess) {
         showPage("chatPage");
         showNotify("success", "登录成功，欢迎使用在线聊天系统");
       }
     } else {
+      // 未登录，显示登录页
       showPage("loginPage");
     }
   } catch (e) {
@@ -278,19 +282,35 @@ async function handleAuthChange(event, session) {
   }
 }
 
-// 登录后初始化
+// ====================== 核心修复：登录后初始化（解决用户信息获取失败） ======================
 async function initAfterLogin() {
   try {
-    // 获取用户信息
-    const { data: userInfo, error } = await sb
+    // 1. 先查询用户信息
+    let { data: userInfo, error: userError } = await sb
       .from("users")
       .select("*")
       .eq("id", currentUser.id)
       .single();
 
-    if (error) throw new Error("用户信息获取失败");
+    // 2. 核心修复：如果用户记录不存在，自动补插入（兜底）
+    if (userError || !userInfo) {
+      console.warn("用户记录不存在，自动补插入");
+      const { data: newUser, error: insertError } = await sb
+        .from("users")
+        .insert([{
+          id: currentUser.id,
+          email: currentUser.email,
+          nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
+          status: "active"
+        }])
+        .select()
+        .single();
 
-    // 账号状态校验
+      if (insertError) throw new Error("用户信息初始化失败：" + insertError.message);
+      userInfo = newUser;
+    }
+
+    // 3. 账号状态校验
     if (userInfo.status === "pending") {
       showNotify("error", "账号待管理员审核，暂无法登录");
       await sb.auth.signOut();
@@ -302,19 +322,21 @@ async function initAfterLogin() {
       return false;
     }
 
-    // 初始化用户信息
+    // 4. 初始化用户信息
     userNick = localStorage.getItem("nick") || userInfo.nick;
     $("#userTag").innerText = `用户：${userNick}`;
 
-    // 管理员权限判断
+    // 5. 管理员权限判断
     if (userInfo.is_admin) {
       $("#adminBtn").classList.remove("hidden");
       currentUser.isAdmin = true;
+    } else {
+      $("#adminBtn").classList.add("hidden");
+      currentUser.isAdmin = false;
     }
 
-    // 记录登录日志
+    // 6. 初始化功能
     await recordLoginLog();
-    // 加载功能
     loadMessages();
     monitorOnline();
     loadSystemConfig();
@@ -322,6 +344,7 @@ async function initAfterLogin() {
 
     return true;
   } catch (e) {
+    console.error("初始化失败", e);
     showNotify("error", `初始化失败：${e.message}`);
     await sb.auth.signOut();
     return false;
@@ -389,7 +412,7 @@ async function sendMessage() {
       return;
     }
 
-    // 敏感词过滤
+    // 敏感词过滤（兜底空值）
     const { data: config } = await sb.from("system_config").select("sensitive_words").single();
     let content = text;
     const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
@@ -434,7 +457,7 @@ function monitorOnline() {
       })
       .subscribe();
 
-    // 心跳
+    // 心跳更新
     setInterval(() => {
       if (currentUser) {
         sb.from("online_users").update({ last_active: new Date().toISOString() }).eq("user_id", currentUser.id).catch(() => {});
@@ -504,6 +527,7 @@ async function saveNickname() {
     userNick = newNick;
     localStorage.setItem("nick", newNick);
     $("#userTag").innerText = `用户：${newNick}`;
+    $("#nickInput").value = "";
     showNotify("success", "昵称保存成功");
   } catch (e) {
     showNotify("error", "昵称保存失败");
@@ -738,21 +762,25 @@ async function clearAllMessages() {
   }
 }
 
-// ====================== 页面加载初始化（修复白屏核心：DOM加载完成后执行） ======================
+// ====================== 页面初始化 ======================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    // 初始化主题
     initTheme();
     // 初始化Supabase
-    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    // 绑定所有事件（确保DOM已经加载完成，不会绑定失败）
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    });
+    // 绑定所有事件
     bindAllEvents();
     // 监听登录状态
     sb.auth.onAuthStateChange(handleAuthChange);
   } catch (e) {
     console.error("初始化异常", e);
     showNotify("error", "系统初始化失败，请刷新重试");
-    // 关闭加载页
     $("#loadingPage").style.opacity = 0;
     setTimeout(() => $("#loadingPage").classList.add("hidden"), 300);
   }
@@ -767,7 +795,6 @@ function bindAllEvents() {
   // 登录/注册功能
   bindEvent($("#loginBtn"), doLogin);
   bindEvent($("#regBtn"), doRegister);
-  // 回车登录/注册
   $("#loginPwd").addEventListener("keydown", (e) => e.key === "Enter" && doLogin());
   $("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && doRegister());
 
