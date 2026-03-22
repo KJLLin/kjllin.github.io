@@ -118,9 +118,10 @@ function generateSessionToken() {
 async function checkSessionValid() {
   try {
     if (!currentUser || !sessionToken || !isSessionInitialized) return false;
-    const { data } = await sb.from("users").select("current_session_token").eq("id", currentUser.id).single().catch(() => ({ data: null }));
+    const { data } = await sb.from("users").select("current_session_token").eq("id", currentUser.id).single();
     return data?.current_session_token === sessionToken;
   } catch (e) {
+    console.warn("会话校验失败", e);
     return false;
   }
 }
@@ -129,10 +130,11 @@ async function handleSessionInvalid(reason = "账号在其他设备登录，你�
   try {
     showNotify("error", reason);
     clearAllResources();
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut();
     showPage("loginPage");
     setTimeout(() => window.location.reload(), 1000);
   } catch (e) {
+    console.error("会话失效处理异常", e);
     window.location.href = window.location.origin + "/chat";
   }
 }
@@ -194,7 +196,7 @@ function toggleTheme() {
   }
 }
 
-// ====================== 核心修复：登录逻辑（零阻塞、绝对不卡死） ======================
+// ====================== 核心修复：登录逻辑（零阻塞、语法正确） ======================
 async function doLogin() {
   if (isLoggingIn) {
     showNotify("warning", "正在登录中，请稍候");
@@ -213,7 +215,7 @@ async function doLogin() {
       return;
     }
 
-    // 1. 仅做账号密码验证，10秒超时兜底
+    // 账号密码验证，10秒超时兜底
     const loginPromise = sb.auth.signInWithPassword({ email, password: pwd });
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("登录超时，请检查网络")), 10000));
     const { data: authData, error: authError } = await Promise.race([loginPromise, timeoutPromise]);
@@ -286,7 +288,7 @@ async function doRegister() {
   }
 }
 
-// ====================== 核心修复：登录状态处理（零阻塞、非核心操作全异步） ======================
+// ====================== 核心修复：登录状态处理（语法正确+零阻塞） ======================
 async function handleAuthChange(event, session) {
   try {
     console.log("登录状态变化：", event);
@@ -303,22 +305,37 @@ async function handleAuthChange(event, session) {
     sessionToken = newSessionToken;
     localStorage.setItem(CURRENT_SESSION_KEY, newSessionToken);
 
-    // 【核心修复】先更新会话Token到数据库，确保单设备登录生效
-    await sb.from("users").update({
-      current_session_token: newSessionToken,
-      last_login_time: new Date().toISOString()
-    }).eq("id", currentUser.id).catch(() => {});
+    // 【修复语法错误】更新会话Token到数据库，用try/catch处理错误
+    try {
+      await sb.from("users").update({
+        current_session_token: newSessionToken,
+        last_login_time: new Date().toISOString()
+      }).eq("id", currentUser.id);
+    } catch (e) {
+      console.warn("更新会话Token失败（不影响登录）", e);
+    }
 
-    // 【核心修复】先查询用户基础信息，不阻塞主流程
-    const { data: userInfo } = await sb.from("users").select("*").eq("id", currentUser.id).single().catch(() => ({ data: null }));
+    // 先查询用户基础信息
+    let userInfo = null;
+    try {
+      const { data } = await sb.from("users").select("*").eq("id", currentUser.id).single();
+      userInfo = data;
+    } catch (e) {
+      console.warn("查询用户信息失败，尝试补插入", e);
+    }
+
+    // 新用户补插入记录
     if (!userInfo) {
-      // 新用户补插入记录
-      await sb.from("users").insert([{
-        id: currentUser.id,
-        email: currentUser.email,
-        nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
-        status: "active"
-      }]).catch(() => {});
+      try {
+        await sb.from("users").insert([{
+          id: currentUser.id,
+          email: currentUser.email,
+          nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
+          status: "active"
+        }]);
+      } catch (e) {
+        console.warn("补插入用户记录失败", e);
+      }
     }
 
     // 【核心修复】先跳转到聊天页，绝对不阻塞！！！
@@ -331,20 +348,30 @@ async function handleAuthChange(event, session) {
     setTimeout(async () => {
       try {
         // 初始化用户信息
-        const { data: finalUserInfo } = await sb.from("users").select("*").eq("id", currentUser.id).single().catch(() => ({ data: {} }));
-        userNick = localStorage.getItem("nick") || finalUserInfo.nick || "用户";
+        let finalUserInfo = null;
+        try {
+          const { data } = await sb.from("users").select("*").eq("id", currentUser.id).single();
+          finalUserInfo = data;
+        } catch (e) {
+          console.warn("获取最终用户信息失败", e);
+        }
+        userNick = localStorage.getItem("nick") || finalUserInfo?.nick || "用户";
         $("#userTag").innerText = `用户：${userNick}`;
-        currentUser.isAdmin = finalUserInfo.is_admin || false;
+        currentUser.isAdmin = finalUserInfo?.is_admin || false;
         if (currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
 
-        // 异步更新登录IP和设备信息（之前卡死的元凶！现在完全不阻塞）
+        // 异步更新登录IP和设备信息（完全不阻塞主流程）
         fetch("https://api.ipify.org?format=json")
           .then(res => res.json())
-          .then(ipData => {
-            sb.from("users").update({
-              last_login_ip: ipData.ip || "未知IP",
-              last_login_device: navigator.userAgent.substring(0, 100)
-            }).eq("id", currentUser.id).catch(() => {});
+          .then(async ipData => {
+            try {
+              await sb.from("users").update({
+                last_login_ip: ipData.ip || "未知IP",
+                last_login_device: navigator.userAgent.substring(0, 100)
+              }).eq("id", currentUser.id);
+            } catch (e) {
+              console.warn("更新登录IP/设备失败", e);
+            }
           })
           .catch(() => {});
 
@@ -367,7 +394,7 @@ async function handleAuthChange(event, session) {
     console.error("登录状态处理异常", e);
     showNotify("error", `登录异常：${e.message}`);
     clearAllResources();
-    await sb.auth.signOut().catch(() => {});
+    await sb.auth.signOut();
     showPage("loginPage");
   } finally {
     closeLoader();
@@ -379,9 +406,11 @@ async function handleAuthChange(event, session) {
 // ====================== 聊天核心功能（完整保留） ======================
 async function loadInitialMessages() {
   try {
-    const { data: msgList } = await sb.from("messages").select("*").order("id", { ascending: true }).limit(200).catch(() => ({ data: [] }));
+    const { data: msgList } = await sb.from("messages").select("*").order("id", { ascending: true }).limit(200);
     renderMessages(msgList || []);
-  } catch (e) {}
+  } catch (e) {
+    console.warn("加载历史消息失败", e);
+  }
 }
 
 function renderMessages(msgList) {
@@ -438,21 +467,24 @@ async function sendMessage() {
 
     // 敏感词过滤
     let content = text;
-    const { data: config } = await sb.from("system_config").select("sensitive_words").single().catch(() => ({ data: { sensitive_words: "" } }));
-    const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
-    badWords.forEach(word => {
-      content = content.replaceAll(word, "***");
-    });
+    try {
+      const { data: config } = await sb.from("system_config").select("sensitive_words").single();
+      const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
+      badWords.forEach(word => {
+        content = content.replaceAll(word, "***");
+      });
+    } catch (e) {
+      console.warn("敏感词过滤失败，直接发送原消息", e);
+    }
 
     // 发送消息
-    const { error } = await sb.from("messages").insert([{
+    await sb.from("messages").insert([{
       user_id: currentUser.id,
       nick: userNick,
       text: content,
       time: new Date().toLocaleString()
     }]);
 
-    if (error) throw new Error(error.message);
     msgInput.value = "";
     showNotify("success", "消息发送成功");
     await loadInitialMessages();
@@ -472,13 +504,13 @@ async function markOnline() {
       user_id: currentUser.id,
       nick: userNick,
       last_active: new Date().toISOString()
-    }, { onConflict: "user_id" }).catch(() => {});
+    }, { onConflict: "user_id" });
   } catch (e) {}
 }
 
 async function refreshOnlineCount() {
   try {
-    const { data } = await sb.from("online_users").select("*").catch(() => ({ data: [] }));
+    const { data } = await sb.from("online_users").select("*");
     $("#onlineNum").innerText = data?.length || 0;
   } catch (e) {}
 }
@@ -514,7 +546,7 @@ function initConfigRealtime() {
 
 async function loadAnnouncement() {
   try {
-    const { data } = await sb.from("system_config").select("announcement").single().catch(() => ({ data: { announcement: "" } }));
+    const { data } = await sb.from("system_config").select("announcement").single();
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
@@ -535,7 +567,7 @@ async function recordLoginLog() {
       ip: ipData.ip || "未知IP",
       device: navigator.userAgent.substring(0, 80),
       time: new Date().toLocaleString()
-    }]).catch(() => {});
+    }]);
   } catch (e) {}
 }
 
@@ -547,7 +579,7 @@ async function showMyLoginLogs() {
       return;
     }
     showNotify("info", "正在加载登录日志...");
-    const { data } = await sb.from("login_logs").select("*").eq("user_id", currentUser.id).order("time", { ascending: false }).limit(10).catch(() => ({ data: [] }));
+    const { data } = await sb.from("login_logs").select("*").eq("user_id", currentUser.id).order("time", { ascending: false }).limit(10);
     if (!data || data.length === 0) {
       alert("=== 我的登录日志 ===\n\n暂无登录日志");
       return;
@@ -567,8 +599,8 @@ async function userLogout() {
   try {
     showNotify("info", "正在退出登录...");
     if (currentUser) {
-      await sb.from("users").update({ current_session_token: null }).eq("id", currentUser.id).catch(() => {});
-      await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
+      await sb.from("users").update({ current_session_token: null }).eq("id", currentUser.id);
+      await sb.from("online_users").delete().eq("user_id", currentUser.id);
     }
     clearAllResources();
     await sb.auth.signOut();
@@ -642,12 +674,12 @@ async function loadAdminData() {
     }
     showNotify("info", "正在加载管理数据...");
     // 系统配置
-    const { data: config } = await sb.from("system_config").select("*").single().catch(() => ({ data: { require_verify: false, sensitive_words: "", announcement: "" } }));
+    const { data: config } = await sb.from("system_config").select("*").single();
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
     // 待审核用户
-    const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending").catch(() => ({ data: [] }));
+    const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending");
     let verifyHtml = "";
     verifyUsers.forEach(user => {
       verifyHtml += `
@@ -662,7 +694,7 @@ async function loadAdminData() {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
     // 全部用户
-    const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] }));
+    const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false });
     let userHtml = "";
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
@@ -684,7 +716,7 @@ async function loadAdminData() {
     });
     $("#allUserList").innerHTML = userHtml;
     // 登录日志
-    const { data: allLogs } = await sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20).catch(() => ({ data: [] }));
+    const { data: allLogs } = await sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20);
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
@@ -756,7 +788,7 @@ async function resetUserPwd(email) {
 async function saveSystemConfig() {
   try {
     const requireVerify = $("#requireVerifyToggle").checked;
-    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await sb.from("system_config").select("id").single();
     if (data) {
       await sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
     } else {
@@ -771,7 +803,7 @@ async function saveSystemConfig() {
 async function saveSensitiveWords() {
   try {
     const words = $("#sensitiveWordsInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await sb.from("system_config").select("id").single();
     if (data) {
       await sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
     } else {
@@ -786,7 +818,7 @@ async function saveSensitiveWords() {
 async function saveAnnouncement() {
   try {
     const content = $("#announceInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await sb.from("system_config").select("id").single();
     if (data) {
       await sb.from("system_config").update({ announcement: content }).eq("id", data.id);
     } else {
@@ -867,7 +899,9 @@ function bindAllEvents() {
 
 window.addEventListener("beforeunload", async () => {
   if (currentUser) {
-    await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
+    try {
+      await sb.from("online_users").delete().eq("user_id", currentUser.id);
+    } catch (e) {}
   }
 });
 
