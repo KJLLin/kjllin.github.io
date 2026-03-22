@@ -1,40 +1,66 @@
-// ====================== 你的 Supabase 配置 ======================
-const SUPABASE_URL = "https://ayavdkodhdmcxfufnnxo.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc";
-// ==========================================================================
-
-// 全局初始化
-let sb = null;
-let currentUser = null;
-let userNick = localStorage.getItem("nick") || "";
-// 单设备登录核心配置（完整保留）
-const CURRENT_SESSION_KEY = "chat_current_session_token";
-let sessionToken = localStorage.getItem(CURRENT_SESSION_KEY) || "";
-let isSessionInitialized = false;
-let isLoggingIn = false;
-// 全局通道和定时器
-let msgChannel = null;
-let onlineChannel = null;
-let configChannel = null;
-let sessionCheckChannel = null;
-let forceCloseLoaderTimer = null;
-let heartbeatTimer = null;
-let sessionCheckTimer = null;
-
-// 安全选择器
-const $ = s => document.querySelector(s) || {
-  addEventListener: () => {},
-  innerText: '',
-  innerHTML: '',
-  value: '',
-  disabled: false,
-  checked: false,
-  classList: { add: () => {}, remove: () => {} }
+// ====================== 全局配置（统一管理，方便调整） ======================
+const CONFIG = {
+  SUPABASE_URL: "https://ayavdkodhdmcxfufnnxo.supabase.co",
+  SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
+  TIMEOUT: {
+    LOGIN: 15000,       // 登录/注册超时提升至15秒
+    DB_QUERY: 10000,    // 数据库查询超时
+    REALTIME: 10000     // 实时通道超时
+  },
+  HEARTBEAT_INTERVAL: 30000,  // 心跳间隔
+  SESSION_CHECK_INTERVAL: 60000 // 会话校验间隔
 };
-const $$ = s => document.querySelectorAll(s) || [];
 
-// ====================== 核心工具函数 ======================
-function showNotify(type, text) {
+// ====================== 全局状态管理 ======================
+const state = {
+  sb: null,
+  currentUser: null,
+  userNick: localStorage.getItem("nick") || "",
+  sessionToken: localStorage.getItem("chat_current_session_token") || "",
+  isSessionInitialized: false,
+  isLoggingIn: false,
+  // 通道/定时器缓存
+  channels: {
+    msg: null,
+    online: null,
+    config: null,
+    sessionCheck: null
+  },
+  timers: {
+    forceCloseLoader: null,
+    heartbeat: null,
+    sessionCheck: null
+  }
+};
+
+// ====================== 核心工具函数（统一封装，减少冗余） ======================
+/**
+ * 安全DOM选择器
+ * @param {string} selector 选择器
+ * @returns {HTMLElement} DOM元素
+ */
+const $ = (selector) => {
+  const el = document.querySelector(selector);
+  return el || {
+    addEventListener: () => {},
+    innerText: '',
+    innerHTML: '',
+    value: '',
+    disabled: false,
+    checked: false,
+    classList: { add: () => {}, remove: () => {} },
+    style: {}
+  };
+};
+
+const $$ = (selector) => document.querySelectorAll(selector) || [];
+
+/**
+ * 统一通知提示
+ * @param {string} type 类型：success/error/warning/info
+ * @param {string} text 提示文本
+ */
+const showNotify = (type, text) => {
   try {
     const notifyEl = $("#winNotify");
     notifyEl.className = `win-notify ${type}`;
@@ -42,13 +68,81 @@ function showNotify(type, text) {
     notifyEl.classList.remove("hidden");
     setTimeout(() => notifyEl.classList.add("hidden"), 5000);
   } catch (e) {
-    console.error("通知异常", e);
+    console.error(`[通知异常] ${e.message}`);
   }
-}
+};
 
-function closeLoader() {
+/**
+ * 带超时的异步操作封装
+ * @param {Promise} promise 异步操作
+ * @param {number} timeout 超时时间(ms)
+ * @param {string} errorMsg 超时提示
+ * @returns {Promise} 处理后的Promise
+ */
+const withTimeout = (promise, timeout, errorMsg) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), timeout))
+  ]);
+};
+
+/**
+ * 重置所有按钮状态（兜底用）
+ */
+const resetAllButtons = () => {
+  $("#loginBtn").disabled = false;
+  $("#loginBtn").innerText = "登录";
+  $("#regBtn").disabled = false;
+  $("#regBtn").innerText = "注册";
+  $("#sendBtn").disabled = false;
+  $("#sendBtn").innerText = "发送";
+  state.isLoggingIn = false;
+};
+
+/**
+ * 清理所有资源（通道/定时器/状态）
+ */
+const clearAllResources = () => {
   try {
-    if (forceCloseLoaderTimer) clearTimeout(forceCloseLoaderTimer);
+    // 清理定时器
+    Object.values(state.timers).forEach(timer => {
+      if (timer) clearTimeout(timer) || clearInterval(timer);
+    });
+    // 清理实时通道
+    Object.values(state.channels).forEach(channel => {
+      if (channel) state.sb.removeChannel(channel);
+    });
+    // 重置状态
+    state.currentUser = null;
+    state.userNick = "";
+    state.sessionToken = "";
+    state.isSessionInitialized = false;
+    state.isLoggingIn = false;
+    // 清理本地存储
+    localStorage.removeItem("chat_current_session_token");
+    localStorage.removeItem("nick");
+    // 重置按钮
+    resetAllButtons();
+    console.log("[资源清理] 所有资源已清理完成");
+  } catch (e) {
+    console.error(`[资源清理异常] ${e.message}`);
+    resetAllButtons();
+  }
+};
+
+/**
+ * 生成唯一会话Token
+ * @returns {string} UUID
+ */
+const generateSessionToken = () => crypto.randomUUID();
+
+// ====================== 页面切换&基础功能 ======================
+/**
+ * 关闭启动加载页
+ */
+const closeLoader = () => {
+  try {
+    if (state.timers.forceCloseLoader) clearTimeout(state.timers.forceCloseLoader);
     const loader = $("#loadingPage");
     loader.style.opacity = 0;
     setTimeout(() => {
@@ -56,12 +150,16 @@ function closeLoader() {
       loader.style.display = "none";
     }, 300);
   } catch (e) {
-    console.error("关闭启动页异常", e);
+    console.error(`[关闭加载页异常] ${e.message}`);
     $("#loadingPage")?.remove();
   }
-}
+};
 
-function showPage(pageId) {
+/**
+ * 切换页面
+ * @param {string} pageId 页面ID
+ */
+const showPage = (pageId) => {
   try {
     $$(".page").forEach(page => {
       page.classList.remove("active");
@@ -72,142 +170,161 @@ function showPage(pageId) {
     targetPage.classList.add("active");
     targetPage.scrollTop = 0;
   } catch (e) {
-    console.error("页面切换异常", e);
+    console.error(`[页面切换异常] ${e.message}`);
+    showNotify("error", "页面切换失败，请刷新重试");
   }
-}
+};
 
-function resetAllButtonState() {
-  $("#loginBtn").disabled = false;
-  $("#loginBtn").innerText = "登录";
-  $("#regBtn").disabled = false;
-  $("#regBtn").innerText = "注册";
-  $("#sendBtn").disabled = false;
-  $("#sendBtn").innerText = "发送";
-}
-
-function clearAllResources() {
-  try {
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    if (sessionCheckTimer) clearInterval(sessionCheckTimer);
-    if (msgChannel) sb.removeChannel(msgChannel);
-    if (onlineChannel) sb.removeChannel(onlineChannel);
-    if (configChannel) sb.removeChannel(configChannel);
-    if (sessionCheckChannel) sb.removeChannel(sessionCheckChannel);
-
-    currentUser = null;
-    userNick = "";
-    sessionToken = "";
-    isSessionInitialized = false;
-    isLoggingIn = false;
-
-    localStorage.removeItem(CURRENT_SESSION_KEY);
-    localStorage.removeItem("nick");
-    resetAllButtonState();
-  } catch (e) {
-    console.error("清理资源异常", e);
-    isLoggingIn = false;
-  }
-}
-
-// 生成会话Token
-function generateSessionToken() {
-  return crypto.randomUUID();
-}
-
-// ====================== 单设备登录功能（完整保留） ======================
-async function checkSessionValid() {
-  try {
-    if (!currentUser || !sessionToken || !isSessionInitialized) return false;
-    const { data } = await sb.from("users").select("current_session_token").eq("id", currentUser.id).single();
-    return data?.current_session_token === sessionToken;
-  } catch (e) {
-    console.warn("会话校验失败", e);
-    return false;
-  }
-}
-
-async function handleSessionInvalid(reason = "账号在其他设备登录，你已被挤下线") {
-  try {
-    showNotify("error", reason);
-    clearAllResources();
-    await sb.auth.signOut();
-    showPage("loginPage");
-    setTimeout(() => window.location.reload(), 1000);
-  } catch (e) {
-    console.error("会话失效处理异常", e);
-    window.location.href = window.location.origin + "/chat";
-  }
-}
-
-function initSessionCheckListener() {
-  try {
-    sessionCheckChannel = sb.channel("session_check_channel")
-    .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${currentUser.id}` },
-      async () => {
-        const isValid = await checkSessionValid();
-        if (!isValid) await handleSessionInvalid();
-      }
-    )
-    .subscribe();
-
-    sessionCheckTimer = setInterval(async () => {
-      if (currentUser && isSessionInitialized) {
-        const isValid = await checkSessionValid();
-        if (!isValid) await handleSessionInvalid();
-      }
-    }, 60000);
-  } catch (e) {
-    console.error("会话监听异常", e);
-  }
-}
-
-// ====================== 主题系统 ======================
-function initTheme() {
+/**
+ * 初始化主题系统
+ */
+const initTheme = () => {
   try {
     const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const localDark = localStorage.getItem("theme") === "dark";
     const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
+    
     if (localDark || sysDark) {
       root.dataset.theme = "dark";
       $("#toggleThemeBtn").innerText = "切换浅色模式";
+      metaTheme.content = "#0f0f0f";
     } else {
       $("#toggleThemeBtn").innerText = "切换深色模式";
+      metaTheme.content = "#f3f3f3";
     }
-  } catch (e) {}
-}
+  } catch (e) {
+    console.error(`[主题初始化异常] ${e.message}`);
+  }
+};
 
-function toggleTheme() {
+/**
+ * 切换主题
+ */
+const toggleTheme = () => {
   try {
     const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
     const isDark = root.dataset.theme === "dark";
+    
     if (isDark) {
       root.dataset.theme = "";
       localStorage.removeItem("theme");
       $("#toggleThemeBtn").innerText = "切换深色模式";
+      metaTheme.content = "#f3f3f3";
     } else {
       root.dataset.theme = "dark";
       localStorage.setItem("theme", "dark");
       $("#toggleThemeBtn").innerText = "切换浅色模式";
+      metaTheme.content = "#0f0f0f";
     }
   } catch (e) {
     showNotify("error", "主题切换失败");
   }
-}
+};
 
-// ====================== 核心修复：登录逻辑（零阻塞、语法正确） ======================
-async function doLogin() {
-  if (isLoggingIn) {
-    showNotify("warning", "正在登录中，请稍候");
+// ====================== 单设备登录核心逻辑 ======================
+/**
+ * 校验会话有效性
+ * @returns {boolean} 会话是否有效
+ */
+const checkSessionValid = async () => {
+  try {
+    if (!state.currentUser || !state.sessionToken || !state.isSessionInitialized) return false;
+    
+    const { data } = await withTimeout(
+      state.sb.from("users").select("current_session_token").eq("id", state.currentUser.id).single(),
+      CONFIG.TIMEOUT.DB_QUERY,
+      "会话校验超时"
+    );
+    
+    const isValid = data?.current_session_token === state.sessionToken;
+    console.log(`[会话校验] 结果：${isValid ? "有效" : "无效"}`);
+    return isValid;
+  } catch (e) {
+    console.error(`[会话校验异常] ${e.message}`);
+    return false;
+  }
+};
+
+/**
+ * 处理会话失效
+ * @param {string} reason 失效原因
+ */
+const handleSessionInvalid = async (reason = "账号在其他设备登录，你已被挤下线") => {
+  try {
+    showNotify("error", reason);
+    clearAllResources();
+    await state.sb.auth.signOut();
+    showPage("loginPage");
+    setTimeout(() => window.location.reload(), 1000);
+  } catch (e) {
+    console.error(`[会话失效处理异常] ${e.message}`);
+    window.location.href = `${window.location.origin}/chat`;
+  }
+};
+
+/**
+ * 初始化会话监听（单设备登录核心）
+ */
+const initSessionCheckListener = () => {
+  try {
+    if (!state.currentUser) return;
+    
+    state.channels.sessionCheck = state.sb.channel("session_check_channel")
+      .on(
+        "postgres_changes",
+        { 
+          event: "UPDATE", 
+          schema: "public", 
+          table: "users",
+          filter: `id=eq.${state.currentUser.id}`
+        },
+        async () => {
+          console.log("[会话监听] 收到用户会话更新事件");
+          const isValid = await checkSessionValid();
+          if (!isValid) await handleSessionInvalid();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[会话监听] 通道状态：${status}`);
+        if (status === "CHANNEL_ERROR") {
+          console.error("[会话监听] 通道连接失败，10秒后重试");
+          setTimeout(initSessionCheckListener, 10000);
+        }
+      });
+    
+    // 定时校验会话
+    state.timers.sessionCheck = setInterval(async () => {
+      if (state.currentUser && state.isSessionInitialized) {
+        const isValid = await checkSessionValid();
+        if (!isValid) await handleSessionInvalid();
+      }
+    }, CONFIG.SESSION_CHECK_INTERVAL);
+    
+  } catch (e) {
+    console.error(`[会话监听初始化异常] ${e.message}`);
+    setTimeout(initSessionCheckListener, 10000);
+  }
+};
+
+// ====================== 登录&注册核心逻辑（超时提升至15秒） ======================
+/**
+ * 执行登录操作
+ */
+const doLogin = async () => {
+  if (state.isLoggingIn) {
+    showNotify("warning", "正在登录中，请稍候...");
     return;
   }
 
-  isLoggingIn = true;
+  // 锁定登录状态+禁用按钮
+  state.isLoggingIn = true;
   $("#loginBtn").disabled = true;
   $("#loginBtn").innerText = "登录中...";
 
   try {
+    // 基础校验
     const email = $("#loginEmail").value.trim();
     const pwd = $("#loginPwd").value.trim();
     if (!email || !pwd) {
@@ -215,40 +332,48 @@ async function doLogin() {
       return;
     }
 
-    // 账号密码验证，10秒超时兜底
-    const loginPromise = sb.auth.signInWithPassword({ email, password: pwd });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("登录超时，请检查网络")), 10000));
-    const { data: authData, error: authError } = await Promise.race([loginPromise, timeoutPromise]);
+    console.log(`[登录] 开始验证账号：${email}`);
+    
+    // 核心登录操作（超时15秒）
+    const { data: authData, error: authError } = await withTimeout(
+      state.sb.auth.signInWithPassword({ email, password: pwd }),
+      CONFIG.TIMEOUT.LOGIN,
+      "登录请求超时（15秒），请检查网络后重试"
+    );
 
+    // 处理登录错误
     if (authError) {
       let errMsg = authError.message;
-      if (errMsg.includes("Email not confirmed")) errMsg = "邮箱未验证，请验证后登录";
-      if (errMsg.includes("Invalid login credentials")) errMsg = "邮箱或密码错误";
-      if (errMsg.includes("banned")) errMsg = "账号已被封禁";
+      if (errMsg.includes("Email not confirmed")) errMsg = "邮箱未验证，请前往邮箱验证后再登录";
+      if (errMsg.includes("Invalid login credentials")) errMsg = "邮箱或密码错误，请重新输入";
+      if (errMsg.includes("User banned")) errMsg = "账号已被封禁，无法登录";
       throw new Error(errMsg);
     }
 
     if (!authData.user) throw new Error("登录失败，未获取到用户信息");
+    
     showNotify("info", "登录成功，正在进入聊天...");
+    console.log(`[登录] 账号验证成功：${email}`);
 
   } catch (e) {
-    console.error("登录失败", e);
+    console.error(`[登录失败] ${e.message}`);
     showNotify("error", `登录失败：${e.message}`);
   } finally {
-    // 绝对兜底，确保按钮状态恢复
-    setTimeout(() => {
-      isLoggingIn = false;
-      $("#loginBtn").disabled = false;
-      $("#loginBtn").innerText = "登录";
-    }, 300);
+    // 绝对兜底：300ms后重置状态（避免快速重复点击）
+    setTimeout(resetAllButtons, 300);
   }
-}
+};
 
-async function doRegister() {
+/**
+ * 执行注册操作
+ */
+const doRegister = async () => {
   try {
+    // 基础校验
     const nick = $("#regNick").value.trim();
     const email = $("#regEmail").value.trim();
     const pwd = $("#regPwd").value.trim();
+    
     if (!nick || !email || !pwd) {
       showNotify("error", "请填写完整注册信息");
       return;
@@ -258,41 +383,58 @@ async function doRegister() {
       return;
     }
 
+    // 禁用按钮
     $("#regBtn").disabled = true;
     $("#regBtn").innerText = "注册中...";
 
-    const registerPromise = sb.auth.signUp({
-      email, password: pwd,
-      options: { data: { nick } }
-    });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("注册超时")), 10000));
-    const { error } = await Promise.race([registerPromise, timeoutPromise]);
+    console.log(`[注册] 开始注册账号：${email}`);
+    
+    // 核心注册操作（超时15秒）
+    const { error } = await withTimeout(
+      state.sb.auth.signUp({
+        email, password: pwd,
+        options: { data: { nick } }
+      }),
+      CONFIG.TIMEOUT.LOGIN,
+      "注册请求超时（15秒），请检查网络后重试"
+    );
 
+    // 处理注册错误
     if (error) {
       let errMsg = error.message;
-      if (errMsg.includes("already registered")) errMsg = "该邮箱已被注册";
+      if (errMsg.includes("User already registered")) errMsg = "该邮箱已被注册，请直接登录";
       throw new Error(errMsg);
     }
 
+    // 注册成功
     showNotify("success", "注册成功，请前往邮箱验证后登录");
     $("#regNick").value = "";
     $("#regEmail").value = "";
     $("#regPwd").value = "";
     showPage("loginPage");
+    console.log(`[注册] 账号注册成功：${email}`);
 
   } catch (e) {
+    console.error(`[注册失败] ${e.message}`);
     showNotify("error", `注册失败：${e.message}`);
   } finally {
+    // 重置按钮
     $("#regBtn").disabled = false;
     $("#regBtn").innerText = "注册";
   }
-}
+};
 
-// ====================== 核心修复：登录状态处理（语法正确+零阻塞） ======================
-async function handleAuthChange(event, session) {
+// ====================== 登录状态变更处理（核心优化） ======================
+/**
+ * 处理登录状态变更
+ * @param {string} event 事件类型
+ * @param {object} session 会话信息
+ */
+const handleAuthChange = async (event, session) => {
   try {
-    console.log("登录状态变化：", event);
-    // 退出登录处理
+    console.log(`[登录状态变更] 事件：${event}，是否有会话：${!!session?.user}`);
+
+    // 退出登录/无会话处理
     if (!session?.user) {
       clearAllResources();
       showPage("loginPage");
@@ -300,82 +442,70 @@ async function handleAuthChange(event, session) {
     }
 
     // 登录成功处理
-    currentUser = session.user;
+    state.currentUser = session.user;
     const newSessionToken = generateSessionToken();
-    sessionToken = newSessionToken;
-    localStorage.setItem(CURRENT_SESSION_KEY, newSessionToken);
+    state.sessionToken = newSessionToken;
+    localStorage.setItem("chat_current_session_token", newSessionToken);
 
-    // 【修复语法错误】更新会话Token到数据库，用try/catch处理错误
+    // 1. 更新会话Token（核心：单设备登录）
     try {
-      await sb.from("users").update({
+      await state.sb.from("users").update({
         current_session_token: newSessionToken,
         last_login_time: new Date().toISOString()
-      }).eq("id", currentUser.id);
+      }).eq("id", state.currentUser.id);
+      console.log("[登录] 会话Token更新成功");
     } catch (e) {
-      console.warn("更新会话Token失败（不影响登录）", e);
+      console.warn(`[登录] 会话Token更新失败（不影响登录）：${e.message}`);
     }
 
-    // 先查询用户基础信息
+    // 2. 查询/创建用户信息
     let userInfo = null;
     try {
-      const { data } = await sb.from("users").select("*").eq("id", currentUser.id).single();
+      const { data } = await state.sb.from("users").select("*").eq("id", state.currentUser.id).single();
       userInfo = data;
     } catch (e) {
-      console.warn("查询用户信息失败，尝试补插入", e);
+      console.warn(`[登录] 查询用户信息失败，尝试创建：${e.message}`);
+      // 新用户补创建
+      await state.sb.from("users").insert([{
+        id: state.currentUser.id,
+        email: state.currentUser.email,
+        nick: state.currentUser.user_metadata?.nick || `用户${state.currentUser.id.substring(0, 4)}`,
+        status: "active"
+      }]);
     }
 
-    // 新用户补插入记录
-    if (!userInfo) {
-      try {
-        await sb.from("users").insert([{
-          id: currentUser.id,
-          email: currentUser.email,
-          nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
-          status: "active"
-        }]);
-      } catch (e) {
-        console.warn("补插入用户记录失败", e);
-      }
-    }
-
-    // 【核心修复】先跳转到聊天页，绝对不阻塞！！！
-    isSessionInitialized = true;
+    // 3. 立即跳转聊天页（核心优化：不阻塞）
+    state.isSessionInitialized = true;
     showPage("chatPage");
-    showNotify("success", "登录成功，欢迎使用");
+    showNotify("success", "登录成功，欢迎使用在线聊天系统");
     closeLoader();
 
-    // 【核心修复】所有非核心操作，全部放到跳转之后异步执行，绝对不卡登录！！！
+    // 4. 异步初始化非核心功能（不阻塞登录）
     setTimeout(async () => {
       try {
-        // 初始化用户信息
-        let finalUserInfo = null;
-        try {
-          const { data } = await sb.from("users").select("*").eq("id", currentUser.id).single();
-          finalUserInfo = data;
-        } catch (e) {
-          console.warn("获取最终用户信息失败", e);
-        }
-        userNick = localStorage.getItem("nick") || finalUserInfo?.nick || "用户";
-        $("#userTag").innerText = `用户：${userNick}`;
-        currentUser.isAdmin = finalUserInfo?.is_admin || false;
-        if (currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
+        // 补全用户信息
+        const { data: finalUserInfo } = await state.sb.from("users").select("*").eq("id", state.currentUser.id).single();
+        state.userNick = localStorage.getItem("nick") || finalUserInfo?.nick || "用户";
+        $("#userTag").innerText = `用户：${state.userNick}`;
+        state.currentUser.isAdmin = finalUserInfo?.is_admin || false;
+        if (state.currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
 
-        // 异步更新登录IP和设备信息（完全不阻塞主流程）
+        // 异步更新登录IP/设备（非核心，不阻塞）
         fetch("https://api.ipify.org?format=json")
           .then(res => res.json())
-          .then(async ipData => {
+          .then(async (ipData) => {
             try {
-              await sb.from("users").update({
+              await state.sb.from("users").update({
                 last_login_ip: ipData.ip || "未知IP",
                 last_login_device: navigator.userAgent.substring(0, 100)
-              }).eq("id", currentUser.id);
+              }).eq("id", state.currentUser.id);
             } catch (e) {
-              console.warn("更新登录IP/设备失败", e);
+              console.warn(`[登录] 更新IP/设备失败：${e.message}`);
             }
           })
           .catch(() => {});
 
-        // 异步初始化所有其他功能
+        // 初始化所有功能
         initSessionCheckListener();
         await loadInitialMessages();
         initMessageRealtime();
@@ -385,40 +515,57 @@ async function handleAuthChange(event, session) {
         initConfigRealtime();
         initHeartbeat();
         await recordLoginLog();
+
       } catch (e) {
-        console.warn("部分功能初始化失败，不影响聊天使用", e);
+        console.warn(`[登录] 部分功能初始化失败（不影响聊天）：${e.message}`);
+        showNotify("warning", "部分功能加载失败，不影响聊天使用");
       }
     }, 0);
 
   } catch (e) {
-    console.error("登录状态处理异常", e);
+    console.error(`[登录状态处理异常] ${e.message}`);
     showNotify("error", `登录异常：${e.message}`);
     clearAllResources();
-    await sb.auth.signOut();
+    await state.sb.auth.signOut();
     showPage("loginPage");
   } finally {
     closeLoader();
-    isLoggingIn = false;
-    resetAllButtonState();
+    resetAllButtons();
   }
-}
+};
 
-// ====================== 聊天核心功能（完整保留） ======================
-async function loadInitialMessages() {
+// ====================== 聊天功能核心逻辑 ======================
+/**
+ * 加载历史消息
+ */
+const loadInitialMessages = async () => {
   try {
-    const { data: msgList } = await sb.from("messages").select("*").order("id", { ascending: true }).limit(200);
+    console.log("[消息] 开始加载历史消息");
+    const { data: msgList } = await withTimeout(
+      state.sb.from("messages").select("*").order("id", { ascending: true }).limit(200),
+      CONFIG.TIMEOUT.DB_QUERY,
+      "加载历史消息超时"
+    );
+    
     renderMessages(msgList || []);
+    console.log(`[消息] 历史消息加载完成，共${msgList?.length || 0}条`);
   } catch (e) {
-    console.warn("加载历史消息失败", e);
+    console.error(`[消息] 加载历史消息异常：${e.message}`);
+    showNotify("error", "历史消息加载失败");
   }
-}
+};
 
-function renderMessages(msgList) {
+/**
+ * 渲染消息列表
+ * @param {array} msgList 消息列表
+ */
+const renderMessages = (msgList) => {
   try {
     const msgBox = $("#msgBox");
     let html = "";
+    
     msgList.forEach(msg => {
-      const isMe = msg.user_id === currentUser.id;
+      const isMe = msg.user_id === state.currentUser.id;
       html += `
         <div class="msg-item ${isMe ? 'msg-me' : 'msg-other'}">
           <div class="avatar">${msg.nick.charAt(0)}</div>
@@ -427,34 +574,62 @@ function renderMessages(msgList) {
             <div class="bubble">${msg.text}</div>
             <div class="msg-time">${msg.time}</div>
           </div>
-          ${currentUser.isAdmin ? `<button class="win-btn small danger" onclick="deleteMsg(${msg.id})">删除</button>` : ''}
+          ${state.currentUser.isAdmin ? `<button class="win-btn small danger" onclick="deleteMsg(${msg.id})">删除</button>` : ''}
         </div>
       `;
     });
+    
     msgBox.innerHTML = html;
     msgBox.scrollTop = msgBox.scrollHeight;
-  } catch (e) {}
-}
+  } catch (e) {
+    console.error(`[消息] 渲染异常：${e.message}`);
+  }
+};
 
-function initMessageRealtime() {
+/**
+ * 初始化消息实时监听
+ */
+const initMessageRealtime = () => {
   try {
-    msgChannel = sb.channel("message_channel", { config: { broadcast: { self: true } } })
-    .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
-      await loadInitialMessages();
+    state.channels.msg = state.sb.channel("message_channel", {
+      config: { broadcast: { self: true } }
     })
-    .subscribe();
-  } catch (e) {}
-}
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "messages" },
+      async () => {
+        console.log("[消息] 收到实时更新事件");
+        await loadInitialMessages();
+      }
+    )
+    .subscribe((status) => {
+      console.log(`[消息] 实时通道状态：${status}`);
+      if (status === "CHANNEL_ERROR") {
+        console.error("[消息] 实时通道连接失败，10秒后重试");
+        setTimeout(initMessageRealtime, 10000);
+      }
+    });
+  } catch (e) {
+    console.error(`[消息] 初始化实时监听异常：${e.message}`);
+    setTimeout(initMessageRealtime, 10000);
+  }
+};
 
-async function sendMessage() {
+/**
+ * 发送消息
+ */
+const sendMessage = async () => {
   try {
+    // 校验会话
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
       return;
     }
-    if (!currentUser) return;
     
+    if (!state.currentUser) return;
+    
+    // 基础校验
     const msgInput = $("#msgInput");
     const text = msgInput.value.trim();
     if (!text) {
@@ -462,91 +637,141 @@ async function sendMessage() {
       return;
     }
 
+    // 禁用按钮
     $("#sendBtn").disabled = true;
     $("#sendBtn").innerText = "发送中...";
 
     // 敏感词过滤
     let content = text;
     try {
-      const { data: config } = await sb.from("system_config").select("sensitive_words").single();
+      const { data: config } = await state.sb.from("system_config").select("sensitive_words").single();
       const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
       badWords.forEach(word => {
         content = content.replaceAll(word, "***");
       });
     } catch (e) {
-      console.warn("敏感词过滤失败，直接发送原消息", e);
+      console.warn(`[消息] 敏感词过滤失败，发送原消息：${e.message}`);
     }
 
     // 发送消息
-    await sb.from("messages").insert([{
-      user_id: currentUser.id,
-      nick: userNick,
+    await state.sb.from("messages").insert([{
+      user_id: state.currentUser.id,
+      nick: state.userNick,
       text: content,
       time: new Date().toLocaleString()
     }]);
 
+    // 发送成功处理
     msgInput.value = "";
     showNotify("success", "消息发送成功");
     await loadInitialMessages();
 
   } catch (e) {
+    console.error(`[消息] 发送失败：${e.message}`);
     showNotify("error", `发送失败：${e.message}`);
   } finally {
+    // 重置按钮
     $("#sendBtn").disabled = false;
     $("#sendBtn").innerText = "发送";
   }
-}
+};
 
-// ====================== 在线人数功能（完整保留） ======================
-async function markOnline() {
+// ====================== 在线人数功能 ======================
+/**
+ * 标记用户在线状态
+ */
+const markOnline = async () => {
   try {
-    await sb.from("online_users").upsert({
-      user_id: currentUser.id,
-      nick: userNick,
+    await state.sb.from("online_users").upsert({
+      user_id: state.currentUser.id,
+      nick: state.userNick,
       last_active: new Date().toISOString()
     }, { onConflict: "user_id" });
-  } catch (e) {}
-}
+    console.log("[在线状态] 标记成功");
+  } catch (e) {
+    console.warn(`[在线状态] 标记失败：${e.message}`);
+  }
+};
 
-async function refreshOnlineCount() {
+/**
+ * 刷新在线人数
+ */
+const refreshOnlineCount = async () => {
   try {
-    const { data } = await sb.from("online_users").select("*");
-    $("#onlineNum").innerText = data?.length || 0;
-  } catch (e) {}
-}
+    const { data } = await state.sb.from("online_users").select("*");
+    const count = data?.length || 0;
+    $("#onlineNum").innerText = count;
+    console.log(`[在线人数] 刷新为：${count}`);
+  } catch (e) {
+    console.error(`[在线人数] 刷新异常：${e.message}`);
+  }
+};
 
-function initOnlineRealtime() {
+/**
+ * 初始化在线人数实时监听
+ */
+const initOnlineRealtime = () => {
   try {
-    onlineChannel = sb.channel("online_channel")
-    .on("postgres_changes", { event: "*", schema: "public", table: "online_users" }, async () => {
-      await refreshOnlineCount();
-    })
-    .subscribe();
-  } catch (e) {}
-}
+    state.channels.online = state.sb.channel("online_channel")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "online_users" },
+      async () => {
+        console.log("[在线人数] 收到实时更新事件");
+        await refreshOnlineCount();
+      }
+    )
+    .subscribe((status) => {
+      console.log(`[在线人数] 实时通道状态：${status}`);
+      if (status === "CHANNEL_ERROR") {
+        console.error("[在线人数] 实时通道连接失败，10秒后重试");
+        setTimeout(initOnlineRealtime, 10000);
+      }
+    });
+  } catch (e) {
+    console.error(`[在线人数] 初始化实时监听异常：${e.message}`);
+    setTimeout(initOnlineRealtime, 10000);
+  }
+};
 
-function initHeartbeat() {
-  heartbeatTimer = setInterval(async () => {
-    if (currentUser && isSessionInitialized) {
+/**
+ * 初始化心跳（保持在线状态）
+ */
+const initHeartbeat = () => {
+  state.timers.heartbeat = setInterval(async () => {
+    if (state.currentUser && state.isSessionInitialized) {
       await markOnline();
     }
-  }, 30000);
-}
+  }, CONFIG.HEARTBEAT_INTERVAL);
+};
 
-// ====================== 公告&配置功能（完整保留） ======================
-function initConfigRealtime() {
+// ====================== 公告&配置功能 ======================
+/**
+ * 初始化配置实时监听
+ */
+const initConfigRealtime = () => {
   try {
-    configChannel = sb.channel("config_channel")
-    .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, async () => {
-      await loadAnnouncement();
-    })
+    state.channels.config = state.sb.channel("config_channel")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "system_config" },
+      async () => {
+        console.log("[配置] 收到实时更新事件");
+        await loadAnnouncement();
+      }
+    )
     .subscribe();
-  } catch (e) {}
-}
+  } catch (e) {
+    console.error(`[配置] 初始化实时监听异常：${e.message}`);
+  }
+};
 
-async function loadAnnouncement() {
+/**
+ * 加载公告
+ */
+const loadAnnouncement = async () => {
   try {
-    const { data } = await sb.from("system_config").select("announcement").single();
+    const { data } = await state.sb.from("system_config").select("announcement").single();
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
@@ -554,132 +779,189 @@ async function loadAnnouncement() {
     } else {
       announceBar.classList.add("hidden");
     }
-  } catch (e) {}
-}
+  } catch (e) {
+    console.error(`[公告] 加载异常：${e.message}`);
+  }
+};
 
-// ====================== 登录日志功能（完整保留） ======================
-async function recordLoginLog() {
+// ====================== 登录日志功能 ======================
+/**
+ * 记录登录日志
+ */
+const recordLoginLog = async () => {
   try {
     const ipRes = await fetch("https://api.ipify.org?format=json").catch(() => ({ json: () => ({ ip: "未知IP" }) }));
     const ipData = await ipRes.json();
-    await sb.from("login_logs").insert([{
-      user_id: currentUser.id,
+    
+    await state.sb.from("login_logs").insert([{
+      user_id: state.currentUser.id,
       ip: ipData.ip || "未知IP",
       device: navigator.userAgent.substring(0, 80),
       time: new Date().toLocaleString()
     }]);
-  } catch (e) {}
-}
+    
+    console.log("[登录日志] 记录成功");
+  } catch (e) {
+    console.warn(`[登录日志] 记录失败：${e.message}`);
+  }
+};
 
-async function showMyLoginLogs() {
+/**
+ * 显示我的登录日志
+ */
+const showMyLoginLogs = async () => {
   try {
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
       return;
     }
+    
     showNotify("info", "正在加载登录日志...");
-    const { data } = await sb.from("login_logs").select("*").eq("user_id", currentUser.id).order("time", { ascending: false }).limit(10);
+    const { data } = await state.sb.from("login_logs").select("*")
+      .eq("user_id", state.currentUser.id)
+      .order("time", { ascending: false })
+      .limit(10);
+    
     if (!data || data.length === 0) {
       alert("=== 我的登录日志 ===\n\n暂无登录日志");
       return;
     }
+    
     let logText = "=== 我的登录日志 ===\n\n";
     data.forEach((log, index) => {
       logText += `${index + 1}. IP：${log.ip}\n   时间：${log.time}\n   设备：${log.device}\n\n`;
     });
     alert(logText);
+    
   } catch (e) {
+    console.error(`[登录日志] 加载失败：${e.message}`);
     showNotify("error", "登录日志加载失败");
   }
-}
+};
 
-// ====================== 退出登录功能（完整保留） ======================
-async function userLogout() {
+// ====================== 退出登录功能 ======================
+/**
+ * 用户退出登录
+ */
+const userLogout = async () => {
   try {
     showNotify("info", "正在退出登录...");
-    if (currentUser) {
-      await sb.from("users").update({ current_session_token: null }).eq("id", currentUser.id);
-      await sb.from("online_users").delete().eq("user_id", currentUser.id);
+    console.log("[退出登录] 开始处理");
+    
+    // 清空会话Token
+    if (state.currentUser) {
+      await state.sb.from("users").update({ current_session_token: null }).eq("id", state.currentUser.id);
+      await state.sb.from("online_users").delete().eq("user_id", state.currentUser.id);
     }
+    
+    // 清理资源+退出登录
     clearAllResources();
-    await sb.auth.signOut();
+    await state.sb.auth.signOut();
     showPage("loginPage");
     showNotify("success", "已安全退出登录");
+    console.log("[退出登录] 处理完成");
+    
   } catch (e) {
-    showNotify("error", "退出失败");
+    console.error(`[退出登录] 失败：${e.message}`);
+    showNotify("error", `退出失败：${e.message}`);
     clearAllResources();
     showPage("loginPage");
   }
-}
+};
 
-// ====================== 设置功能（完整保留） ======================
-async function saveNickname() {
+// ====================== 设置功能 ======================
+/**
+ * 保存昵称
+ */
+const saveNickname = async () => {
   try {
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
       return;
     }
+    
     const newNick = $("#nickInput").value.trim();
     if (!newNick) {
       showNotify("error", "请输入有效的昵称");
       return;
     }
-    await sb.from("users").update({ nick: newNick }).eq("id", currentUser.id);
-    userNick = newNick;
+    
+    await state.sb.from("users").update({ nick: newNick }).eq("id", state.currentUser.id);
+    
+    // 更新本地状态
+    state.userNick = newNick;
     localStorage.setItem("nick", newNick);
     $("#userTag").innerText = `用户：${newNick}`;
     $("#nickInput").value = "";
+    
     showNotify("success", "昵称保存成功");
     await markOnline();
+    
   } catch (e) {
+    console.error(`[设置] 保存昵称失败：${e.message}`);
     showNotify("error", "昵称保存失败");
   }
-}
+};
 
-async function updatePassword() {
+/**
+ * 修改密码
+ */
+const updatePassword = async () => {
   try {
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
       return;
     }
+    
     const newPwd = $("#newPwdInput").value.trim();
     if (newPwd.length < 8) {
       showNotify("error", "密码长度不能少于8位");
       return;
     }
-    const { error } = await sb.auth.updateUser({ password: newPwd });
+    
+    const { error } = await state.sb.auth.updateUser({ password: newPwd });
     if (error) throw new Error(error.message);
+    
     showNotify("success", "密码修改成功，请重新登录");
     $("#newPwdInput").value = "";
     setTimeout(userLogout, 1500);
+    
   } catch (e) {
+    console.error(`[设置] 修改密码失败：${e.message}`);
     showNotify("error", `密码修改失败：${e.message}`);
   }
-}
+};
 
-// ====================== 管理员功能（完整保留，一点没少） ======================
-async function loadAdminData() {
-  if (!currentUser.isAdmin) {
+// ====================== 管理员功能（完整保留） ======================
+/**
+ * 加载管理员数据
+ */
+const loadAdminData = async () => {
+  if (!state.currentUser.isAdmin) {
     showNotify("error", "你没有管理员权限");
     return;
   }
+
   try {
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
       return;
     }
+    
     showNotify("info", "正在加载管理数据...");
-    // 系统配置
-    const { data: config } = await sb.from("system_config").select("*").single();
+    
+    // 1. 加载系统配置
+    const { data: config } = await state.sb.from("system_config").select("*").single();
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
-    // 待审核用户
-    const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending");
+
+    // 2. 加载待审核用户
+    const { data: verifyUsers } = await state.sb.from("users").select("*").eq("status", "pending");
     let verifyHtml = "";
     verifyUsers.forEach(user => {
       verifyHtml += `
@@ -693,8 +975,9 @@ async function loadAdminData() {
       `;
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
-    // 全部用户
-    const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false });
+
+    // 3. 加载所有用户
+    const { data: allUsers } = await state.sb.from("users").select("*").order("created_at", { ascending: false });
     let userHtml = "";
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
@@ -715,8 +998,11 @@ async function loadAdminData() {
       `;
     });
     $("#allUserList").innerHTML = userHtml;
-    // 登录日志
-    const { data: allLogs } = await sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20);
+
+    // 4. 加载登录日志
+    const { data: allLogs } = await state.sb.from("login_logs").select("*, users!inner(email, nick)")
+      .order("time", { ascending: false })
+      .limit(20);
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
@@ -726,187 +1012,293 @@ async function loadAdminData() {
       `;
     });
     $("#allLoginLogList").innerHTML = logHtml || "暂无登录日志";
+
     showNotify("success", "管理数据加载完成");
+    
   } catch (e) {
+    console.error(`[管理员] 加载数据失败：${e.message}`);
     showNotify("error", "管理数据加载失败");
   }
-}
+};
 
-async function forceUserOffline(userId) {
+/**
+ * 强制用户下线
+ * @param {string} userId 用户ID
+ */
+const forceUserOffline = async (userId) => {
   if (!confirm("确定要强制该用户下线吗？")) return;
   try {
-    await sb.from("users").update({ current_session_token: null }).eq("id", userId);
+    await state.sb.from("users").update({ current_session_token: null }).eq("id", userId);
     showNotify("success", "用户已被强制下线");
     loadAdminData();
   } catch (e) {
+    console.error(`[管理员] 强制下线失败：${e.message}`);
     showNotify("error", "强制下线失败");
   }
-}
+};
 
-async function verifyUser(userId, status) {
+/**
+ * 审核用户
+ * @param {string} userId 用户ID
+ * @param {string} status 审核状态
+ */
+const verifyUser = async (userId, status) => {
   try {
-    await sb.from("users").update({ status }).eq("id", userId);
+    await state.sb.from("users").update({ status }).eq("id", userId);
     showNotify("success", status === "active" ? "用户审核通过" : "用户审核拒绝");
     loadAdminData();
   } catch (e) {
+    console.error(`[管理员] 审核用户失败：${e.message}`);
     showNotify("error", "操作失败");
   }
-}
+};
 
-async function setUserMute(userId, isMute) {
+/**
+ * 设置用户禁言状态
+ * @param {string} userId 用户ID
+ * @param {boolean} isMute 是否禁言
+ */
+const setUserMute = async (userId, isMute) => {
   try {
-    await sb.from("users").update({ is_mute: isMute }).eq("id", userId);
+    await state.sb.from("users").update({ is_mute: isMute }).eq("id", userId);
     showNotify("success", isMute ? "已禁言该用户" : "已解禁该用户");
     loadAdminData();
   } catch (e) {
+    console.error(`[管理员] 设置禁言失败：${e.message}`);
     showNotify("error", "操作失败");
   }
-}
+};
 
-async function setUserStatus(userId, status) {
+/**
+ * 设置用户状态（封禁/解封）
+ * @param {string} userId 用户ID
+ * @param {string} status 状态
+ */
+const setUserStatus = async (userId, status) => {
   try {
-    await sb.from("users").update({ status }).eq("id", userId);
+    await state.sb.from("users").update({ status }).eq("id", userId);
     showNotify("success", status === "active" ? "已解封该用户" : "已封禁该用户");
     loadAdminData();
   } catch (e) {
+    console.error(`[管理员] 设置用户状态失败：${e.message}`);
     showNotify("error", "操作失败");
   }
-}
+};
 
-async function resetUserPwd(email) {
+/**
+ * 重置用户密码
+ * @param {string} email 用户邮箱
+ */
+const resetUserPwd = async (email) => {
   try {
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
+    const { error } = await state.sb.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/chat`
     });
     if (error) throw new Error(error.message);
     showNotify("success", "密码重置邮件已发送");
   } catch (e) {
-    showNotify("error", "重置失败");
+    console.error(`[管理员] 重置密码失败：${e.message}`);
+    showNotify("error", `重置失败：${e.message}`);
   }
-}
+};
 
-async function saveSystemConfig() {
+/**
+ * 保存系统配置
+ */
+const saveSystemConfig = async () => {
   try {
     const requireVerify = $("#requireVerifyToggle").checked;
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await state.sb.from("system_config").select("id").single();
+    
     if (data) {
-      await sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
+      await state.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
     } else {
-      await sb.from("system_config").insert([{ require_verify: requireVerify }]);
+      await state.sb.from("system_config").insert([{ require_verify: requireVerify }]);
     }
+    
     showNotify("success", "系统配置保存成功");
+    
   } catch (e) {
+    console.error(`[管理员] 保存系统配置失败：${e.message}`);
     showNotify("error", "配置保存失败");
   }
-}
+};
 
-async function saveSensitiveWords() {
+/**
+ * 保存敏感词
+ */
+const saveSensitiveWords = async () => {
   try {
     const words = $("#sensitiveWordsInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await state.sb.from("system_config").select("id").single();
+    
     if (data) {
-      await sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
+      await state.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
     } else {
-      await sb.from("system_config").insert([{ sensitive_words: words }]);
+      await state.sb.from("system_config").insert([{ sensitive_words: words }]);
     }
+    
     showNotify("success", "敏感词保存成功");
+    
   } catch (e) {
+    console.error(`[管理员] 保存敏感词失败：${e.message}`);
     showNotify("error", "保存失败");
   }
-}
+};
 
-async function saveAnnouncement() {
+/**
+ * 保存公告
+ */
+const saveAnnouncement = async () => {
   try {
     const content = $("#announceInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await state.sb.from("system_config").select("id").single();
+    
     if (data) {
-      await sb.from("system_config").update({ announcement: content }).eq("id", data.id);
+      await state.sb.from("system_config").update({ announcement: content }).eq("id", data.id);
     } else {
-      await sb.from("system_config").insert([{ announcement: content }]);
+      await state.sb.from("system_config").insert([{ announcement: content }]);
     }
+    
     showNotify("success", "公告已推送");
+    
   } catch (e) {
+    console.error(`[管理员] 保存公告失败：${e.message}`);
     showNotify("error", "推送失败");
   }
-}
+};
 
-async function deleteMsg(msgId) {
+/**
+ * 删除单条消息
+ * @param {number} msgId 消息ID
+ */
+const deleteMsg = async (msgId) => {
   try {
-    await sb.from("messages").delete().eq("id", msgId);
+    await state.sb.from("messages").delete().eq("id", msgId);
     showNotify("success", "消息已删除");
     await loadInitialMessages();
   } catch (e) {
+    console.error(`[管理员] 删除消息失败：${e.message}`);
     showNotify("error", "删除失败");
   }
-}
+};
 
-async function clearAllMessages() {
+/**
+ * 清空所有消息
+ */
+const clearAllMessages = async () => {
   if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
   try {
-    await sb.from("messages").delete().neq("id", 0);
+    await state.sb.from("messages").delete().neq("id", 0);
     showNotify("success", "所有消息已清空");
     await loadInitialMessages();
   } catch (e) {
+    console.error(`[管理员] 清空消息失败：${e.message}`);
     showNotify("error", "清空失败");
   }
-}
+};
 
-// ====================== 页面生命周期 ======================
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    forceCloseLoaderTimer = setTimeout(() => {
-      closeLoader();
-      showPage("loginPage");
-    }, 3500);
-
-    initTheme();
-    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
-      realtime: { timeout: 10000 }
-    });
-    bindAllEvents();
-    sb.auth.onAuthStateChange(handleAuthChange);
-  } catch (e) {
-    console.error("初始化异常", e);
-    closeLoader();
-    showPage("loginPage");
-  }
-});
-
-function bindAllEvents() {
+// ====================== 事件绑定&页面初始化 ======================
+/**
+ * 绑定所有页面事件
+ */
+const bindAllEvents = () => {
+  // 页面切换
   $("#toRegisterBtn").addEventListener("click", () => showPage("registerPage"));
   $("#toLoginBtn").addEventListener("click", () => showPage("loginPage"));
+  
+  // 登录/注册
   $("#loginBtn").addEventListener("click", doLogin);
   $("#regBtn").addEventListener("click", doRegister);
   $("#loginPwd").addEventListener("keydown", (e) => e.key === "Enter" && doLogin());
   $("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && doRegister());
+  
+  // 聊天
   $("#sendBtn").addEventListener("click", sendMessage);
   $("#msgInput").addEventListener("keydown", (e) => e.key === "Enter" && sendMessage());
+  
+  // 页面导航
   $("#settingBtn").addEventListener("click", () => showPage("settingPage"));
   $("#adminBtn").addEventListener("click", () => { loadAdminData(); showPage("adminPage"); });
   $("#backToChatBtn").addEventListener("click", () => showPage("chatPage"));
   $("#backToChatFromAdminBtn").addEventListener("click", () => showPage("chatPage"));
+  
+  // 设置
   $("#saveNickBtn").addEventListener("click", saveNickname);
   $("#toggleThemeBtn").addEventListener("click", toggleTheme);
   $("#updatePwdBtn").addEventListener("click", updatePassword);
   $("#showLoginLogBtn").addEventListener("click", showMyLoginLogs);
   $("#logoutBtn").addEventListener("click", userLogout);
+  
+  // 管理员
   $("#saveConfigBtn").addEventListener("click", saveSystemConfig);
   $("#saveSwBtn").addEventListener("click", saveSensitiveWords);
   $("#saveAnnounceBtn").addEventListener("click", saveAnnouncement);
   $("#clearAllMsgBtn").addEventListener("click", clearAllMessages);
-}
+};
 
+/**
+ * 页面初始化入口
+ */
+const initApp = async () => {
+  try {
+    // 强制关闭加载页兜底（3.5秒）
+    state.timers.forceCloseLoader = setTimeout(() => {
+      closeLoader();
+      showPage("loginPage");
+    }, 3500);
+
+    // 初始化主题
+    initTheme();
+
+    // 初始化Supabase客户端
+    state.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY, {
+      auth: { 
+        autoRefreshToken: true, 
+        persistSession: true, 
+        detectSessionInUrl: true 
+      },
+      realtime: { 
+        timeout: CONFIG.TIMEOUT.REALTIME,
+        heartbeatIntervalMs: CONFIG.HEARTBEAT_INTERVAL
+      }
+    });
+
+    // 绑定事件
+    bindAllEvents();
+
+    // 监听登录状态变化
+    state.sb.auth.onAuthStateChange(handleAuthChange);
+
+    console.log("[初始化] 应用初始化完成");
+    
+  } catch (e) {
+    console.error(`[初始化] 异常：${e.message}`);
+    showNotify("error", "系统初始化失败，请刷新重试");
+    closeLoader();
+    showPage("loginPage");
+  }
+};
+
+// ====================== 页面生命周期监听 ======================
+// 页面加载完成初始化
+document.addEventListener("DOMContentLoaded", initApp);
+
+// 页面关闭前清理
 window.addEventListener("beforeunload", async () => {
-  if (currentUser) {
-    try {
-      await sb.from("online_users").delete().eq("user_id", currentUser.id);
-    } catch (e) {}
+  try {
+    if (state.currentUser) {
+      await state.sb.from("online_users").delete().eq("user_id", state.currentUser.id);
+    }
+  } catch (e) {
+    console.error(`[页面关闭] 清理异常：${e.message}`);
   }
 });
 
+// 页面可见性变化
 document.addEventListener("visibilitychange", async () => {
-  if (!document.hidden && currentUser && isSessionInitialized) {
+  if (!document.hidden && state.currentUser && state.isSessionInitialized) {
+    console.log("[页面] 切回前台，校验会话+刷新状态");
     const isValid = await checkSessionValid();
     if (!isValid) {
       await handleSessionInvalid();
@@ -914,5 +1306,17 @@ document.addEventListener("visibilitychange", async () => {
     }
     await markOnline();
     await refreshOnlineCount();
+    await loadInitialMessages();
   }
 });
+
+// 系统主题变化监听
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", initTheme);
+
+// 暴露全局函数（供HTML调用）
+window.deleteMsg = deleteMsg;
+window.verifyUser = verifyUser;
+window.setUserMute = setUserMute;
+window.setUserStatus = setUserStatus;
+window.resetUserPwd = resetUserPwd;
+window.forceUserOffline = forceUserOffline;
