@@ -282,17 +282,17 @@ async function handleAuthChange(event, session) {
   }
 }
 
-// ====================== 核心修复：登录后初始化（解决用户信息获取失败） ======================
+// ====================== 登录后初始化（优化兜底逻辑） ======================
 async function initAfterLogin() {
   try {
-    // 1. 先查询用户信息
+    // 1. 查询用户信息（修复后无递归，可正常查询）
     let { data: userInfo, error: userError } = await sb
       .from("users")
       .select("*")
       .eq("id", currentUser.id)
       .single();
 
-    // 2. 核心修复：如果用户记录不存在，自动补插入（兜底）
+    // 2. 兜底：用户记录不存在，自动补插入
     if (userError || !userInfo) {
       console.warn("用户记录不存在，自动补插入");
       const { data: newUser, error: insertError } = await sb
@@ -412,7 +412,7 @@ async function sendMessage() {
       return;
     }
 
-    // 敏感词过滤（兜底空值）
+    // 敏感词过滤
     const { data: config } = await sb.from("system_config").select("sensitive_words").single();
     let content = text;
     const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
