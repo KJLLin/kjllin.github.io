@@ -8,10 +8,11 @@
   <meta name="theme-color" content="#f3f3f3">
   <title>在线聊天系统 | KJLLin</title>
   <link rel="stylesheet" href="style.css">
+  <!-- 提前加载Supabase SDK，避免加载失败 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- 全局加载页 -->
+  <!-- 全局加载页（兜底，不会白屏） -->
   <div id="loadingPage" class="loading-page">
     <div class="win-spinner"></div>
     <p class="loading-text">正在启动在线聊天系统...</p>
@@ -19,9 +20,6 @@
 
   <!-- Win11 全局通知 -->
   <div id="winNotify" class="win-notify hidden"></div>
-
-  <!-- 遮罩层 -->
-  <div id="mask" class="mask hidden"></div>
 
   <!-- ====================== 页面1：登录页 ====================== -->
   <div id="loginPage" class="page active">
@@ -102,14 +100,13 @@
     </div>
   </div>
 
-  <!-- ====================== 页面5：管理员后台（新增全功能） ====================== -->
+  <!-- ====================== 页面5：管理员后台 ====================== -->
   <div id="adminPage" class="page hidden">
     <div class="page-header">
       <button class="win-btn icon" id="backToChatFromAdminBtn">←</button>
       <h2>管理后台 · 在线聊天系统</h2>
     </div>
     <div class="admin-container">
-      <!-- 系统配置 -->
       <div class="win-item">
         <h3>系统全局配置</h3>
         <div class="config-item">
@@ -121,39 +118,33 @@
         </div>
       </div>
 
-      <!-- 用户审核 -->
       <div class="win-item">
         <h3>待审核用户</h3>
         <div id="verifyUserList" class="list-box">暂无待审核用户</div>
       </div>
 
-      <!-- 全量用户管理 -->
       <div class="win-item">
         <h3>全部用户管理</h3>
         <div id="allUserList" class="list-box">加载中...</div>
       </div>
 
-      <!-- 消息管理 -->
       <div class="win-item">
         <h3>消息管理</h3>
         <button class="win-btn danger small" id="clearAllMsgBtn">清空所有历史消息</button>
       </div>
 
-      <!-- 敏感词配置 -->
       <div class="win-item">
         <h3>敏感词过滤</h3>
-        <input type="text" id="sensitiveWordsInput" class="win-input" placeholder="敏感词用英文逗号分隔，如：脏话,违规词">
+        <input type="text" id="sensitiveWordsInput" class="win-input" placeholder="敏感词用英文逗号分隔">
         <button class="win-btn primary" id="saveSwBtn">保存敏感词</button>
       </div>
 
-      <!-- 全局公告 -->
       <div class="win-item">
         <h3>全局公告</h3>
         <input type="text" id="announceInput" class="win-input" placeholder="输入全局公告内容">
         <button class="win-btn primary" id="saveAnnounceBtn">推送公告</button>
       </div>
 
-      <!-- 全量登录日志 -->
       <div class="win-item">
         <h3>全量用户登录日志</h3>
         <div id="allLoginLogList" class="list-box">加载中...</div>
@@ -161,6 +152,7 @@
     </div>
   </div>
 
+  <!-- 最后加载JS，确保DOM已经渲染完成 -->
   <script src="app.js"></script>
 </body>
 </html>
