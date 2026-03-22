@@ -7,11 +7,17 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 let sb = null;
 let currentUser = null;
 let userNick = localStorage.getItem("nick") || "";
+// 单设备登录核心配置
+const CURRENT_SESSION_KEY = "chat_current_session_token";
+let sessionToken = localStorage.getItem(CURRENT_SESSION_KEY) || "";
+// 全局通道和定时器
 let msgChannel = null;
 let onlineChannel = null;
 let configChannel = null;
+let sessionCheckChannel = null; // 单设备登录监听通道
 let forceCloseLoaderTimer = null;
 let heartbeatTimer = null;
+let sessionCheckTimer = null; // 会话校验定时器
 
 // 安全选择器
 const $ = s => {
@@ -76,24 +82,33 @@ function showPage(pageId) {
   }
 }
 
-// 核心修复：统一清理所有资源（退出/页面关闭时调用）
+// 统一清理所有资源（退出/页面关闭时调用）
 function clearAllResources() {
   try {
     // 清理所有定时器
     if (heartbeatTimer) clearInterval(heartbeatTimer);
+    if (sessionCheckTimer) clearInterval(sessionCheckTimer);
     heartbeatTimer = null;
+    sessionCheckTimer = null;
 
     // 清理所有实时通道
     if (msgChannel) sb.removeChannel(msgChannel);
     if (onlineChannel) sb.removeChannel(onlineChannel);
     if (configChannel) sb.removeChannel(configChannel);
+    if (sessionCheckChannel) sb.removeChannel(sessionCheckChannel);
     msgChannel = null;
     onlineChannel = null;
     configChannel = null;
+    sessionCheckChannel = null;
 
     // 重置全局状态
     currentUser = null;
     userNick = "";
+    sessionToken = "";
+
+    // 清理本地存储
+    localStorage.removeItem(CURRENT_SESSION_KEY);
+    localStorage.removeItem("nick");
 
     // 清理输入框内容
     $("#msgInput").value = "";
@@ -104,6 +119,109 @@ function clearAllResources() {
     $("#regPwd").value = "";
   } catch (e) {
     console.error("清理资源异常", e);
+  }
+}
+
+// ====================== 单设备登录核心函数 ======================
+// 生成唯一会话Token
+function generateSessionToken() {
+  return crypto.randomUUID();
+}
+
+// 核心：校验当前会话是否有效
+async function checkSessionValid() {
+  try {
+    if (!currentUser || !sessionToken) {
+      return false;
+    }
+
+    // 查询当前用户的有效会话Token
+    const { data, error } = await sb
+      .from("users")
+      .select("current_session_token")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (error || !data) {
+      console.error("会话校验失败", error);
+      return false;
+    }
+
+    // 对比本地Token和数据库中的有效Token
+    const isValid = data.current_session_token === sessionToken;
+    if (!isValid) {
+      console.warn("会话已失效，账号在其他设备登录");
+    }
+    return isValid;
+  } catch (e) {
+    console.error("会话校验异常", e);
+    return false;
+  }
+}
+
+// 核心：被挤下线时的处理逻辑
+async function handleSessionInvalid(reason = "账号在其他设备登录，你已被挤下线") {
+  try {
+    showNotify("error", reason);
+    // 先清理所有资源
+    clearAllResources();
+    // 执行退出登录
+    await sb.auth.signOut().catch(() => {});
+    // 强制跳回登录页
+    showPage("loginPage");
+    // 强制刷新页面，清理残留状态
+    setTimeout(() => window.location.reload(), 1500);
+  } catch (e) {
+    console.error("会话失效处理异常", e);
+    window.location.href = window.location.origin + "/chat";
+  }
+}
+
+// 初始化会话监听（实时检测是否被挤下线）
+function initSessionCheckListener() {
+  try {
+    console.log("正在开启单设备登录会话监听...");
+    sessionCheckChannel = sb.channel("session_check_channel")
+    .on(
+      "postgres_changes",
+      { 
+        event: "UPDATE", 
+        schema: "public", 
+        table: "users",
+        filter: `id=eq.${currentUser.id}` // 只监听当前用户的记录变化
+      },
+      async (payload) => {
+        console.log("收到用户会话更新事件", payload);
+        // 校验会话是否有效
+        const isValid = await checkSessionValid();
+        if (!isValid) {
+          await handleSessionInvalid();
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log("会话监听通道状态：", status);
+      if (status === "SUBSCRIBED") {
+        console.log("✅ 单设备登录会话监听已开启");
+      } else if (status === "CHANNEL_ERROR") {
+        console.error("❌ 会话监听失败，10秒后重试");
+        setTimeout(initSessionCheckListener, 10000);
+      }
+    });
+
+    // 开启定时心跳校验（每分钟校验一次）
+    sessionCheckTimer = setInterval(async () => {
+      if (currentUser) {
+        const isValid = await checkSessionValid();
+        if (!isValid) {
+          await handleSessionInvalid();
+        }
+      }
+    }, 60000);
+
+  } catch (e) {
+    console.error("会话监听初始化异常", e);
+    setTimeout(initSessionCheckListener, 10000);
   }
 }
 
@@ -164,13 +282,42 @@ async function doLogin() {
     $("#loginBtn").disabled = true;
     $("#loginBtn").innerText = "登录中...";
 
+    // 1. 执行账号登录
     const { data: authData, error: authError } = await sb.auth.signInWithPassword({
       email, password: pwd
     });
     if (authError) throw new Error(authError.message);
     if (!authData.user) throw new Error("登录失败，未获取到用户信息");
 
+    // 2. 单设备登录核心：生成新的会话Token
+    const newSessionToken = generateSessionToken();
+    sessionToken = newSessionToken;
+    localStorage.setItem(CURRENT_SESSION_KEY, newSessionToken);
+
+    // 3. 获取登录IP和设备信息
+    const ipRes = await fetch("https://api.ipify.org?format=json").catch(() => ({ json: () => ({ ip: "未知IP" }) }));
+    const ipData = await ipRes.json();
+    const loginIp = ipData.ip || "未知IP";
+    const loginDevice = navigator.userAgent.substring(0, 100);
+
+    // 4. 更新数据库中的有效会话和登录信息
+    const { error: updateError } = await sb
+      .from("users")
+      .update({
+        current_session_token: newSessionToken,
+        last_login_ip: loginIp,
+        last_login_device: loginDevice,
+        last_login_time: new Date().toISOString()
+      })
+      .eq("id", authData.user.id);
+
+    if (updateError) throw new Error("会话初始化失败：" + updateError.message);
+    console.log("✅ 新会话已生成，单设备登录已生效");
+
   } catch (e) {
+    // 登录失败，清理本地会话
+    localStorage.removeItem(CURRENT_SESSION_KEY);
+    sessionToken = "";
     showNotify("error", `登录失败：${e.message}`);
   } finally {
     $("#loginBtn").disabled = false;
@@ -225,7 +372,14 @@ async function handleAuthChange(event, session) {
     currentUser = session?.user || null;
 
     if (currentUser) {
-      // 登录成功，异步初始化聊天功能
+      // 登录成功，先校验会话是否有效
+      const isValid = await checkSessionValid();
+      if (!isValid) {
+        await handleSessionInvalid("会话已失效，请重新登录");
+        return;
+      }
+
+      // 会话有效，初始化聊天功能
       initAfterLogin().catch(e => {
         console.error("初始化聊天失败", e);
         showNotify("error", "部分功能加载失败，请刷新重试");
@@ -309,7 +463,10 @@ async function initAfterLogin() {
       currentUser.isAdmin = false;
     }
 
-    // 4. 按顺序初始化功能
+    // 4. 核心：初始化单设备登录会话监听
+    initSessionCheckListener();
+
+    // 5. 按顺序初始化其他功能
     await loadInitialMessages();
     initMessageRealtime();
     await markOnline();
@@ -317,7 +474,7 @@ async function initAfterLogin() {
     initOnlineRealtime();
     initConfigRealtime();
     initHeartbeat();
-    await recordLoginLog(); // 登录成功后记录日志
+    await recordLoginLog();
 
   } catch (e) {
     console.error("初始化聊天异常", e);
@@ -400,6 +557,13 @@ function initMessageRealtime() {
 
 async function sendMessage() {
   try {
+    // 发送消息前先校验会话是否有效
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+
     if (!currentUser) return;
     
     const msgInput = $("#msgInput");
@@ -545,7 +709,7 @@ async function loadAnnouncement() {
   }
 }
 
-// ====================== 核心修复：登录日志记录&加载 ======================
+// ====================== 登录日志功能 ======================
 async function recordLoginLog() {
   try {
     console.log("正在记录登录日志...");
@@ -569,9 +733,15 @@ async function recordLoginLog() {
   }
 }
 
-// 核心修复：我的登录日志加载
 async function showMyLoginLogs() {
   try {
+    // 查看日志前先校验会话
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+
     showNotify("info", "正在加载登录日志...");
     const { data, error } = await sb
       .from("login_logs")
@@ -597,24 +767,30 @@ async function showMyLoginLogs() {
   }
 }
 
-// ====================== 核心修复：退出登录功能 ======================
+// ====================== 退出登录功能 ======================
 async function userLogout() {
   try {
     showNotify("info", "正在退出登录...");
     console.log("开始退出登录流程");
 
-    // 1. 先清理所有定时器和通道
+    // 1. 清空数据库中的当前会话Token
+    if (currentUser) {
+      await sb
+        .from("users")
+        .update({ current_session_token: null })
+        .eq("id", currentUser.id)
+        .catch(() => {});
+    }
+
+    // 2. 清理所有资源
     clearAllResources();
 
-    // 2. 异步删除在线状态（不阻塞退出流程）
+    // 3. 异步删除在线状态
     sb.from("online_users").delete().eq("user_id", currentUser?.id).catch(() => {});
 
-    // 3. 执行退出登录
+    // 4. 执行退出登录
     const { error } = await sb.auth.signOut();
     if (error) throw new Error(error.message);
-
-    // 4. 清理本地存储
-    localStorage.removeItem("nick");
 
     // 5. 强制跳回登录页
     showPage("loginPage");
@@ -626,7 +802,6 @@ async function userLogout() {
     showNotify("error", `退出失败：${e.message}`);
     // 兜底：强制清理和跳转
     clearAllResources();
-    localStorage.removeItem("nick");
     showPage("loginPage");
   }
 }
@@ -634,6 +809,12 @@ async function userLogout() {
 // ====================== 设置功能 ======================
 async function saveNickname() {
   try {
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+
     const newNick = $("#nickInput").value.trim();
     if (!newNick) {
       showNotify("error", "请输入有效的昵称");
@@ -654,6 +835,12 @@ async function saveNickname() {
 
 async function updatePassword() {
   try {
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+
     const newPwd = $("#newPwdInput").value.trim();
     if (newPwd.length < 8) {
       showNotify("error", "密码长度不能少于8位");
@@ -678,6 +865,12 @@ async function loadAdminData() {
   }
 
   try {
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+
     showNotify("info", "正在加载管理数据...");
     // 加载系统配置
     const { data: config } = await sb.from("system_config").select("*").single().catch(() => ({ data: { require_verify: false, sensitive_words: "", announcement: "" } }));
@@ -707,22 +900,24 @@ async function loadAdminData() {
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
       const muteText = user.is_mute ? "解禁" : "禁言";
+      const isOnline = user.current_session_token ? "在线" : "离线";
       userHtml += `
         <div class="list-item">
-          <span>${user.email}（${user.nick} | ${statusText}）</span>
+          <span>${user.email}（${user.nick} | ${statusText} | ${isOnline}）</span>
           <div class="btn-group">
             <button class="win-btn small secondary" onclick="resetUserPwd('${user.email}')">重置密码</button>
             <button class="win-btn small warning" onclick="setUserMute('${user.id}', ${!user.is_mute})">${muteText}</button>
             <button class="win-btn small ${user.status === 'ban' ? 'primary' : 'danger'}" onclick="setUserStatus('${user.id}', '${user.status === 'ban' ? 'active' : 'ban'}')">
               ${user.status === 'ban' ? '解封' : '封禁'}
             </button>
+            <button class="win-btn small danger" onclick="forceUserOffline('${user.id}')">强制下线</button>
           </div>
         </div>
       `;
     });
     $("#allUserList").innerHTML = userHtml;
 
-    // 核心修复：全量登录日志加载（去掉有问题的外键关联）
+    // 加载登录日志
     const { data: allLogs } = await sb
       .from("login_logs")
       .select("*, users!inner(email, nick)")
@@ -744,6 +939,23 @@ async function loadAdminData() {
   } catch (e) {
     console.error("管理数据加载失败", e);
     showNotify("error", `管理数据加载失败：${e.message}`);
+  }
+}
+
+// 管理员强制用户下线功能
+async function forceUserOffline(userId) {
+  if (!confirm("确定要强制该用户下线吗？")) return;
+  try {
+    const { error } = await sb
+      .from("users")
+      .update({ current_session_token: null })
+      .eq("id", userId);
+
+    if (error) throw new Error(error.message);
+    showNotify("success", "用户已被强制下线");
+    loadAdminData();
+  } catch (e) {
+    showNotify("error", "强制下线失败");
   }
 }
 
@@ -948,10 +1160,16 @@ window.addEventListener("beforeunload", async () => {
   }
 });
 
-// 页面切回前台时刷新状态
+// 页面切回前台时，立即校验会话
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && currentUser) {
-    console.log("页面切回前台，刷新状态");
+    console.log("页面切回前台，校验会话有效性");
+    const isValid = await checkSessionValid();
+    if (!isValid) {
+      await handleSessionInvalid();
+      return;
+    }
+    // 刷新状态
     await markOnline();
     await refreshOnlineCount();
     await loadInitialMessages();
