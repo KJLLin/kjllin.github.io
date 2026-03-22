@@ -28,7 +28,8 @@ const $ = s => {
 };
 const $$ = s => document.querySelectorAll(s) || [];
 
-// ====================== 工具函数 ======================
+// ====================== 核心工具函数 ======================
+// 全局通知
 function showNotify(type, text) {
   try {
     const notifyEl = $("#winNotify");
@@ -41,6 +42,7 @@ function showNotify(type, text) {
   }
 }
 
+// 关闭启动页
 function closeLoader() {
   try {
     if (forceCloseLoaderTimer) clearTimeout(forceCloseLoaderTimer);
@@ -57,6 +59,7 @@ function closeLoader() {
   }
 }
 
+// 页面切换
 function showPage(pageId) {
   try {
     $$(".page").forEach(page => {
@@ -70,6 +73,37 @@ function showPage(pageId) {
   } catch (e) {
     console.error("页面切换异常", e);
     showNotify("error", "页面切换失败，请刷新重试");
+  }
+}
+
+// 核心修复：统一清理所有资源（退出/页面关闭时调用）
+function clearAllResources() {
+  try {
+    // 清理所有定时器
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+
+    // 清理所有实时通道
+    if (msgChannel) sb.removeChannel(msgChannel);
+    if (onlineChannel) sb.removeChannel(onlineChannel);
+    if (configChannel) sb.removeChannel(configChannel);
+    msgChannel = null;
+    onlineChannel = null;
+    configChannel = null;
+
+    // 重置全局状态
+    currentUser = null;
+    userNick = "";
+
+    // 清理输入框内容
+    $("#msgInput").value = "";
+    $("#loginEmail").value = "";
+    $("#loginPwd").value = "";
+    $("#regNick").value = "";
+    $("#regEmail").value = "";
+    $("#regPwd").value = "";
+  } catch (e) {
+    console.error("清理资源异常", e);
   }
 }
 
@@ -182,21 +216,24 @@ async function doRegister() {
   }
 }
 
+// 登录状态变化处理
 async function handleAuthChange(event, session) {
   try {
+    // 先清理旧资源
+    clearAllResources();
+
     currentUser = session?.user || null;
 
-    // 清理旧通道和定时器
-    if (msgChannel) sb.removeChannel(msgChannel);
-    if (onlineChannel) sb.removeChannel(onlineChannel);
-    if (configChannel) sb.removeChannel(configChannel);
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-
     if (currentUser) {
-      initAfterLogin().catch(e => console.error("初始化聊天失败", e));
+      // 登录成功，异步初始化聊天功能
+      initAfterLogin().catch(e => {
+        console.error("初始化聊天失败", e);
+        showNotify("error", "部分功能加载失败，请刷新重试");
+      });
       showPage("chatPage");
       showNotify("success", "登录成功，欢迎使用在线聊天系统");
     } else {
+      // 未登录/退出成功，跳回登录页
       showPage("loginPage");
     }
   } catch (e) {
@@ -251,12 +288,12 @@ async function initAfterLogin() {
     // 2. 账号状态校验
     if (userInfo.status === "pending") {
       showNotify("error", "账号待管理员审核，暂无法登录");
-      await sb.auth.signOut().catch(() => {});
+      await userLogout();
       return;
     }
     if (userInfo.status === "ban") {
       showNotify("error", "账号已被封禁，无法登录");
-      await sb.auth.signOut().catch(() => {});
+      await userLogout();
       return;
     }
 
@@ -272,14 +309,15 @@ async function initAfterLogin() {
       currentUser.isAdmin = false;
     }
 
-    // 4. 核心初始化（按顺序执行，确保稳定）
-    await loadInitialMessages(); // 先加载历史消息
-    initMessageRealtime(); // 开启消息实时监听
-    await markOnline(); // 标记在线
-    await refreshOnlineCount(); // 刷新在线人数
-    initOnlineRealtime(); // 开启在线人数实时监听
-    initConfigRealtime(); // 开启配置实时监听
-    initHeartbeat(); // 开启心跳
+    // 4. 按顺序初始化功能
+    await loadInitialMessages();
+    initMessageRealtime();
+    await markOnline();
+    await refreshOnlineCount();
+    initOnlineRealtime();
+    initConfigRealtime();
+    initHeartbeat();
+    await recordLoginLog(); // 登录成功后记录日志
 
   } catch (e) {
     console.error("初始化聊天异常", e);
@@ -287,8 +325,7 @@ async function initAfterLogin() {
   }
 }
 
-// ====================== 消息核心功能（终极修复：实时推送+双重保障） ======================
-// 加载历史消息
+// ====================== 消息核心功能 ======================
 async function loadInitialMessages() {
   try {
     console.log("正在加载历史消息...");
@@ -307,7 +344,6 @@ async function loadInitialMessages() {
   }
 }
 
-// 渲染消息
 function renderMessages(msgList) {
   try {
     const msgBox = $("#msgBox");
@@ -327,26 +363,24 @@ function renderMessages(msgList) {
       `;
     });
     msgBox.innerHTML = html;
-    // 自动滚动到底部
     msgBox.scrollTop = msgBox.scrollHeight;
   } catch (e) {
     console.error("消息渲染异常", e);
   }
 }
 
-// 初始化消息实时监听（核心修复：Realtime订阅）
 function initMessageRealtime() {
   try {
     console.log("正在开启消息实时监听...");
     msgChannel = sb.channel("message_channel", {
-      config: { broadcast: { self: true } } // 核心修复：自己发的消息也能收到
+      config: { broadcast: { self: true } }
     })
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "messages" },
-      async (payload) => {
-        console.log("收到消息实时事件", payload);
-        await loadInitialMessages(); // 收到事件后重新加载消息
+      async () => {
+        console.log("收到消息实时事件");
+        await loadInitialMessages();
       }
     )
     .subscribe((status) => {
@@ -364,7 +398,6 @@ function initMessageRealtime() {
   }
 }
 
-// 发送消息（终极修复：双重保障）
 async function sendMessage() {
   try {
     if (!currentUser) return;
@@ -404,8 +437,6 @@ async function sendMessage() {
 
     msgInput.value = "";
     showNotify("success", "消息发送成功");
-
-    // 核心修复：双重保障，发送后立即主动刷新消息列表，不依赖实时推送
     await loadInitialMessages();
 
   } catch (e) {
@@ -417,8 +448,7 @@ async function sendMessage() {
   }
 }
 
-// ====================== 在线人数核心功能（终极修复：100%准确） ======================
-// 标记在线
+// ====================== 在线人数核心功能 ======================
 async function markOnline() {
   try {
     console.log("正在标记在线状态...");
@@ -435,7 +465,6 @@ async function markOnline() {
   }
 }
 
-// 刷新在线人数
 async function refreshOnlineCount() {
   try {
     const { data, error } = await sb.from("online_users").select("*");
@@ -448,7 +477,6 @@ async function refreshOnlineCount() {
   }
 }
 
-// 初始化在线人数实时监听
 function initOnlineRealtime() {
   try {
     console.log("正在开启在线人数实时监听...");
@@ -456,8 +484,8 @@ function initOnlineRealtime() {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "online_users" },
-      async (payload) => {
-        console.log("收到在线状态实时事件", payload);
+      async () => {
+        console.log("收到在线状态实时事件");
         await refreshOnlineCount();
       }
     )
@@ -476,7 +504,6 @@ function initOnlineRealtime() {
   }
 }
 
-// 初始化心跳（30秒更新一次在线状态）
 function initHeartbeat() {
   heartbeatTimer = setInterval(async () => {
     if (currentUser) {
@@ -485,7 +512,7 @@ function initHeartbeat() {
   }, 30000);
 }
 
-// ====================== 配置实时监听 ======================
+// ====================== 配置&公告功能 ======================
 function initConfigRealtime() {
   try {
     configChannel = sb.channel("config_channel")
@@ -518,22 +545,89 @@ async function loadAnnouncement() {
   }
 }
 
+// ====================== 核心修复：登录日志记录&加载 ======================
 async function recordLoginLog() {
   try {
+    console.log("正在记录登录日志...");
     const ipRes = await fetch("https://api.ipify.org?format=json").catch(() => ({ json: () => ({ ip: "未知IP" }) }));
     const ipData = await ipRes.json();
     const ip = ipData.ip || "未知IP";
     const device = navigator.userAgent.substring(0, 80);
     const time = new Date().toLocaleString();
 
-    await sb.from("login_logs").insert([{
+    const { error } = await sb.from("login_logs").insert([{
       user_id: currentUser.id,
       ip: ip,
       device: device,
       time: time
     }]);
+
+    if (error) throw new Error(error.message);
+    console.log("✅ 登录日志记录成功");
   } catch (e) {
-    console.log("登录日志记录失败", e);
+    console.warn("登录日志记录失败", e);
+  }
+}
+
+// 核心修复：我的登录日志加载
+async function showMyLoginLogs() {
+  try {
+    showNotify("info", "正在加载登录日志...");
+    const { data, error } = await sb
+      .from("login_logs")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("time", { ascending: false })
+      .limit(10);
+
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      alert("=== 我的登录日志 ===\n\n暂无登录日志");
+      return;
+    }
+
+    let logText = "=== 我的登录日志 ===\n\n";
+    data.forEach((log, index) => {
+      logText += `${index + 1}. IP：${log.ip}\n   时间：${log.time}\n   设备：${log.device}\n\n`;
+    });
+    alert(logText);
+  } catch (e) {
+    console.error("登录日志加载失败", e);
+    showNotify("error", `登录日志加载失败：${e.message}`);
+  }
+}
+
+// ====================== 核心修复：退出登录功能 ======================
+async function userLogout() {
+  try {
+    showNotify("info", "正在退出登录...");
+    console.log("开始退出登录流程");
+
+    // 1. 先清理所有定时器和通道
+    clearAllResources();
+
+    // 2. 异步删除在线状态（不阻塞退出流程）
+    sb.from("online_users").delete().eq("user_id", currentUser?.id).catch(() => {});
+
+    // 3. 执行退出登录
+    const { error } = await sb.auth.signOut();
+    if (error) throw new Error(error.message);
+
+    // 4. 清理本地存储
+    localStorage.removeItem("nick");
+
+    // 5. 强制跳回登录页
+    showPage("loginPage");
+    showNotify("success", "已安全退出登录");
+    console.log("退出登录完成");
+
+  } catch (e) {
+    console.error("退出登录失败", e);
+    showNotify("error", `退出失败：${e.message}`);
+    // 兜底：强制清理和跳转
+    clearAllResources();
+    localStorage.removeItem("nick");
+    showPage("loginPage");
   }
 }
 
@@ -552,7 +646,6 @@ async function saveNickname() {
     $("#userTag").innerText = `用户：${newNick}`;
     $("#nickInput").value = "";
     showNotify("success", "昵称保存成功");
-    // 更新在线状态里的昵称
     await markOnline();
   } catch (e) {
     showNotify("error", "昵称保存失败");
@@ -577,37 +670,6 @@ async function updatePassword() {
   }
 }
 
-async function showMyLoginLogs() {
-  try {
-    const { data } = await sb
-      .from("login_logs")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .order("time", { ascending: false })
-      .limit(10)
-      .catch(() => ({ data: [] }));
-
-    let logText = "=== 我的登录日志 ===\n\n";
-    data.forEach((log, index) => {
-      logText += `${index + 1}. IP：${log.ip}\n   时间：${log.time}\n   设备：${log.device}\n\n`;
-    });
-    alert(logText);
-  } catch (e) {
-    showNotify("error", "登录日志加载失败");
-  }
-}
-
-async function userLogout() {
-  try {
-    // 退出前删除自己的在线状态
-    await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
-    await sb.auth.signOut();
-    showNotify("info", "已安全退出登录");
-  } catch (e) {
-    showNotify("error", "退出失败");
-  }
-}
-
 // ====================== 管理员功能 ======================
 async function loadAdminData() {
   if (!currentUser.isAdmin) {
@@ -616,11 +678,14 @@ async function loadAdminData() {
   }
 
   try {
+    showNotify("info", "正在加载管理数据...");
+    // 加载系统配置
     const { data: config } = await sb.from("system_config").select("*").single().catch(() => ({ data: { require_verify: false, sensitive_words: "", announcement: "" } }));
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
 
+    // 加载待审核用户
     const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending").catch(() => ({ data: [] }));
     let verifyHtml = "";
     verifyUsers.forEach(user => {
@@ -636,6 +701,7 @@ async function loadAdminData() {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
+    // 加载全部用户
     const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] }));
     let userHtml = "";
     allUsers.forEach(user => {
@@ -656,12 +722,14 @@ async function loadAdminData() {
     });
     $("#allUserList").innerHTML = userHtml;
 
+    // 核心修复：全量登录日志加载（去掉有问题的外键关联）
     const { data: allLogs } = await sb
       .from("login_logs")
-      .select("*, users!login_logs_user_id_fkey(email, nick)")
+      .select("*, users!inner(email, nick)")
       .order("time", { ascending: false })
       .limit(20)
       .catch(() => ({ data: [] }));
+
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
@@ -671,8 +739,11 @@ async function loadAdminData() {
       `;
     });
     $("#allLoginLogList").innerHTML = logHtml || "暂无登录日志";
+
+    showNotify("success", "管理数据加载完成");
   } catch (e) {
-    showNotify("error", "管理数据加载失败");
+    console.error("管理数据加载失败", e);
+    showNotify("error", `管理数据加载失败：${e.message}`);
   }
 }
 
@@ -770,6 +841,7 @@ async function deleteMsg(msgId) {
   try {
     await sb.from("messages").delete().eq("id", msgId);
     showNotify("success", "消息已删除");
+    await loadInitialMessages();
   } catch (e) {
     showNotify("error", "删除失败");
   }
@@ -855,13 +927,11 @@ function bindAllEvents() {
   $("#clearAllMsgBtn").addEventListener("click", clearAllMessages);
 }
 
-// 页面关闭/刷新时清理在线状态
+// 页面关闭/刷新时清理
 window.addEventListener("beforeunload", async () => {
   try {
-    if (forceCloseLoaderTimer) clearTimeout(forceCloseLoaderTimer);
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (currentUser) {
-      // 同步删除在线状态，确保离线后立即清理
+      // 同步删除在线状态
       await fetch(`${SUPABASE_URL}/rest/v1/online_users?user_id=eq.${currentUser.id}`, {
         method: "DELETE",
         headers: {
@@ -872,15 +942,13 @@ window.addEventListener("beforeunload", async () => {
         }
       }).catch(() => {});
     }
-    if (msgChannel) sb.removeChannel(msgChannel);
-    if (onlineChannel) sb.removeChannel(onlineChannel);
-    if (configChannel) sb.removeChannel(configChannel);
+    clearAllResources();
   } catch (e) {
-    console.error("清理异常", e);
+    console.error("页面关闭清理异常", e);
   }
 });
 
-// 页面从后台切回时，重连实时通道，刷新状态
+// 页面切回前台时刷新状态
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && currentUser) {
     console.log("页面切回前台，刷新状态");
@@ -890,5 +958,5 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
-// 系统主题变化自动跟随
+// 系统主题变化跟随
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", initTheme);
