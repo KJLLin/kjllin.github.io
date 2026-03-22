@@ -30,6 +30,8 @@ let msgChannel = null;
 let onlineChannel = null;
 let configChannel = null;
 let touchStartData = {};
+// 全局超时：强制关闭启动页面
+let forceCloseLoaderTimer = null;
 
 // ====================== 工具函数 ======================
 function showNotify(type, text) {
@@ -42,6 +44,24 @@ function showNotify(type, text) {
     notifyTimer = setTimeout(() => notifyEl.classList.add("hidden"), 5000);
   } catch (e) {
     console.error("通知异常", e);
+  }
+}
+
+// 核心修复：强制关闭启动页面（兜底）
+function closeLoader() {
+  try {
+    if (forceCloseLoaderTimer) clearTimeout(forceCloseLoaderTimer);
+    const loader = $("#loadingPage");
+    loader.style.opacity = 0;
+    setTimeout(() => {
+      loader.classList.add("hidden");
+      loader.style.display = "none"; // 兜底：直接隐藏，避免CSS优先级问题
+    }, 300);
+  } catch (e) {
+    console.error("关闭启动页异常", e);
+    // 极端兜底：直接移除启动页
+    const loader = $("#loadingPage");
+    if (loader) loader.remove();
   }
 }
 
@@ -214,7 +234,7 @@ async function doRegister() {
       return;
     }
 
-    const { data: config } = await sb.from("system_config").select("require_verify").single();
+    const { data: config } = await sb.from("system_config").select("require_verify").single().catch(() => ({ data: { require_verify: false } }));
     const needVerify = config?.require_verify || false;
 
     const { error } = await sb.auth.signUp({
@@ -240,6 +260,7 @@ async function doRegister() {
   }
 }
 
+// 核心修复：handleAuthChange不再阻塞，启动页强制关闭
 async function handleAuthChange(event, session) {
   try {
     currentUser = session?.user || null;
@@ -249,62 +270,74 @@ async function handleAuthChange(event, session) {
     if (configChannel) sb.removeChannel(configChannel);
 
     if (currentUser) {
-      const isSuccess = await initAfterLogin();
-      if (isSuccess) {
-        showPage("chatPage");
-        showNotify("success", "登录成功，欢迎使用在线聊天系统");
-      }
+      // 核心修复：initAfterLogin异步执行，不阻塞启动页关闭
+      initAfterLogin().catch(e => console.error("初始化聊天失败", e));
+      showPage("chatPage");
+      showNotify("success", "登录成功，欢迎使用在线聊天系统");
     } else {
       showPage("loginPage");
     }
   } catch (e) {
     console.error("登录状态处理异常", e);
     showPage("loginPage");
-  } finally {
-    setTimeout(() => {
-      $("#loadingPage").style.opacity = 0;
-      setTimeout(() => $("#loadingPage").classList.add("hidden"), 300);
-    }, 300);
   }
 }
 
-// ====================== 登录后初始化 ======================
+// ====================== 登录后初始化（全量异步容错） ======================
 async function initAfterLogin() {
   try {
-    let { data: userInfo, error: userError } = await sb
-      .from("users")
-      .select("*")
-      .eq("id", currentUser.id)
-      .single();
-
-    if (userError || !userInfo) {
-      console.warn("用户记录不存在，自动补插入");
-      const { data: newUser, error: insertError } = await sb
+    // 1. 查询用户信息（容错：查不到自动补插入）
+    let userInfo = null;
+    try {
+      const { data, error } = await sb
         .from("users")
-        .insert([{
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+      if (!error && data) userInfo = data;
+    } catch (e) {
+      console.warn("查询用户信息失败，尝试补插入", e);
+    }
+
+    if (!userInfo) {
+      try {
+        const { data: newUser, error: insertError } = await sb
+          .from("users")
+          .insert([{
+            id: currentUser.id,
+            email: currentUser.email,
+            nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
+            status: "active"
+          }])
+          .select()
+          .single();
+        if (!insertError && newUser) userInfo = newUser;
+      } catch (e) {
+        console.error("补插入用户信息失败", e);
+        // 极端兜底：用auth里的信息临时初始化
+        userInfo = {
           id: currentUser.id,
           email: currentUser.email,
           nick: currentUser.user_metadata?.nick || "用户" + currentUser.id.substring(0, 4),
-          status: "active"
-        }])
-        .select()
-        .single();
-
-      if (insertError) throw new Error("用户信息初始化失败：" + insertError.message);
-      userInfo = newUser;
+          status: "active",
+          is_admin: false
+        };
+      }
     }
 
+    // 2. 账号状态校验（容错）
     if (userInfo.status === "pending") {
       showNotify("error", "账号待管理员审核，暂无法登录");
-      await sb.auth.signOut();
-      return false;
+      await sb.auth.signOut().catch(() => {});
+      return;
     }
     if (userInfo.status === "ban") {
       showNotify("error", "账号已被封禁，无法登录");
-      await sb.auth.signOut();
-      return false;
+      await sb.auth.signOut().catch(() => {});
+      return;
     }
 
+    // 3. 初始化用户信息
     userNick = localStorage.getItem("nick") || userInfo.nick;
     $("#userTag").innerText = `用户：${userNick}`;
 
@@ -316,26 +349,22 @@ async function initAfterLogin() {
       currentUser.isAdmin = false;
     }
 
-    await recordLoginLog();
-    // 先加载一次历史消息，再开启实时监听
-    await loadInitialMessages();
-    loadMessages();
-    // 先标记在线，再开启实时监听
-    await markOnline();
-    monitorOnline();
-    loadSystemConfig();
-    loadAnnouncement();
+    // 4. 初始化功能（全量异步容错，失败不影响其他功能）
+    try { await recordLoginLog(); } catch (e) { console.error("记录登录日志失败", e); }
+    try { await loadInitialMessages(); } catch (e) { console.error("加载历史消息失败", e); }
+    try { loadMessages(); } catch (e) { console.error("开启消息监听失败", e); }
+    try { await markOnline(); } catch (e) { console.error("标记在线失败", e); }
+    try { monitorOnline(); } catch (e) { console.error("开启在线监听失败", e); }
+    try { loadSystemConfig(); } catch (e) { console.error("开启配置监听失败", e); }
+    try { await loadAnnouncement(); } catch (e) { console.error("加载公告失败", e); }
 
-    return true;
   } catch (e) {
-    console.error("初始化失败", e);
-    showNotify("error", `初始化失败：${e.message}`);
-    await sb.auth.signOut();
-    return false;
+    console.error("初始化聊天异常", e);
+    showNotify("error", "部分功能加载失败，请刷新重试");
   }
 }
 
-// ====================== 核心修复：先加载历史消息 ======================
+// ====================== 聊天核心功能 ======================
 async function loadInitialMessages() {
   try {
     const { data: msgList } = await sb
@@ -343,14 +372,12 @@ async function loadInitialMessages() {
       .select("*")
       .order("id", { ascending: true })
       .limit(200);
-
     renderMessages(msgList || []);
   } catch (e) {
     console.error("历史消息加载异常", e);
   }
 }
 
-// 渲染消息（独立函数，避免重复代码）
 function renderMessages(msgList) {
   try {
     const msgBox = $("#msgBox");
@@ -376,7 +403,6 @@ function renderMessages(msgList) {
   }
 }
 
-// ====================== 聊天核心功能 ======================
 function loadMessages() {
   try {
     msgChannel = sb.channel("message_channel")
@@ -387,7 +413,6 @@ function loadMessages() {
             .select("*")
             .order("id", { ascending: true })
             .limit(200);
-
           renderMessages(msgList || []);
         } catch (e) {
           console.error("消息加载异常", e);
@@ -413,13 +438,13 @@ async function sendMessage() {
   $("#sendBtn").innerText = "发送中...";
 
   try {
-    const { data: userInfo } = await sb.from("users").select("is_mute").eq("id", currentUser.id).single();
+    const { data: userInfo } = await sb.from("users").select("is_mute").eq("id", currentUser.id).single().catch(() => ({ data: { is_mute: false } }));
     if (userInfo.is_mute) {
       showNotify("error", "你已被管理员禁言，无法发送消息");
       return;
     }
 
-    const { data: config } = await sb.from("system_config").select("sensitive_words").single();
+    const { data: config } = await sb.from("system_config").select("sensitive_words").single().catch(() => ({ data: { sensitive_words: "" } }));
     let content = text;
     const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
     badWords.forEach(word => {
@@ -441,7 +466,7 @@ async function sendMessage() {
   }
 }
 
-// ====================== 核心修复：先标记在线 ======================
+// ====================== 在线状态功能 ======================
 async function markOnline() {
   try {
     console.log("正在标记在线状态...");
@@ -455,7 +480,6 @@ async function markOnline() {
       console.error("标记在线失败", error);
     } else {
       console.log("在线状态标记成功");
-      // 标记成功后立即刷新一次在线人数
       await refreshOnlineCount();
     }
   } catch (e) {
@@ -463,10 +487,9 @@ async function markOnline() {
   }
 }
 
-// 刷新在线人数（独立函数）
 async function refreshOnlineCount() {
   try {
-    const { data } = await sb.from("online_users").select("*");
+    const { data } = await sb.from("online_users").select("*").catch(() => ({ data: [] }));
     $("#onlineNum").innerText = data?.length || 0;
     console.log("在线人数刷新为", data?.length || 0);
   } catch (e) {
@@ -486,7 +509,6 @@ function monitorOnline() {
       })
       .subscribe();
 
-    // 心跳更新
     setInterval(() => {
       if (currentUser) {
         sb.from("online_users").update({ last_active: new Date().toISOString() }).eq("user_id", currentUser.id).catch(() => {});
@@ -501,7 +523,7 @@ function loadSystemConfig() {
   try {
     configChannel = sb.channel("config_channel")
       .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, () => {
-        loadAnnouncement();
+        loadAnnouncement().catch(() => {});
       })
       .subscribe();
   } catch (e) {
@@ -511,7 +533,7 @@ function loadSystemConfig() {
 
 async function loadAnnouncement() {
   try {
-    const { data } = await sb.from("system_config").select("announcement").single();
+    const { data } = await sb.from("system_config").select("announcement").single().catch(() => ({ data: { announcement: "" } }));
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
@@ -588,7 +610,8 @@ async function showMyLoginLogs() {
       .select("*")
       .eq("user_id", currentUser.id)
       .order("time", { ascending: false })
-      .limit(10);
+      .limit(10)
+      .catch(() => ({ data: [] }));
 
     let logText = "=== 我的登录日志 ===\n\n";
     data.forEach((log, index) => {
@@ -602,7 +625,6 @@ async function showMyLoginLogs() {
 
 async function userLogout() {
   try {
-    // 先删除在线状态
     await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
     await sb.auth.signOut();
     showNotify("info", "已安全退出登录");
@@ -619,12 +641,12 @@ async function loadAdminData() {
   }
 
   try {
-    const { data: config } = await sb.from("system_config").select("*").single();
+    const { data: config } = await sb.from("system_config").select("*").single().catch(() => ({ data: { require_verify: false, sensitive_words: "", announcement: "" } }));
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
 
-    const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending");
+    const { data: verifyUsers } = await sb.from("users").select("*").eq("status", "pending").catch(() => ({ data: [] }));
     let verifyHtml = "";
     verifyUsers.forEach(user => {
       verifyHtml += `
@@ -639,7 +661,7 @@ async function loadAdminData() {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-    const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false });
+    const { data: allUsers } = await sb.from("users").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] }));
     let userHtml = "";
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
@@ -663,12 +685,13 @@ async function loadAdminData() {
       .from("login_logs")
       .select("*, users!login_logs_user_id_fkey(email, nick)")
       .order("time", { ascending: false })
-      .limit(20);
+      .limit(20)
+      .catch(() => ({ data: [] }));
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
         <div class="list-item">
-          <span>${log.users.email}（${log.users.nick}）| IP：${log.ip} | ${log.time}</span>
+          <span>${log.users?.email || '未知用户'}（${log.users?.nick || '未知'}）| IP：${log.ip} | ${log.time}</span>
         </div>
       `;
     });
@@ -723,12 +746,12 @@ async function resetUserPwd(email) {
 async function saveSystemConfig() {
   try {
     const requireVerify = $("#requireVerifyToggle").checked;
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
 
     if (data) {
-      await sb.from("system_config").update({ require_verify, updated_at: new Date() }).eq("id", data.id);
+      await sb.from("system_config").update({ require_verify: requireVerify, updated_at: new Date() }).eq("id", data.id);
     } else {
-      await sb.from("system_config").insert([{ require_verify }]);
+      await sb.from("system_config").insert([{ require_verify: requireVerify }]);
     }
     showNotify("success", "系统配置保存成功");
   } catch (e) {
@@ -739,7 +762,7 @@ async function saveSystemConfig() {
 async function saveSensitiveWords() {
   try {
     const words = $("#sensitiveWordsInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
 
     if (data) {
       await sb.from("system_config").update({ sensitive_words: words, updated_at: new Date() }).eq("id", data.id);
@@ -755,7 +778,7 @@ async function saveSensitiveWords() {
 async function saveAnnouncement() {
   try {
     const content = $("#announceInput").value.trim();
-    const { data } = await sb.from("system_config").select("id").single();
+    const { data } = await sb.from("system_config").select("id").single().catch(() => ({ data: null }));
 
     if (data) {
       await sb.from("system_config").update({ announcement: content, updated_at: new Date() }).eq("id", data.id);
@@ -788,9 +811,16 @@ async function clearAllMessages() {
   }
 }
 
-// ====================== 页面初始化 ======================
+// ====================== 页面初始化（核心修复：全局超时强制关闭启动页） ======================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    // 核心修复：全局超时，最多3.5秒强制关闭启动页
+    forceCloseLoaderTimer = setTimeout(() => {
+      console.warn("启动超时，强制关闭启动页");
+      closeLoader();
+      showPage("loginPage");
+    }, 3500);
+
     initTheme();
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
@@ -804,8 +834,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     console.error("初始化异常", e);
     showNotify("error", "系统初始化失败，请刷新重试");
-    $("#loadingPage").style.opacity = 0;
-    setTimeout(() => $("#loadingPage").classList.add("hidden"), 300);
+    closeLoader();
+    showPage("loginPage");
   }
 });
 
@@ -835,6 +865,7 @@ function bindAllEvents() {
 
 window.addEventListener("beforeunload", async () => {
   try {
+    if (forceCloseLoaderTimer) clearTimeout(forceCloseLoaderTimer);
     if (currentUser) {
       await sb.from("online_users").delete().eq("user_id", currentUser.id).catch(() => {});
     }
