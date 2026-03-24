@@ -123,7 +123,7 @@ const AppState = {
   userNick: SafeStorage.get("nick"),
   sessionToken: SafeStorage.get("chat_current_session_token"),
   isSessionInitialized: false,
-  isLoadingMessages: false, // 防重复加载锁
+  isLoadingMessages: false,
   locks: {
     isLoggingIn: false,
     isLoggingOut: false,
@@ -174,6 +174,8 @@ const clearAllResources = () => {
     $("#msgInput").value = "";
     $("#loginEmail").value = "";
     $("#loginPwd").value = "";
+    // 核心修复：隐藏管理员按钮
+    $("#adminBtn").classList.add("hidden");
     console.log("[资源清理] 完成");
   } catch (e) {
     console.warn("[资源清理] 异常", e);
@@ -438,7 +440,7 @@ const doRegister = async () => {
   }
 };
 
-// ====================== 登录状态变更处理 ======================
+// ====================== 核心修复：登录状态变更处理（重点修复管理员入口显示） ======================
 const handleAuthChange = async (event, session) => {
   if (AppState.locks.isAuthHandling) {
     console.log("[登录状态] 正在处理中，跳过重复触发");
@@ -483,10 +485,18 @@ const handleAuthChange = async (event, session) => {
       throw new Error("账号已被封禁，无法登录");
     }
 
+    // 核心修复：初始化用户信息，确保is_admin正确
     AppState.currentUser = session.user;
-    AppState.currentUser.isAdmin = userInfo.is_admin || false;
+    AppState.currentUser.isAdmin = !!userInfo.is_admin; // 强制转为布尔值
     AppState.userNick = SafeStorage.get("nick") || userInfo.nick || "用户";
     SafeStorage.set("nick", AppState.userNick);
+
+    // 核心修复：打印管理员状态，方便调试
+    console.log("[登录状态] 用户信息：", {
+      email: session.user.email,
+      isAdmin: AppState.currentUser.isAdmin,
+      userInfo: userInfo
+    });
 
     SafeStorage.remove("chat_current_session_token");
     const newSessionToken = generateSessionToken();
@@ -505,11 +515,23 @@ const handleAuthChange = async (event, session) => {
 
     AppState.isSessionInitialized = true;
 
+    // 核心修复：先显示页面，再显示管理员按钮
     showPage("chatPage");
     showNotify("success", "登录成功，欢迎使用");
     closeLoader();
     $("#userTag").innerText = `用户：${AppState.userNick}`;
-    if (AppState.currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
+
+    // 核心修复：强制显示管理员按钮
+    if (AppState.currentUser.isAdmin) {
+      console.log("[登录状态] 检测到管理员，显示管理员入口");
+      $("#adminBtn").classList.remove("hidden");
+      // 强制重绘，确保按钮显示
+      $("#adminBtn").style.display = "inline-block";
+    } else {
+      console.log("[登录状态] 非管理员，隐藏管理员入口");
+      $("#adminBtn").classList.add("hidden");
+      $("#adminBtn").style.display = "none";
+    }
 
     setTimeout(async () => {
       try {
@@ -624,10 +646,9 @@ const userLogout = async () => {
   }
 };
 
-// ====================== 聊天核心功能（修复重复加载 + 406错误） ======================
+// ====================== 聊天核心功能 ======================
 const loadInitialMessages = async () => {
   try {
-    // 防重复加载锁
     if (AppState.isLoadingMessages) {
       console.warn("[消息] 正在加载中，跳过重复请求");
       return;
@@ -648,7 +669,6 @@ const loadInitialMessages = async () => {
     console.warn("[消息加载] 失败", e);
     showNotify("error", e.message);
   } finally {
-    // 释放锁
     AppState.isLoadingMessages = false;
   }
 };
@@ -684,7 +704,6 @@ const initMessageRealtime = () => {
     if (AppState.channels.msg) AppState.sb.removeChannel(AppState.channels.msg);
     AppState.channels.msg = AppState.sb.channel("message_channel")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
-        // 防抖：避免短时间内多次触发
         if (AppState.timers.msgDebounce) clearTimeout(AppState.timers.msgDebounce);
         AppState.timers.msgDebounce = setTimeout(() => {
           loadInitialMessages();
@@ -721,11 +740,10 @@ const sendMessage = async () => {
 
     let content = text;
     try {
-      // 修复406错误：捕获system_config查询失败，降级处理
       const { data: config } = await AppState.sb.from("system_config")
         .select("sensitive_words")
         .single()
-        .catch(() => ({ data: { sensitive_words: "" } })); // 失败时返回空敏感词
+        .catch(() => ({ data: { sensitive_words: "" } }));
       const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
       badWords.forEach(word => {
         content = content.replaceAll(word, "***");
@@ -819,7 +837,7 @@ const loadAnnouncement = async () => {
     const { data } = await AppState.sb.from("system_config")
       .select("announcement")
       .single()
-      .catch(() => ({ data: { announcement: "" } })); // 失败时返回空公告
+      .catch(() => ({ data: { announcement: "" } }));
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
