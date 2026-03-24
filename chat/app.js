@@ -123,6 +123,7 @@ const AppState = {
   userNick: SafeStorage.get("nick"),
   sessionToken: SafeStorage.get("chat_current_session_token"),
   isSessionInitialized: false,
+  isLoadingMessages: false, // 防重复加载锁
   locks: {
     isLoggingIn: false,
     isLoggingOut: false,
@@ -164,6 +165,7 @@ const clearAllResources = () => {
     AppState.userNick = "";
     AppState.sessionToken = "";
     AppState.isSessionInitialized = false;
+    AppState.isLoadingMessages = false;
     AppState.channels = {};
     AppState.timers = {};
     SafeStorage.remove("chat_current_session_token");
@@ -622,9 +624,16 @@ const userLogout = async () => {
   }
 };
 
-// ====================== 聊天核心功能 ======================
+// ====================== 聊天核心功能（修复重复加载 + 406错误） ======================
 const loadInitialMessages = async () => {
   try {
+    // 防重复加载锁
+    if (AppState.isLoadingMessages) {
+      console.warn("[消息] 正在加载中，跳过重复请求");
+      return;
+    }
+    AppState.isLoadingMessages = true;
+
     console.log("[消息] 开始加载历史消息");
     const { data: msgList, error } = await withTimeout(
       AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200),
@@ -638,6 +647,9 @@ const loadInitialMessages = async () => {
   } catch (e) {
     console.warn("[消息加载] 失败", e);
     showNotify("error", e.message);
+  } finally {
+    // 释放锁
+    AppState.isLoadingMessages = false;
   }
 };
 
@@ -672,7 +684,11 @@ const initMessageRealtime = () => {
     if (AppState.channels.msg) AppState.sb.removeChannel(AppState.channels.msg);
     AppState.channels.msg = AppState.sb.channel("message_channel")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
-        await loadInitialMessages();
+        // 防抖：避免短时间内多次触发
+        if (AppState.timers.msgDebounce) clearTimeout(AppState.timers.msgDebounce);
+        AppState.timers.msgDebounce = setTimeout(() => {
+          loadInitialMessages();
+        }, 300);
       })
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR") {
@@ -705,13 +721,17 @@ const sendMessage = async () => {
 
     let content = text;
     try {
-      const { data: config } = await AppState.sb.from("system_config").select("sensitive_words").single();
+      // 修复406错误：捕获system_config查询失败，降级处理
+      const { data: config } = await AppState.sb.from("system_config")
+        .select("sensitive_words")
+        .single()
+        .catch(() => ({ data: { sensitive_words: "" } })); // 失败时返回空敏感词
       const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
       badWords.forEach(word => {
         content = content.replaceAll(word, "***");
       });
     } catch (e) {
-      console.warn("[敏感词过滤] 失败", e);
+      console.warn("[敏感词过滤] 失败，跳过过滤", e);
     }
 
     const { error } = await AppState.sb.from("messages").insert([{
@@ -736,7 +756,7 @@ const sendMessage = async () => {
   }
 };
 
-// ====================== 在线人数功能（彻底修复catch报错） ======================
+// ====================== 在线人数功能 ======================
 const markOnline = async () => {
   try {
     if (!AppState.currentUser) return;
@@ -796,7 +816,10 @@ const initConfigRealtime = () => {
 
 const loadAnnouncement = async () => {
   try {
-    const { data } = await AppState.sb.from("system_config").select("announcement").single();
+    const { data } = await AppState.sb.from("system_config")
+      .select("announcement")
+      .single()
+      .catch(() => ({ data: { announcement: "" } })); // 失败时返回空公告
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
@@ -809,7 +832,7 @@ const loadAnnouncement = async () => {
   }
 };
 
-// ====================== 登录日志功能（彻底修复catch报错） ======================
+// ====================== 登录日志功能 ======================
 const recordLoginLog = async () => {
   try {
     if (!AppState.currentUser) return;
