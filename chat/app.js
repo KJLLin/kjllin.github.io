@@ -263,12 +263,18 @@ const toggleTheme = () => {
   }
 };
 
-// ====================== 核心修复：简化的单设备登录逻辑 ======================
+// ====================== 单设备登录核心逻辑 ======================
 const handleSessionInvalid = async (reason = "账号在其他设备登录，已为你安全下线") => {
   try {
     showNotify("error", reason);
     AppState.isSessionInitialized = false;
-    if (AppState.sb) await AppState.sb.auth.signOut().catch(() => {});
+    if (AppState.sb) {
+      try {
+        await AppState.sb.auth.signOut();
+      } catch (e) {
+        console.warn("[退出登录] 异常", e);
+      }
+    }
     clearAllResources();
     SafeStorage.clear();
     showPage("loginPage");
@@ -294,7 +300,6 @@ const initSessionCheckListener = () => {
         { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.currentUser.id}` },
         async (payload) => {
           console.log("[会话监听] 收到用户记录更新事件", payload);
-          // 核心修复：只有当数据库中的Token和本地不一致时，才触发下线
           const newToken = payload.new?.current_session_token;
           if (newToken && newToken !== AppState.sessionToken) {
             console.warn("[会话监听] 检测到其他设备登录，触发下线");
@@ -310,6 +315,22 @@ const initSessionCheckListener = () => {
           setTimeout(initSessionCheckListener, 10000);
         }
       });
+
+    AppState.timers.sessionCheck = setInterval(async () => {
+      if (AppState.currentUser && AppState.isSessionInitialized) {
+        try {
+          const { data } = await withTimeout(
+            AppState.sb.from("users").select("current_session_token").eq("id", AppState.currentUser.id).single(),
+            APP_CONFIG.TIMEOUT.API,
+            "会话校验超时"
+          );
+          const isValid = data?.current_session_token === AppState.sessionToken;
+          if (!isValid) await handleSessionInvalid();
+        } catch (e) {
+          console.warn("[定时会话校验] 失败", e);
+        }
+      }
+    }, APP_CONFIG.INTERVAL.SESSION_CHECK);
 
   } catch (e) {
     console.warn("[会话监听] 初始化失败", e);
@@ -415,7 +436,7 @@ const doRegister = async () => {
   }
 };
 
-// ====================== 核心修复：登录状态变更处理 ======================
+// ====================== 登录状态变更处理 ======================
 const handleAuthChange = async (event, session) => {
   if (AppState.locks.isAuthHandling) {
     console.log("[登录状态] 正在处理中，跳过重复触发");
@@ -445,7 +466,6 @@ const handleAuthChange = async (event, session) => {
       return;
     }
 
-    // 核心：获取用户信息
     console.log("[登录状态] 开始获取用户信息");
     const { data: userInfo, error: userError } = await withTimeout(
       AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
@@ -461,53 +481,57 @@ const handleAuthChange = async (event, session) => {
       throw new Error("账号已被封禁，无法登录");
     }
 
-    // 初始化全局状态
     AppState.currentUser = session.user;
     AppState.currentUser.isAdmin = userInfo.is_admin || false;
     AppState.userNick = SafeStorage.get("nick") || userInfo.nick || "用户";
     SafeStorage.set("nick", AppState.userNick);
 
-    // 生成并保存新会话Token
     SafeStorage.remove("chat_current_session_token");
     const newSessionToken = generateSessionToken();
     AppState.sessionToken = newSessionToken;
     SafeStorage.set("chat_current_session_token", newSessionToken);
 
-    // 更新会话Token到数据库
     console.log("[登录状态] 更新会话Token到数据库");
-    await AppState.sb.from("users").update({
-      current_session_token: newSessionToken,
-      last_login_time: new Date().toISOString()
-    }).eq("id", AppState.currentUser.id);
+    await withTimeout(
+      AppState.sb.from("users").update({
+        current_session_token: newSessionToken,
+        last_login_time: new Date().toISOString()
+      }).eq("id", AppState.currentUser.id),
+      APP_CONFIG.TIMEOUT.API,
+      "更新会话Token超时"
+    );
 
-    // 标记会话已初始化
     AppState.isSessionInitialized = true;
 
-    // 立即跳转到聊天页
     showPage("chatPage");
     showNotify("success", "登录成功，欢迎使用");
     closeLoader();
     $("#userTag").innerText = `用户：${AppState.userNick}`;
     if (AppState.currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
 
-    // 异步初始化所有功能
     setTimeout(async () => {
       try {
         console.log("[登录后] 开始初始化功能");
         
-        // 异步更新IP/设备信息
-        withTimeout(
-          fetch("https://api.ipify.org?format=json").then(res => res.json()),
-          5000,
-          "IP查询超时"
-        ).then(ipData => {
-          AppState.sb.from("users").update({
-            last_login_ip: ipData.ip || "未知IP",
-            last_login_device: navigator.userAgent.substring(0, 100)
-          }).eq("id", AppState.currentUser.id).catch(() => {});
-        }).catch(() => {});
+        try {
+          const ipRes = await withTimeout(
+            fetch("https://api.ipify.org?format=json"),
+            5000,
+            "IP查询超时"
+          );
+          const ipData = await ipRes.json();
+          await withTimeout(
+            AppState.sb.from("users").update({
+              last_login_ip: ipData.ip || "未知IP",
+              last_login_device: navigator.userAgent.substring(0, 100)
+            }).eq("id", AppState.currentUser.id),
+            APP_CONFIG.TIMEOUT.API,
+            "更新用户信息超时"
+          );
+        } catch (e) {
+          console.warn("[登录后] 更新IP/设备信息失败", e);
+        }
 
-        // 初始化所有功能
         initSessionCheckListener();
         await loadInitialMessages();
         initMessageRealtime();
@@ -530,7 +554,11 @@ const handleAuthChange = async (event, session) => {
     console.error("[登录状态处理] 异常", e);
     showNotify("error", `登录异常：${e.message}`);
     clearAllResources();
-    await AppState.sb.auth.signOut().catch(() => {});
+    try {
+      await AppState.sb.auth.signOut();
+    } catch (e) {
+      console.warn("[退出登录] 异常", e);
+    }
     showPage("loginPage");
     closeLoader();
   } finally {
@@ -555,15 +583,21 @@ const userLogout = async () => {
     console.log("[退出登录] 开始处理");
 
     if (AppState.currentUser) {
-      await AppState.sb.from("users")
-        .update({ current_session_token: null })
-        .eq("id", AppState.currentUser.id)
-        .catch(() => {});
+      try {
+        await AppState.sb.from("users")
+          .update({ current_session_token: null })
+          .eq("id", AppState.currentUser.id);
+      } catch (e) {
+        console.warn("[退出登录] 清空会话Token失败", e);
+      }
       
-      await AppState.sb.from("online_users")
-        .delete()
-        .eq("user_id", AppState.currentUser.id)
-        .catch(() => {});
+      try {
+        await AppState.sb.from("online_users")
+          .delete()
+          .eq("user_id", AppState.currentUser.id);
+      } catch (e) {
+        console.warn("[退出登录] 清理在线状态失败", e);
+      }
     }
 
     await AppState.sb.auth.signOut();
@@ -671,12 +705,14 @@ const sendMessage = async () => {
 
     let content = text;
     try {
-      const { data: config } = await AppState.sb.from("system_config").select("sensitive_words").single().catch(() => ({ data: {} }));
+      const { data: config } = await AppState.sb.from("system_config").select("sensitive_words").single();
       const badWords = (config?.sensitive_words || "").split(",").filter(w => w.trim());
       badWords.forEach(word => {
         content = content.replaceAll(word, "***");
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn("[敏感词过滤] 失败", e);
+    }
 
     const { error } = await AppState.sb.from("messages").insert([{
       user_id: AppState.currentUser.id,
@@ -700,14 +736,15 @@ const sendMessage = async () => {
   }
 };
 
-// ====================== 在线人数功能 ======================
+// ====================== 在线人数功能（彻底修复catch报错） ======================
 const markOnline = async () => {
   try {
+    if (!AppState.currentUser) return;
     await AppState.sb.from("online_users").upsert({
       user_id: AppState.currentUser.id,
       nick: AppState.userNick,
       last_active: new Date().toISOString()
-    }, { onConflict: "user_id" }).catch(() => {});
+    }, { onConflict: "user_id" });
   } catch (e) {
     console.warn("[在线状态] 标记失败", e);
   }
@@ -715,7 +752,7 @@ const markOnline = async () => {
 
 const refreshOnlineCount = async () => {
   try {
-    const { data } = await AppState.sb.from("online_users").select("*").catch(() => ({ data: [] }));
+    const { data } = await AppState.sb.from("online_users").select("*");
     $("#onlineNum").innerText = data?.length || 0;
   } catch (e) {
     console.warn("[在线人数] 刷新失败", e);
@@ -759,7 +796,7 @@ const initConfigRealtime = () => {
 
 const loadAnnouncement = async () => {
   try {
-    const { data } = await AppState.sb.from("system_config").select("announcement").single().catch(() => ({ data: {} }));
+    const { data } = await AppState.sb.from("system_config").select("announcement").single();
     const announceBar = $("#announceBar");
     if (data?.announcement) {
       announceBar.innerText = data.announcement;
@@ -772,21 +809,28 @@ const loadAnnouncement = async () => {
   }
 };
 
-// ====================== 登录日志功能 ======================
+// ====================== 登录日志功能（彻底修复catch报错） ======================
 const recordLoginLog = async () => {
   try {
-    const ipData = await withTimeout(
-      fetch("https://api.ipify.org?format=json").then(res => res.json()),
-      3000,
-      "IP查询超时"
-    ).catch(() => ({ ip: "未知IP" }));
+    if (!AppState.currentUser) return;
+    let ipData = { ip: "未知IP" };
+    try {
+      const res = await withTimeout(
+        fetch("https://api.ipify.org?format=json"),
+        3000,
+        "IP查询超时"
+      );
+      ipData = await res.json();
+    } catch (e) {
+      console.warn("[IP查询] 失败", e);
+    }
     
     await AppState.sb.from("login_logs").insert([{
       user_id: AppState.currentUser.id,
       ip: ipData.ip,
       device: navigator.userAgent.substring(0, 80),
       time: new Date().toLocaleString()
-    }]).catch(() => {});
+    }]);
   } catch (e) {
     console.warn("[登录日志] 记录失败", e);
   }
@@ -879,13 +923,13 @@ const loadAdminData = async () => {
   try {
     showNotify("info", "正在加载管理数据...");
     
-    const { data: config, error: configError } = await AppState.sb.from("system_config").select("*").single().catch(() => ({ data: {} }));
+    const { data: config, error: configError } = await AppState.sb.from("system_config").select("*").single();
     if (configError) throw new Error("加载系统配置失败：" + configError.message);
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
 
-    const { data: verifyUsers } = await AppState.sb.from("users").select("*").eq("status", "pending").catch(() => ({ data: [] }));
+    const { data: verifyUsers } = await AppState.sb.from("users").select("*").eq("status", "pending");
     let verifyHtml = "";
     verifyUsers.forEach(user => {
       verifyHtml += `
@@ -900,7 +944,7 @@ const loadAdminData = async () => {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-    const { data: allUsers } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] }));
+    const { data: allUsers } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false });
     let userHtml = "";
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
@@ -924,8 +968,7 @@ const loadAdminData = async () => {
 
     const { data: allLogs } = await AppState.sb.from("login_logs").select("*, users!inner(email, nick)")
       .order("time", { ascending: false })
-      .limit(20)
-      .catch(() => ({ data: [] }));
+      .limit(20);
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
@@ -1008,7 +1051,7 @@ const resetUserPwd = async (email) => {
 const saveSystemConfig = async () => {
   try {
     const requireVerify = $("#requireVerifyToggle").checked;
-    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await AppState.sb.from("system_config").select("id").single();
     if (data) {
       await AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
     } else {
@@ -1024,7 +1067,7 @@ const saveSystemConfig = async () => {
 const saveSensitiveWords = async () => {
   try {
     const words = $("#sensitiveWordsInput").value.trim();
-    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await AppState.sb.from("system_config").select("id").single();
     if (data) {
       await AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
     } else {
@@ -1040,7 +1083,7 @@ const saveSensitiveWords = async () => {
 const saveAnnouncement = async () => {
   try {
     const content = $("#announceInput").value.trim();
-    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
+    const { data } = await AppState.sb.from("system_config").select("id").single();
     if (data) {
       await AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id);
     } else {
@@ -1145,12 +1188,14 @@ const initApp = async () => {
 
     bindAllEvents();
 
-    // 初始化时先检查是否有有效会话
     const { data: { session } } = await AppState.sb.auth.getSession();
     if (session?.user) {
       console.log("[初始化] 检测到已有会话，尝试恢复");
-      // 不自动恢复，让用户重新登录，避免会话冲突
-      await AppState.sb.auth.signOut();
+      try {
+        await AppState.sb.auth.signOut();
+      } catch (e) {
+        console.warn("[初始化] 退出旧会话失败", e);
+      }
     }
 
     clearAllResources();
@@ -1176,7 +1221,11 @@ document.addEventListener("DOMContentLoaded", initApp);
 window.addEventListener("beforeunload", async () => {
   try {
     if (AppState.currentUser && AppState.sb) {
-      await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id).catch(() => {});
+      try {
+        await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id);
+      } catch (e) {
+        console.warn("[页面关闭] 清理在线状态失败", e);
+      }
     }
   } catch (e) {}
 });
