@@ -179,80 +179,6 @@ const clearAllResources = () => {
   }
 };
 
-// ====================== 核心修复：严格的登录态校验 ======================
-/**
- * 校验当前会话是否有效（核心拦截逻辑）
- * @returns {boolean} 会话是否有效
- */
-const validateSession = async () => {
-  try {
-    console.log("[会话校验] 开始校验会话有效性");
-    // 1. 校验Supabase客户端是否初始化
-    if (!AppState.sb) {
-      console.warn("[会话校验] Supabase客户端未初始化");
-      return false;
-    }
-
-    // 2. 主动获取最新会话，不依赖本地缓存
-    const { data: { session }, error } = await AppState.sb.auth.getSession();
-    if (error || !session) {
-      console.warn("[会话校验] 无有效会话", error);
-      return false;
-    }
-
-    // 3. 校验会话是否过期
-    const now = Math.floor(Date.now() / 1000);
-    if (session.expires_at && session.expires_at < now) {
-      console.warn("[会话校验] 会话已过期");
-      return false;
-    }
-
-    // 4. 校验用户是否存在
-    if (!session.user || !session.user.id) {
-      console.warn("[会话校验] 无有效用户信息");
-      return false;
-    }
-
-    // 5. 校验用户状态是否正常
-    const { data: userInfo } = await withTimeout(
-      AppState.sb.from("users").select("status, is_admin, nick").eq("id", session.user.id).single(),
-      APP_CONFIG.TIMEOUT.API,
-      "用户信息查询超时"
-    ).catch(() => ({ data: null }));
-
-    if (!userInfo) {
-      console.warn("[会话校验] 用户信息不存在");
-      return false;
-    }
-
-    if (userInfo.status === "ban") {
-      console.warn("[会话校验] 账号已被封禁");
-      showNotify("error", "账号已被封禁，无法登录");
-      return false;
-    }
-
-    // 6. 所有校验通过，更新全局状态
-    AppState.currentUser = session.user;
-    AppState.currentUser.isAdmin = userInfo.is_admin || false;
-    AppState.userNick = SafeStorage.get("nick") || userInfo.nick || "用户";
-    console.log("[会话校验] 会话有效，校验通过");
-    return true;
-
-  } catch (e) {
-    console.error("[会话校验] 异常", e);
-    return false;
-  }
-};
-
-/**
- * 强制跳转到登录页（未登录拦截）
- */
-const forceToLoginPage = () => {
-  clearAllResources();
-  showPage("loginPage");
-  closeLoader();
-};
-
 // ====================== 页面基础功能 ======================
 const closeLoader = () => {
   try {
@@ -269,26 +195,22 @@ const closeLoader = () => {
   }
 };
 
-/**
- * 核心修复：页面切换+登录态拦截
- */
 const showPage = (pageId) => {
   try {
-    // 登录态拦截：非登录页必须校验登录态
     const needLogin = ["chatPage", "settingPage", "adminPage"].includes(pageId);
     if (needLogin && !AppState.isSessionInitialized) {
       console.warn("[页面拦截] 未登录，禁止访问", pageId);
-      forceToLoginPage();
+      clearAllResources();
+      showPage("loginPage");
+      closeLoader();
       return;
     }
 
-    // 管理员页拦截
     if (pageId === "adminPage" && !AppState.currentUser?.isAdmin) {
       showNotify("error", "你没有管理员权限");
       return;
     }
 
-    // 执行页面切换
     $$(".page").forEach(page => {
       page.classList.remove("active");
       page.classList.add("hidden");
@@ -301,7 +223,7 @@ const showPage = (pageId) => {
 
   } catch (e) {
     console.error("[页面切换] 失败", e);
-    showNotify("error", "页面切换失败");
+    showNotify("error", "页面切换失败：" + e.message);
   }
 };
 
@@ -337,30 +259,11 @@ const toggleTheme = () => {
       $("#toggleThemeBtn").innerText = "切换浅色模式";
     }
   } catch (e) {
-    showNotify("error", "主题切换失败");
+    showNotify("error", "主题切换失败：" + e.message);
   }
 };
 
-// ====================== 单设备登录核心逻辑 ======================
-const checkSessionValid = async () => {
-  try {
-    if (!AppState.currentUser || !AppState.sessionToken || !AppState.isSessionInitialized) {
-      return false;
-    }
-
-    const { data } = await withTimeout(
-      AppState.sb.from("users").select("current_session_token").eq("id", AppState.currentUser.id).single(),
-      APP_CONFIG.TIMEOUT.API,
-      "会话校验超时"
-    );
-
-    return data?.current_session_token === AppState.sessionToken;
-  } catch (e) {
-    console.warn("[会话校验] 失败", e);
-    return false;
-  }
-};
-
+// ====================== 核心修复：简化的单设备登录逻辑 ======================
 const handleSessionInvalid = async (reason = "账号在其他设备登录，已为你安全下线") => {
   try {
     showNotify("error", reason);
@@ -389,24 +292,28 @@ const initSessionCheckListener = () => {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.currentUser.id}` },
-        async () => {
-          setTimeout(async () => {
-            const isValid = await checkSessionValid();
-            if (!isValid) await handleSessionInvalid();
-          }, 500);
+        async (payload) => {
+          console.log("[会话监听] 收到用户记录更新事件", payload);
+          // 核心修复：只有当数据库中的Token和本地不一致时，才触发下线
+          const newToken = payload.new?.current_session_token;
+          if (newToken && newToken !== AppState.sessionToken) {
+            console.warn("[会话监听] 检测到其他设备登录，触发下线");
+            await handleSessionInvalid();
+          }
         }
       )
-      .subscribe();
-
-    AppState.timers.sessionCheck = setInterval(async () => {
-      if (AppState.currentUser && AppState.isSessionInitialized) {
-        const isValid = await checkSessionValid();
-        if (!isValid) await handleSessionInvalid();
-      }
-    }, APP_CONFIG.INTERVAL.SESSION_CHECK);
+      .subscribe((status) => {
+        console.log(`[会话监听] 通道状态：${status}`);
+        if (status === "CHANNEL_ERROR") {
+          console.error("[会话监听] 通道连接失败，10秒后重试");
+          showNotify("warning", "会话监听连接失败，正在重试...");
+          setTimeout(initSessionCheckListener, 10000);
+        }
+      });
 
   } catch (e) {
     console.warn("[会话监听] 初始化失败", e);
+    showNotify("error", "会话监听初始化失败：" + e.message);
   }
 };
 
@@ -519,33 +426,61 @@ const handleAuthChange = async (event, session) => {
     AppState.locks.isAuthHandling = true;
     console.log("[登录状态] 事件：", event);
 
-    // 只处理有效登录事件
     const validEvents = ["SIGNED_IN", "INITIAL_SESSION"];
     if (!validEvents.includes(event)) {
       console.log("[登录状态] 非有效登录事件，跳过处理");
-      // 退出登录事件，强制跳登录页
       if (event === "SIGNED_OUT") {
-        forceToLoginPage();
+        clearAllResources();
+        showPage("loginPage");
+        closeLoader();
       }
       return;
     }
 
-    // 核心：严格校验会话有效性
-    const isSessionValid = await validateSession();
-    if (!isSessionValid) {
-      console.warn("[登录状态] 会话无效，强制跳登录页");
-      forceToLoginPage();
+    if (!session?.user) {
+      console.warn("[登录状态] 无有效会话");
+      clearAllResources();
+      showPage("loginPage");
+      closeLoader();
       return;
     }
 
-    // 会话有效，继续处理登录流程
-    console.log("[登录状态] 会话有效，开始初始化");
+    // 核心：获取用户信息
+    console.log("[登录状态] 开始获取用户信息");
+    const { data: userInfo, error: userError } = await withTimeout(
+      AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
+      APP_CONFIG.TIMEOUT.API,
+      "用户信息查询超时"
+    );
+
+    if (userError || !userInfo) {
+      throw new Error("获取用户信息失败：" + (userError?.message || "未知错误"));
+    }
+
+    if (userInfo.status === "ban") {
+      throw new Error("账号已被封禁，无法登录");
+    }
+
+    // 初始化全局状态
+    AppState.currentUser = session.user;
+    AppState.currentUser.isAdmin = userInfo.is_admin || false;
+    AppState.userNick = SafeStorage.get("nick") || userInfo.nick || "用户";
+    SafeStorage.set("nick", AppState.userNick);
+
+    // 生成并保存新会话Token
     SafeStorage.remove("chat_current_session_token");
     const newSessionToken = generateSessionToken();
     AppState.sessionToken = newSessionToken;
     SafeStorage.set("chat_current_session_token", newSessionToken);
 
-    // 先标记会话已初始化，允许访问聊天页
+    // 更新会话Token到数据库
+    console.log("[登录状态] 更新会话Token到数据库");
+    await AppState.sb.from("users").update({
+      current_session_token: newSessionToken,
+      last_login_time: new Date().toISOString()
+    }).eq("id", AppState.currentUser.id);
+
+    // 标记会话已初始化
     AppState.isSessionInitialized = true;
 
     // 立即跳转到聊天页
@@ -555,15 +490,11 @@ const handleAuthChange = async (event, session) => {
     $("#userTag").innerText = `用户：${AppState.userNick}`;
     if (AppState.currentUser.isAdmin) $("#adminBtn").classList.remove("hidden");
 
-    // 异步执行所有非核心操作（不阻塞用户使用）
+    // 异步初始化所有功能
     setTimeout(async () => {
       try {
-        // 更新会话Token到数据库
-        await AppState.sb.from("users").update({
-          current_session_token: newSessionToken,
-          last_login_time: new Date().toISOString()
-        }).eq("id", AppState.currentUser.id).catch(() => {});
-
+        console.log("[登录后] 开始初始化功能");
+        
         // 异步更新IP/设备信息
         withTimeout(
           fetch("https://api.ipify.org?format=json").then(res => res.json()),
@@ -587,21 +518,23 @@ const handleAuthChange = async (event, session) => {
         initHeartbeat();
         await recordLoginLog();
 
-        console.log("[登录后初始化] 所有功能初始化完成");
+        console.log("[登录后] 所有功能初始化完成");
 
       } catch (e) {
-        console.warn("[登录后初始化] 部分功能失败", e);
-        // 核心修复：非关键功能失败，不提示用户，只打日志
+        console.warn("[登录后] 部分功能初始化失败", e);
+        showNotify("warning", "部分功能加载失败：" + e.message);
       }
     }, 0);
 
   } catch (e) {
     console.error("[登录状态处理] 异常", e);
     showNotify("error", `登录异常：${e.message}`);
-    forceToLoginPage();
+    clearAllResources();
+    await AppState.sb.auth.signOut().catch(() => {});
+    showPage("loginPage");
+    closeLoader();
   } finally {
     AppState.locks.isAuthHandling = false;
-    closeLoader();
     resetAllButtons();
   }
 };
@@ -658,14 +591,19 @@ const userLogout = async () => {
 // ====================== 聊天核心功能 ======================
 const loadInitialMessages = async () => {
   try {
-    const { data: msgList } = await withTimeout(
+    console.log("[消息] 开始加载历史消息");
+    const { data: msgList, error } = await withTimeout(
       AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200),
       APP_CONFIG.TIMEOUT.API,
       "加载消息超时"
     );
+
+    if (error) throw new Error("加载历史消息失败：" + error.message);
     renderMessages(msgList || []);
+    console.log(`[消息] 历史消息加载完成，共${msgList?.length || 0}条`);
   } catch (e) {
     console.warn("[消息加载] 失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -691,6 +629,7 @@ const renderMessages = (msgList) => {
     msgBox.scrollTop = msgBox.scrollHeight;
   } catch (e) {
     console.warn("[消息渲染] 失败", e);
+    showNotify("error", "消息渲染失败：" + e.message);
   }
 };
 
@@ -701,20 +640,24 @@ const initMessageRealtime = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
         await loadInitialMessages();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          console.error("[消息监听] 通道连接失败");
+          showNotify("warning", "消息监听连接失败");
+        }
+      });
   } catch (e) {
     console.warn("[消息实时监听] 失败", e);
+    showNotify("error", "消息监听初始化失败：" + e.message);
   }
 };
 
 const sendMessage = async () => {
   try {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
+    if (!AppState.currentUser || !AppState.isSessionInitialized) {
+      showNotify("error", "请先登录");
       return;
     }
-    if (!AppState.currentUser) return;
     
     const msgInput = $("#msgInput");
     const text = msgInput.value.trim();
@@ -735,12 +678,14 @@ const sendMessage = async () => {
       });
     } catch (e) {}
 
-    await AppState.sb.from("messages").insert([{
+    const { error } = await AppState.sb.from("messages").insert([{
       user_id: AppState.currentUser.id,
       nick: AppState.userNick,
       text: content,
       time: new Date().toLocaleString()
     }]);
+
+    if (error) throw new Error("发送消息失败：" + error.message);
 
     msgInput.value = "";
     showNotify("success", "消息发送成功");
@@ -748,7 +693,7 @@ const sendMessage = async () => {
 
   } catch (e) {
     console.error("[消息发送] 失败", e);
-    showNotify("error", `发送失败：${e.message}`);
+    showNotify("error", e.message);
   } finally {
     $("#sendBtn").disabled = false;
     $("#sendBtn").innerText = "发送";
@@ -763,14 +708,18 @@ const markOnline = async () => {
       nick: AppState.userNick,
       last_active: new Date().toISOString()
     }, { onConflict: "user_id" }).catch(() => {});
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[在线状态] 标记失败", e);
+  }
 };
 
 const refreshOnlineCount = async () => {
   try {
     const { data } = await AppState.sb.from("online_users").select("*").catch(() => ({ data: [] }));
     $("#onlineNum").innerText = data?.length || 0;
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[在线人数] 刷新失败", e);
+  }
 };
 
 const initOnlineRealtime = () => {
@@ -781,7 +730,9 @@ const initOnlineRealtime = () => {
         await refreshOnlineCount();
       })
       .subscribe();
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[在线人数监听] 失败", e);
+  }
 };
 
 const initHeartbeat = () => {
@@ -801,7 +752,9 @@ const initConfigRealtime = () => {
         await loadAnnouncement();
       })
       .subscribe();
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[配置监听] 失败", e);
+  }
 };
 
 const loadAnnouncement = async () => {
@@ -814,7 +767,9 @@ const loadAnnouncement = async () => {
     } else {
       announceBar.classList.add("hidden");
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[公告加载] 失败", e);
+  }
 };
 
 // ====================== 登录日志功能 ======================
@@ -832,22 +787,24 @@ const recordLoginLog = async () => {
       device: navigator.userAgent.substring(0, 80),
       time: new Date().toLocaleString()
     }]).catch(() => {});
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[登录日志] 记录失败", e);
+  }
 };
 
 const showMyLoginLogs = async () => {
   try {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
+    if (!AppState.currentUser || !AppState.isSessionInitialized) {
+      showNotify("error", "请先登录");
       return;
     }
     showNotify("info", "正在加载登录日志...");
-    const { data } = await AppState.sb.from("login_logs").select("*")
+    const { data, error } = await AppState.sb.from("login_logs").select("*")
       .eq("user_id", AppState.currentUser.id)
       .order("time", { ascending: false })
-      .limit(10)
-      .catch(() => ({ data: [] }));
+      .limit(10);
+    
+    if (error) throw new Error("加载登录日志失败：" + error.message);
     
     if (!data || data.length === 0) {
       alert("=== 我的登录日志 ===\n\n暂无登录日志");
@@ -860,16 +817,16 @@ const showMyLoginLogs = async () => {
     });
     alert(logText);
   } catch (e) {
-    showNotify("error", "登录日志加载失败");
+    console.error("[登录日志] 加载失败", e);
+    showNotify("error", e.message);
   }
 };
 
 // ====================== 设置功能 ======================
 const saveNickname = async () => {
   try {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
+    if (!AppState.currentUser || !AppState.isSessionInitialized) {
+      showNotify("error", "请先登录");
       return;
     }
     const newNick = $("#nickInput").value.trim();
@@ -877,7 +834,8 @@ const saveNickname = async () => {
       showNotify("error", "请输入有效的昵称");
       return;
     }
-    await AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.currentUser.id);
+    const { error } = await AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.currentUser.id);
+    if (error) throw new Error("保存昵称失败：" + error.message);
     AppState.userNick = newNick;
     SafeStorage.set("nick", newNick);
     $("#userTag").innerText = `用户：${newNick}`;
@@ -885,15 +843,15 @@ const saveNickname = async () => {
     showNotify("success", "昵称保存成功");
     await markOnline();
   } catch (e) {
-    showNotify("error", "昵称保存失败");
+    console.error("[设置] 保存昵称失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const updatePassword = async () => {
   try {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
+    if (!AppState.currentUser || !AppState.isSessionInitialized) {
+      showNotify("error", "请先登录");
       return;
     }
     const newPwd = $("#newPwdInput").value.trim();
@@ -902,30 +860,27 @@ const updatePassword = async () => {
       return;
     }
     const { error } = await AppState.sb.auth.updateUser({ password: newPwd });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("修改密码失败：" + error.message);
     showNotify("success", "密码修改成功，请重新登录");
     $("#newPwdInput").value = "";
     setTimeout(userLogout, 1500);
   } catch (e) {
-    showNotify("error", `密码修改失败：${e.message}`);
+    console.error("[设置] 修改密码失败", e);
+    showNotify("error", e.message);
   }
 };
 
 // ====================== 管理员功能 ======================
 const loadAdminData = async () => {
-  if (!AppState.currentUser.isAdmin) {
+  if (!AppState.currentUser?.isAdmin) {
     showNotify("error", "你没有管理员权限");
     return;
   }
   try {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
-      return;
-    }
     showNotify("info", "正在加载管理数据...");
     
-    const { data: config } = await AppState.sb.from("system_config").select("*").single().catch(() => ({ data: {} }));
+    const { data: config, error: configError } = await AppState.sb.from("system_config").select("*").single().catch(() => ({ data: {} }));
+    if (configError) throw new Error("加载系统配置失败：" + configError.message);
     $("#requireVerifyToggle").checked = config?.require_verify || false;
     $("#sensitiveWordsInput").value = config?.sensitive_words || "";
     $("#announceInput").value = config?.announcement || "";
@@ -983,48 +938,57 @@ const loadAdminData = async () => {
 
     showNotify("success", "管理数据加载完成");
   } catch (e) {
-    showNotify("error", "管理数据加载失败");
+    console.error("[管理员] 加载数据失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const forceUserOffline = async (userId) => {
   if (!confirm("确定要强制该用户下线吗？")) return;
   try {
-    await AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId);
+    const { error } = await AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId);
+    if (error) throw new Error("强制下线失败：" + error.message);
     showNotify("success", "用户已被强制下线");
     loadAdminData();
   } catch (e) {
-    showNotify("error", "强制下线失败");
+    console.error("[管理员] 强制下线失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const verifyUser = async (userId, status) => {
   try {
-    await AppState.sb.from("users").update({ status }).eq("id", userId);
+    const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
+    if (error) throw new Error("操作失败：" + error.message);
     showNotify("success", status === "active" ? "用户审核通过" : "用户审核拒绝");
     loadAdminData();
   } catch (e) {
-    showNotify("error", "操作失败");
+    console.error("[管理员] 审核用户失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const setUserMute = async (userId, isMute) => {
   try {
-    await AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId);
+    const { error } = await AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId);
+    if (error) throw new Error("操作失败：" + error.message);
     showNotify("success", isMute ? "已禁言该用户" : "已解禁该用户");
     loadAdminData();
   } catch (e) {
-    showNotify("error", "操作失败");
+    console.error("[管理员] 设置禁言失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const setUserStatus = async (userId, status) => {
   try {
-    await AppState.sb.from("users").update({ status }).eq("id", userId);
+    const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
+    if (error) throw new Error("操作失败：" + error.message);
     showNotify("success", status === "active" ? "已解封该用户" : "已封禁该用户");
     loadAdminData();
   } catch (e) {
-    showNotify("error", "操作失败");
+    console.error("[管理员] 设置用户状态失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -1033,10 +997,11 @@ const resetUserPwd = async (email) => {
     const { error } = await AppState.sb.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/chat`
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("重置失败：" + error.message);
     showNotify("success", "密码重置邮件已发送");
   } catch (e) {
-    showNotify("error", `重置失败：${e.message}`);
+    console.error("[管理员] 重置密码失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -1051,7 +1016,8 @@ const saveSystemConfig = async () => {
     }
     showNotify("success", "系统配置保存成功");
   } catch (e) {
-    showNotify("error", "配置保存失败");
+    console.error("[管理员] 保存系统配置失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -1066,7 +1032,8 @@ const saveSensitiveWords = async () => {
     }
     showNotify("success", "敏感词保存成功");
   } catch (e) {
-    showNotify("error", "保存失败");
+    console.error("[管理员] 保存敏感词失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -1081,28 +1048,33 @@ const saveAnnouncement = async () => {
     }
     showNotify("success", "公告已推送");
   } catch (e) {
-    showNotify("error", "推送失败");
+    console.error("[管理员] 保存公告失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const deleteMsg = async (msgId) => {
   try {
-    await AppState.sb.from("messages").delete().eq("id", msgId);
+    const { error } = await AppState.sb.from("messages").delete().eq("id", msgId);
+    if (error) throw new Error("删除失败：" + error.message);
     showNotify("success", "消息已删除");
     await loadInitialMessages();
   } catch (e) {
-    showNotify("error", "删除失败");
+    console.error("[管理员] 删除消息失败", e);
+    showNotify("error", e.message);
   }
 };
 
 const clearAllMessages = async () => {
   if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
   try {
-    await AppState.sb.from("messages").delete().neq("id", 0);
+    const { error } = await AppState.sb.from("messages").delete().neq("id", 0);
+    if (error) throw new Error("清空失败：" + error.message);
     showNotify("success", "所有消息已清空");
     await loadInitialMessages();
   } catch (e) {
-    showNotify("error", "清空失败");
+    console.error("[管理员] 清空消息失败", e);
+    showNotify("error", e.message);
   }
 };
 
@@ -1132,6 +1104,7 @@ const bindAllEvents = () => {
     $("#clearAllMsgBtn").addEventListener("click", clearAllMessages);
   } catch (e) {
     console.error("[事件绑定] 失败", e);
+    showNotify("error", "事件绑定失败：" + e.message);
   }
 };
 
@@ -1141,21 +1114,19 @@ const initApp = async () => {
     AppState.locks.isInit = true;
     console.log("[应用初始化] 开始");
 
-    // 强制关闭加载页兜底（5秒超时）
     AppState.timers.forceCloseLoader = setTimeout(() => {
       console.warn("[初始化] 超时，强制关闭加载页");
       closeLoader();
-      forceToLoginPage();
+      clearAllResources();
+      showPage("loginPage");
     }, 5000);
 
     initTheme();
 
-    // 校验Supabase SDK是否加载完成
     if (!window.supabase) {
       throw new Error("Supabase SDK加载失败，请刷新页面重试");
     }
 
-    // 初始化Supabase客户端
     AppState.sb = window.supabase.createClient(
       APP_CONFIG.SUPABASE_URL,
       APP_CONFIG.SUPABASE_KEY,
@@ -1168,39 +1139,24 @@ const initApp = async () => {
         realtime: { 
           timeout: APP_CONFIG.TIMEOUT.REALTIME,
           heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT
-        },
-        global: {
-          fetch: (...args) => withTimeout(fetch(...args), APP_CONFIG.TIMEOUT.API, "请求超时")
         }
       }
     );
 
     bindAllEvents();
 
-    // 核心：页面初始化时，先校验会话有效性
-    const isSessionValid = await validateSession();
-    if (isSessionValid) {
-      console.log("[初始化] 已有有效会话，直接进入聊天页");
-      AppState.isSessionInitialized = true;
-      showPage("chatPage");
-      closeLoader();
-      // 异步初始化功能
-      setTimeout(async () => {
-        initSessionCheckListener();
-        await loadInitialMessages();
-        initMessageRealtime();
-        await markOnline();
-        await refreshOnlineCount();
-        initOnlineRealtime();
-        initConfigRealtime();
-        initHeartbeat();
-      }, 0);
-    } else {
-      console.log("[初始化] 无有效会话，跳登录页");
-      forceToLoginPage();
+    // 初始化时先检查是否有有效会话
+    const { data: { session } } = await AppState.sb.auth.getSession();
+    if (session?.user) {
+      console.log("[初始化] 检测到已有会话，尝试恢复");
+      // 不自动恢复，让用户重新登录，避免会话冲突
+      await AppState.sb.auth.signOut();
     }
 
-    // 监听登录状态变化
+    clearAllResources();
+    showPage("loginPage");
+    closeLoader();
+
     AppState.sb.auth.onAuthStateChange(handleAuthChange);
 
     console.log("[应用初始化] 完成");
@@ -1208,7 +1164,9 @@ const initApp = async () => {
   } catch (e) {
     console.error("[应用初始化] 致命错误", e);
     showNotify("error", `初始化失败：${e.message}`);
-    forceToLoginPage();
+    closeLoader();
+    clearAllResources();
+    showPage("loginPage");
   }
 };
 
@@ -1225,11 +1183,6 @@ window.addEventListener("beforeunload", async () => {
 
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && AppState.currentUser && AppState.isSessionInitialized) {
-    const isValid = await checkSessionValid();
-    if (!isValid) {
-      await handleSessionInvalid();
-      return;
-    }
     await markOnline();
     await refreshOnlineCount();
   }
