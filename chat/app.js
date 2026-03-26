@@ -127,17 +127,15 @@ const AppState = {
   timers: {}
 };
 
-// ====================== 核心修复：管理员按钮强制显示函数（移动端专属） ======================
+// ====================== 管理员按钮强制显示函数 ======================
 const forceShowAdminBtn = () => {
   try {
     const adminBtn = $("#adminBtn");
-    // 非管理员，强制隐藏
     if (!AppState.currentUser?.isAdmin) {
       adminBtn.style.display = "none";
       adminBtn.classList.add("hidden");
       return false;
     }
-    // 管理员，强制显示，双重保险
     adminBtn.classList.remove("hidden");
     adminBtn.style.display = "inline-block";
     adminBtn.style.visibility = "visible";
@@ -149,7 +147,6 @@ const forceShowAdminBtn = () => {
   }
 };
 
-// 移动端重试显示管理员按钮（最多10次，确保DOM渲染完成）
 const retryShowAdminBtn = () => {
   let retryCount = 0;
   const retryTimer = setInterval(() => {
@@ -185,7 +182,6 @@ const clearAllResources = () => {
         if (channel) AppState.sb.removeChannel(channel);
       });
     }
-    // 退出登录强制隐藏管理员按钮
     const adminBtn = $("#adminBtn");
     adminBtn.style.display = "none";
     adminBtn.classList.add("hidden");
@@ -245,7 +241,6 @@ const showPage = (pageId) => {
     targetPage.classList.add("active");
     targetPage.scrollTop = 0;
 
-    // 核心修复：切换到聊天页时，强制显示管理员按钮
     if (pageId === "chatPage") {
       retryShowAdminBtn();
     }
@@ -445,7 +440,7 @@ const doRegister = async () => {
   }
 };
 
-// ====================== 核心修复：登录状态处理（管理员权限100%识别） ======================
+// ====================== 登录状态处理 ======================
 const handleAuthChange = async (event, session) => {
   if (AppState.locks.isAuthHandling) {
     return;
@@ -471,7 +466,6 @@ const handleAuthChange = async (event, session) => {
       return;
     }
 
-    // 核心修复：移动端用户信息查询，最多重试3次，确保拿到is_admin
     let userInfo = null;
     let userError = null;
     for (let i = 0; i < 3; i++) {
@@ -498,7 +492,6 @@ const handleAuthChange = async (event, session) => {
       throw new Error("账号已被封禁，无法登录");
     }
 
-    // 核心修复：严格识别管理员权限，兼容所有类型的返回值
     AppState.currentUser = session.user;
     AppState.currentUser.isAdmin = 
       userInfo.is_admin === true || 
@@ -507,7 +500,6 @@ const handleAuthChange = async (event, session) => {
     AppState.userNick = SafeStorage.get("nick") || userInfo.nick || "用户";
     SafeStorage.set("nick", AppState.userNick);
 
-    // 管理员登录，直接弹出提示，让用户知道自己是管理员
     if (AppState.currentUser.isAdmin) {
       showNotify("success", "管理员账号登录成功！");
     }
@@ -528,34 +520,15 @@ const handleAuthChange = async (event, session) => {
 
     AppState.isSessionInitialized = true;
 
-    // 先跳页面，再重试显示按钮
     showPage("chatPage");
     showNotify("success", "登录成功，欢迎使用");
     closeLoader();
     $("#userTag").innerText = `用户：${AppState.userNick}`;
 
-    // 核心修复：登录成功后，多次重试显示管理员按钮
     retryShowAdminBtn();
 
     setTimeout(async () => {
       try {
-        try {
-          const ipRes = await withTimeout(
-            fetch("https://api.ipify.org?format=json"),
-            5000,
-            "IP查询超时"
-          );
-          const ipData = await ipRes.json();
-          await withTimeout(
-            AppState.sb.from("users").update({
-              last_login_ip: ipData.ip || "未知IP",
-              last_login_device: navigator.userAgent.substring(0, 100)
-            }).eq("id", AppState.currentUser.id),
-            APP_CONFIG.TIMEOUT.API,
-            "更新用户信息超时"
-          );
-        } catch (e) {}
-
         initSessionCheckListener();
         await loadInitialMessages();
         initMessageRealtime();
@@ -807,19 +780,12 @@ const loadAnnouncement = async () => {
   } catch (e) {}
 };
 
-// ====================== 登录日志功能 ======================
+// ====================== 登录日志功能（彻底移除ipify请求） ======================
 const recordLoginLog = async () => {
   try {
     if (!AppState.currentUser) return;
-    let ipData = { ip: "未知IP" };
-    try {
-      const res = await withTimeout(
-        fetch("https://api.ipify.org?format=json"),
-        3000,
-        "IP查询超时"
-      );
-      ipData = await res.json();
-    } catch (e) {}
+    // 彻底移除外网IP请求，避免连接重置报错
+    const ipData = { ip: "未知IP" };
     
     await AppState.sb.from("login_logs").insert([{
       user_id: AppState.currentUser.id,
@@ -905,7 +871,7 @@ const updatePassword = async () => {
   }
 };
 
-// ====================== 管理员功能 ======================
+// ====================== 管理员功能（彻底修复406报错） ======================
 const loadAdminData = async () => {
   if (!AppState.currentUser?.isAdmin) {
     showNotify("error", "你没有管理员权限");
@@ -914,13 +880,36 @@ const loadAdminData = async () => {
   try {
     showNotify("info", "正在加载管理数据...");
     
-    const { data: config, error: configError } = await AppState.sb.from("system_config").select("*").single();
-    if (configError) throw new Error("加载系统配置失败：" + configError.message);
-    $("#requireVerifyToggle").checked = config?.require_verify || false;
-    $("#sensitiveWordsInput").value = config?.sensitive_words || "";
-    $("#announceInput").value = config?.announcement || "";
+    // 1. 加载系统配置（加完整错误捕获，避免406报错）
+    let config = { require_verify: false, sensitive_words: "", announcement: "" };
+    try {
+      const { data: configData } = await withTimeout(
+        AppState.sb.from("system_config").select("*").single(),
+        APP_CONFIG.TIMEOUT.API,
+        "系统配置查询超时"
+      );
+      if (configData) config = configData;
+    } catch (e) {
+      console.warn("[管理员] 加载系统配置失败", e);
+    }
 
-    const { data: verifyUsers } = await AppState.sb.from("users").select("*").eq("status", "pending");
+    $("#requireVerifyToggle").checked = config.require_verify || false;
+    $("#sensitiveWordsInput").value = config.sensitive_words || "";
+    $("#announceInput").value = config.announcement || "";
+
+    // 2. 加载待审核用户
+    let verifyUsers = [];
+    try {
+      const { data: verifyData } = await withTimeout(
+        AppState.sb.from("users").select("*").eq("status", "pending"),
+        APP_CONFIG.TIMEOUT.API,
+        "待审核用户查询超时"
+      );
+      verifyUsers = verifyData || [];
+    } catch (e) {
+      console.warn("[管理员] 加载待审核用户失败", e);
+    }
+
     let verifyHtml = "";
     verifyUsers.forEach(user => {
       verifyHtml += `
@@ -935,7 +924,19 @@ const loadAdminData = async () => {
     });
     $("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-    const { data: allUsers } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false });
+    // 3. 加载所有用户
+    let allUsers = [];
+    try {
+      const { data: userData } = await withTimeout(
+        AppState.sb.from("users").select("*").order("created_at", { ascending: false }),
+        APP_CONFIG.TIMEOUT.API,
+        "用户列表查询超时"
+      );
+      allUsers = userData || [];
+    } catch (e) {
+      console.warn("[管理员] 加载用户列表失败", e);
+    }
+
     let userHtml = "";
     allUsers.forEach(user => {
       const statusText = user.status === "active" ? "正常" : user.status === "ban" ? "封禁" : "待审核";
@@ -957,9 +958,21 @@ const loadAdminData = async () => {
     });
     $("#allUserList").innerHTML = userHtml;
 
-    const { data: allLogs } = await AppState.sb.from("login_logs").select("*, users!inner(email, nick)")
-      .order("time", { ascending: false })
-      .limit(20);
+    // 4. 加载登录日志
+    let allLogs = [];
+    try {
+      const { data: logData } = await withTimeout(
+        AppState.sb.from("login_logs").select("*, users!inner(email, nick)")
+          .order("time", { ascending: false })
+          .limit(20),
+        APP_CONFIG.TIMEOUT.API,
+        "登录日志查询超时"
+      );
+      allLogs = logData || [];
+    } catch (e) {
+      console.warn("[管理员] 加载登录日志失败", e);
+    }
+
     let logHtml = "";
     allLogs.forEach(log => {
       logHtml += `
@@ -971,8 +984,10 @@ const loadAdminData = async () => {
     $("#allLoginLogList").innerHTML = logHtml || "暂无登录日志";
 
     showNotify("success", "管理数据加载完成");
+
   } catch (e) {
-    showNotify("error", e.message);
+    console.error("[管理员] 加载数据失败", e);
+    showNotify("error", "管理数据加载失败：" + e.message);
   }
 };
 
@@ -1036,7 +1051,7 @@ const resetUserPwd = async (email) => {
 const saveSystemConfig = async () => {
   try {
     const requireVerify = $("#requireVerifyToggle").checked;
-    const { data } = await AppState.sb.from("system_config").select("id").single();
+    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
     if (data) {
       await AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
     } else {
@@ -1051,7 +1066,7 @@ const saveSystemConfig = async () => {
 const saveSensitiveWords = async () => {
   try {
     const words = $("#sensitiveWordsInput").value.trim();
-    const { data } = await AppState.sb.from("system_config").select("id").single();
+    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
     if (data) {
       await AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
     } else {
@@ -1066,7 +1081,7 @@ const saveSensitiveWords = async () => {
 const saveAnnouncement = async () => {
   try {
     const content = $("#announceInput").value.trim();
-    const { data } = await AppState.sb.from("system_config").select("id").single();
+    const { data } = await AppState.sb.from("system_config").select("id").single().catch(() => ({ data: null }));
     if (data) {
       await AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id);
     } else {
@@ -1203,7 +1218,6 @@ document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && AppState.currentUser && AppState.isSessionInitialized) {
     await markOnline();
     await refreshOnlineCount();
-    // 页面回到前台时，再次尝试显示管理员按钮
     retryShowAdminBtn();
   }
 });
