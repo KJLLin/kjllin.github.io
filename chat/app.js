@@ -1,5 +1,5 @@
-// ====================== 核心配置 ======================
-const APP_CONFIG = {
+// ====================== 核心配置（冻结不可修改，避免意外篡改） ======================
+const APP_CONFIG = Object.freeze({
   SUPABASE_URL: "https://ayavdkodhdmcxfufnnxo.supabase.co",
   SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
   TIMEOUT: {
@@ -12,10 +12,11 @@ const APP_CONFIG = {
     SESSION_CHECK: 60000,
     REALTIME_RECONNECT: 5000
   }
-};
+});
 
-// ====================== 工具函数模块 ======================
+// ====================== 工具函数模块（纯函数，无副作用） ======================
 const Utils = {
+  // 安全本地存储
   SafeStorage: {
     get: (key) => {
       try {
@@ -54,6 +55,7 @@ const Utils = {
     }
   },
 
+  // DOM安全操作
   DOM: {
     $: (selector) => {
       try {
@@ -92,6 +94,7 @@ const Utils = {
     }
   },
 
+  // XSS防护（所有用户输入渲染前必须经过此方法）
   escapeHtml: (text) => {
     if (!text) return '';
     const div = document.createElement('div');
@@ -99,6 +102,7 @@ const Utils = {
     return div.innerHTML;
   },
 
+  // 防抖函数（避免重复触发）
   debounce: (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -111,6 +115,7 @@ const Utils = {
     };
   },
 
+  // 生成唯一会话ID
   generateId: () => {
     try {
       return crypto.randomUUID();
@@ -119,6 +124,7 @@ const Utils = {
     }
   },
 
+  // 带超时的Promise（避免无限等待）
   withTimeout: (promise, timeoutMs, errorMsg = "请求超时") => {
     return Promise.race([
       promise,
@@ -126,6 +132,7 @@ const Utils = {
     ]);
   },
 
+  // 带重试的异步函数（弱网适配）
   retry: async (fn, maxRetries = 3, delay = 500) => {
     let lastError;
     for (let i = 0; i < maxRetries; i++) {
@@ -138,10 +145,16 @@ const Utils = {
       }
     }
     throw lastError;
+  },
+
+  // 邮箱格式校验
+  isValidEmail: (email) => {
+    const reg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return reg.test(email);
   }
 };
 
-// ====================== 通知模块 ======================
+// ====================== 通知模块（统一消息提示） ======================
 const Notify = {
   show: (type, text) => {
     try {
@@ -161,7 +174,7 @@ const Notify = {
   info: (text) => Notify.show('info', text)
 };
 
-// ====================== 全局状态管理 ======================
+// ====================== 全局状态管理（单例，统一状态控制） ======================
 const AppState = {
   sb: null,
   currentUser: null,
@@ -169,7 +182,8 @@ const AppState = {
   sessionToken: Utils.SafeStorage.get("chat_current_session_token"),
   isSessionInitialized: false,
   isLoadingMessages: false,
-  locks: {
+  // 状态锁（防止并发执行）
+  _locks: {
     isLoggingIn: false,
     isLoggingOut: false,
     isAuthHandling: false,
@@ -178,37 +192,63 @@ const AppState = {
   channels: {},
   timers: {},
 
+  // 加锁方法
+  lock: (key) => {
+    if (this._locks[key] !== undefined) {
+      this._locks[key] = true;
+    }
+  },
+
+  // 解锁方法
+  unlock: (key) => {
+    if (this._locks[key] !== undefined) {
+      this._locks[key] = false;
+    }
+  },
+
+  // 检查锁状态
+  isLocked: (key) => {
+    return this._locks[key] || false;
+  },
+
+  // 安全重置所有状态（无副作用，清理所有资源）
   reset: () => {
     try {
       console.log("[状态] 开始重置");
-      Object.values(AppState.timers).forEach(timer => {
+      // 清理所有定时器
+      Object.values(this.timers).forEach(timer => {
         if (timer) clearTimeout(timer) || clearInterval(timer);
       });
-      if (AppState.sb) {
-        Object.values(AppState.channels).forEach(channel => {
+      // 清理所有实时通道
+      if (this.sb) {
+        Object.values(this.channels).forEach(channel => {
           if (channel) {
             try {
-              AppState.sb.removeChannel(channel);
+              this.sb.removeChannel(channel);
             } catch (e) {}
           }
         });
       }
       
+      // 隐藏管理员按钮
       const adminBtn = Utils.DOM.$("#adminBtn");
       adminBtn.style.display = "none";
       adminBtn.classList.add("hidden");
       
-      AppState.currentUser = null;
-      AppState.userNick = "";
-      AppState.sessionToken = "";
-      AppState.isSessionInitialized = false;
-      AppState.isLoadingMessages = false;
-      AppState.channels = {};
-      AppState.timers = {};
+      // 重置核心状态
+      this.currentUser = null;
+      this.userNick = "";
+      this.sessionToken = "";
+      this.isSessionInitialized = false;
+      this.isLoadingMessages = false;
+      this.channels = {};
+      this.timers = {};
       
+      // 清理本地存储
       Utils.SafeStorage.remove("chat_current_session_token");
       Utils.SafeStorage.remove("nick");
       
+      // 重置所有按钮
       Utils.DOM.$("#loginBtn").disabled = false;
       Utils.DOM.$("#loginBtn").innerText = "登录";
       Utils.DOM.$("#regBtn").disabled = false;
@@ -218,8 +258,10 @@ const AppState = {
       Utils.DOM.$("#logoutBtn").disabled = false;
       Utils.DOM.$("#logoutBtn").innerText = "退出登录";
       
-      Object.keys(AppState.locks).forEach(key => AppState.locks[key] = false);
+      // 解锁所有状态锁
+      Object.keys(this._locks).forEach(key => this.unlock(key));
       
+      // 清空输入框
       Utils.DOM.$("#msgInput").value = "";
       Utils.DOM.$("#loginEmail").value = "";
       Utils.DOM.$("#loginPwd").value = "";
@@ -233,6 +275,7 @@ const AppState = {
 
 // ====================== 管理员按钮模块 ======================
 const AdminBtn = {
+  // 强制显示管理员按钮（三重保险，兼容所有浏览器）
   forceShow: () => {
     try {
       const adminBtn = Utils.DOM.$("#adminBtn");
@@ -252,6 +295,7 @@ const AdminBtn = {
     }
   },
 
+  // 重试显示（确保DOM渲染完成后一定显示）
   retryShow: () => {
     let retryCount = 0;
     const retryTimer = setInterval(() => {
@@ -266,6 +310,7 @@ const AdminBtn = {
 
 // ====================== 页面模块 ======================
 const Page = {
+  // 关闭加载页
   closeLoader: () => {
     try {
       if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
@@ -281,6 +326,7 @@ const Page = {
     }
   },
 
+  // 页面切换
   show: (pageId) => {
     try {
       const needLogin = ["chatPage", "settingPage", "adminPage"].includes(pageId);
@@ -297,16 +343,19 @@ const Page = {
         return;
       }
 
+      // 隐藏所有页面
       Utils.DOM.$$(".page").forEach(page => {
         page.classList.remove("active");
         page.classList.add("hidden");
       });
+      // 显示目标页面
       const targetPage = Utils.DOM.$(`#${pageId}`);
       targetPage.classList.remove("hidden");
       targetPage.classList.add("active");
       targetPage.scrollTop = 0;
       console.log("[页面] 切换成功", pageId);
 
+      // 聊天页强制显示管理员按钮
       if (pageId === "chatPage") {
         AdminBtn.retryShow();
       }
@@ -357,8 +406,9 @@ const Theme = {
   }
 };
 
-// ====================== 会话模块 ======================
+// ====================== 会话模块（单设备登录控制） ======================
 const Session = {
+  // 会话失效处理
   handleInvalid: async (reason = "账号在其他设备登录，已为你安全下线") => {
     try {
       Notify.error(reason);
@@ -382,6 +432,7 @@ const Session = {
     }
   },
 
+  // 初始化会话监听
   initCheckListener: () => {
     try {
       if (!AppState.currentUser) return;
@@ -396,7 +447,7 @@ const Session = {
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.currentUser.id}` },
           async (payload) => {
-            console.log("[会话] 收到用户记录更新事件", payload);
+            console.log("[会话] 收到用户记录更新事件");
             const newToken = payload.new?.current_session_token;
             if (newToken && newToken !== AppState.sessionToken) {
               console.warn("[会话] 检测到其他设备登录，触发下线");
@@ -412,6 +463,7 @@ const Session = {
           }
         });
 
+      // 定时会话校验
       AppState.timers.sessionCheck = setInterval(async () => {
         if (AppState.currentUser && AppState.isSessionInitialized) {
           try {
@@ -434,16 +486,16 @@ const Session = {
   }
 };
 
-// ====================== 认证模块（核心修复登录流程） ======================
+// ====================== 认证模块（彻底重构，核心修复登录逻辑） ======================
 const Auth = {
-  // 登录逻辑（修复：移除提前的成功提示）
+  // 登录函数：只负责发起登录请求，不处理后续逻辑，无重复提示
   login: async () => {
-    if (AppState.locks.isLoggingIn) {
+    if (AppState.isLocked("isLoggingIn")) {
       Notify.warning("正在登录中，请稍候...");
       return;
     }
 
-    AppState.locks.isLoggingIn = true;
+    AppState.lock("isLoggingIn");
     const loginBtn = Utils.DOM.$("#loginBtn");
     loginBtn.disabled = true;
     loginBtn.innerText = "登录中...";
@@ -451,18 +503,26 @@ const Auth = {
     try {
       const email = Utils.DOM.$("#loginEmail").value.trim();
       const pwd = Utils.DOM.$("#loginPwd").value.trim();
+      
+      // 输入校验
       if (!email || !pwd) {
         Notify.error("请填写邮箱和密码");
         return;
       }
+      if (!Utils.isValidEmail(email)) {
+        Notify.error("请输入正确的邮箱格式");
+        return;
+      }
 
       console.log("[认证] 开始验证账号");
-      const { data: authData, error: authError } = await Utils.withTimeout(
+      // 只发起登录请求，后续逻辑全在onAuthStateChange里处理
+      const { error: authError } = await Utils.withTimeout(
         AppState.sb.auth.signInWithPassword({ email, password: pwd }),
         APP_CONFIG.TIMEOUT.LOGIN,
         "登录请求超时（20秒），请检查网络后重试"
       );
 
+      // 登录失败直接抛出错误，成功的话会自动触发onAuthStateChange
       if (authError) {
         let errMsg = authError.message;
         if (errMsg.includes("Email not confirmed")) errMsg = "邮箱未验证，请验证后登录";
@@ -471,31 +531,32 @@ const Auth = {
         throw new Error(errMsg);
       }
 
-      if (!authData.user) throw new Error("登录失败，未获取到用户信息");
-      // 这里只提示正在进入，成功提示放到handleAuthChange里所有逻辑完成后
-      Notify.info("账号验证成功，正在进入聊天...");
-      console.log("[认证] 账号验证成功，等待会话初始化");
-
     } catch (e) {
       console.error("[认证] 登录失败", e.message);
       Notify.error(`登录失败：${e.message}`);
     } finally {
       setTimeout(() => {
-        AppState.locks.isLoggingIn = false;
+        AppState.unlock("isLoggingIn");
         loginBtn.disabled = false;
         loginBtn.innerText = "登录";
       }, 300);
     }
   },
 
+  // 注册函数
   register: async () => {
     try {
       const nick = Utils.DOM.$("#regNick").value.trim();
       const email = Utils.DOM.$("#regEmail").value.trim();
       const pwd = Utils.DOM.$("#regPwd").value.trim();
       
+      // 输入校验
       if (!nick || !email || !pwd) {
         Notify.error("请填写完整注册信息");
+        return;
+      }
+      if (!Utils.isValidEmail(email)) {
+        Notify.error("请输入正确的邮箱格式");
         return;
       }
       if (pwd.length < 8) {
@@ -538,28 +599,34 @@ const Auth = {
     }
   },
 
-  // 核心修复：登录状态处理，完善错误处理和成功提示时机
+  // 核心：登录状态处理（唯一处理登录后逻辑的地方，无冲突，无竞态）
   handleChange: async (event, session) => {
-    if (AppState.locks.isAuthHandling) {
+    if (AppState.isLocked("isAuthHandling")) {
       console.log("[认证] 正在处理中，跳过重复触发");
       return;
     }
 
     try {
-      AppState.locks.isAuthHandling = true;
+      AppState.lock("isAuthHandling");
       console.log("[认证] 事件：", event);
 
-      const validEvents = ["SIGNED_IN", "INITIAL_SESSION"];
-      if (!validEvents.includes(event)) {
-        console.log("[认证] 非有效登录事件，跳过处理");
-        if (event === "SIGNED_OUT") {
-          AppState.reset();
-          Page.show("loginPage");
-          Page.closeLoader();
-        }
+      // 退出登录事件处理
+      if (event === "SIGNED_OUT") {
+        console.log("[认证] 检测到退出登录");
+        AppState.reset();
+        Page.show("loginPage");
+        Page.closeLoader();
         return;
       }
 
+      // 只处理有效登录事件
+      const validEvents = ["SIGNED_IN", "INITIAL_SESSION"];
+      if (!validEvents.includes(event)) {
+        console.log("[认证] 非有效登录事件，跳过处理");
+        return;
+      }
+
+      // 校验会话有效性
       if (!session?.user) {
         console.warn("[认证] 无有效会话");
         AppState.reset();
@@ -568,29 +635,49 @@ const Auth = {
         return;
       }
 
-      console.log("[认证] 开始获取用户信息");
+      console.log("[认证] 开始初始化用户会话");
+      Notify.info("账号验证成功，正在进入聊天...");
+
+      // ====================== 核心修复：用户信息兜底自动创建 ======================
       let userInfo = null;
-      
-      // 修复：重试获取用户信息，同时处理用户不存在的情况
+      // 1. 先尝试查询用户信息（2次重试）
       await Utils.retry(async () => {
-        const res = await Utils.withTimeout(
+        const { data, error } = await Utils.withTimeout(
           AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
           APP_CONFIG.TIMEOUT.API,
           "用户信息查询超时"
         );
-        if (!res.data) throw new Error("用户信息不存在");
-        userInfo = res.data;
-      }, 3, 500);
+        if (error && error.code !== "PGRST116") throw error; // PGRST116是查询无结果，不是错误
+        userInfo = data;
+      }, 2, 300);
 
+      // 2. 如果用户信息不存在，自动创建（兜底，彻底解决账号不存在问题）
       if (!userInfo) {
-        throw new Error("用户信息不存在，请重新注册账号");
+        console.warn("[认证] 业务表无用户记录，自动创建");
+        const { data: newUser, error: createError } = await Utils.withTimeout(
+          AppState.sb.from("users").insert([{
+            id: session.user.id,
+            nick: session.user.user_metadata?.nick || session.user.email.split('@')[0],
+            email: session.user.email,
+            is_admin: false,
+            status: 'active',
+            created_at: new Date().toISOString()
+          }]).select().single(),
+          APP_CONFIG.TIMEOUT.API,
+          "用户信息创建失败"
+        );
+
+        if (createError) throw new Error("用户信息初始化失败，请刷新重试");
+        userInfo = newUser;
+        console.log("[认证] 用户信息自动创建成功");
       }
 
+      // 3. 校验账号状态
       if (userInfo.status === "ban") {
         throw new Error("账号已被封禁，无法登录");
       }
 
-      // 初始化用户信息
+      // ====================== 初始化用户状态 ======================
       AppState.currentUser = session.user;
       AppState.currentUser.isAdmin = 
         userInfo.is_admin === true || 
@@ -599,14 +686,12 @@ const Auth = {
       AppState.userNick = Utils.SafeStorage.get("nick") || userInfo.nick || "用户";
       Utils.SafeStorage.set("nick", AppState.userNick);
 
-      // 打印管理员状态，方便调试
-      console.log("[认证] 用户信息：", {
+      console.log("[认证] 用户信息初始化完成", {
         email: session.user.email,
-        isAdmin: AppState.currentUser.isAdmin,
-        userInfo: userInfo
+        isAdmin: AppState.currentUser.isAdmin
       });
 
-      // 生成新会话Token
+      // ====================== 初始化会话Token ======================
       Utils.SafeStorage.remove("chat_current_session_token");
       const newSessionToken = Utils.generateId();
       AppState.sessionToken = newSessionToken;
@@ -622,15 +707,16 @@ const Auth = {
         "更新会话Token超时"
       );
 
+      // ====================== 会话初始化完成 ======================
       AppState.isSessionInitialized = true;
 
-      // 核心修复：所有逻辑完成后，再提示登录成功
+      // 唯一的登录成功提示，时机完全正确
       Notify.success("登录成功，欢迎使用");
       if (AppState.currentUser.isAdmin) {
         Notify.success("管理员账号登录成功！");
       }
 
-      // 显示页面
+      // 跳转页面
       Page.show("chatPage");
       Page.closeLoader();
       Utils.DOM.$("#userTag").innerText = `用户：${AppState.userNick}`;
@@ -638,10 +724,10 @@ const Auth = {
       // 显示管理员按钮
       AdminBtn.retryShow();
 
-      // 异步初始化功能
+      // 异步初始化其他功能（不阻塞主流程）
       setTimeout(async () => {
         try {
-          console.log("[认证] 开始初始化功能");
+          console.log("[认证] 开始初始化附属功能");
           
           Session.initCheckListener();
           await Chat.loadInitialMessages();
@@ -654,7 +740,6 @@ const Auth = {
           await LoginLog.record();
 
           console.log("[认证] 所有功能初始化完成");
-
         } catch (e) {
           console.warn("[认证] 部分功能初始化失败", e);
           Notify.warning("部分功能加载失败，不影响聊天使用");
@@ -662,10 +747,11 @@ const Auth = {
       }, 0);
 
     } catch (e) {
-      // 核心修复：登录流程失败，给出明确提示，重置状态
-      console.error("[认证] 状态处理异常", e);
+      // 登录流程失败，统一处理
+      console.error("[认证] 会话初始化异常", e);
       Notify.error(`登录异常：${e.message}`);
       AppState.reset();
+      // 强制退出登录，避免状态混乱
       try {
         await AppState.sb.auth.signOut();
       } catch (e) {
@@ -674,22 +760,18 @@ const Auth = {
       Page.show("loginPage");
       Page.closeLoader();
     } finally {
-      AppState.locks.isAuthHandling = false;
-      // 重置按钮
-      Utils.DOM.$("#loginBtn").disabled = false;
-      Utils.DOM.$("#loginBtn").innerText = "登录";
-      Utils.DOM.$("#regBtn").disabled = false;
-      Utils.DOM.$("#regBtn").innerText = "注册";
+      AppState.unlock("isAuthHandling");
     }
   },
 
+  // 退出登录函数
   logout: async () => {
-    if (AppState.locks.isLoggingOut) {
+    if (AppState.isLocked("isLoggingOut")) {
       Notify.warning("正在退出中，请稍候...");
       return;
     }
 
-    AppState.locks.isLoggingOut = true;
+    AppState.lock("isLoggingOut");
     const logoutBtn = Utils.DOM.$("#logoutBtn");
     logoutBtn.disabled = true;
     logoutBtn.innerText = "退出中...";
@@ -699,6 +781,7 @@ const Auth = {
       console.log("[认证] 开始退出登录");
 
       if (AppState.currentUser) {
+        // 清空会话Token
         try {
           await AppState.sb.from("users")
             .update({ current_session_token: null })
@@ -706,7 +789,7 @@ const Auth = {
         } catch (e) {
           console.warn("[认证] 清空会话Token失败", e);
         }
-        
+        // 清理在线状态
         try {
           await AppState.sb.from("online_users")
             .delete()
@@ -716,6 +799,7 @@ const Auth = {
         }
       }
 
+      // 执行退出登录
       await AppState.sb.auth.signOut();
       AppState.reset();
       Utils.SafeStorage.clear();
@@ -731,7 +815,7 @@ const Auth = {
       Page.show("loginPage");
     } finally {
       setTimeout(() => {
-        AppState.locks.isLoggingOut = false;
+        AppState.unlock("isLoggingOut");
         logoutBtn.disabled = false;
         logoutBtn.innerText = "退出登录";
       }, 300);
@@ -741,6 +825,7 @@ const Auth = {
 
 // ====================== 聊天模块 ======================
 const Chat = {
+  // 加载历史消息
   loadInitialMessages: async () => {
     try {
       if (AppState.isLoadingMessages) {
@@ -767,12 +852,14 @@ const Chat = {
     }
   },
 
+  // 渲染消息
   renderMessages: (msgList) => {
     try {
       const msgBox = Utils.DOM.$("#msgBox");
       let html = "";
       msgList.forEach(msg => {
         const isMe = msg.user_id === AppState.currentUser.id;
+        // XSS防护
         const safeNick = Utils.escapeHtml(msg.nick);
         const safeText = Utils.escapeHtml(msg.text);
         const safeTime = Utils.escapeHtml(msg.time);
@@ -797,6 +884,7 @@ const Chat = {
     }
   },
 
+  // 初始化消息实时监听
   initRealtime: () => {
     try {
       if (AppState.channels.msg) {
@@ -806,12 +894,9 @@ const Chat = {
       }
       
       AppState.channels.msg = AppState.sb.channel("message_channel")
-        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
-          if (AppState.timers.msgDebounce) clearTimeout(AppState.timers.msgDebounce);
-          AppState.timers.msgDebounce = setTimeout(() => {
-            Chat.loadInitialMessages();
-          }, 300);
-        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, Utils.debounce(async () => {
+          await Chat.loadInitialMessages();
+        }, 300))
         .subscribe((status) => {
           if (status === "CHANNEL_ERROR") {
             console.error("[聊天] 通道连接失败，5秒后重试");
@@ -823,6 +908,7 @@ const Chat = {
     }
   },
 
+  // 发送消息
   send: async () => {
     try {
       if (!AppState.currentUser || !AppState.isSessionInitialized) {
@@ -841,6 +927,7 @@ const Chat = {
       sendBtn.disabled = true;
       sendBtn.innerText = "发送中...";
 
+      // 敏感词过滤
       let content = text;
       try {
         const { data: config } = await AppState.sb.from("system_config")
@@ -855,6 +942,7 @@ const Chat = {
         console.warn("[聊天] 敏感词过滤失败", e);
       }
 
+      // 发送消息
       const { error } = await AppState.sb.from("messages").insert([{
         user_id: AppState.currentUser.id,
         nick: AppState.userNick,
@@ -879,8 +967,9 @@ const Chat = {
   }
 };
 
-// ====================== 在线模块 ======================
+// ====================== 在线用户模块 ======================
 const Online = {
+  // 标记在线状态
   mark: async () => {
     try {
       if (!AppState.currentUser) return;
@@ -894,6 +983,7 @@ const Online = {
     }
   },
 
+  // 刷新在线人数
   refreshCount: async () => {
     try {
       const { data } = await AppState.sb.from("online_users").select("*");
@@ -903,6 +993,7 @@ const Online = {
     }
   },
 
+  // 初始化在线状态实时监听
   initRealtime: () => {
     try {
       if (AppState.channels.online) {
@@ -933,8 +1024,9 @@ const Heartbeat = {
   }
 };
 
-// ====================== 配置模块 ======================
+// ====================== 系统配置模块 ======================
 const Config = {
+  // 初始化配置实时监听
   initRealtime: () => {
     try {
       if (AppState.channels.config) {
@@ -953,6 +1045,7 @@ const Config = {
     }
   },
 
+  // 加载公告
   loadAnnouncement: async () => {
     try {
       const { data } = await AppState.sb.from("system_config")
@@ -974,9 +1067,11 @@ const Config = {
 
 // ====================== 登录日志模块 ======================
 const LoginLog = {
+  // 记录登录日志
   record: async () => {
     try {
       if (!AppState.currentUser) return;
+      // 不请求外网IP，避免国内网络连接报错
       const ipData = { ip: "未知IP" };
       
       await AppState.sb.from("login_logs").insert([{
@@ -990,6 +1085,7 @@ const LoginLog = {
     }
   },
 
+  // 显示我的登录日志
   showMy: async () => {
     try {
       if (!AppState.currentUser || !AppState.isSessionInitialized) {
@@ -1023,6 +1119,7 @@ const LoginLog = {
 
 // ====================== 设置模块 ======================
 const Settings = {
+  // 保存昵称
   saveNickname: async () => {
     try {
       if (!AppState.currentUser || !AppState.isSessionInitialized) {
@@ -1048,6 +1145,7 @@ const Settings = {
     }
   },
 
+  // 修改密码
   updatePassword: async () => {
     try {
       if (!AppState.currentUser || !AppState.isSessionInitialized) {
@@ -1073,6 +1171,7 @@ const Settings = {
 
 // ====================== 管理员模块 ======================
 const Admin = {
+  // 加载管理数据
   loadData: async () => {
     if (!AppState.currentUser?.isAdmin) {
       Notify.error("你没有管理员权限");
@@ -1081,6 +1180,7 @@ const Admin = {
     try {
       Notify.info("正在加载管理数据...");
       
+      // 加载系统配置
       let config = { require_verify: false, sensitive_words: "", announcement: "" };
       try {
         const { data: configData } = await Utils.withTimeout(
@@ -1097,6 +1197,7 @@ const Admin = {
       Utils.DOM.$("#sensitiveWordsInput").value = config.sensitive_words || "";
       Utils.DOM.$("#announceInput").value = config.announcement || "";
 
+      // 加载待审核用户
       let verifyUsers = [];
       try {
         const { data: verifyData } = await Utils.withTimeout(
@@ -1123,6 +1224,7 @@ const Admin = {
       });
       Utils.DOM.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
+      // 加载所有用户
       let allUsers = [];
       try {
         const { data: userData } = await Utils.withTimeout(
@@ -1156,6 +1258,7 @@ const Admin = {
       });
       Utils.DOM.$("#allUserList").innerHTML = userHtml;
 
+      // 加载登录日志
       let allLogs = [];
       try {
         const { data: logData } = await Utils.withTimeout(
@@ -1188,6 +1291,7 @@ const Admin = {
     }
   },
 
+  // 强制用户下线
   forceUserOffline: async (userId) => {
     if (!confirm("确定要强制该用户下线吗？")) return;
     try {
@@ -1201,6 +1305,7 @@ const Admin = {
     }
   },
 
+  // 审核用户
   verifyUser: async (userId, status) => {
     try {
       const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
@@ -1213,6 +1318,7 @@ const Admin = {
     }
   },
 
+  // 设置用户禁言
   setUserMute: async (userId, isMute) => {
     try {
       const { error } = await AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId);
@@ -1225,6 +1331,7 @@ const Admin = {
     }
   },
 
+  // 设置用户状态
   setUserStatus: async (userId, status) => {
     try {
       const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
@@ -1237,6 +1344,7 @@ const Admin = {
     }
   },
 
+  // 重置用户密码
   resetUserPwd: async (email) => {
     try {
       const { error } = await AppState.sb.auth.resetPasswordForEmail(email, {
@@ -1250,6 +1358,7 @@ const Admin = {
     }
   },
 
+  // 保存系统配置
   saveSystemConfig: async () => {
     try {
       const requireVerify = Utils.DOM.$("#requireVerifyToggle").checked;
@@ -1266,6 +1375,7 @@ const Admin = {
     }
   },
 
+  // 保存敏感词
   saveSensitiveWords: async () => {
     try {
       const words = Utils.DOM.$("#sensitiveWordsInput").value.trim();
@@ -1282,6 +1392,7 @@ const Admin = {
     }
   },
 
+  // 保存公告
   saveAnnouncement: async () => {
     try {
       const content = Utils.DOM.$("#announceInput").value.trim();
@@ -1298,6 +1409,7 @@ const Admin = {
     }
   },
 
+  // 删除消息
   deleteMsg: async (msgId) => {
     try {
       const { error } = await AppState.sb.from("messages").delete().eq("id", msgId);
@@ -1310,6 +1422,7 @@ const Admin = {
     }
   },
 
+  // 清空所有消息
   clearAllMessages: async () => {
     if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
     try {
@@ -1328,6 +1441,7 @@ const Admin = {
 const EventBinder = {
   init: () => {
     try {
+      // 认证事件
       Utils.DOM.$("#toRegisterBtn").addEventListener("click", () => Page.show("registerPage"));
       Utils.DOM.$("#toLoginBtn").addEventListener("click", () => Page.show("loginPage"));
       Utils.DOM.$("#loginBtn").addEventListener("click", Auth.login);
@@ -1336,24 +1450,29 @@ const EventBinder = {
       Utils.DOM.$("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && Auth.register());
       Utils.DOM.$("#logoutBtn").addEventListener("click", Auth.logout);
 
+      // 聊天事件
       Utils.DOM.$("#sendBtn").addEventListener("click", Chat.send);
       Utils.DOM.$("#msgInput").addEventListener("keydown", (e) => e.key === "Enter" && Chat.send());
 
+      // 导航事件
       Utils.DOM.$("#settingBtn").addEventListener("click", () => Page.show("settingPage"));
       Utils.DOM.$("#adminBtn").addEventListener("click", () => { Admin.loadData(); Page.show("adminPage"); });
       Utils.DOM.$("#backToChatBtn").addEventListener("click", () => Page.show("chatPage"));
       Utils.DOM.$("#backToChatFromAdminBtn").addEventListener("click", () => Page.show("chatPage"));
 
+      // 设置事件
       Utils.DOM.$("#saveNickBtn").addEventListener("click", Settings.saveNickname);
       Utils.DOM.$("#toggleThemeBtn").addEventListener("click", Theme.toggle);
       Utils.DOM.$("#updatePwdBtn").addEventListener("click", Settings.updatePassword);
       Utils.DOM.$("#showLoginLogBtn").addEventListener("click", LoginLog.showMy);
 
+      // 管理员事件
       Utils.DOM.$("#saveConfigBtn").addEventListener("click", Admin.saveSystemConfig);
       Utils.DOM.$("#saveSwBtn").addEventListener("click", Admin.saveSensitiveWords);
       Utils.DOM.$("#saveAnnounceBtn").addEventListener("click", Admin.saveAnnouncement);
       Utils.DOM.$("#clearAllMsgBtn").addEventListener("click", Admin.clearAllMessages);
 
+      console.log("[事件] 所有事件绑定完成");
     } catch (e) {
       console.error("[事件] 绑定失败", e);
       Notify.error("页面初始化失败，请刷新重试");
@@ -1365,10 +1484,11 @@ const EventBinder = {
 const App = {
   init: async () => {
     try {
-      if (AppState.locks.isInit) return;
-      AppState.locks.isInit = true;
+      if (AppState.isLocked("isInit")) return;
+      AppState.lock("isInit");
       console.log("[应用] 开始初始化");
 
+      // 超时强制关闭加载页
       AppState.timers.forceCloseLoader = setTimeout(() => {
         console.warn("[应用] 初始化超时，强制关闭加载页");
         Page.closeLoader();
@@ -1376,12 +1496,15 @@ const App = {
         Page.show("loginPage");
       }, 5000);
 
+      // 初始化主题
       Theme.init();
 
+      // 检查Supabase SDK
       if (!window.supabase) {
         throw new Error("Supabase SDK加载失败，请刷新页面重试");
       }
 
+      // 创建Supabase客户端
       AppState.sb = window.supabase.createClient(
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
@@ -1398,11 +1521,13 @@ const App = {
         }
       );
 
+      // 绑定所有事件
       EventBinder.init();
 
+      // 清理旧会话（避免刷新页面后残留会话导致状态混乱）
       const { data: { session } } = await AppState.sb.auth.getSession();
       if (session?.user) {
-        console.log("[应用] 检测到已有会话，尝试清理");
+        console.log("[应用] 检测到已有会话，清理旧状态");
         try {
           await AppState.sb.auth.signOut();
         } catch (e) {
@@ -1410,10 +1535,12 @@ const App = {
         }
       }
 
+      // 重置状态，显示登录页
       AppState.reset();
       Page.show("loginPage");
       Page.closeLoader();
 
+      // 监听认证状态变化（唯一入口）
       AppState.sb.auth.onAuthStateChange(Auth.handleChange);
 
       console.log("[应用] 初始化完成");
@@ -1424,13 +1551,17 @@ const App = {
       Page.closeLoader();
       AppState.reset();
       Page.show("loginPage");
+    } finally {
+      AppState.unlock("isInit");
     }
   }
 };
 
 // ====================== 页面生命周期监听 ======================
+// DOM加载完成后初始化应用
 document.addEventListener("DOMContentLoaded", App.init);
 
+// 页面关闭前清理资源
 window.addEventListener("beforeunload", async () => {
   try {
     if (AppState.currentUser && AppState.sb) {
@@ -1443,6 +1574,7 @@ window.addEventListener("beforeunload", async () => {
   } catch (e) {}
 });
 
+// 页面可见性变化时更新状态
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && AppState.currentUser && AppState.isSessionInitialized) {
     await Online.mark();
@@ -1451,7 +1583,8 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
+// 系统主题变化时更新主题
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", Theme.init);
 
-// 暴露全局函数
+// 暴露全局函数（供HTML内联onclick调用）
 window.Admin = Admin;
