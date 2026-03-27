@@ -92,7 +92,6 @@ const Utils = {
     }
   },
 
-  // XSS防护：转义HTML
   escapeHtml: (text) => {
     if (!text) return '';
     const div = document.createElement('div');
@@ -100,7 +99,6 @@ const Utils = {
     return div.innerHTML;
   },
 
-  // 防抖函数
   debounce: (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -113,7 +111,6 @@ const Utils = {
     };
   },
 
-  // 生成唯一ID
   generateId: () => {
     try {
       return crypto.randomUUID();
@@ -122,7 +119,6 @@ const Utils = {
     }
   },
 
-  // 带超时的Promise
   withTimeout: (promise, timeoutMs, errorMsg = "请求超时") => {
     return Promise.race([
       promise,
@@ -130,8 +126,7 @@ const Utils = {
     ]);
   },
 
-  // 重试函数
-  retry: async (fn, maxRetries = 3, delay = 1000) => {
+  retry: async (fn, maxRetries = 3, delay = 500) => {
     let lastError;
     for (let i = 0; i < maxRetries; i++) {
       try {
@@ -183,7 +178,6 @@ const AppState = {
   channels: {},
   timers: {},
 
-  // 重置所有状态
   reset: () => {
     try {
       console.log("[状态] 开始重置");
@@ -200,7 +194,6 @@ const AppState = {
         });
       }
       
-      // 隐藏管理员按钮
       const adminBtn = Utils.DOM.$("#adminBtn");
       adminBtn.style.display = "none";
       adminBtn.classList.add("hidden");
@@ -216,7 +209,6 @@ const AppState = {
       Utils.SafeStorage.remove("chat_current_session_token");
       Utils.SafeStorage.remove("nick");
       
-      // 重置按钮
       Utils.DOM.$("#loginBtn").disabled = false;
       Utils.DOM.$("#loginBtn").innerText = "登录";
       Utils.DOM.$("#regBtn").disabled = false;
@@ -416,7 +408,6 @@ const Session = {
           console.log(`[会话] 通道状态：${status}`);
           if (status === "CHANNEL_ERROR") {
             console.error("[会话] 通道连接失败，10秒后重试");
-            Notify.warning("会话监听连接失败，正在重试...");
             setTimeout(Session.initCheckListener, APP_CONFIG.INTERVAL.REALTIME_RECONNECT);
           }
         });
@@ -443,8 +434,9 @@ const Session = {
   }
 };
 
-// ====================== 认证模块 ======================
+// ====================== 认证模块（核心修复登录流程） ======================
 const Auth = {
+  // 登录逻辑（修复：移除提前的成功提示）
   login: async () => {
     if (AppState.locks.isLoggingIn) {
       Notify.warning("正在登录中，请稍候...");
@@ -480,8 +472,9 @@ const Auth = {
       }
 
       if (!authData.user) throw new Error("登录失败，未获取到用户信息");
-      Notify.info("登录成功，正在进入聊天...");
-      console.log("[认证] 账号验证成功");
+      // 这里只提示正在进入，成功提示放到handleAuthChange里所有逻辑完成后
+      Notify.info("账号验证成功，正在进入聊天...");
+      console.log("[认证] 账号验证成功，等待会话初始化");
 
     } catch (e) {
       console.error("[认证] 登录失败", e.message);
@@ -545,6 +538,7 @@ const Auth = {
     }
   },
 
+  // 核心修复：登录状态处理，完善错误处理和成功提示时机
   handleChange: async (event, session) => {
     if (AppState.locks.isAuthHandling) {
       console.log("[认证] 正在处理中，跳过重复触发");
@@ -576,22 +570,20 @@ const Auth = {
 
       console.log("[认证] 开始获取用户信息");
       let userInfo = null;
-      let userError = null;
       
-      // 重试获取用户信息
+      // 修复：重试获取用户信息，同时处理用户不存在的情况
       await Utils.retry(async () => {
         const res = await Utils.withTimeout(
           AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
           APP_CONFIG.TIMEOUT.API,
           "用户信息查询超时"
         );
+        if (!res.data) throw new Error("用户信息不存在");
         userInfo = res.data;
-        userError = res.error;
-        if (!userInfo) throw new Error("用户信息为空");
       }, 3, 500);
 
-      if (userError || !userInfo) {
-        throw new Error("获取用户信息失败：" + (userError?.message || "未知错误"));
+      if (!userInfo) {
+        throw new Error("用户信息不存在，请重新注册账号");
       }
 
       if (userInfo.status === "ban") {
@@ -607,16 +599,12 @@ const Auth = {
       AppState.userNick = Utils.SafeStorage.get("nick") || userInfo.nick || "用户";
       Utils.SafeStorage.set("nick", AppState.userNick);
 
-      // 打印管理员状态
+      // 打印管理员状态，方便调试
       console.log("[认证] 用户信息：", {
         email: session.user.email,
         isAdmin: AppState.currentUser.isAdmin,
         userInfo: userInfo
       });
-
-      if (AppState.currentUser.isAdmin) {
-        Notify.success("管理员账号登录成功！");
-      }
 
       // 生成新会话Token
       Utils.SafeStorage.remove("chat_current_session_token");
@@ -636,9 +624,14 @@ const Auth = {
 
       AppState.isSessionInitialized = true;
 
+      // 核心修复：所有逻辑完成后，再提示登录成功
+      Notify.success("登录成功，欢迎使用");
+      if (AppState.currentUser.isAdmin) {
+        Notify.success("管理员账号登录成功！");
+      }
+
       // 显示页面
       Page.show("chatPage");
-      Notify.success("登录成功，欢迎使用");
       Page.closeLoader();
       Utils.DOM.$("#userTag").innerText = `用户：${AppState.userNick}`;
 
@@ -669,6 +662,7 @@ const Auth = {
       }, 0);
 
     } catch (e) {
+      // 核心修复：登录流程失败，给出明确提示，重置状态
       console.error("[认证] 状态处理异常", e);
       Notify.error(`登录异常：${e.message}`);
       AppState.reset();
@@ -779,7 +773,6 @@ const Chat = {
       let html = "";
       msgList.forEach(msg => {
         const isMe = msg.user_id === AppState.currentUser.id;
-        // XSS防护
         const safeNick = Utils.escapeHtml(msg.nick);
         const safeText = Utils.escapeHtml(msg.text);
         const safeTime = Utils.escapeHtml(msg.time);
@@ -814,7 +807,6 @@ const Chat = {
       
       AppState.channels.msg = AppState.sb.channel("message_channel")
         .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, async () => {
-          // 防抖
           if (AppState.timers.msgDebounce) clearTimeout(AppState.timers.msgDebounce);
           AppState.timers.msgDebounce = setTimeout(() => {
             Chat.loadInitialMessages();
@@ -985,7 +977,6 @@ const LoginLog = {
   record: async () => {
     try {
       if (!AppState.currentUser) return;
-      // 不请求外网IP，避免连接重置报错
       const ipData = { ip: "未知IP" };
       
       await AppState.sb.from("login_logs").insert([{
@@ -1090,7 +1081,6 @@ const Admin = {
     try {
       Notify.info("正在加载管理数据...");
       
-      // 1. 加载系统配置
       let config = { require_verify: false, sensitive_words: "", announcement: "" };
       try {
         const { data: configData } = await Utils.withTimeout(
@@ -1107,7 +1097,6 @@ const Admin = {
       Utils.DOM.$("#sensitiveWordsInput").value = config.sensitive_words || "";
       Utils.DOM.$("#announceInput").value = config.announcement || "";
 
-      // 2. 加载待审核用户
       let verifyUsers = [];
       try {
         const { data: verifyData } = await Utils.withTimeout(
@@ -1134,7 +1123,6 @@ const Admin = {
       });
       Utils.DOM.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-      // 3. 加载所有用户
       let allUsers = [];
       try {
         const { data: userData } = await Utils.withTimeout(
@@ -1168,7 +1156,6 @@ const Admin = {
       });
       Utils.DOM.$("#allUserList").innerHTML = userHtml;
 
-      // 4. 加载登录日志
       let allLogs = [];
       try {
         const { data: logData } = await Utils.withTimeout(
@@ -1341,7 +1328,6 @@ const Admin = {
 const EventBinder = {
   init: () => {
     try {
-      // 认证事件
       Utils.DOM.$("#toRegisterBtn").addEventListener("click", () => Page.show("registerPage"));
       Utils.DOM.$("#toLoginBtn").addEventListener("click", () => Page.show("loginPage"));
       Utils.DOM.$("#loginBtn").addEventListener("click", Auth.login);
@@ -1350,23 +1336,19 @@ const EventBinder = {
       Utils.DOM.$("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && Auth.register());
       Utils.DOM.$("#logoutBtn").addEventListener("click", Auth.logout);
 
-      // 聊天事件
       Utils.DOM.$("#sendBtn").addEventListener("click", Chat.send);
       Utils.DOM.$("#msgInput").addEventListener("keydown", (e) => e.key === "Enter" && Chat.send());
 
-      // 导航事件
       Utils.DOM.$("#settingBtn").addEventListener("click", () => Page.show("settingPage"));
       Utils.DOM.$("#adminBtn").addEventListener("click", () => { Admin.loadData(); Page.show("adminPage"); });
       Utils.DOM.$("#backToChatBtn").addEventListener("click", () => Page.show("chatPage"));
       Utils.DOM.$("#backToChatFromAdminBtn").addEventListener("click", () => Page.show("chatPage"));
 
-      // 设置事件
       Utils.DOM.$("#saveNickBtn").addEventListener("click", Settings.saveNickname);
       Utils.DOM.$("#toggleThemeBtn").addEventListener("click", Theme.toggle);
       Utils.DOM.$("#updatePwdBtn").addEventListener("click", Settings.updatePassword);
       Utils.DOM.$("#showLoginLogBtn").addEventListener("click", LoginLog.showMy);
 
-      // 管理员事件
       Utils.DOM.$("#saveConfigBtn").addEventListener("click", Admin.saveSystemConfig);
       Utils.DOM.$("#saveSwBtn").addEventListener("click", Admin.saveSensitiveWords);
       Utils.DOM.$("#saveAnnounceBtn").addEventListener("click", Admin.saveAnnouncement);
@@ -1387,7 +1369,6 @@ const App = {
       AppState.locks.isInit = true;
       console.log("[应用] 开始初始化");
 
-      // 超时强制关闭加载页
       AppState.timers.forceCloseLoader = setTimeout(() => {
         console.warn("[应用] 初始化超时，强制关闭加载页");
         Page.closeLoader();
@@ -1395,15 +1376,12 @@ const App = {
         Page.show("loginPage");
       }, 5000);
 
-      // 初始化主题
       Theme.init();
 
-      // 检查Supabase SDK
       if (!window.supabase) {
         throw new Error("Supabase SDK加载失败，请刷新页面重试");
       }
 
-      // 创建Supabase客户端
       AppState.sb = window.supabase.createClient(
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
@@ -1420,10 +1398,8 @@ const App = {
         }
       );
 
-      // 绑定事件
       EventBinder.init();
 
-      // 清理旧会话
       const { data: { session } } = await AppState.sb.auth.getSession();
       if (session?.user) {
         console.log("[应用] 检测到已有会话，尝试清理");
@@ -1434,12 +1410,10 @@ const App = {
         }
       }
 
-      // 重置状态
       AppState.reset();
       Page.show("loginPage");
       Page.closeLoader();
 
-      // 监听认证状态变化
       AppState.sb.auth.onAuthStateChange(Auth.handleChange);
 
       console.log("[应用] 初始化完成");
