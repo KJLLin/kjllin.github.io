@@ -4,176 +4,116 @@ const APP_CONFIG = Object.freeze({
   SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
   TIMEOUT: { LOGIN: 20000, API: 10000, REALTIME: 15000 },
   INTERVAL: { HEARTBEAT: 30000, SESSION_CHECK: 60000, REALTIME_RECONNECT_BASE: 1000 },
-  MAX_RECONNECT: 10,
+  MAX_RECONNECT: 10
 });
 
 // ====================== 工具函数 ======================
 const Utils = {
   SafeStorage: {
-    _isSupported: function() {
+    _isSupported: (() => {
       try {
-        const testKey = "__storage_test__";
-        window.localStorage.setItem(testKey, testKey);
-        window.localStorage.removeItem(testKey);
+        const k = "__test__";
+        localStorage.setItem(k, k);
+        localStorage.removeItem(k);
         return true;
-      } catch {
-        return false;
-      }
-    }(),
-    get: function(key) {
-      if (!this._isSupported) return "";
-      try {
-        return window.localStorage.getItem(key) || "";
-      } catch {
-        return "";
-      }
-    },
-    set: function(key, value) {
-      if (!this._isSupported) return false;
-      try {
-        window.localStorage.setItem(key, value);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    remove: function(key) {
-      if (!this._isSupported) return false;
-      try {
-        window.localStorage.removeItem(key);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    clear: function() {
-      if (!this._isSupported) return false;
-      try {
-        window.localStorage.clear();
-        return true;
-      } catch {
-        return false;
-      }
-    }
+      } catch { return false; }
+    })(),
+    get: (k) => Utils.SafeStorage._isSupported ? (localStorage.getItem(k) || "") : "",
+    set: (k, v) => Utils.SafeStorage._isSupported ? (localStorage.setItem(k, v), true) : false,
+    remove: (k) => Utils.SafeStorage._isSupported ? (localStorage.removeItem(k), true) : false,
+    clear: () => Utils.SafeStorage._isSupported ? (localStorage.clear(), true) : false
   },
 
   DOM: {
-    $: function(selector) {
+    $: (selector) => {
       try {
-        const el = document.querySelector(selector);
-        return el || {
-          addEventListener: () => {},
-          removeEventListener: () => {},
-          innerText: '',
-          innerHTML: '',
-          value: '',
-          disabled: false,
-          checked: false,
-          classList: { add: () => {}, remove: () => {}, contains: () => false },
-          style: { display: 'none', opacity: '' }
+        return document.querySelector(selector) || {
+          addEventListener: () => {}, removeEventListener: () => {},
+          innerText: '', innerHTML: '', value: '', disabled: false, checked: false,
+          classList: { add: () => {}, remove: () => {} }, style: { display: 'none' }
         };
       } catch {
         return {
-          addEventListener: () => {},
-          removeEventListener: () => {},
-          innerText: '',
-          innerHTML: '',
-          value: '',
-          disabled: false,
-          checked: false,
-          classList: { add: () => {}, remove: () => {}, contains: () => false },
-          style: { display: 'none', opacity: '' }
+          addEventListener: () => {}, removeEventListener: () => {},
+          innerText: '', innerHTML: '', value: '', disabled: false, checked: false,
+          classList: { add: () => {}, remove: () => {} }, style: { display: 'none' }
         };
       }
     },
-    $$: function(selector) {
-      try {
-        return document.querySelectorAll(selector) || [];
-      } catch {
-        return [];
-      }
+    $$: (selector) => {
+      try { return document.querySelectorAll(selector) || []; } catch { return []; }
     }
   },
 
-  escapeHtml: function(text) {
-    if (text == null || text === '') return '';
+  escapeHtml: (text) => {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   },
 
-  debounce: function(func, wait) {
+  debounce: (func, wait) => {
     let timeout = null;
-    const debounced = function(...args) {
+    const debounced = (...args) => {
       if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        timeout = null;
-        func.apply(this, args);
-      }, wait);
+      timeout = setTimeout(() => { timeout = null; func(...args); }, wait);
     };
-    debounced.cancel = () => { if (timeout) clearTimeout(timeout); };
+    debounced.cancel = () => timeout && clearTimeout(timeout);
     return debounced;
   },
 
-  generateId: function() {
-    try {
-      return window.crypto.randomUUID();
-    } catch {
-      return Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
-    }
+  generateId: () => {
+    try { return crypto.randomUUID(); }
+    catch { return Date.now().toString(36) + Math.random().toString(36).substring(2, 10); }
   },
 
-  withTimeout: function(promise, timeoutMs, errorMsg = "请求超时") {
+  withTimeout: (promise, timeoutMs, errorMsg = "请求超时") => {
     let timeout = null;
     return Promise.race([
       promise,
-      new Promise((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(errorMsg)), timeoutMs);
-      })
-    ]).finally(() => {
-      if (timeout) clearTimeout(timeout);
-    });
+      new Promise((_, reject) => timeout = setTimeout(() => reject(new Error(errorMsg)), timeoutMs))
+    ]).finally(() => timeout && clearTimeout(timeout));
   },
 
-  retry: async function(fn, maxRetries = 2, baseDelay = 300) {
-    let lastError = null;
+  retry: async (fn, maxRetries = 2, baseDelay = 300) => {
+    let lastError;
     for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await fn();
-      } catch (error) {
-        lastError = error;
-        const delay = baseDelay * Math.pow(2, i);
-        console.warn(`[重试] 第${i + 1}次失败`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
+      try { return await fn(); }
+      catch (e) {
+        lastError = e;
+        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, i)));
       }
     }
     throw lastError;
   },
 
-  isValidEmail: function(email) {
-    if (!email) return false;
-    const reg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return reg.test(email.trim());
+  isValidEmail: (email) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email?.trim()),
+
+  getSystemConfig: async () => {
+    try {
+      const { data, error } = await AppState.sb.from("system_config").select("*").maybeSingle();
+      return !error && data ? data : { require_verify: false, sensitive_words: "", announcement: "" };
+    } catch {
+      return { require_verify: false, sensitive_words: "", announcement: "" };
+    }
   }
 };
 
 // ====================== 通知模块 ======================
 const Notify = {
   _timeout: null,
-  show: function(type, text) {
+  show: (type, text) => {
     try {
-      if (this._timeout) clearTimeout(this._timeout);
-      const notifyEl = Utils.DOM.$("#winNotify");
-      notifyEl.className = `win-notify ${type}`;
-      notifyEl.innerText = text;
-      notifyEl.classList.remove("hidden");
-      this._timeout = setTimeout(() => {
-        notifyEl.classList.add("hidden");
-        this._timeout = null;
+      if (Notify._timeout) clearTimeout(Notify._timeout);
+      const el = Utils.DOM.$("#winNotify");
+      el.className = `win-notify ${type}`;
+      el.innerText = text;
+      el.classList.remove("hidden");
+      Notify._timeout = setTimeout(() => {
+        el.classList.add("hidden");
+        Notify._timeout = null;
       }, 6000);
-    } catch {
-      alert(text);
-    }
+    } catch { alert(text); }
   },
   success: (text) => Notify.show('success', text),
   error: (text) => Notify.show('error', text),
@@ -189,71 +129,38 @@ const AppState = {
   sessionToken: Utils.SafeStorage.get("chat_current_session_token"),
   isSessionInitialized: false,
   isLoadingMessages: false,
-  _locks: {
-    isLoggingIn: false,
-    isLoggingOut: false,
-    isAuthHandling: false,
-    isInit: false
-  },
+  _locks: { isLoggingIn: false, isLoggingOut: false, isAuthHandling: false, isInit: false, isRegistering: false },
   channels: Object.create(null),
   timers: Object.create(null),
   _reconnectCount: Object.create(null),
 
-  lock: function(key) {
-    if (this._locks.hasOwnProperty(key)) {
-      this._locks[key] = true;
-    }
+  lock: (key) => AppState._locks.hasOwnProperty(key) && (AppState._locks[key] = true),
+  unlock: (key) => AppState._locks.hasOwnProperty(key) && (AppState._locks[key] = false),
+  isLocked: (key) => AppState._locks[key] || false,
+  resetReconnect: (name) => AppState._reconnectCount[name] = 0,
+  getReconnectDelay: (name) => {
+    const count = AppState._reconnectCount[name] || 0;
+    AppState._reconnectCount[name] = count + 1;
+    return count >= APP_CONFIG.MAX_RECONNECT ? null : APP_CONFIG.INTERVAL.REALTIME_RECONNECT_BASE * Math.pow(2, count);
   },
 
-  unlock: function(key) {
-    if (this._locks.hasOwnProperty(key)) {
-      this._locks[key] = false;
-    }
-  },
-
-  isLocked: function(key) {
-    return this._locks[key] || false;
-  },
-
-  resetReconnect: function(channelName) {
-    this._reconnectCount[channelName] = 0;
-  },
-
-  getReconnectDelay: function(channelName) {
-    const count = this._reconnectCount[channelName] || 0;
-    this._reconnectCount[channelName] = count + 1;
-    if (count >= APP_CONFIG.MAX_RECONNECT) return null;
-    return APP_CONFIG.INTERVAL.REALTIME_RECONNECT_BASE * Math.pow(2, count);
-  },
-
-  reset: function() {
+  reset: () => {
     try {
-      console.log("[状态] 开始全量重置");
-      Object.values(this.timers).forEach(timer => {
-        if (timer) clearTimeout(timer) || clearInterval(timer);
-      });
-      if (this.sb) {
-        Object.values(this.channels).forEach(channel => {
-          if (channel) {
-            try {
-              this.sb.removeChannel(channel);
-            } catch {}
-          }
-        });
-      }
+      Object.values(AppState.timers).forEach(timer => timer && (clearTimeout(timer) || clearInterval(timer)));
+      if (AppState.sb) Object.values(AppState.channels).forEach(channel => channel && AppState.sb.removeChannel(channel).catch(() => {}));
       
       const adminBtn = Utils.DOM.$("#adminBtn");
       adminBtn.style.display = "none";
       adminBtn.classList.add("hidden");
       
-      this.currentUser = null;
-      this.userNick = "";
-      this.sessionToken = "";
-      this.isSessionInitialized = false;
-      this.isLoadingMessages = false;
-      this.channels = Object.create(null);
-      this.timers = Object.create(null);
-      this._reconnectCount = Object.create(null);
+      AppState.currentUser = null;
+      AppState.userNick = "";
+      AppState.sessionToken = "";
+      AppState.isSessionInitialized = false;
+      AppState.isLoadingMessages = false;
+      AppState.channels = Object.create(null);
+      AppState.timers = Object.create(null);
+      AppState._reconnectCount = Object.create(null);
       
       Utils.SafeStorage.remove("chat_current_session_token");
       Utils.SafeStorage.remove("nick");
@@ -261,49 +168,29 @@ const AppState = {
       ["loginBtn", "regBtn", "sendBtn", "logoutBtn"].forEach(id => {
         const btn = Utils.DOM.$(`#${id}`);
         btn.disabled = false;
-        btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送" : "退出登录";
-      });
-      
-      Object.keys(this._locks).forEach(key => this.unlock(key));
-      
-      ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => {
-        Utils.DOM.$(`#${id}`).value = "";
-      });
-      
-      console.log("[状态] 全量重置完成");
-    } catch (e) {
-      console.warn("[状态] 重置异常", e);
-    }
+        btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送 ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
+    } catch {}
   }
 };
 
 // ====================== UI模块 ======================
 const UI = {
-  closeLoader: function() {
+  closeLoader: () => {
     try {
-      if (AppState.timers.forceCloseLoader) {
-        clearTimeout(AppState.timers.forceCloseLoader);
-        AppState.timers.forceCloseLoader = null;
-      }
+      if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
       const loader = Utils.DOM.$("#loadingPage");
       loader.style.opacity = 0;
-      setTimeout(() => {
-        loader.classList.add("hidden");
-        loader.style.display = "none";
-      }, 300);
-    } catch {
-      Utils.DOM.$("#loadingPage")?.remove();
-    }
+      setTimeout(() => { loader.classList.add("hidden"); loader.style.display = "none"; }, 300);
+    } catch { Utils.DOM.$("#loadingPage")?.remove(); }
   },
 
-  showPage: function(pageId) {
+  showPage: (pageId) => {
     try {
       const needLogin = ["chatPage", "settingPage", "adminPage"].includes(pageId);
       if (needLogin && !AppState.isSessionInitialized) {
-        console.warn("[页面] 未登录，禁止访问", pageId);
         AppState.reset();
-        this.showPage("loginPage");
-        this.closeLoader();
+        UI.showPage("loginPage");
+        UI.closeLoader();
         return;
       }
       if (pageId === "adminPage" && !AppState.currentUser?.isAdmin) {
@@ -319,17 +206,12 @@ const UI = {
       target.classList.remove("hidden");
       target.classList.add("active");
       target.scrollTop = 0;
-      console.log("[页面] 切换成功", pageId);
 
-      if (pageId === "chatPage") {
-        setTimeout(() => this.showAdminBtn(), 50);
-      }
-    } catch (e) {
-      Notify.error("页面切换失败：" + e.message);
-    }
+      if (pageId === "chatPage") setTimeout(() => UI.showAdminBtn(), 50);
+    } catch (e) { Notify.error("页面切换失败：" + e.message); }
   },
 
-  showAdminBtn: function() {
+  showAdminBtn: () => {
     try {
       const btn = Utils.DOM.$("#adminBtn");
       if (!AppState.currentUser?.isAdmin) {
@@ -339,15 +221,11 @@ const UI = {
       }
       btn.classList.remove("hidden");
       btn.style.display = "inline-block";
-      btn.style.visibility = "visible";
-      btn.style.opacity = "1";
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   },
 
-  initTheme: function() {
+  initTheme: () => {
     try {
       const isDark = Utils.SafeStorage.get("theme") === "dark" || window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.dataset.theme = isDark ? "dark" : "";
@@ -355,28 +233,24 @@ const UI = {
     } catch {}
   },
 
-  toggleTheme: function() {
+  toggleTheme: () => {
     try {
       const root = document.documentElement;
       const isDark = root.dataset.theme === "dark";
       root.dataset.theme = isDark ? "" : "dark";
       isDark ? Utils.SafeStorage.remove("theme") : Utils.SafeStorage.set("theme", "dark");
       Utils.DOM.$("#toggleThemeBtn").innerText = isDark ? "切换深色模式" : "切换浅色模式";
-    } catch {
-      Notify.error("主题切换失败");
-    }
+    } catch { Notify.error("主题切换失败"); }
   }
 };
 
 // ====================== 会话模块 ======================
 const Session = {
-  handleInvalid: async function(reason = "账号在其他设备登录，已为你安全下线") {
+  handleInvalid: async (reason = "账号在其他设备登录，已为你安全下线") => {
     try {
       Notify.error(reason);
       AppState.isSessionInitialized = false;
-      if (AppState.sb) {
-        await AppState.sb.auth.signOut().catch(() => {});
-      }
+      if (AppState.sb) await AppState.sb.auth.signOut().catch(() => {});
       AppState.reset();
       Utils.SafeStorage.clear();
       UI.showPage("loginPage");
@@ -388,38 +262,26 @@ const Session = {
     }
   },
 
-  initCheck: function() {
-    const channelName = "session_check";
+  initCheck: () => {
+    const name = "session_check";
     try {
       if (!AppState.currentUser) return;
-      if (AppState.channels[channelName]) {
-        AppState.sb.removeChannel(AppState.channels[channelName]).catch(() => {});
-      }
-      AppState.resetReconnect(channelName);
+      if (AppState.channels[name]) AppState.sb.removeChannel(AppState.channels[name]).catch(() => {});
+      AppState.resetReconnect(name);
 
-      AppState.channels[channelName] = AppState.sb.channel(channelName)
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.currentUser.id}` },
+      AppState.channels[name] = AppState.sb.channel(name)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.currentUser.id}` },
           async (payload) => {
-            const newToken = payload.new?.current_session_token;
-            if (newToken && newToken !== AppState.sessionToken) {
-              console.warn("[会话] 检测到其他设备登录，触发下线");
-              await Session.handleInvalid();
-            }
+            const { current_session_token, status } = payload.new || {};
+            if (current_session_token && current_session_token !== AppState.sessionToken) await Session.handleInvalid();
+            if (status === "pending" || status === "ban") await Session.handleInvalid(status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
           }
         )
         .subscribe((status) => {
-          console.log(`[会话] 通道状态：${status}`);
           if (status === "CHANNEL_ERROR") {
-            const delay = AppState.getReconnectDelay(channelName);
-            if (delay) {
-              console.error(`[会话] 通道连接失败，${delay}ms后重试`);
-              setTimeout(() => Session.initCheck(), delay);
-            }
-          } else if (status === "SUBSCRIBED") {
-            AppState.resetReconnect(channelName);
-          }
+            const delay = AppState.getReconnectDelay(name);
+            if (delay) setTimeout(() => Session.initCheck(), delay);
+          } else if (status === "SUBSCRIBED") AppState.resetReconnect(name);
         });
 
       if (AppState.timers.sessionCheck) clearInterval(AppState.timers.sessionCheck);
@@ -427,24 +289,88 @@ const Session = {
         if (!AppState.currentUser || !AppState.isSessionInitialized) return;
         try {
           const { data, error } = await Utils.withTimeout(
-            AppState.sb.from("users").select("current_session_token").eq("id", AppState.currentUser.id).single(),
+            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.currentUser.id).single(),
             APP_CONFIG.TIMEOUT.API
           );
-          if (!error && data?.current_session_token !== AppState.sessionToken) {
-            await Session.handleInvalid();
+          if (!error && data) {
+            if (data.current_session_token !== AppState.sessionToken) await Session.handleInvalid();
+            if (data.status === "pending" || data.status === "ban") await Session.handleInvalid(data.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
           }
         } catch {}
       }, APP_CONFIG.INTERVAL.SESSION_CHECK);
-
-    } catch {
-      console.warn("[会话] 监听初始化失败");
-    }
+    } catch {}
   }
 };
 
 // ====================== 认证核心模块 ======================
 const Auth = {
-  login: async function() {
+  register: async () => {
+    if (AppState.isLocked("isRegistering")) {
+      Notify.warning("正在注册中，请稍候...");
+      return;
+    }
+
+    AppState.lock("isRegistering");
+    const regBtn = Utils.DOM.$("#regBtn");
+    regBtn.disabled = true;
+    regBtn.innerText = "注册中...";
+
+    try {
+      const nick = Utils.DOM.$("#regNick").value.trim();
+      const email = Utils.DOM.$("#regEmail").value.trim();
+      const pwd = Utils.DOM.$("#regPwd").value.trim();
+      
+      if (!nick || !email || !pwd) throw new Error("请填写完整注册信息");
+      if (!Utils.isValidEmail(email)) throw new Error("请输入正确的邮箱格式");
+      if (pwd.length < 8) throw new Error("密码长度不能少于8位");
+
+      const config = await Utils.getSystemConfig();
+      const { data: authData, error: authError } = await Utils.withTimeout(
+        AppState.sb.auth.signUp({ email, password: pwd, options: { data: { nick } } }),
+        APP_CONFIG.TIMEOUT.LOGIN,
+        "注册请求超时，请检查网络后重试"
+      );
+
+      if (authError) {
+        let errMsg = authError.message;
+        if (errMsg.includes("already registered")) errMsg = "该邮箱已被注册，请直接登录";
+        throw new Error(errMsg);
+      }
+      if (!authData.user) throw new Error("注册失败，未获取到用户信息");
+
+      const defaultStatus = config.require_verify ? "pending" : "active";
+      const { error: createError } = await AppState.sb.from("users").upsert([{
+        id: authData.user.id,
+        nick: nick,
+        email: email,
+        is_admin: false,
+        status: defaultStatus,
+        created_at: authData.user.created_at || new Date().toISOString()
+      }], { onConflict: "id" });
+      if (createError) throw new Error("用户信息初始化失败：" + createError.message);
+
+      if (config.require_verify) {
+        await AppState.sb.auth.signOut().catch(() => {});
+        Notify.success("注册成功！你的账号正在等待管理员审核，审核通过后即可登录");
+        ["regNick", "regEmail", "regPwd"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
+        UI.showPage("loginPage");
+      } else {
+        Notify.success("注册成功，请前往邮箱验证后登录");
+        ["regNick", "regEmail", "regPwd"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
+        UI.showPage("loginPage");
+      }
+    } catch (e) {
+      Notify.error(`注册失败：${e.message}`);
+    } finally {
+      setTimeout(() => {
+        AppState.unlock("isRegistering");
+        regBtn.disabled = false;
+        regBtn.innerText = "注册";
+      }, 300);
+    }
+  },
+
+  login: async () => {
     if (AppState.isLocked("isLoggingIn")) {
       Notify.warning("正在登录中，请稍候...");
       return;
@@ -473,7 +399,6 @@ const Auth = {
         if (errMsg.includes("Email not confirmed")) errMsg = "邮箱未验证，请验证后登录";
         if (errMsg.includes("Invalid login credentials")) errMsg = "邮箱或密码错误";
         if (errMsg.includes("banned")) errMsg = "账号已被封禁";
-        if (errMsg.includes("infinite recursion")) errMsg = "数据库策略异常，请联系管理员";
         throw new Error(errMsg);
       }
     } catch (e) {
@@ -487,82 +412,26 @@ const Auth = {
     }
   },
 
-  register: async function() {
-    const regBtn = Utils.DOM.$("#regBtn");
-    regBtn.disabled = true;
-    regBtn.innerText = "注册中...";
-
-    try {
-      const nick = Utils.DOM.$("#regNick").value.trim();
-      const email = Utils.DOM.$("#regEmail").value.trim();
-      const pwd = Utils.DOM.$("#regPwd").value.trim();
-      
-      if (!nick || !email || !pwd) throw new Error("请填写完整注册信息");
-      if (!Utils.isValidEmail(email)) throw new Error("请输入正确的邮箱格式");
-      if (pwd.length < 8) throw new Error("密码长度不能少于8位");
-
-      const { error } = await Utils.withTimeout(
-        AppState.sb.auth.signUp({ 
-          email, 
-          password: pwd, 
-          options: { data: { nick } } 
-        }),
-        APP_CONFIG.TIMEOUT.LOGIN,
-        "注册请求超时，请检查网络后重试"
-      );
-
-      if (error) {
-        let errMsg = error.message;
-        if (errMsg.includes("already registered")) errMsg = "该邮箱已被注册，请直接登录";
-        throw new Error(errMsg);
-      }
-
-      Notify.success("注册成功，请前往邮箱验证后登录");
-      ["regNick", "regEmail", "regPwd"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
-      UI.showPage("loginPage");
-    } catch (e) {
-      Notify.error(`注册失败：${e.message}`);
-    } finally {
-      regBtn.disabled = false;
-      regBtn.innerText = "注册";
-    }
-  },
-
-  handleAuthChange: async function(event, session) {
-    if (AppState.isLocked("isAuthHandling")) {
-      console.log("[认证] 正在处理中，跳过重复触发");
-      return;
-    }
-
+  handleAuthChange: async (event, session) => {
+    if (AppState.isLocked("isAuthHandling")) return;
     AppState.lock("isAuthHandling");
+
     try {
-      console.log("[认证] 事件：", event);
-
       if (event === "SIGNED_OUT") {
-        console.log("[认证] 检测到退出登录");
         AppState.reset();
         UI.showPage("loginPage");
         UI.closeLoader();
         return;
       }
 
-      const validEvents = ["SIGNED_IN", "INITIAL_SESSION"];
-      if (!validEvents.includes(event)) {
-        console.log("[认证] 非有效登录事件，跳过");
-        return;
-      }
-
-      if (!session?.user) {
-        console.log("[认证] 无有效会话，显示登录页");
+      if (!["SIGNED_IN", "INITIAL_SESSION"].includes(event) || !session?.user) {
         AppState.reset();
         UI.showPage("loginPage");
         UI.closeLoader();
         return;
       }
 
-      Notify.info("账号验证成功，正在进入聊天...");
       let userInfo = null;
-
       await Utils.retry(async () => {
         const { data, error } = await Utils.withTimeout(
           AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
@@ -572,26 +441,32 @@ const Auth = {
         userInfo = data;
       });
 
+      const config = await Utils.getSystemConfig();
+      const defaultStatus = config.require_verify ? "pending" : "active";
       if (!userInfo) {
-        console.warn("[认证] 业务表无用户记录，自动创建");
         const { data: newUser, error: createError } = await Utils.withTimeout(
           AppState.sb.from("users").insert([{
             id: session.user.id,
             nick: session.user.user_metadata?.nick || session.user.email.split('@')[0],
             email: session.user.email,
             is_admin: false,
-            status: 'active',
+            status: defaultStatus,
             created_at: session.user.created_at || new Date().toISOString()
           }]).select().single(),
           APP_CONFIG.TIMEOUT.API
         );
         if (createError) throw new Error("用户信息初始化失败，请刷新重试");
         userInfo = newUser;
-        console.log("[认证] 用户信息自动创建成功");
       }
 
       if (userInfo.status === "ban") throw new Error("账号已被封禁，无法登录");
+      if (userInfo.status === "pending") {
+        await AppState.sb.auth.signOut().catch(() => {});
+        throw new Error("你的账号正在等待管理员审核，审核通过后即可登录");
+      }
+      if (userInfo.status !== "active") throw new Error("账号状态异常，请联系管理员");
 
+      Notify.info("账号验证成功，正在进入聊天...");
       AppState.currentUser = session.user;
       AppState.currentUser.isAdmin = [true, 'true', 1].includes(userInfo.is_admin);
       AppState.userNick = Utils.SafeStorage.get("nick") || userInfo.nick || "用户";
@@ -620,7 +495,6 @@ const Auth = {
 
       setTimeout(async () => {
         try {
-          console.log("[认证] 开始初始化附属功能");
           Session.initCheck();
           await Chat.loadMessages();
           Chat.initRealtime();
@@ -630,16 +504,12 @@ const Auth = {
           Config.initRealtime();
           Heartbeat.init();
           await LoginLog.record();
-          console.log("[认证] 所有功能初始化完成");
         } catch {
           Notify.warning("部分功能加载失败，不影响聊天使用");
         }
       }, 0);
-
     } catch (e) {
-      let errMsg = e.message;
-      if (errMsg.includes("infinite recursion")) errMsg = "数据库策略异常，请联系管理员";
-      Notify.error(`登录异常：${errMsg}`);
+      Notify.error(`登录异常：${e.message}`);
       AppState.reset();
       await AppState.sb.auth.signOut().catch(() => {});
       UI.showPage("loginPage");
@@ -649,7 +519,7 @@ const Auth = {
     }
   },
 
-  logout: async function() {
+  logout: async () => {
     if (AppState.isLocked("isLoggingOut")) {
       Notify.warning("正在退出中，请稍候...");
       return;
@@ -662,17 +532,9 @@ const Auth = {
 
     try {
       Notify.info("正在安全退出...");
-      console.log("[认证] 开始退出登录");
-
       if (AppState.currentUser && AppState.sb) {
-        await AppState.sb.from("users")
-          .update({ current_session_token: null })
-          .eq("id", AppState.currentUser.id)
-          .catch(() => {});
-        await AppState.sb.from("online_users")
-          .delete()
-          .eq("user_id", AppState.currentUser.id)
-          .catch(() => {});
+        await AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.currentUser.id).catch(() => {});
+        await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id).catch(() => {});
       }
 
       if (AppState.sb) await AppState.sb.auth.signOut();
@@ -680,7 +542,6 @@ const Auth = {
       Utils.SafeStorage.clear();
       UI.showPage("loginPage");
       Notify.success("已安全退出登录");
-      console.log("[认证] 退出登录完成");
     } catch (e) {
       Notify.error(`退出失败：${e.message}`);
       AppState.reset();
@@ -698,24 +559,20 @@ const Auth = {
 
 // ====================== 聊天模块 ======================
 const Chat = {
-  _debounceLoad: null,
-  init: function() {
-    this._debounceLoad = Utils.debounce(() => this.loadMessages(), 300);
-  },
+  _debounceLoad: Utils.debounce(() => Chat.loadMessages(), 300),
+  init: () => {},
 
-  loadMessages: async function() {
+  loadMessages: async () => {
     if (AppState.isLoadingMessages) return;
     AppState.isLoadingMessages = true;
 
     try {
-      console.log("[聊天] 开始加载历史消息");
       const { data, error } = await Utils.withTimeout(
         AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("加载历史消息失败");
-      this.render(data || []);
-      console.log(`[聊天] 历史消息加载完成，共${data?.length || 0}条`);
+      Chat.render(data || []);
     } catch (e) {
       Notify.error(e.message);
     } finally {
@@ -723,12 +580,12 @@ const Chat = {
     }
   },
 
-  render: function(msgList) {
+  render: (msgList) => {
     try {
       const msgBox = Utils.DOM.$("#msgBox");
       let html = "";
       msgList.forEach(msg => {
-        if (!msg || !msg.id) return;
+        if (!msg?.id) return;
         const isMe = msg.user_id === AppState.currentUser.id;
         const safeNick = Utils.escapeHtml(msg.nick || "匿名用户");
         const safeText = Utils.escapeHtml(msg.text || "");
@@ -754,32 +611,24 @@ const Chat = {
     }
   },
 
-  initRealtime: function() {
-    const channelName = "message_channel";
+  initRealtime: () => {
+    const name = "message_channel";
     try {
-      if (AppState.channels[channelName]) {
-        AppState.sb.removeChannel(AppState.channels[channelName]).catch(() => {});
-      }
-      AppState.resetReconnect(channelName);
+      if (AppState.channels[name]) AppState.sb.removeChannel(AppState.channels[name]).catch(() => {});
+      AppState.resetReconnect(name);
 
-      AppState.channels[channelName] = AppState.sb.channel(channelName)
-        .on("postgres_changes", { event: "*", schema: "public", table: "messages" },
-          () => this._debounceLoad()
-        )
+      AppState.channels[name] = AppState.sb.channel(name)
+        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => Chat._debounceLoad())
         .subscribe((status) => {
           if (status === "CHANNEL_ERROR") {
-            const delay = AppState.getReconnectDelay(channelName);
-            if (delay) setTimeout(() => this.initRealtime(), delay);
-          } else if (status === "SUBSCRIBED") {
-            AppState.resetReconnect(channelName);
-          }
+            const delay = AppState.getReconnectDelay(name);
+            if (delay) setTimeout(() => Chat.initRealtime(), delay);
+          } else if (status === "SUBSCRIBED") AppState.resetReconnect(name);
         });
-    } catch {
-      console.warn("[聊天] 实时监听初始化失败");
-    }
+    } catch {}
   },
 
-  send: async function() {
+  send: async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) {
       Notify.error("请先登录");
       return;
@@ -797,15 +646,9 @@ const Chat = {
     sendBtn.innerText = "发送中...";
 
     try {
-      // 敏感词过滤（修复406报错，用maybeSingle）
-      let config = { sensitive_words: "" };
-      try {
-        const { data, error } = await AppState.sb.from("system_config").select("sensitive_words").maybeSingle();
-        if (!error && data) config = data;
-      } catch {}
-
+      const config = await Utils.getSystemConfig();
       let content = text;
-      (config?.sensitive_words || "").split(",").filter(w => w.trim()).forEach(word => {
+      (config.sensitive_words || "").split(",").filter(w => w.trim()).forEach(word => {
         content = content.replaceAll(word, "***");
       });
 
@@ -819,7 +662,7 @@ const Chat = {
 
       msgInput.value = "";
       Notify.success("消息发送成功");
-      await this.loadMessages();
+      await Chat.loadMessages();
     } catch (e) {
       Notify.error(e.message);
     } finally {
@@ -832,7 +675,7 @@ Chat.init();
 
 // ====================== 在线&心跳模块 ======================
 const Online = {
-  mark: async function() {
+  mark: async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) return;
     try {
       await AppState.sb.from("online_users").upsert({
@@ -843,66 +686,50 @@ const Online = {
     } catch {}
   },
 
-  refreshCount: async function() {
+  refreshCount: async () => {
     try {
       const { data } = await AppState.sb.from("online_users").select("*");
       Utils.DOM.$("#onlineNum").innerText = data?.length || 0;
     } catch {}
   },
 
-  initRealtime: function() {
-    const channelName = "online_channel";
+  initRealtime: () => {
+    const name = "online_channel";
     try {
-      if (AppState.channels[channelName]) {
-        AppState.sb.removeChannel(AppState.channels[channelName]).catch(() => {});
-      }
-      AppState.channels[channelName] = AppState.sb.channel(channelName)
-        .on("postgres_changes", { event: "*", schema: "public", table: "online_users" },
-          () => this.refreshCount()
-        )
+      if (AppState.channels[name]) AppState.sb.removeChannel(AppState.channels[name]).catch(() => {});
+      AppState.channels[name] = AppState.sb.channel(name)
+        .on("postgres_changes", { event: "*", schema: "public", table: "online_users" }, () => Online.refreshCount())
         .subscribe();
     } catch {}
   }
 };
 
 const Heartbeat = {
-  init: function() {
+  init: () => {
     if (AppState.timers.heartbeat) clearInterval(AppState.timers.heartbeat);
     AppState.timers.heartbeat = setInterval(async () => {
-      if (AppState.currentUser && AppState.isSessionInitialized) {
-        await Online.mark();
-      }
+      if (AppState.currentUser && AppState.isSessionInitialized) await Online.mark();
     }, APP_CONFIG.INTERVAL.HEARTBEAT);
   }
 };
 
-// ====================== 系统配置模块（修复406报错） ======================
+// ====================== 系统配置模块 ======================
 const Config = {
-  initRealtime: function() {
-    const channelName = "config_channel";
+  initRealtime: () => {
+    const name = "config_channel";
     try {
-      if (AppState.channels[channelName]) {
-        AppState.sb.removeChannel(AppState.channels[channelName]).catch(() => {});
-      }
-      AppState.channels[channelName] = AppState.sb.channel(channelName)
-        .on("postgres_changes", { event: "*", schema: "public", table: "system_config" },
-          () => this.loadAnnounce()
-        )
+      if (AppState.channels[name]) AppState.sb.removeChannel(AppState.channels[name]).catch(() => {});
+      AppState.channels[name] = AppState.sb.channel(name)
+        .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, () => Config.loadAnnounce())
         .subscribe();
     } catch {}
   },
 
-  loadAnnounce: async function() {
+  loadAnnounce: async () => {
     try {
-      let data = { announcement: "" };
-      // 修复406报错：用maybeSingle替代single
-      const res = await AppState.sb.from("system_config").select("announcement").maybeSingle();
-      if (!res.error && res.data) {
-        data = res.data;
-      }
-      
+      const { data, error } = await AppState.sb.from("system_config").select("announcement").maybeSingle();
       const bar = Utils.DOM.$("#announceBar");
-      if (data?.announcement) {
+      if (!error && data?.announcement) {
         bar.innerText = data.announcement;
         bar.classList.remove("hidden");
       } else {
@@ -914,20 +741,19 @@ const Config = {
 
 // ====================== 登录日志模块 ======================
 const LoginLog = {
-  record: async function() {
+  record: async () => {
     if (!AppState.currentUser) return;
     try {
-      const userAgent = navigator.userAgent || "未知设备";
       await AppState.sb.from("login_logs").insert([{
         user_id: AppState.currentUser.id,
         ip: "未知IP",
-        device: userAgent.substring(0, 80),
+        device: (navigator.userAgent || "未知设备").substring(0, 80),
         time: new Date().toLocaleString()
       }]);
     } catch {}
   },
 
-  showMy: async function() {
+  showMy: async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) {
       Notify.error("请先登录");
       return;
@@ -940,7 +766,7 @@ const LoginLog = {
       );
       if (error) throw new Error("加载登录日志失败");
 
-      if (!data || data.length === 0) {
+      if (!data?.length) {
         alert("=== 我的登录日志 ===\n\n暂无登录日志");
         return;
       }
@@ -958,7 +784,7 @@ const LoginLog = {
 
 // ====================== 设置模块 ======================
 const Settings = {
-  saveNick: async function() {
+  saveNick: async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) {
       Notify.error("请先登录");
       return;
@@ -981,7 +807,7 @@ const Settings = {
     }
   },
 
-  updatePwd: async function() {
+  updatePwd: async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) {
       Notify.error("请先登录");
       return;
@@ -1002,9 +828,9 @@ const Settings = {
   }
 };
 
-// ====================== 管理员模块（彻底修复406报错） ======================
+// ====================== 管理员模块 ======================
 const Admin = {
-  loadData: async function() {
+  loadData: async () => {
     if (!AppState.currentUser?.isAdmin) {
       Notify.error("你没有管理员权限");
       return;
@@ -1012,24 +838,12 @@ const Admin = {
     try {
       Notify.info("正在加载管理数据...");
       
-      // 修复406报错：用maybeSingle替代single，正确处理空值
-      let config = {};
-      try {
-        const { data, error } = await AppState.sb.from("system_config").select("*").maybeSingle();
-        if (!error && data) {
-          config = data;
-        }
-      } catch {}
-      Utils.DOM.$("#requireVerifyToggle").checked = config?.require_verify || false;
-      Utils.DOM.$("#sensitiveWordsInput").value = config?.sensitive_words || "";
-      Utils.DOM.$("#announceInput").value = config?.announcement || "";
+      const config = await Utils.getSystemConfig();
+      Utils.DOM.$("#requireVerifyToggle").checked = config.require_verify || false;
+      Utils.DOM.$("#sensitiveWordsInput").value = config.sensitive_words || "";
+      Utils.DOM.$("#announceInput").value = config.announcement || "";
 
-      // 加载待审核用户
-      let verifyUsers = [];
-      try {
-        const { data, error } = await AppState.sb.from("users").select("*").eq("status", "pending");
-        if (!error && data) verifyUsers = data;
-      } catch {}
+      const { data: verifyUsers } = await AppState.sb.from("users").select("*").eq("status", "pending").catch(() => ({ data: [] }));
       let verifyHtml = "";
       verifyUsers.forEach(user => {
         const safeId = Utils.escapeHtml(user.id);
@@ -1047,12 +861,7 @@ const Admin = {
       });
       Utils.DOM.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-      // 加载所有用户
-      let allUsers = [];
-      try {
-        const { data, error } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false });
-        if (!error && data) allUsers = data;
-      } catch {}
+      const { data: allUsers } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] }));
       let userHtml = "";
       allUsers.forEach(user => {
         const safeId = Utils.escapeHtml(user.id);
@@ -1077,12 +886,7 @@ const Admin = {
       });
       Utils.DOM.$("#allUserList").innerHTML = userHtml;
 
-      // 加载登录日志
-      let logs = [];
-      try {
-        const { data, error } = await AppState.sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20);
-        if (!error && data) logs = data;
-      } catch {}
+      const { data: logs } = await AppState.sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20).catch(() => ({ data: [] }));
       let logHtml = "";
       logs.forEach(log => {
         const safeEmail = Utils.escapeHtml(log.users?.email || '未知用户');
@@ -1103,52 +907,52 @@ const Admin = {
     }
   },
 
-  forceUserOffline: async function(userId) {
+  verifyUser: async (userId, status) => {
+    try {
+      const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
+      if (error) throw new Error("操作失败");
+      Notify.success(status === "active" ? "用户审核通过" : "用户审核拒绝");
+      Admin.loadData();
+    } catch (e) {
+      Notify.error(e.message);
+    }
+  },
+
+  forceUserOffline: async (userId) => {
     if (!confirm("确定要强制该用户下线吗？")) return;
     try {
       const { error } = await AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId);
       if (error) throw new Error("强制下线失败");
       Notify.success("用户已被强制下线");
-      this.loadData();
+      Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
     }
   },
 
-  verifyUser: async function(userId, status) {
-    try {
-      const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
-      if (error) throw new Error("操作失败");
-      Notify.success(status === "active" ? "用户审核通过" : "用户审核拒绝");
-      this.loadData();
-    } catch (e) {
-      Notify.error(e.message);
-    }
-  },
-
-  setUserMute: async function(userId, isMute) {
+  setUserMute: async (userId, isMute) => {
     try {
       const { error } = await AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId);
       if (error) throw new Error("操作失败");
       Notify.success(isMute ? "已禁言该用户" : "已解禁该用户");
-      this.loadData();
+      Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
     }
   },
 
-  setUserStatus: async function(userId, status) {
+  setUserStatus: async (userId, status) => {
     try {
       const { error } = await AppState.sb.from("users").update({ status }).eq("id", userId);
       if (error) throw new Error("操作失败");
       Notify.success(status === "active" ? "已解封该用户" : "已封禁该用户");
-      this.loadData();
+      Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
     }
   },
 
-  resetUserPwd: async function(email) {
+  resetUserPwd: async (email) => {
     try {
       const { error } = await AppState.sb.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/chat` });
       if (error) throw new Error("重置失败");
@@ -1158,38 +962,29 @@ const Admin = {
     }
   },
 
-  saveSystemConfig: async function() {
+  saveSystemConfig: async () => {
     try {
       const requireVerify = Utils.DOM.$("#requireVerifyToggle").checked;
-      // 修复406报错：用maybeSingle获取id
-      let configId = null;
-      try {
-        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
-        if (data) configId = data.id;
-      } catch {}
-
-      if (configId) {
-        await AppState.sb.from("system_config").update({ require_verify }).eq("id", configId);
+      const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
+      
+      if (data?.id) {
+        await AppState.sb.from("system_config").update({ require_verify }).eq("id", data.id);
       } else {
         await AppState.sb.from("system_config").insert([{ require_verify }]);
       }
-      Notify.success("系统配置保存成功");
+      Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
     } catch (e) {
       Notify.error(e.message);
     }
   },
 
-  saveSensitiveWords: async function() {
+  saveSensitiveWords: async () => {
     try {
       const words = Utils.DOM.$("#sensitiveWordsInput").value.trim();
-      let configId = null;
-      try {
-        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
-        if (data) configId = data.id;
-      } catch {}
-
-      if (configId) {
-        await AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", configId);
+      const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
+      
+      if (data?.id) {
+        await AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id);
       } else {
         await AppState.sb.from("system_config").insert([{ sensitive_words: words }]);
       }
@@ -1199,17 +994,13 @@ const Admin = {
     }
   },
 
-  saveAnnouncement: async function() {
+  saveAnnouncement: async () => {
     try {
       const content = Utils.DOM.$("#announceInput").value.trim();
-      let configId = null;
-      try {
-        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
-        if (data) configId = data.id;
-      } catch {}
-
-      if (configId) {
-        await AppState.sb.from("system_config").update({ announcement: content }).eq("id", configId);
+      const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
+      
+      if (data?.id) {
+        await AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id);
       } else {
         await AppState.sb.from("system_config").insert([{ announcement: content }]);
       }
@@ -1219,7 +1010,7 @@ const Admin = {
     }
   },
 
-  deleteMsg: async function(msgId) {
+  deleteMsg: async (msgId) => {
     try {
       const { error } = await AppState.sb.from("messages").delete().eq("id", msgId);
       if (error) throw new Error("删除失败");
@@ -1230,7 +1021,7 @@ const Admin = {
     }
   },
 
-  clearAllMessages: async function() {
+  clearAllMessages: async () => {
     if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
     try {
       const { error } = await AppState.sb.from("messages").delete().not.is("id", null);
@@ -1246,8 +1037,8 @@ const Admin = {
 // ====================== 事件绑定 ======================
 const EventBinder = {
   _bound: false,
-  init: function() {
-    if (this._bound) return;
+  init: () => {
+    if (EventBinder._bound) return;
     try {
       Utils.DOM.$("#toRegisterBtn").addEventListener("click", () => UI.showPage("registerPage"));
       Utils.DOM.$("#toLoginBtn").addEventListener("click", () => UI.showPage("loginPage"));
@@ -1275,10 +1066,8 @@ const EventBinder = {
       Utils.DOM.$("#saveAnnounceBtn").addEventListener("click", () => Admin.saveAnnouncement());
       Utils.DOM.$("#clearAllMsgBtn").addEventListener("click", () => Admin.clearAllMessages());
 
-      this._bound = true;
-      console.log("[事件] 所有事件绑定完成");
+      EventBinder._bound = true;
     } catch (e) {
-      console.error("[事件] 绑定失败", e);
       Notify.error("页面初始化失败，请刷新重试");
     }
   }
@@ -1286,12 +1075,11 @@ const EventBinder = {
 
 // ====================== 应用初始化 ======================
 const App = {
-  init: async function() {
+  init: async () => {
     if (AppState.isLocked("isInit")) return;
     AppState.lock("isInit");
 
     try {
-      console.log("[应用] 开始初始化");
       AppState.timers.forceCloseLoader = setTimeout(() => {
         UI.closeLoader();
         AppState.reset();
@@ -1305,37 +1093,20 @@ const App = {
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
         {
-          auth: { 
-            autoRefreshToken: true, 
-            persistSession: true, 
-            detectSessionInUrl: true,
-            storage: Utils.SafeStorage._isSupported ? window.localStorage : null
-          },
-          realtime: { 
-            timeout: APP_CONFIG.TIMEOUT.REALTIME,
-            heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT,
-            params: { events_per_second: 10 }
-          }
+          auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.SafeStorage._isSupported ? window.localStorage : null },
+          realtime: { timeout: APP_CONFIG.TIMEOUT.REALTIME, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT }
         }
       );
 
       EventBinder.init();
-
       const { data: { session } } = await AppState.sb.auth.getSession();
-      if (session?.user) {
-        console.log("[应用] 检测到旧会话，清理");
-        await AppState.sb.auth.signOut().catch(() => {});
-      }
+      if (session?.user) await AppState.sb.auth.signOut().catch(() => {});
 
       AppState.reset();
       UI.showPage("loginPage");
       UI.closeLoader();
-
       AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
-
-      console.log("[应用] 初始化完成");
     } catch (e) {
-      console.error("[应用] 初始化致命错误", e);
       Notify.error(`初始化失败：${e.message}`);
       UI.closeLoader();
       AppState.reset();
@@ -1348,15 +1119,11 @@ const App = {
 
 // ====================== 生命周期监听 ======================
 document.addEventListener("DOMContentLoaded", () => App.init());
-
 window.addEventListener("beforeunload", async () => {
-  try {
-    if (AppState.currentUser && AppState.sb) {
-      await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id).catch(() => {});
-    }
-  } catch {}
+  if (AppState.currentUser && AppState.sb) {
+    await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id).catch(() => {});
+  }
 });
-
 document.addEventListener("visibilitychange", async () => {
   if (!document.hidden && AppState.currentUser && AppState.isSessionInitialized) {
     await Online.mark();
@@ -1364,7 +1131,5 @@ document.addEventListener("visibilitychange", async () => {
     UI.showAdminBtn();
   }
 });
-
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => UI.initTheme());
-
 window.Admin = Admin;
