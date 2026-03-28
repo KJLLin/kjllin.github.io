@@ -168,7 +168,11 @@ const AppState = {
       ["loginBtn", "regBtn", "sendBtn", "logoutBtn"].forEach(id => {
         const btn = Utils.DOM.$(`#${id}`);
         btn.disabled = false;
-        btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送 ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
+        btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送" : "退出登录";
+      });
+      
+      Object.keys(AppState._locks).forEach(key => AppState.unlock(key));
+      ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
     } catch {}
   }
 };
@@ -828,7 +832,7 @@ const Settings = {
   }
 };
 
-// ====================== 管理员模块 ======================
+// ====================== 管理员模块（核心修复require_verify报错） ======================
 const Admin = {
   loadData: async () => {
     if (!AppState.currentUser?.isAdmin) {
@@ -962,15 +966,18 @@ const Admin = {
     }
   },
 
+  // 核心修复：解决require_verify is not defined报错
   saveSystemConfig: async () => {
     try {
+      // 定义变量
       const requireVerify = Utils.DOM.$("#requireVerifyToggle").checked;
       const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
       
+      // 修复：不使用简写，明确键名和值，避免变量未定义
       if (data?.id) {
-        await AppState.sb.from("system_config").update({ require_verify }).eq("id", data.id);
+        await AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id);
       } else {
-        await AppState.sb.from("system_config").insert([{ require_verify }]);
+        await AppState.sb.from("system_config").insert([{ require_verify: requireVerify }]);
       }
       Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
     } catch (e) {
