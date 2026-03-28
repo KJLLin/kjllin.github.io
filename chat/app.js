@@ -1,4 +1,4 @@
-// ====================== 核心配置（不可修改） ======================
+// ====================== 核心配置 ======================
 const APP_CONFIG = Object.freeze({
   SUPABASE_URL: "https://ayavdkodhdmcxfufnnxo.supabase.co",
   SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
@@ -547,8 +547,13 @@ const Auth = {
       }
 
       const validEvents = ["SIGNED_IN", "INITIAL_SESSION"];
-      if (!validEvents.includes(event) || !session?.user) {
-        console.log("[认证] 非有效登录事件，重置状态");
+      if (!validEvents.includes(event)) {
+        console.log("[认证] 非有效登录事件，跳过");
+        return;
+      }
+
+      if (!session?.user) {
+        console.log("[认证] 无有效会话，显示登录页");
         AppState.reset();
         UI.showPage("loginPage");
         UI.closeLoader();
@@ -792,9 +797,10 @@ const Chat = {
     sendBtn.innerText = "发送中...";
 
     try {
+      // 敏感词过滤（修复406报错，用maybeSingle）
       let config = { sensitive_words: "" };
       try {
-        const { data, error } = await AppState.sb.from("system_config").select("sensitive_words").single();
+        const { data, error } = await AppState.sb.from("system_config").select("sensitive_words").maybeSingle();
         if (!error && data) config = data;
       } catch {}
 
@@ -870,7 +876,7 @@ const Heartbeat = {
   }
 };
 
-// ====================== 系统配置模块 ======================
+// ====================== 系统配置模块（修复406报错） ======================
 const Config = {
   initRealtime: function() {
     const channelName = "config_channel";
@@ -889,12 +895,11 @@ const Config = {
   loadAnnounce: async function() {
     try {
       let data = { announcement: "" };
-      try {
-        const res = await AppState.sb.from("system_config").select("announcement").single();
-        if (!res.error && res.data) {
-          data = res.data;
-        }
-      } catch {}
+      // 修复406报错：用maybeSingle替代single
+      const res = await AppState.sb.from("system_config").select("announcement").maybeSingle();
+      if (!res.error && res.data) {
+        data = res.data;
+      }
       
       const bar = Utils.DOM.$("#announceBar");
       if (data?.announcement) {
@@ -997,7 +1002,7 @@ const Settings = {
   }
 };
 
-// ====================== 管理员模块（100%修复catch报错） ======================
+// ====================== 管理员模块（彻底修复406报错） ======================
 const Admin = {
   loadData: async function() {
     if (!AppState.currentUser?.isAdmin) {
@@ -1007,10 +1012,10 @@ const Admin = {
     try {
       Notify.info("正在加载管理数据...");
       
-      // 加载系统配置（修复catch报错）
+      // 修复406报错：用maybeSingle替代single，正确处理空值
       let config = {};
       try {
-        const { data, error } = await AppState.sb.from("system_config").select("*").single();
+        const { data, error } = await AppState.sb.from("system_config").select("*").maybeSingle();
         if (!error && data) {
           config = data;
         }
@@ -1019,13 +1024,11 @@ const Admin = {
       Utils.DOM.$("#sensitiveWordsInput").value = config?.sensitive_words || "";
       Utils.DOM.$("#announceInput").value = config?.announcement || "";
 
-      // 加载待审核用户（修复catch报错）
+      // 加载待审核用户
       let verifyUsers = [];
       try {
         const { data, error } = await AppState.sb.from("users").select("*").eq("status", "pending");
-        if (!error && data) {
-          verifyUsers = data;
-        }
+        if (!error && data) verifyUsers = data;
       } catch {}
       let verifyHtml = "";
       verifyUsers.forEach(user => {
@@ -1044,13 +1047,11 @@ const Admin = {
       });
       Utils.DOM.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-      // 加载所有用户（修复catch报错）
+      // 加载所有用户
       let allUsers = [];
       try {
         const { data, error } = await AppState.sb.from("users").select("*").order("created_at", { ascending: false });
-        if (!error && data) {
-          allUsers = data;
-        }
+        if (!error && data) allUsers = data;
       } catch {}
       let userHtml = "";
       allUsers.forEach(user => {
@@ -1076,13 +1077,11 @@ const Admin = {
       });
       Utils.DOM.$("#allUserList").innerHTML = userHtml;
 
-      // 加载登录日志（修复catch报错）
+      // 加载登录日志
       let logs = [];
       try {
         const { data, error } = await AppState.sb.from("login_logs").select("*, users!inner(email, nick)").order("time", { ascending: false }).limit(20);
-        if (!error && data) {
-          logs = data;
-        }
+        if (!error && data) logs = data;
       } catch {}
       let logHtml = "";
       logs.forEach(log => {
@@ -1162,9 +1161,10 @@ const Admin = {
   saveSystemConfig: async function() {
     try {
       const requireVerify = Utils.DOM.$("#requireVerifyToggle").checked;
+      // 修复406报错：用maybeSingle获取id
       let configId = null;
       try {
-        const { data } = await AppState.sb.from("system_config").select("id").single();
+        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
         if (data) configId = data.id;
       } catch {}
 
@@ -1184,7 +1184,7 @@ const Admin = {
       const words = Utils.DOM.$("#sensitiveWordsInput").value.trim();
       let configId = null;
       try {
-        const { data } = await AppState.sb.from("system_config").select("id").single();
+        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
         if (data) configId = data.id;
       } catch {}
 
@@ -1204,7 +1204,7 @@ const Admin = {
       const content = Utils.DOM.$("#announceInput").value.trim();
       let configId = null;
       try {
-        const { data } = await AppState.sb.from("system_config").select("id").single();
+        const { data } = await AppState.sb.from("system_config").select("id").maybeSingle();
         if (data) configId = data.id;
       } catch {}
 
