@@ -7,6 +7,18 @@ const APP_CONFIG = Object.freeze({
   MAX_RECONNECT: 10
 });
 
+// ====================== 全局请求控制器（解决连接报错核心） ======================
+const RequestController = {
+  controller: new AbortController(),
+  get signal() { return RequestController.controller.signal; },
+  reset: () => {
+    try {
+      RequestController.controller.abort();
+      RequestController.controller = new AbortController();
+    } catch {}
+  }
+};
+
 // ====================== 工具函数 ======================
 const Utils = {
   SafeStorage: {
@@ -62,6 +74,19 @@ const Utils = {
     return debounced;
   },
 
+  throttle: (func, limit) => {
+    let inThrottle = false;
+    return function() {
+      const args = arguments;
+      const context = this;
+      if (!inThrottle) {
+        func.apply(context, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
+  },
+
   generateId: () => {
     try { return crypto.randomUUID(); }
     catch { return Date.now().toString(36) + Math.random().toString(36).substring(2, 10); }
@@ -80,13 +105,26 @@ const Utils = {
   getSystemConfig: async () => {
     try {
       const { data, error } = await Utils.withTimeout(
-        AppState.sb.from("system_config").select("*").maybeSingle(),
+        AppState.sb.from("system_config").select("*").maybeSingle().abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       return !error && data ? data : { require_verify: false, sensitive_words: "", announcement: "" };
     } catch {
       return { require_verify: false, sensitive_words: "", announcement: "" };
     }
+  },
+
+  // 统一错误处理（核心：处理429限流）
+  formatError: (error) => {
+    const message = error?.message || error?.toString() || "未知错误";
+    if (message.includes("429") || message.includes("Too Many Requests") || message.includes("rate limit")) {
+      return "请求过于频繁，请稍后再试";
+    }
+    if (message.includes("Email not confirmed")) return "邮箱未验证，请验证后登录";
+    if (message.includes("Invalid login credentials")) return "邮箱或密码错误";
+    if (message.includes("already registered")) return "该邮箱已被注册，请直接登录";
+    if (message.includes("banned")) return "账号已被封禁";
+    return message;
   }
 };
 
@@ -120,7 +158,15 @@ const AppState = {
   sessionToken: Utils.SafeStorage.get("chat_current_session_token"),
   isSessionInitialized: false,
   isLoadingMessages: false,
-  _locks: { isLoggingIn: false, isLoggingOut: false, isAuthHandling: false, isInit: false, isRegistering: false },
+  _locks: {
+    isLoggingIn: false,
+    isLoggingOut: false,
+    isAuthHandling: false,
+    isInit: false,
+    isRegistering: false,
+    isAdminOperating: false, // 新增：管理员操作全局锁
+    isLoadingAdminData: false // 新增：管理后台数据加载锁
+  },
   channels: Object.create(null),
   timers: Object.create(null),
   _reconnectCount: Object.create(null),
@@ -147,7 +193,11 @@ const AppState = {
 
   reset: () => {
     try {
+      // 先取消所有未完成的请求
+      RequestController.reset();
+      // 关闭所有通道
       AppState.closeAllChannels();
+      // 清理所有定时器
       Object.values(AppState.timers).forEach(timer => timer && (clearTimeout(timer) || clearInterval(timer)));
       
       const adminBtn = Utils.DOM.$("#adminBtn");
@@ -171,6 +221,7 @@ const AppState = {
         btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送" : "退出登录";
       });
       
+      // 解锁所有锁
       Object.keys(AppState._locks).forEach(key => AppState.unlock(key));
       ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => Utils.DOM.$(`#${id}`).value = "");
     } catch {}
@@ -299,7 +350,7 @@ const Session = {
         if (!AppState.currentUser || !AppState.isSessionInitialized) return;
         try {
           const { data, error } = await Utils.withTimeout(
-            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.currentUser.id).single(),
+            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.currentUser.id).single().abortSignal(RequestController.signal),
             APP_CONFIG.TIMEOUT.API
           );
           if (!error && data) {
@@ -337,42 +388,23 @@ const Auth = {
       const config = await Utils.getSystemConfig();
       const defaultStatus = config.require_verify ? "pending" : "active";
 
-      // 优化：先尝试直接插入用户数据，避免频繁调用signUp触发邮件限流
-      // 注意：这需要在Supabase Dashboard关闭"仅允许通过Auth API创建用户"的限制
-      // 如果必须用signUp，给用户友好的限流提示
-      let userId = null;
-      try {
-        // 先尝试signInAnonymously或者直接操作（根据你的Supabase配置）
-        // 这里为了兼容性，还是用signUp，但增加友好的限流提示
-        const { data: authData, error: authError } = await Utils.withTimeout(
-          AppState.sb.auth.signUp({ 
-            email, 
-            password: pwd, 
-            options: { 
-              data: { nick },
-              emailRedirectTo: `${window.location.origin}/chat`
-            } 
-          }),
-          APP_CONFIG.TIMEOUT.LOGIN,
-          "注册请求超时，请检查网络后重试"
-        );
+      const { data: authData, error: authError } = await Utils.withTimeout(
+        AppState.sb.auth.signUp({ 
+          email, 
+          password: pwd, 
+          options: { 
+            data: { nick },
+            emailRedirectTo: `${window.location.origin}/chat`
+          } 
+        }),
+        APP_CONFIG.TIMEOUT.LOGIN,
+        "注册请求超时，请检查网络后重试"
+      );
 
-        if (authError) {
-          let errMsg = authError.message;
-          if (errMsg.includes("already registered")) errMsg = "该邮箱已被注册，请直接登录";
-          if (errMsg.includes("rate limit") || errMsg.includes("Email rate limit")) {
-            errMsg = "邮箱发送频率超限，请稍后再试或直接使用已有账号登录";
-          }
-          throw new Error(errMsg);
-        }
-        if (!authData.user) throw new Error("注册失败，未获取到用户信息");
-        userId = authData.user.id;
-      } catch (e) {
-        // 如果signUp失败（尤其是限流），直接提示用户
-        throw e;
-      }
+      if (authError) throw new Error(Utils.formatError(authError));
+      if (!authData.user) throw new Error("注册失败，未获取到用户信息");
+      const userId = authData.user.id;
 
-      // 插入/更新用户信息
       const { error: createError } = await Utils.withTimeout(
         AppState.sb.from("users").upsert([{
           id: userId,
@@ -381,7 +413,7 @@ const Auth = {
           is_admin: false,
           status: defaultStatus,
           created_at: new Date().toISOString()
-        }], { onConflict: "id" }),
+        }], { onConflict: "id" }).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (createError) throw new Error("用户信息初始化失败：" + createError.message);
@@ -397,7 +429,7 @@ const Auth = {
         UI.showPage("loginPage");
       }
     } catch (e) {
-      Notify.error(`注册失败：${e.message}`);
+      Notify.error(`注册失败：${Utils.formatError(e)}`);
     } finally {
       setTimeout(() => {
         AppState.unlock("isRegistering");
@@ -431,15 +463,9 @@ const Auth = {
         "登录请求超时，请检查网络后重试"
       );
 
-      if (error) {
-        let errMsg = error.message;
-        if (errMsg.includes("Email not confirmed")) errMsg = "邮箱未验证，请验证后登录";
-        if (errMsg.includes("Invalid login credentials")) errMsg = "邮箱或密码错误";
-        if (errMsg.includes("banned")) errMsg = "账号已被封禁";
-        throw new Error(errMsg);
-      }
+      if (error) throw new Error(Utils.formatError(error));
     } catch (e) {
-      Notify.error(`登录失败：${e.message}`);
+      Notify.error(`登录失败：${Utils.formatError(e)}`);
     } finally {
       setTimeout(() => {
         AppState.unlock("isLoggingIn");
@@ -471,7 +497,7 @@ const Auth = {
       let userInfo = null;
       try {
         const { data, error } = await Utils.withTimeout(
-          AppState.sb.from("users").select("*").eq("id", session.user.id).single(),
+          AppState.sb.from("users").select("*").eq("id", session.user.id).single().abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
         if (!error && data) userInfo = data;
@@ -489,7 +515,7 @@ const Auth = {
               is_admin: false,
               status: defaultStatus,
               created_at: session.user.created_at || new Date().toISOString()
-            }]).select().single(),
+            }]).select().single().abortSignal(RequestController.signal),
             APP_CONFIG.TIMEOUT.API
           );
           if (!createError && newUser) userInfo = newUser;
@@ -519,7 +545,7 @@ const Auth = {
         AppState.sb.from("users").update({
           current_session_token: newToken,
           last_login_time: new Date().toISOString()
-        }).eq("id", AppState.currentUser.id),
+        }).eq("id", AppState.currentUser.id).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
 
@@ -547,7 +573,7 @@ const Auth = {
         }
       }, 0);
     } catch (e) {
-      Notify.error(`登录异常：${e.message}`);
+      Notify.error(`登录异常：${Utils.formatError(e)}`);
       AppState.reset();
       await AppState.sb.auth.signOut().catch(() => {});
       UI.showPage("loginPage");
@@ -570,6 +596,8 @@ const Auth = {
 
     try {
       Notify.info("正在安全退出...");
+      // 先取消所有请求、关闭所有通道
+      RequestController.reset();
       AppState.closeAllChannels();
       if (AppState.currentUser && AppState.sb) {
         await AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.currentUser.id).catch(() => {});
@@ -582,7 +610,7 @@ const Auth = {
       UI.showPage("loginPage");
       Notify.success("已安全退出登录");
     } catch (e) {
-      Notify.error(`退出失败：${e.message}`);
+      Notify.error(`退出失败：${Utils.formatError(e)}`);
       AppState.reset();
       Utils.SafeStorage.clear();
       UI.showPage("loginPage");
@@ -607,7 +635,7 @@ const Chat = {
 
     try {
       const { data, error } = await Utils.withTimeout(
-        AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200),
+        AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("加载历史消息失败");
@@ -672,7 +700,7 @@ const Chat = {
     } catch {}
   },
 
-  send: async () => {
+  send: Utils.throttle(async () => {
     if (!AppState.currentUser || !AppState.isSessionInitialized) {
       Notify.error("请先登录");
       return;
@@ -702,7 +730,7 @@ const Chat = {
           nick: AppState.userNick,
           text: content,
           time: new Date().toLocaleString()
-        }]),
+        }]).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("发送消息失败");
@@ -716,7 +744,7 @@ const Chat = {
       sendBtn.disabled = false;
       sendBtn.innerText = "发送";
     }
-  }
+  }, 1000)
 };
 Chat.init();
 
@@ -730,7 +758,7 @@ const Online = {
           user_id: AppState.currentUser.id,
           nick: AppState.userNick,
           last_active: new Date().toISOString()
-        }, { onConflict: "user_id" }),
+        }, { onConflict: "user_id" }).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
     } catch {}
@@ -739,7 +767,7 @@ const Online = {
   refreshCount: async () => {
     try {
       const { data } = await Utils.withTimeout(
-        AppState.sb.from("online_users").select("*"),
+        AppState.sb.from("online_users").select("*").abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       Utils.DOM.$("#onlineNum").innerText = data?.length || 0;
@@ -784,7 +812,7 @@ const Config = {
   loadAnnounce: async () => {
     try {
       const { data, error } = await Utils.withTimeout(
-        AppState.sb.from("system_config").select("announcement").maybeSingle(),
+        AppState.sb.from("system_config").select("announcement").maybeSingle().abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       const bar = Utils.DOM.$("#announceBar");
@@ -809,7 +837,7 @@ const LoginLog = {
           ip: "未知IP",
           device: (navigator.userAgent || "未知设备").substring(0, 80),
           time: new Date().toLocaleString()
-        }]),
+        }]).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
     } catch {}
@@ -823,7 +851,7 @@ const LoginLog = {
     try {
       Notify.info("正在加载登录日志...");
       const { data, error } = await Utils.withTimeout(
-        AppState.sb.from("login_logs").select("*").eq("user_id", AppState.currentUser.id).order("time", { ascending: false }).limit(10),
+        AppState.sb.from("login_logs").select("*").eq("user_id", AppState.currentUser.id).order("time", { ascending: false }).limit(10).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("加载登录日志失败");
@@ -856,7 +884,7 @@ const Settings = {
       if (!newNick) throw new Error("请输入有效的昵称");
       
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.currentUser.id),
+        AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.currentUser.id).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("保存昵称失败");
@@ -885,37 +913,44 @@ const Settings = {
         AppState.sb.auth.updateUser({ password: newPwd }),
         APP_CONFIG.TIMEOUT.LOGIN
       );
-      if (error) throw new Error("修改密码失败");
+      if (error) throw new Error(Utils.formatError(error));
       
       Notify.success("密码修改成功，请重新登录");
       Utils.DOM.$("#newPwdInput").value = "";
       setTimeout(() => Auth.logout(), 1500);
     } catch (e) {
-      Notify.error(e.message);
+      Notify.error(`修改失败：${Utils.formatError(e)}`);
     }
   }
 };
 
-// ====================== 管理员模块（优化：加载速度提升100%） ======================
+// ====================== 管理员模块（核心修复：防重复点击+限流处理） ======================
 const Admin = {
+  // 核心修复：管理后台数据加载加锁，防止重复加载
   loadData: async () => {
     if (!AppState.currentUser?.isAdmin) {
       Notify.error("你没有管理员权限");
       return;
     }
+    if (AppState.isLocked("isLoadingAdminData")) {
+      Notify.warning("正在加载管理数据，请稍候...");
+      return;
+    }
+
+    AppState.lock("isLoadingAdminData");
     try {
       Notify.info("正在加载管理数据...");
       
-      // 1. 先加载系统配置（最快）
+      // 1. 加载系统配置
       const config = await Utils.getSystemConfig();
       Utils.DOM.$("#requireVerifyToggle").checked = config.require_verify || false;
       Utils.DOM.$("#sensitiveWordsInput").value = config.sensitive_words || "";
       Utils.DOM.$("#announceInput").value = config.announcement || "";
 
-      // 2. 并行加载用户数据（优化：去掉复杂的关联查询，大幅提升速度）
+      // 2. 并行加载用户数据
       const [verifyResult, allResult] = await Promise.allSettled([
-        Utils.withTimeout(AppState.sb.from("users").select("*").eq("status", "pending"), APP_CONFIG.TIMEOUT.API),
-        Utils.withTimeout(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50), APP_CONFIG.TIMEOUT.API)
+        Utils.withTimeout(AppState.sb.from("users").select("*").eq("status", "pending").abortSignal(RequestController.signal), APP_CONFIG.TIMEOUT.API),
+        Utils.withTimeout(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50).abortSignal(RequestController.signal), APP_CONFIG.TIMEOUT.API)
       ]);
 
       // 渲染待审核用户
@@ -940,7 +975,7 @@ const Admin = {
       });
       Utils.DOM.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-      // 渲染所有用户（优化：只显示最近50个，避免加载慢）
+      // 渲染所有用户
       let allUsers = [];
       if (allResult.status === "fulfilled" && !allResult.value.error) {
         allUsers = allResult.value.data || [];
@@ -969,11 +1004,11 @@ const Admin = {
       });
       Utils.DOM.$("#allUserList").innerHTML = userHtml || "暂无用户";
 
-      // 3. 登录日志（优化：简化查询，只显示时间和IP，不做关联查询，大幅提升速度）
+      // 3. 加载登录日志
       let logs = [];
       try {
         const { data, error } = await Utils.withTimeout(
-          AppState.sb.from("login_logs").select("*").order("time", { ascending: false }).limit(20),
+          AppState.sb.from("login_logs").select("*").order("time", { ascending: false }).limit(20).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
         if (!error && data) logs = data;
@@ -995,13 +1030,22 @@ const Admin = {
       Notify.success("管理数据加载完成");
     } catch (e) {
       Notify.error("管理数据加载失败：" + e.message);
+    } finally {
+      AppState.unlock("isLoadingAdminData");
     }
   },
 
-  verifyUser: async (userId, status) => {
+  // 核心修复：所有管理员操作加全局锁，防止重复点击
+  verifyUser: Utils.throttle(async (userId, status) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在处理操作，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("users").update({ status }).eq("id", userId),
+        AppState.sb.from("users").update({ status }).eq("id", userId).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("操作失败");
@@ -1009,14 +1053,22 @@ const Admin = {
       Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 1500),
 
-  forceUserOffline: async (userId) => {
+  forceUserOffline: Utils.throttle(async (userId) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在处理操作，请稍候...");
+      return;
+    }
     if (!confirm("确定要强制该用户下线吗？")) return;
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId),
+        AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("强制下线失败");
@@ -1024,13 +1076,21 @@ const Admin = {
       Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 1500),
 
-  setUserMute: async (userId, isMute) => {
+  setUserMute: Utils.throttle(async (userId, isMute) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在处理操作，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId),
+        AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("操作失败");
@@ -1038,13 +1098,21 @@ const Admin = {
       Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 1500),
 
-  setUserStatus: async (userId, status) => {
+  setUserStatus: Utils.throttle(async (userId, status) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在处理操作，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("users").update({ status }).eq("id", userId),
+        AppState.sb.from("users").update({ status }).eq("id", userId).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("操作失败");
@@ -1052,101 +1120,145 @@ const Admin = {
       Admin.loadData();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 1500),
 
-  resetUserPwd: async (email) => {
+  // 核心修复：重置密码加节流+锁+限流错误处理，彻底解决429报错
+  resetUserPwd: Utils.throttle(async (email) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在处理重置请求，请稍候...");
+      return;
+    }
+    if (!confirm(`确定要给邮箱 ${email} 发送密码重置邮件吗？`)) return;
+    AppState.lock("isAdminOperating");
+
     try {
+      Notify.info("正在发送重置邮件...");
       const { error } = await Utils.withTimeout(
         AppState.sb.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/chat` }),
-        APP_CONFIG.TIMEOUT.API
+        APP_CONFIG.TIMEOUT.API,
+        "重置邮件发送超时"
       );
-      if (error) throw new Error("重置失败");
-      Notify.success("密码重置邮件已发送");
+      if (error) throw new Error(Utils.formatError(error));
+      Notify.success("密码重置邮件已发送，请注意查收");
     } catch (e) {
-      Notify.error(e.message);
+      Notify.error(`重置失败：${Utils.formatError(e)}`);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 3000), // 3秒内只能点击一次，彻底避免频繁请求触发限流
 
   saveSystemConfig: async () => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在保存配置，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const requireVerify = Utils.DOM.$("#requireVerifyToggle").checked;
       const { data } = await Utils.withTimeout(
-        AppState.sb.from("system_config").select("id").maybeSingle(),
+        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       
       if (data?.id) {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id),
+          AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       } else {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").insert([{ require_verify: requireVerify }]),
+          AppState.sb.from("system_config").insert([{ require_verify: requireVerify }]).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       }
       Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
   },
 
   saveSensitiveWords: async () => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在保存敏感词，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const words = Utils.DOM.$("#sensitiveWordsInput").value.trim();
       const { data } = await Utils.withTimeout(
-        AppState.sb.from("system_config").select("id").maybeSingle(),
+        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       
       if (data?.id) {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id),
+          AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       } else {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").insert([{ sensitive_words: words }]),
+          AppState.sb.from("system_config").insert([{ sensitive_words: words }]).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       }
       Notify.success("敏感词保存成功");
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
   },
 
   saveAnnouncement: async () => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在保存公告，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const content = Utils.DOM.$("#announceInput").value.trim();
       const { data } = await Utils.withTimeout(
-        AppState.sb.from("system_config").select("id").maybeSingle(),
+        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       
       if (data?.id) {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id),
+          AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       } else {
         await Utils.withTimeout(
-          AppState.sb.from("system_config").insert([{ announcement: content }]),
+          AppState.sb.from("system_config").insert([{ announcement: content }]).abortSignal(RequestController.signal),
           APP_CONFIG.TIMEOUT.API
         );
       }
       Notify.success("公告已推送");
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
   },
 
-  deleteMsg: async (msgId) => {
+  deleteMsg: Utils.throttle(async (msgId) => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在删除消息，请稍候...");
+      return;
+    }
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("messages").delete().eq("id", msgId),
+        AppState.sb.from("messages").delete().eq("id", msgId).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("删除失败");
@@ -1154,14 +1266,22 @@ const Admin = {
       await Chat.loadMessages();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
-  },
+  }, 1500),
 
   clearAllMessages: async () => {
+    if (AppState.isLocked("isAdminOperating")) {
+      Notify.warning("正在清空消息，请稍候...");
+      return;
+    }
     if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
+    AppState.lock("isAdminOperating");
+
     try {
       const { error } = await Utils.withTimeout(
-        AppState.sb.from("messages").delete().not.is("id", null),
+        AppState.sb.from("messages").delete().not.is("id", null).abortSignal(RequestController.signal),
         APP_CONFIG.TIMEOUT.API
       );
       if (error) throw new Error("清空失败");
@@ -1169,6 +1289,8 @@ const Admin = {
       await Chat.loadMessages();
     } catch (e) {
       Notify.error(e.message);
+    } finally {
+      AppState.unlock("isAdminOperating");
     }
   }
 };
@@ -1228,6 +1350,7 @@ const App = {
       UI.initTheme();
       if (!window.supabase) throw new Error("Supabase SDK加载失败，请刷新页面重试");
 
+      // 优化：所有请求都带abortSignal，支持取消
       AppState.sb = window.supabase.createClient(
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
@@ -1242,6 +1365,13 @@ const App = {
             timeout: APP_CONFIG.TIMEOUT.REALTIME,
             heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT,
             reconnect: true
+          },
+          global: {
+            fetch: (...args) => {
+              // 所有请求都绑定全局abortSignal，页面卸载时自动取消
+              const [input, init] = args;
+              return fetch(input, { ...init, signal: RequestController.signal });
+            }
           }
         }
       );
@@ -1255,7 +1385,7 @@ const App = {
       UI.closeLoader();
       AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
     } catch (e) {
-      Notify.error(`初始化失败：${e.message}`);
+      Notify.error(`初始化失败：${Utils.formatError(e)}`);
       UI.closeLoader();
       AppState.reset();
       UI.showPage("loginPage");
@@ -1265,14 +1395,23 @@ const App = {
   }
 };
 
-// ====================== 生命周期监听 ======================
+// ====================== 生命周期监听（核心：页面卸载彻底清理） ======================
 document.addEventListener("DOMContentLoaded", () => App.init());
 
-window.addEventListener("beforeunload", async (e) => {
+// 核心修复：页面卸载时彻底取消所有请求、关闭所有通道，解决连接报错
+window.addEventListener("beforeunload", (e) => {
   try {
+    // 取消所有未完成的请求
+    RequestController.reset();
+    // 关闭所有实时通道
     AppState.closeAllChannels();
+    // 清理在线状态
     if (AppState.currentUser && AppState.sb) {
-      await AppState.sb.from("online_users").delete().eq("user_id", AppState.currentUser.id).catch(() => {});
+      // 同步请求，确保页面卸载前执行
+      navigator.sendBeacon(
+        `${APP_CONFIG.SUPABASE_URL}/rest/v1/online_users?user_id=eq.${AppState.currentUser.id}`,
+        JSON.stringify({})
+      );
     }
   } catch {}
 });
