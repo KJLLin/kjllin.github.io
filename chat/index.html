@@ -2,157 +2,172 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#f3f3f3">
-  <title>在线聊天系统 | KJLLin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线聊天室</title>
   <link rel="stylesheet" href="style.css">
-  <!-- 提前加载Supabase SDK，避免加载失败 -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- 全局加载页（兜底，不会白屏） -->
-  <div id="loadingPage" class="loading-page">
-    <div class="win-spinner"></div>
-    <p class="loading-text">正在启动在线聊天系统...</p>
-  </div>
 
-  <!-- Win11 全局通知 -->
-  <div id="winNotify" class="win-notify hidden"></div>
+<!-- 全局加载遮罩 -->
+<div id="loadingPage" class="loading-page">
+  <div class="loader"></div>
+</div>
 
-  <!-- ====================== 页面1：登录页 ====================== -->
-  <div id="loginPage" class="page active">
-    <div class="win-card">
-      <div class="logo">💬</div>
-      <h2>登录 · 在线聊天系统</h2>
-      <input type="email" id="loginEmail" class="win-input" placeholder="邮箱账号">
-      <input type="password" id="loginPwd" class="win-input" placeholder="密码（≥8位）">
-      <button class="win-btn primary" id="loginBtn">登录</button>
-      <button class="win-btn text" id="toRegisterBtn">没有账号？立即注册</button>
+<!-- 全局通知 -->
+<div id="winNotify" class="win-notify hidden"></div>
+
+<!-- 公告栏 -->
+<div id="announceBar" class="announce-bar hidden"></div>
+
+<!-- 页面容器 -->
+<div class="app-container">
+
+  <!-- 登录页 -->
+  <div id="loginPage" class="page">
+    <div class="auth-card">
+      <h2>用户登录</h2>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="loginEmail" placeholder="请输入邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPwd" placeholder="请输入密码">
+      </div>
+      <div class="btn-group-row">
+        <button id="loginBtn" class="btn primary">登录</button>
+        <button id="toRegisterBtn" class="btn secondary">去注册</button>
+      </div>
     </div>
   </div>
 
-  <!-- ====================== 页面2：注册页 ====================== -->
+  <!-- 注册页 -->
   <div id="registerPage" class="page hidden">
-    <div class="win-card">
-      <div class="logo">💬</div>
-      <h2>注册 · 在线聊天系统</h2>
-      <input type="text" id="regNick" class="win-input" placeholder="用户名">
-      <input type="email" id="regEmail" class="win-input" placeholder="邮箱账号">
-      <input type="password" id="regPwd" class="win-input" placeholder="密码（≥8位）">
-      <button class="win-btn primary" id="regBtn">注册</button>
-      <button class="win-btn text" id="toLoginBtn">已有账号？返回登录</button>
+    <div class="auth-card">
+      <h2>用户注册</h2>
+      <div class="form-group">
+        <label>昵称</label>
+        <input type="text" id="regNick" placeholder="请设置昵称">
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="请输入邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="regPwd" placeholder="至少8位">
+      </div>
+      <div class="btn-group-row">
+        <button id="regBtn" class="btn primary">注册</button>
+        <button id="toLoginBtn" class="btn secondary">返回登录</button>
+      </div>
     </div>
   </div>
 
-  <!-- ====================== 页面3：聊天主页 ====================== -->
+  <!-- 聊天页 -->
   <div id="chatPage" class="page hidden">
     <div class="chat-header">
-      <div class="left">
-        <h2>在线聊天系统</h2>
-        <p id="userTag">加载中...</p>
-      </div>
-      <div class="right">
-        <button id="adminBtn" class="win-btn small secondary hidden">管理后台</button>
-        <button id="settingBtn" class="win-btn small secondary">设置</button>
+      <div id="userTag">用户：未登录</div>
+      <div class="chat-toolbar">
+        <span>在线：<span id="onlineNum">0</span></span>
+        <button id="settingBtn" class="btn small">设置</button>
+        <button id="adminBtn" class="btn small warning hidden">管理后台</button>
+        <button id="logoutBtn" class="btn small danger">退出登录</button>
       </div>
     </div>
-
-    <div id="announceBar" class="announce-bar hidden"></div>
-    <div class="status-bar">在线人数：<span id="onlineNum">0</span></div>
 
     <div id="msgBox" class="msg-box"></div>
 
-    <div class="send-bar">
-      <input type="text" id="msgInput" class="win-input" placeholder="输入消息...">
-      <button class="win-btn primary" id="sendBtn">发送</button>
+    <div class="chat-input-bar">
+      <input type="text" id="msgInput" placeholder="输入消息...">
+      <button id="sendBtn" class="btn primary">发送</button>
     </div>
   </div>
 
-  <!-- ====================== 页面4：设置页 ====================== -->
+  <!-- 设置页 -->
   <div id="settingPage" class="page hidden">
-    <div class="page-header">
-      <button class="win-btn icon" id="backToChatBtn">←</button>
-      <h2>设置 · 在线聊天系统</h2>
-    </div>
-    <div class="setting-container">
-      <div class="win-item">
-        <label>昵称设置</label>
-        <input type="text" id="nickInput" class="win-input" placeholder="设置你的昵称">
-        <button class="win-btn primary" id="saveNickBtn">保存昵称</button>
+    <div class="setting-card">
+      <h3>个人设置</h3>
+
+      <div class="form-group">
+        <label>修改昵称</label>
+        <input type="text" id="nickInput" placeholder="输入新昵称">
+        <button id="saveNickBtn" class="btn primary small">保存昵称</button>
       </div>
-      <div class="win-item">
-        <label>显示模式</label>
-        <button class="win-btn secondary" id="toggleThemeBtn">切换深色/浅色模式</button>
-      </div>
-      <div class="win-item">
+
+      <div class="form-group">
         <label>修改密码</label>
-        <input type="password" id="newPwdInput" class="win-input" placeholder="新密码（≥8位）">
-        <button class="win-btn warning" id="updatePwdBtn">修改密码</button>
+        <input type="password" id="newPwdInput" placeholder="新密码至少8位">
+        <button id="updatePwdBtn" class="btn primary small">修改密码</button>
       </div>
-      <div class="win-item">
-        <button class="win-btn secondary" id="showLoginLogBtn">查看我的登录日志</button>
+
+      <div class="form-group">
+        <button id="toggleThemeBtn" class="btn secondary small">切换深色模式</button>
+        <button id="showLoginLogBtn" class="btn secondary small">我的登录日志</button>
       </div>
-      <div class="win-item">
-        <button class="win-btn danger" id="logoutBtn">退出登录</button>
-      </div>
+
+      <button id="backToChatBtn" class="btn back-btn">返回聊天</button>
     </div>
   </div>
 
-  <!-- ====================== 页面5：管理员后台 ====================== -->
+  <!-- 管理员后台 -->
   <div id="adminPage" class="page hidden">
-    <div class="page-header">
-      <button class="win-btn icon" id="backToChatFromAdminBtn">←</button>
-      <h2>管理后台 · 在线聊天系统</h2>
-    </div>
     <div class="admin-container">
-      <div class="win-item">
-        <h3>系统全局配置</h3>
-        <div class="config-item">
-          <label>
-            <input type="checkbox" id="requireVerifyToggle">
-            新用户注册需要管理员审核
-          </label>
-          <button class="win-btn small primary" id="saveConfigBtn">保存配置</button>
-        </div>
+      <h3>管理后台</h3>
+
+      <!-- 系统配置 -->
+      <div class="admin-section">
+        <h4>系统配置</h4>
+        <label class="toggle-label">
+          <input type="checkbox" id="requireVerifyToggle">
+          新用户注册需管理员审核
+        </label>
+        <button id="saveConfigBtn" class="btn primary small">保存配置</button>
       </div>
 
-      <div class="win-item">
-        <h3>待审核用户</h3>
-        <div id="verifyUserList" class="list-box">暂无待审核用户</div>
+      <!-- 敏感词 -->
+      <div class="admin-section">
+        <h4>敏感词过滤（英文逗号分隔）</h4>
+        <textarea id="sensitiveWordsInput" rows="2"></textarea>
+        <button id="saveSwBtn" class="btn primary small">保存敏感词</button>
       </div>
 
-      <div class="win-item">
-        <h3>全部用户管理</h3>
-        <div id="allUserList" class="list-box">加载中...</div>
+      <!-- 公告 -->
+      <div class="admin-section">
+        <h4>系统公告</h4>
+        <textarea id="announceInput" rows="2"></textarea>
+        <button id="saveAnnounceBtn" class="btn primary small">发布公告</button>
       </div>
 
-      <div class="win-item">
-        <h3>消息管理</h3>
-        <button class="win-btn danger small" id="clearAllMsgBtn">清空所有历史消息</button>
+      <!-- 待审核用户 -->
+      <div class="admin-section">
+        <h4>待审核用户</h4>
+        <div id="verifyUserList" class="list-container"></div>
       </div>
 
-      <div class="win-item">
-        <h3>敏感词过滤</h3>
-        <input type="text" id="sensitiveWordsInput" class="win-input" placeholder="敏感词用英文逗号分隔">
-        <button class="win-btn primary" id="saveSwBtn">保存敏感词</button>
+      <!-- 所有用户 -->
+      <div class="admin-section">
+        <h4>用户管理</h4>
+        <div id="allUserList" class="list-container"></div>
       </div>
 
-      <div class="win-item">
-        <h3>全局公告</h3>
-        <input type="text" id="announceInput" class="win-input" placeholder="输入全局公告内容">
-        <button class="win-btn primary" id="saveAnnounceBtn">推送公告</button>
+      <!-- 登录日志 -->
+      <div class="admin-section">
+        <h4>登录日志</h4>
+        <div id="allLoginLogList" class="list-container"></div>
       </div>
 
-      <div class="win-item">
-        <h3>全量用户登录日志</h3>
-        <div id="allLoginLogList" class="list-box">加载中...</div>
+      <!-- 消息管理 -->
+      <div class="admin-section">
+        <button id="clearAllMsgBtn" class="btn danger small">清空所有消息</button>
       </div>
+
+      <button id="backToChatFromAdminBtn" class="btn back-btn">返回聊天</button>
     </div>
   </div>
+</div>
 
-  <!-- 最后加载JS，确保DOM已经渲染完成 -->
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
