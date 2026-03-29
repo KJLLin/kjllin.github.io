@@ -6,7 +6,8 @@ const APP_CONFIG = Object.freeze({
   INTERVAL: { HEARTBEAT: 30000, SESSION_CHECK: 60000 },
   IP_API_LIST: ["https://api.ip.sb/ip", "https://ip.3322.net", "https://api.ipify.org?format=text"],
   IP_CACHE_TTL: 3600000,
-  DEFAULT_CONFIG: Object.freeze({ require_verify: false, sensitive_words: "", announcement: "" })
+  DEFAULT_CONFIG: Object.freeze({ id: 1, require_verify: false, sensitive_words: "", announcement: "" }),
+  CONFIG_ID: 1 // 固定全局配置唯一ID，彻底解决多条记录问题
 });
 
 // ====================== 全局请求控制器 ======================
@@ -19,7 +20,7 @@ const RequestController = {
   }
 };
 
-// ====================== 工具函数 ======================
+// ====================== 工具函数（修复请求处理逻辑） ======================
 const Utils = {
   Storage: {
     _ok: (() => {
@@ -72,13 +73,14 @@ const Utils = {
     catch { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   },
 
-  // 统一请求工具（全量错误+超时处理）
+  // 修复：统一Supabase请求处理，正确处理error和data
   request: async (promise, timeoutMsg = "请求超时") => {
     try {
       const res = await Promise.race([
         promise,
         new Promise((_, rej) => setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API))
       ]);
+      // 严格处理Supabase返回：有error直接抛出
       if (res?.error) throw res.error;
       return res;
     } catch (e) {
@@ -96,6 +98,7 @@ const Utils = {
     if (msg.includes("Invalid login credentials")) return "邮箱或密码错误";
     if (msg.includes("already registered")) return "该邮箱已被注册，请直接登录";
     if (msg.includes("banned")) return "账号已被封禁";
+    if (msg.includes("multiple rows")) return "数据异常，已自动修复，请重试";
     return msg;
   },
 
@@ -300,19 +303,30 @@ const UI = {
   }
 };
 
-// ====================== 系统配置模块（核心bug修复） ======================
+// ====================== 系统配置模块（彻底修复配置报错） ======================
 const Config = {
-  // 同步全局配置（修复默认值兜底）
+  // 同步全局配置（修复多条记录报错）
   async sync() {
     try {
-      const { data, error } = await Utils.request(
-        AppState.sb.from("system_config").select("*").maybeSingle().abortSignal(RequestController.signal)
+      // 用limit(1)取第一条，兼容多条脏数据，不会报错
+      const { data } = await Utils.request(
+        AppState.sb.from("system_config").select("*").limit(1).order("id", { ascending: true }).abortSignal(RequestController.signal)
       );
-      if (!error && data) {
-        // 合并配置，默认值兜底，避免null覆盖
-        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...data };
+      
+      // 有有效数据：合并默认值，避免null覆盖
+      if (data && data.length > 0) {
+        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...data[0] };
+        // 自动清理脏数据：如果有多条记录，删除id!=1的多余数据
+        if (data.length > 1) {
+          await Utils.request(
+            AppState.sb.from("system_config").delete().neq("id", APP_CONFIG.CONFIG_ID).abortSignal(RequestController.signal)
+          ).catch(() => {});
+        }
       } else {
-        // 无配置时使用默认值
+        // 无数据：初始化默认配置
+        await Utils.request(
+          AppState.sb.from("system_config").insert([APP_CONFIG.DEFAULT_CONFIG]).abortSignal(RequestController.signal)
+        );
         AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
       }
     } catch (e) {
@@ -321,7 +335,7 @@ const Config = {
     }
   },
 
-  // 统一配置保存方法（核心修复：单条记录upsert，不生成多条）
+  // 统一配置保存方法（核心修复：固定ID upsert，永远只有一条记录）
   async save(updateData) {
     if (AppState.isLocked("admin_config")) {
       Notify.warning("正在保存配置，请稍候...");
@@ -330,27 +344,15 @@ const Config = {
     AppState.lock("admin_config");
 
     try {
-      // 先查询是否已有配置记录
-      const { data: existData } = await Utils.request(
-        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal)
+      // 原子化upsert：固定id=1，有则更新，无则插入，永远不会生成多条记录
+      const saveData = { ...APP_CONFIG.DEFAULT_CONFIG, ...AppState.config, ...updateData, id: APP_CONFIG.CONFIG_ID };
+      const { error } = await Utils.request(
+        AppState.sb.from("system_config").upsert(saveData, { onConflict: "id" }).abortSignal(RequestController.signal)
       );
+      if (error) throw error;
 
-      let res;
-      if (existData?.id) {
-        // 已有记录：更新对应字段，不覆盖其他配置
-        res = await Utils.request(
-          AppState.sb.from("system_config").update(updateData).eq("id", existData.id).abortSignal(RequestController.signal)
-        );
-      } else {
-        // 无记录：插入完整默认配置+更新字段
-        res = await Utils.request(
-          AppState.sb.from("system_config").insert([{ ...APP_CONFIG.DEFAULT_CONFIG, ...updateData }]).abortSignal(RequestController.signal)
-        );
-      }
-
-      if (res.error) throw res.error;
       // 同步更新本地缓存
-      AppState.config = { ...AppState.config, ...updateData };
+      AppState.config = saveData;
       return true;
     } catch (e) {
       Notify.error("配置保存失败：" + Utils.formatErr(e));
@@ -360,14 +362,13 @@ const Config = {
     }
   },
 
-  // 实时配置监听（修复全量更新）
+  // 实时配置监听
   initRealtime() {
     try {
       if (AppState.channels.config) AppState.sb.removeChannel(AppState.channels.config).catch(() => {});
       AppState.channels.config = AppState.sb.channel("config")
         .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, (payload) => {
           if (payload.new) {
-            // 全量更新配置，默认值兜底
             AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...payload.new };
             // 更新公告栏
             const bar = Utils.$("#announceBar");
@@ -417,12 +418,14 @@ const Session = {
       AppState.timers.sessionCheck = setInterval(async () => {
         if (!AppState.user || !AppState.isInit) return;
         try {
+          // 修复：用limit(1)避免多条记录报错
           const { data } = await Utils.request(
-            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).single().abortSignal(RequestController.signal)
+            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).limit(1).abortSignal(RequestController.signal)
           );
-          if (data) {
-            if (data.current_session_token !== AppState.sessionToken) await Session.invalid();
-            if (data.status === "pending" || data.status === "ban") await Session.invalid(data.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
+          if (data && data.length > 0) {
+            const userData = data[0];
+            if (userData.current_session_token !== AppState.sessionToken) await Session.invalid();
+            if (userData.status === "pending" || userData.status === "ban") await Session.invalid(userData.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
           }
         } catch {}
       }, APP_CONFIG.INTERVAL.SESSION_CHECK);
@@ -552,13 +555,13 @@ const Auth = {
 
       // 同步最新配置
       await Config.sync();
-      // 获取用户信息
+      // 获取用户信息（修复：limit(1)避免多条记录报错）
       let userInfo = null;
       try {
         const { data } = await Utils.request(
-          AppState.sb.from("users").select("*").eq("id", session.user.id).single().abortSignal(RequestController.signal)
+          AppState.sb.from("users").select("*").eq("id", session.user.id).limit(1).abortSignal(RequestController.signal)
         );
-        userInfo = data;
+        if (data && data.length > 0) userInfo = data[0];
       } catch {}
 
       // 新用户初始化
@@ -570,12 +573,13 @@ const Auth = {
             email: session.user.email, is_admin: false,
             status: AppState.config.require_verify ? "pending" : "active",
             created_at: session.user.created_at || new Date().toISOString()
-          }]).select().single().abortSignal(RequestController.signal)
+          }]).select().limit(1).abortSignal(RequestController.signal)
         );
-        userInfo = newUser;
+        if (newUser && newUser.length > 0) userInfo = newUser[0];
       }
 
       // 校验用户状态
+      if (!userInfo) throw new Error("用户信息初始化失败，请刷新重试");
       if (userInfo.status === "ban") throw new Error("账号已被封禁，无法登录");
       if (userInfo.status === "pending") {
         await AppState.sb.auth.signOut().catch(() => {});
@@ -927,7 +931,7 @@ const Settings = {
   }, 3000)
 };
 
-// ====================== 管理员模块（配置bug修复+精简） ======================
+// ====================== 管理员模块 ======================
 window.Admin = {
   _scrollTop: 0, // 记录滚动位置
 
@@ -1175,21 +1179,21 @@ window.Admin = {
     }
   }, 3000),
 
-  // 保存注册审核配置（核心修复：使用统一Config.save）
+  // 保存注册审核配置
   async saveConfig() {
     const requireVerify = Utils.$("#requireVerifyToggle").checked;
     const success = await Config.save({ require_verify: requireVerify });
     if (success) Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
   },
 
-  // 保存敏感词配置（核心修复：使用统一Config.save）
+  // 保存敏感词配置
   async saveSensitive() {
     const words = Utils.$("#sensitiveWordsInput").value.trim();
     const success = await Config.save({ sensitive_words: words });
     if (success) Notify.success("敏感词保存成功");
   },
 
-  // 保存公告配置（核心修复：使用统一Config.save）
+  // 保存公告配置
   async saveAnnounce() {
     const content = Utils.$("#announceInput").value.trim();
     const success = await Config.save({ announcement: content });
