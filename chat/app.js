@@ -5,7 +5,8 @@ const APP_CONFIG = Object.freeze({
   TIMEOUT: { API: 8000, LOGIN: 20000, IP_FETCH: 3000 },
   INTERVAL: { HEARTBEAT: 30000, SESSION_CHECK: 60000 },
   IP_API_LIST: ["https://api.ip.sb/ip", "https://ip.3322.net", "https://api.ipify.org?format=text"],
-  IP_CACHE_TTL: 3600000
+  IP_CACHE_TTL: 3600000,
+  DEFAULT_CONFIG: Object.freeze({ require_verify: false, sensitive_words: "", announcement: "" })
 });
 
 // ====================== 全局请求控制器 ======================
@@ -71,14 +72,14 @@ const Utils = {
     catch { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   },
 
-  // 统一请求工具（核心精简：合并所有重复请求逻辑）
+  // 统一请求工具（全量错误+超时处理）
   request: async (promise, timeoutMsg = "请求超时") => {
     try {
       const res = await Promise.race([
         promise,
         new Promise((_, rej) => setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API))
       ]);
-      if (res.error) throw res.error;
+      if (res?.error) throw res.error;
       return res;
     } catch (e) {
       throw new Error(Utils.formatErr(e));
@@ -164,8 +165,8 @@ const AppState = {
   sessionToken: Utils.Storage.get("chat_current_session_token"),
   isInit: false,
   isLoadingMsg: false,
-  config: { require_verify: false, sensitive_words: "", announcement: "" },
-  // 拆分锁：管理员操作独立锁，彻底解决互斥问题
+  config: { ...APP_CONFIG.DEFAULT_CONFIG },
+  // 精细化锁机制，彻底解决互斥死锁
   _locks: {
     login: false, logout: false, auth: false, init: false, register: false,
     admin_load: false, admin_verify: false, admin_offline: false, admin_mute: false,
@@ -178,9 +179,10 @@ const AppState = {
   unlock(k) { return this._locks.hasOwnProperty(k) && (this._locks[k] = false); },
   isLocked(k) { return this._locks[k] || false; },
 
+  // 重置所有状态（修复配置缓存污染）
   reset() {
     RequestController.reset();
-    // 关闭所有实时通道
+    // 清理实时通道
     try {
       if (this.sb) Object.values(this.channels).forEach(c => {
         c.unsubscribe().catch(() => {});
@@ -189,7 +191,7 @@ const AppState = {
     } catch {}
     this.channels = Object.create(null);
 
-    // 清理所有定时器
+    // 清理定时器
     Object.values(this.timers).forEach(t => { clearTimeout(t); clearInterval(t); });
     this.timers = Object.create(null);
 
@@ -198,13 +200,13 @@ const AppState = {
     adminBtn.style.display = "none";
     adminBtn.classList.add("hidden");
     
-    // 重置状态
+    // 重置状态（修复配置不重置问题）
     this.user = null;
     this.userNick = "";
     this.sessionToken = "";
     this.isInit = false;
     this.isLoadingMsg = false;
-    this.config = { require_verify: false, sensitive_words: "", announcement: "" };
+    this.config = { ...APP_CONFIG.DEFAULT_CONFIG };
     
     // 清理存储
     Utils.Storage.remove("chat_current_session_token");
@@ -298,24 +300,76 @@ const UI = {
   }
 };
 
-// ====================== 配置模块 ======================
+// ====================== 系统配置模块（核心bug修复） ======================
 const Config = {
+  // 同步全局配置（修复默认值兜底）
   async sync() {
     try {
       const { data, error } = await Utils.request(
         AppState.sb.from("system_config").select("*").maybeSingle().abortSignal(RequestController.signal)
       );
-      if (!error && data) AppState.config = { ...AppState.config, ...data };
-    } catch {}
+      if (!error && data) {
+        // 合并配置，默认值兜底，避免null覆盖
+        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...data };
+      } else {
+        // 无配置时使用默认值
+        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
+      }
+    } catch (e) {
+      console.warn("配置同步失败", e);
+      AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
+    }
   },
 
+  // 统一配置保存方法（核心修复：单条记录upsert，不生成多条）
+  async save(updateData) {
+    if (AppState.isLocked("admin_config")) {
+      Notify.warning("正在保存配置，请稍候...");
+      return false;
+    }
+    AppState.lock("admin_config");
+
+    try {
+      // 先查询是否已有配置记录
+      const { data: existData } = await Utils.request(
+        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal)
+      );
+
+      let res;
+      if (existData?.id) {
+        // 已有记录：更新对应字段，不覆盖其他配置
+        res = await Utils.request(
+          AppState.sb.from("system_config").update(updateData).eq("id", existData.id).abortSignal(RequestController.signal)
+        );
+      } else {
+        // 无记录：插入完整默认配置+更新字段
+        res = await Utils.request(
+          AppState.sb.from("system_config").insert([{ ...APP_CONFIG.DEFAULT_CONFIG, ...updateData }]).abortSignal(RequestController.signal)
+        );
+      }
+
+      if (res.error) throw res.error;
+      // 同步更新本地缓存
+      AppState.config = { ...AppState.config, ...updateData };
+      return true;
+    } catch (e) {
+      Notify.error("配置保存失败：" + Utils.formatErr(e));
+      return false;
+    } finally {
+      AppState.unlock("admin_config");
+    }
+  },
+
+  // 实时配置监听（修复全量更新）
   initRealtime() {
     try {
       if (AppState.channels.config) AppState.sb.removeChannel(AppState.channels.config).catch(() => {});
       AppState.channels.config = AppState.sb.channel("config")
         .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, (payload) => {
           if (payload.new) {
-            AppState.config = { ...AppState.config, ...payload.new };
+            // 全量更新配置，默认值兜底
+            AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...payload.new };
+            // 更新公告栏
             const bar = Utils.$("#announceBar");
             payload.new.announcement?.trim() ? (bar.innerText = payload.new.announcement, bar.classList.remove("hidden")) : bar.classList.add("hidden");
           }
@@ -399,7 +453,11 @@ const Auth = {
       if (!Utils.isEmail(email)) throw new Error("请输入正确的邮箱格式");
       if (pwd.length < 8) throw new Error("密码长度不能少于8位");
 
+      // 确保使用最新配置
+      await Config.sync();
       const { require_verify } = AppState.config;
+      const defaultStatus = require_verify ? "pending" : "active";
+
       const { data: authData, error: authError } = await Utils.request(
         AppState.sb.auth.signUp({
           email, password: pwd,
@@ -411,20 +469,22 @@ const Auth = {
       if (!authData.user) throw new Error("注册失败，未获取到用户信息");
       authUserId = authData.user.id;
 
+      // 初始化用户表
       const { error: createError } = await Utils.request(
         AppState.sb.from("users").upsert([{
           id: authUserId, nick, email, is_admin: false,
-          status: require_verify ? "pending" : "active",
-          created_at: new Date().toISOString()
+          status: defaultStatus, created_at: new Date().toISOString()
         }], { onConflict: "id" }).abortSignal(RequestController.signal)
       );
       if (createError) throw createError;
 
+      // 注册成功处理
       if (require_verify) await AppState.sb.auth.signOut().catch(() => {});
       Notify.success(require_verify ? "注册成功！账号正在等待管理员审核" : "注册成功，请前往邮箱验证后登录");
       ["regNick", "regEmail", "regPwd"].forEach(id => Utils.$(`#${id}`).value = "");
       UI.showPage("loginPage");
     } catch (e) {
+      // 注册失败回滚，删除auth用户
       if (authUserId) await AppState.sb.auth.admin.deleteUser(authUserId).catch(() => {});
       Notify.error(`注册失败：${Utils.formatErr(e)}`);
     } finally {
@@ -474,6 +534,7 @@ const Auth = {
     AppState.lock("auth");
 
     try {
+      // 处理登出/过期
       if (event === "TOKEN_EXPIRED" || event === "SIGNED_OUT") {
         AppState.reset();
         UI.showPage("loginPage");
@@ -481,6 +542,7 @@ const Auth = {
         return;
       }
 
+      // 无效会话处理
       if (!["SIGNED_IN", "INITIAL_SESSION"].includes(event) || !session?.user) {
         AppState.reset();
         UI.showPage("loginPage");
@@ -488,7 +550,9 @@ const Auth = {
         return;
       }
 
+      // 同步最新配置
       await Config.sync();
+      // 获取用户信息
       let userInfo = null;
       try {
         const { data } = await Utils.request(
@@ -497,37 +561,41 @@ const Auth = {
         userInfo = data;
       } catch {}
 
-      const { require_verify } = AppState.config;
+      // 新用户初始化
       if (!userInfo) {
         const { data: newUser } = await Utils.request(
           AppState.sb.from("users").insert([{
             id: session.user.id,
             nick: session.user.user_metadata?.nick || session.user.email.split('@')[0],
             email: session.user.email, is_admin: false,
-            status: require_verify ? "pending" : "active",
+            status: AppState.config.require_verify ? "pending" : "active",
             created_at: session.user.created_at || new Date().toISOString()
           }]).select().single().abortSignal(RequestController.signal)
         );
         userInfo = newUser;
       }
 
+      // 校验用户状态
       if (userInfo.status === "ban") throw new Error("账号已被封禁，无法登录");
       if (userInfo.status === "pending") {
         await AppState.sb.auth.signOut().catch(() => {});
         throw new Error("你的账号正在等待管理员审核，审核通过后即可登录");
       }
 
+      // 登录成功初始化
       Notify.info("账号验证成功，正在进入聊天...");
       AppState.user = session.user;
       AppState.user.isAdmin = [true, 'true', 1].includes(userInfo.is_admin);
       AppState.userNick = Utils.Storage.get("nick") || userInfo.nick || "用户";
       Utils.Storage.set("nick", AppState.userNick);
 
+      // 生成会话Token，单设备登录
       Utils.Storage.remove("chat_current_session_token");
       const newToken = Utils.uuid();
       AppState.sessionToken = newToken;
       Utils.Storage.set("chat_current_session_token", newToken);
 
+      // 更新用户登录信息
       await Utils.request(
         AppState.sb.from("users").update({
           current_session_token: newToken, last_login_time: new Date().toISOString()
@@ -542,6 +610,7 @@ const Auth = {
       UI.closeLoader();
       Utils.$("#userTag").innerText = `用户：${AppState.userNick}`;
 
+      // 异步初始化模块
       setTimeout(async () => {
         try {
           Session.initCheck();
@@ -583,6 +652,7 @@ const Auth = {
       Notify.info("正在安全退出...");
       RequestController.reset();
       
+      // 清理用户会话
       if (AppState.user && AppState.sb) {
         await Utils.request(
           AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.user.id).abortSignal(RequestController.signal)
@@ -690,6 +760,7 @@ const Chat = {
     sendBtn.innerText = "发送中...";
 
     try {
+      // 敏感词过滤
       const { sensitive_words } = AppState.config;
       let content = text;
       (sensitive_words || "").split(",").filter(w => w.trim()).forEach(word => {
@@ -856,11 +927,11 @@ const Settings = {
   }, 3000)
 };
 
-// ====================== 管理员模块（专项修复+精简） ======================
+// ====================== 管理员模块（配置bug修复+精简） ======================
 window.Admin = {
-  // 记录管理员页面滚动位置，操作后恢复
-  _scrollTop: 0,
+  _scrollTop: 0, // 记录滚动位置
 
+  // 加载管理数据
   async loadData() {
     if (!AppState.user?.isAdmin) {
       Notify.error("你没有管理员权限");
@@ -874,13 +945,16 @@ window.Admin = {
     AppState.lock("admin_load");
     try {
       Notify.info("正在加载管理数据...");
+      // 同步最新配置（修复回显bug）
       await Config.sync();
       const { require_verify, sensitive_words, announcement } = AppState.config;
       
+      // 回显配置
       Utils.$("#requireVerifyToggle").checked = require_verify || false;
       Utils.$("#sensitiveWordsInput").value = sensitive_words || "";
       Utils.$("#announceInput").value = announcement || "";
 
+      // 并行加载数据
       const [verifyRes, userRes, logRes] = await Promise.allSettled([
         Utils.request(AppState.sb.from("users").select("*").eq("status", "pending").abortSignal(RequestController.signal)),
         Utils.request(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50).abortSignal(RequestController.signal)),
@@ -949,8 +1023,7 @@ window.Admin = {
 
       // 恢复滚动位置
       if (Admin._scrollTop) {
-        const adminPage = Utils.$("#adminPage");
-        adminPage.scrollTop = Admin._scrollTop;
+        Utils.$("#adminPage").scrollTop = Admin._scrollTop;
         Admin._scrollTop = 0;
       }
 
@@ -979,7 +1052,6 @@ window.Admin = {
       );
       if (error) throw error;
       Notify.success(status === "active" ? "用户审核通过" : "用户审核拒绝");
-      // 记录滚动位置，刷新数据
       Admin._scrollTop = Utils.$("#adminPage").scrollTop;
       await Admin.loadData();
     } catch (e) {
@@ -1058,7 +1130,10 @@ window.Admin = {
 
     try {
       const { error } = await Utils.request(
-        AppState.sb.from("users").update({ status, current_session_token: status === "ban" ? null : undefined }).eq("id", userId).abortSignal(RequestController.signal)
+        AppState.sb.from("users").update({ 
+          status, 
+          current_session_token: status === "ban" ? null : undefined 
+        }).eq("id", userId).abortSignal(RequestController.signal)
       );
       if (error) throw error;
       Notify.success(status === "active" ? "已解封该用户" : "已封禁该用户");
@@ -1100,115 +1175,25 @@ window.Admin = {
     }
   }, 3000),
 
-  // 保存系统配置
+  // 保存注册审核配置（核心修复：使用统一Config.save）
   async saveConfig() {
-    if (AppState.isLocked("admin_config")) {
-      Notify.warning("正在保存配置，请稍候...");
-      return;
-    }
-    AppState.lock("admin_config");
-    const btn = Utils.$("#saveConfigBtn");
-    btn.disabled = true;
-    btn.innerText = "保存中...";
-
-    try {
-      const requireVerify = Utils.$("#requireVerifyToggle").checked;
-      const { data } = await Utils.request(
-        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal)
-      );
-      
-      if (data?.id) {
-        await Utils.request(
-          AppState.sb.from("system_config").update({ require_verify: requireVerify }).eq("id", data.id).abortSignal(RequestController.signal)
-        );
-      } else {
-        await Utils.request(
-          AppState.sb.from("system_config").insert([{ require_verify: requireVerify }]).abortSignal(RequestController.signal)
-        );
-      }
-      AppState.config.require_verify = requireVerify;
-      Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
-    } catch (e) {
-      Notify.error(e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "保存配置";
-      AppState.unlock("admin_config");
-    }
+    const requireVerify = Utils.$("#requireVerifyToggle").checked;
+    const success = await Config.save({ require_verify: requireVerify });
+    if (success) Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
   },
 
-  // 保存敏感词
+  // 保存敏感词配置（核心修复：使用统一Config.save）
   async saveSensitive() {
-    if (AppState.isLocked("admin_config")) {
-      Notify.warning("正在保存敏感词，请稍候...");
-      return;
-    }
-    AppState.lock("admin_config");
-    const btn = Utils.$("#saveSwBtn");
-    btn.disabled = true;
-    btn.innerText = "保存中...";
-
-    try {
-      const words = Utils.$("#sensitiveWordsInput").value.trim();
-      const { data } = await Utils.request(
-        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal)
-      );
-      
-      if (data?.id) {
-        await Utils.request(
-          AppState.sb.from("system_config").update({ sensitive_words: words }).eq("id", data.id).abortSignal(RequestController.signal)
-        );
-      } else {
-        await Utils.request(
-          AppState.sb.from("system_config").insert([{ sensitive_words: words }]).abortSignal(RequestController.signal)
-        );
-      }
-      AppState.config.sensitive_words = words;
-      Notify.success("敏感词保存成功");
-    } catch (e) {
-      Notify.error(e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "保存敏感词";
-      AppState.unlock("admin_config");
-    }
+    const words = Utils.$("#sensitiveWordsInput").value.trim();
+    const success = await Config.save({ sensitive_words: words });
+    if (success) Notify.success("敏感词保存成功");
   },
 
-  // 保存公告
+  // 保存公告配置（核心修复：使用统一Config.save）
   async saveAnnounce() {
-    if (AppState.isLocked("admin_config")) {
-      Notify.warning("正在保存公告，请稍候...");
-      return;
-    }
-    AppState.lock("admin_config");
-    const btn = Utils.$("#saveAnnounceBtn");
-    btn.disabled = true;
-    btn.innerText = "保存中...";
-
-    try {
-      const content = Utils.$("#announceInput").value.trim();
-      const { data } = await Utils.request(
-        AppState.sb.from("system_config").select("id").maybeSingle().abortSignal(RequestController.signal)
-      );
-      
-      if (data?.id) {
-        await Utils.request(
-          AppState.sb.from("system_config").update({ announcement: content }).eq("id", data.id).abortSignal(RequestController.signal)
-        );
-      } else {
-        await Utils.request(
-          AppState.sb.from("system_config").insert([{ announcement: content }]).abortSignal(RequestController.signal)
-        );
-      }
-      AppState.config.announcement = content;
-      Notify.success("公告已推送");
-    } catch (e) {
-      Notify.error(e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "保存公告";
-      AppState.unlock("admin_config");
-    }
+    const content = Utils.$("#announceInput").value.trim();
+    const success = await Config.save({ announcement: content });
+    if (success) Notify.success("公告已推送");
   },
 
   // 删除消息
@@ -1325,6 +1310,7 @@ const App = {
       UI.initTheme();
       if (!window.supabase) throw new Error("Supabase SDK加载失败，请刷新页面重试");
 
+      // 初始化Supabase客户端
       AppState.sb = window.supabase.createClient(
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
@@ -1335,13 +1321,17 @@ const App = {
         }
       );
 
+      // 绑定事件
       EventBinder.init();
+      // 清理残留会话
       const { data: { session } } = await AppState.sb.auth.getSession();
       if (session?.user) await AppState.sb.auth.signOut().catch(() => {});
 
+      // 初始化页面
       AppState.reset();
       UI.showPage("loginPage");
       UI.closeLoader();
+      // 监听认证状态
       AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
     } catch (e) {
       Notify.error(`初始化失败：${Utils.formatErr(e)}`);
