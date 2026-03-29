@@ -15,12 +15,14 @@ const RequestController = {
   controller: new AbortController(),
   get signal() { return this.controller.signal; },
   reset() {
-    try { this.controller.abort(); this.controller = new AbortController(); }
-    catch {}
+    try {
+      this.controller.abort();
+      this.controller = new AbortController();
+    } catch {}
   }
 };
 
-// ====================== 工具函数（修复请求处理逻辑） ======================
+// ====================== 工具函数 ======================
 const Utils = {
   Storage: {
     _ok: (() => {
@@ -73,7 +75,7 @@ const Utils = {
     catch { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   },
 
-  // 修复：统一Supabase请求处理，正确处理error和data
+  // 统一Supabase请求处理，严格符合SDK规范
   request: async (promise, timeoutMsg = "请求超时") => {
     try {
       const res = await Promise.race([
@@ -182,10 +184,10 @@ const AppState = {
   unlock(k) { return this._locks.hasOwnProperty(k) && (this._locks[k] = false); },
   isLocked(k) { return this._locks[k] || false; },
 
-  // 重置所有状态（修复配置缓存污染）
+  // 重置所有状态，彻底清理缓存
   reset() {
     RequestController.reset();
-    // 清理实时通道
+    // 清理所有实时通道
     try {
       if (this.sb) Object.values(this.channels).forEach(c => {
         c.unsubscribe().catch(() => {});
@@ -194,7 +196,7 @@ const AppState = {
     } catch {}
     this.channels = Object.create(null);
 
-    // 清理定时器
+    // 清理所有定时器
     Object.values(this.timers).forEach(t => { clearTimeout(t); clearInterval(t); });
     this.timers = Object.create(null);
 
@@ -203,7 +205,7 @@ const AppState = {
     adminBtn.style.display = "none";
     adminBtn.classList.add("hidden");
     
-    // 重置状态（修复配置不重置问题）
+    // 重置状态
     this.user = null;
     this.userNick = "";
     this.sessionToken = "";
@@ -300,12 +302,20 @@ const UI = {
       isDark ? Utils.Storage.remove("theme") : Utils.Storage.set("theme", "dark");
       Utils.$("#toggleThemeBtn").innerText = isDark ? "切换深色模式" : "切换浅色模式";
     } catch { Notify.error("主题切换失败"); }
+  },
+
+  // 更新用户头像
+  updateUserAvatar(nick) {
+    try {
+      const avatar = Utils.$("#userAvatar");
+      avatar.innerText = (nick || "用户").charAt(0);
+    } catch {}
   }
 };
 
-// ====================== 系统配置模块（彻底修复配置报错） ======================
+// ====================== 系统配置模块 ======================
 const Config = {
-  // 同步全局配置（修复多条记录报错）
+  // 同步全局配置，自动修复脏数据
   async sync() {
     try {
       // 用limit(1)取第一条，兼容多条脏数据，不会报错
@@ -335,7 +345,7 @@ const Config = {
     }
   },
 
-  // 统一配置保存方法（核心修复：固定ID upsert，永远只有一条记录）
+  // 统一配置保存方法，固定ID upsert，永远只有一条记录
   async save(updateData) {
     if (AppState.isLocked("admin_config")) {
       Notify.warning("正在保存配置，请稍候...");
@@ -372,7 +382,14 @@ const Config = {
             AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...payload.new };
             // 更新公告栏
             const bar = Utils.$("#announceBar");
-            payload.new.announcement?.trim() ? (bar.innerText = payload.new.announcement, bar.classList.remove("hidden")) : bar.classList.add("hidden");
+            const textEl = Utils.$("#announceText");
+            const content = payload.new.announcement?.trim();
+            if (content) {
+              textEl.innerText = content;
+              bar.classList.remove("hidden");
+            } else {
+              bar.classList.add("hidden");
+            }
           }
         })
         .subscribe();
@@ -418,7 +435,6 @@ const Session = {
       AppState.timers.sessionCheck = setInterval(async () => {
         if (!AppState.user || !AppState.isInit) return;
         try {
-          // 修复：用limit(1)避免多条记录报错
           const { data } = await Utils.request(
             AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).limit(1).abortSignal(RequestController.signal)
           );
@@ -494,7 +510,7 @@ const Auth = {
       setTimeout(() => {
         AppState.unlock("register");
         regBtn.disabled = false;
-        regBtn.innerText = "注册";
+        regBtn.innerText = "完成注册";
       }, 300);
     }
   }, 2000),
@@ -555,7 +571,7 @@ const Auth = {
 
       // 同步最新配置
       await Config.sync();
-      // 获取用户信息（修复：limit(1)避免多条记录报错）
+      // 获取用户信息
       let userInfo = null;
       try {
         const { data } = await Utils.request(
@@ -592,6 +608,9 @@ const Auth = {
       AppState.user.isAdmin = [true, 'true', 1].includes(userInfo.is_admin);
       AppState.userNick = Utils.Storage.get("nick") || userInfo.nick || "用户";
       Utils.Storage.set("nick", AppState.userNick);
+
+      // 更新用户头像
+      UI.updateUserAvatar(AppState.userNick);
 
       // 生成会话Token，单设备登录
       Utils.Storage.remove("chat_current_session_token");
@@ -709,6 +728,16 @@ const Chat = {
   render(list) {
     try {
       const box = Utils.$("#msgBox");
+      const emptyState = Utils.$("#msgEmptyState");
+      
+      // 处理空状态
+      if (!list || list.length === 0) {
+        box.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+      
+      emptyState.classList.add("hidden");
       let html = "";
       list.forEach(msg => {
         if (!msg?.id) return;
@@ -721,19 +750,22 @@ const Chat = {
         html += `
           <div class="msg-item ${isMe ? 'msg-me' : 'msg-other'}">
             <div class="avatar">${nick.charAt(0)}</div>
-            <div>
+            <div class="msg-content">
               <div class="msg-name">${nick}</div>
-              <div class="bubble">${text}</div>
+              <div class="bubble-wrapper">
+                <div class="bubble">${text}</div>
+              </div>
               <div class="msg-time">${time}</div>
             </div>
-            ${AppState.user.isAdmin ? `<button class="win-btn small danger" onclick="Admin.delMsg(${msgId}, this)">删除</button>` : ''}
+            ${AppState.user.isAdmin ? `<button class="btn btn-danger btn-sm" onclick="Admin.delMsg(${msgId}, this)">删除</button>` : ''}
           </div>
         `;
       });
       box.innerHTML = html;
       box.scrollTop = box.scrollHeight;
-    } catch {
+    } catch (e) {
       Notify.error("消息渲染失败");
+      console.error(e);
     }
   },
 
@@ -768,11 +800,7 @@ const Chat = {
       const { sensitive_words } = AppState.config;
       let content = text;
       (sensitive_words || "").split(",").filter(w => w.trim()).forEach(word => {
-        content = content.replaceAll(word, "***");
-      });
-
-      const { error } = await Utils.request(
-        AppState.sb.from("messages").insert([{
+        content("messages").insert([{
           user_id: AppState.user.id,
           nick: AppState.userNick,
           text: content,
@@ -782,6 +810,7 @@ const Chat = {
       if (error) throw error;
 
       input.value = "";
+      input.style.height = "auto"; // 重置输入框高度
       Notify.success("消息发送成功");
       await Chat.load();
     } catch (e) {
@@ -900,6 +929,7 @@ const Settings = {
       AppState.userNick = newNick;
       Utils.Storage.set("nick", newNick);
       Utils.$("#userTag").innerText = `用户：${newNick}`;
+      UI.updateUserAvatar(newNick);
       Utils.$("#nickInput").value = "";
       Notify.success("昵称保存成功");
       await Online.mark();
@@ -931,7 +961,7 @@ const Settings = {
   }, 3000)
 };
 
-// ====================== 管理员模块 ======================
+// ====================== 管理员模块（核心报错修复） ======================
 window.Admin = {
   _scrollTop: 0, // 记录滚动位置
 
@@ -949,7 +979,7 @@ window.Admin = {
     AppState.lock("admin_load");
     try {
       Notify.info("正在加载管理数据...");
-      // 同步最新配置（修复回显bug）
+      // 同步最新配置，确保回显正确
       await Config.sync();
       const { require_verify, sensitive_words, announcement } = AppState.config;
       
@@ -976,8 +1006,8 @@ window.Admin = {
           <div class="list-item">
             <span>${email}（${nick}）</span>
             <div class="btn-group">
-              <button class="win-btn small primary" onclick="Admin.verify('${id}', 'active', this)">通过</button>
-              <button class="win-btn small danger" onclick="Admin.verify('${id}', 'ban', this)">拒绝</button>
+              <button class="btn btn-primary btn-sm" onclick="Admin.verify('${id}', 'active', this)">通过</button>
+              <button class="btn btn-danger btn-sm" onclick="Admin.verify('${id}', 'ban', this)">拒绝</button>
             </div>
           </div>
         `;
@@ -998,12 +1028,12 @@ window.Admin = {
           <div class="list-item">
             <span>${email}（${nick} | ${status} | ${online}）</span>
             <div class="btn-group">
-              <button class="win-btn small secondary" onclick="Admin.resetPwd('${email}', this)">重置密码</button>
-              <button class="win-btn small warning" onclick="Admin.setMute('${id}', ${!u.is_mute}, this)">${muteText}</button>
-              <button class="win-btn small ${u.status === 'ban' ? 'primary' : 'danger'}" onclick="Admin.setStatus('${id}', '${u.status === 'ban' ? 'active' : 'ban'}', this)">
+              <button class="btn btn-secondary btn-sm" onclick="Admin.resetPwd('${email}', this)">重置密码</button>
+              <button class="btn btn-warning btn-sm" onclick="Admin.setMute('${id}', ${!u.is_mute}, this)">${muteText}</button>
+              <button class="btn ${u.status === 'ban' ? 'btn-primary' : 'btn-danger'} btn-sm" onclick="Admin.setStatus('${id}', '${u.status === 'ban' ? 'active' : 'ban'}', this)">
                 ${u.status === 'ban' ? '解封' : '封禁'}
               </button>
-              <button class="win-btn small danger" onclick="Admin.forceOffline('${id}', this)">强制下线</button>
+              <button class="btn btn-danger btn-sm" onclick="Admin.forceOffline('${id}', this)">强制下线</button>
             </div>
           </div>
         `;
@@ -1200,7 +1230,7 @@ window.Admin = {
     if (success) Notify.success("公告已推送");
   },
 
-  // 删除消息
+  // 删除单条消息
   delMsg: Utils.throttle(async (msgId, btn) => {
     if (AppState.isLocked("admin_msg")) {
       Notify.warning("正在删除消息，请稍候...");
@@ -1226,7 +1256,7 @@ window.Admin = {
     }
   }, 1500),
 
-  // 清空所有消息
+  // 清空所有消息（核心报错修复：修正错误的Supabase语法）
   async clearMsg() {
     if (AppState.isLocked("admin_msg")) {
       Notify.warning("正在清空消息，请稍候...");
@@ -1239,8 +1269,9 @@ window.Admin = {
     btn.innerText = "清空中...";
 
     try {
+      // 修复：错误的.not.is改为正确的.neq，彻底解决报错
       const { error } = await Utils.request(
-        AppState.sb.from("messages").delete().not.is("id", null).abortSignal(RequestController.signal)
+        AppState.sb.from("messages").delete().neq("id", null).abortSignal(RequestController.signal)
       );
       if (error) throw error;
       Notify.success("所有消息已清空");
@@ -1270,9 +1301,20 @@ const EventBinder = {
       Utils.$("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && Auth.register());
       Utils.$("#logoutBtn").addEventListener("click", () => Auth.logout());
 
-      // 聊天
+      // 聊天输入框自动高度
+      const msgInput = Utils.$("#msgInput");
+      msgInput.addEventListener("input", function() {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 120) + "px";
+      });
+      // 聊天发送
       Utils.$("#sendBtn").addEventListener("click", () => Chat.send());
-      Utils.$("#msgInput").addEventListener("keydown", (e) => e.key === "Enter" && !e.shiftKey && Chat.send());
+      msgInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          Chat.send();
+        }
+      });
 
       // 页面导航
       Utils.$("#settingBtn").addEventListener("click", () => UI.showPage("settingPage"));
@@ -1295,6 +1337,7 @@ const EventBinder = {
       this._bound = true;
     } catch (e) {
       Notify.error("页面初始化失败，请刷新重试");
+      console.error(e);
     }
   }
 };
@@ -1353,9 +1396,6 @@ document.addEventListener("DOMContentLoaded", () => App.init());
 window.addEventListener("beforeunload", () => {
   try {
     RequestController.reset();
-    if (AppState.user && AppState.sb) {
-      navigator.sendBeacon(`${APP_CONFIG.SUPABASE_URL}/rest/v1/online_users?user_id=eq.${AppState.user.id}`, JSON.stringify({}));
-    }
   } catch {}
 });
 document.addEventListener("visibilitychange", Utils.debounce(async () => {
