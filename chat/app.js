@@ -1,30 +1,38 @@
-// ====================== 核心配置（唯一常量源） ======================
+// ====================== 核心配置 ======================
 const APP_CONFIG = Object.freeze({
   SUPABASE_URL: "https://ayavdkodhdmcxfufnnxo.supabase.co",
   SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
-  TIMEOUT: { API: 8000, LOGIN: 20000, IP_FETCH: 3000 },
+  TIMEOUT: { API: 10000, LOGIN: 20000, IP_FETCH: 3000 },
   INTERVAL: { HEARTBEAT: 30000, SESSION_CHECK: 60000 },
   IP_API_LIST: ["https://api.ip.sb/ip", "https://ip.3322.net", "https://api.ipify.org?format=text"],
   IP_CACHE_TTL: 3600000,
   DEFAULT_CONFIG: Object.freeze({ id: 1, require_verify: false, sensitive_words: "", announcement: "" }),
-  CONFIG_ID: 1
+  CONFIG_ID: 1,
+  SESSION_RETRY: 2 // 会话校验失败重试次数
 });
 
-// ====================== 全局请求控制器 ======================
+// ====================== 重构请求控制器（核心修复） ======================
 const RequestController = {
-  controller: new AbortController(),
-  get signal() { return this.controller.signal; },
+  _controllers: new Set(),
+  // 为每个请求生成独立的AbortSignal
+  getSignal() {
+    const controller = new AbortController();
+    this._controllers.add(controller);
+    // 自动清理已完成的控制器
+    controller.signal.addEventListener('abort', () => this._controllers.delete(controller), { once: true });
+    return controller.signal;
+  },
+  // 全局取消所有请求，重置环境
   reset() {
     try {
-      this.controller.abort();
-      this.controller = new AbortController();
+      this._controllers.forEach(controller => !controller.signal.aborted && controller.abort());
+      this._controllers.clear();
     } catch {}
   }
 };
 
-// ====================== 工具函数（无冗余，全边界处理） ======================
+// ====================== 工具函数 ======================
 const Utils = {
-  // 修复：箭头函数改普通函数，this指向正确
   Storage: {
     _ok: (() => {
       try { const k = "__t__"; localStorage.setItem(k, k); localStorage.removeItem(k); return true; }
@@ -36,7 +44,6 @@ const Utils = {
     clear() { return this._ok ? (localStorage.clear(), true) : false; }
   },
 
-  // 高频DOM元素缓存，避免重复查询
   $cache: Object.create(null),
   $(selector) {
     if (!this.$cache[selector]) {
@@ -49,7 +56,6 @@ const Utils = {
     return this.$cache[selector];
   },
   $$(selector) { return document.querySelectorAll(selector) || []; },
-  // 清空缓存（页面重置时调用）
   clearCache() { this.$cache = Object.create(null); },
 
   escapeHtml(str) {
@@ -69,18 +75,22 @@ const Utils = {
     return debounced;
   },
 
-  throttle(fn, limit) {
-    let inThrottle = false;
-    return function(...args) {
-      if (!inThrottle) {
-        inThrottle = true;
-        Promise.resolve(fn.apply(this, args))
-          .finally(() => setTimeout(() => inThrottle = false, limit));
-      }
+  // 智能定时器：支持暂停/恢复，适配页面可见性
+  createTimer(fn, interval) {
+    let timer = null;
+    let paused = false;
+    const start = () => {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => !paused && fn(), interval);
+    };
+    return {
+      start,
+      pause: () => paused = true,
+      resume: () => paused = false,
+      stop: () => { clearInterval(timer); timer = null; }
     };
   },
 
-  // 兼容HTTP环境的UUID生成
   uuid() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       try { return crypto.randomUUID(); } catch {}
@@ -91,9 +101,10 @@ const Utils = {
     });
   },
 
-  // 统一请求处理，全错误捕获
+  // 统一请求处理：每个请求独立Signal
   async request(promise, timeoutMsg = "请求超时") {
     try {
+      const signal = RequestController.getSignal();
       const res = await Promise.race([
         promise,
         new Promise((_, rej) => setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API))
@@ -119,7 +130,6 @@ const Utils = {
     return msg;
   },
 
-  // 兼容低版本浏览器的Promise.any
   promiseAny(promises) {
     if (Promise.any) return Promise.any(promises);
     return new Promise((res, rej) => {
@@ -141,7 +151,7 @@ const IPUtils = {
 
     try {
       const promises = APP_CONFIG.IP_API_LIST.map(api =>
-        fetch(api, { method: "GET", signal: RequestController.signal, headers: { Accept: "text/plain" } })
+        fetch(api, { method: "GET", signal: RequestController.getSignal(), headers: { Accept: "text/plain" } })
           .then(res => res.ok ? res.text().then(t => t.trim()) : Promise.reject())
       );
       const ip = await Utils.promiseAny(promises);
@@ -179,7 +189,7 @@ const Notify = {
   info: (t) => Notify.show('info', t)
 };
 
-// ====================== 全局状态（单一根源，无重复） ======================
+// ====================== 全局状态 ======================
 const AppState = {
   sb: null,
   user: null,
@@ -195,16 +205,16 @@ const AppState = {
   }),
   channels: Object.create(null),
   timers: Object.create(null),
-  debounces: Object.create(null), // 存储debounce实例，统一清理
+  debounces: Object.create(null),
+  sessionRetryCount: 0,
 
   lock(key) { return this._locks.hasOwnProperty(key) && (this._locks[key] = true); },
   unlock(key) { return this._locks.hasOwnProperty(key) && (this._locks[key] = false); },
   isLocked(key) { return this._locks[key] || false; },
 
-  // 全量重置，无任何残留
   reset() {
     RequestController.reset();
-    // 清理所有debounce
+    // 清理debounce
     Object.values(this.debounces).forEach(d => d.cancel?.());
     this.debounces = Object.create(null);
     // 清理实时通道
@@ -215,8 +225,8 @@ const AppState = {
       });
     } catch {}
     this.channels = Object.create(null);
-    // 清理所有定时器
-    Object.values(this.timers).forEach(t => { clearTimeout(t); clearInterval(t); });
+    // 清理定时器
+    Object.values(this.timers).forEach(t => t.stop?.());
     this.timers = Object.create(null);
     // 重置UI
     const adminBtn = Utils.$("#adminBtn");
@@ -229,11 +239,12 @@ const AppState = {
     this.isInit = false;
     this.isLoadingMsg = false;
     this.config = { ...APP_CONFIG.DEFAULT_CONFIG };
+    this.sessionRetryCount = 0;
     // 清理存储
     Utils.Storage.remove("chat_current_session_token");
     Utils.Storage.remove("nick");
     IPUtils.clearCache();
-    Utils.clearCache(); // 清空DOM缓存
+    Utils.clearCache();
     // 重置按钮
     ["loginBtn", "regBtn", "sendBtn", "logoutBtn"].forEach(id => {
       const btn = Utils.$(`#${id}`);
@@ -246,6 +257,54 @@ const AppState = {
     ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => {
       Utils.$(`#${id}`).value = "";
     });
+  },
+
+  // 页面切回时的环境恢复（核心修复）
+  async resume() {
+    if (!this.user || !this.isInit) return;
+    try {
+      // 1. 重置请求环境，清除已失效的Signal
+      RequestController.reset();
+      // 2. 校验会话有效性，避免误判
+      const { data: { session } } = await this.sb.auth.getSession();
+      if (!session) {
+        await Session.invalid("登录已过期，请重新登录");
+        return;
+      }
+      // 3. 重连所有实时通道
+      this.reconnectChannels();
+      // 4. 恢复定时任务
+      Object.values(this.timers).forEach(t => t.resume?.());
+      // 5. 同步最新状态
+      await Promise.allSettled([
+        Config.sync(),
+        Online.mark(),
+        Online.refresh(),
+        Chat.load()
+      ]);
+      // 6. 重置重试计数
+      this.sessionRetryCount = 0;
+    } catch (e) {
+      console.warn("页面恢复失败", e);
+    }
+  },
+
+  // 页面隐藏时的暂停处理
+  pause() {
+    if (!this.user || !this.isInit) return;
+    // 暂停所有定时任务，避免浏览器降频
+    Object.values(this.timers).forEach(t => t.pause?.());
+  },
+
+  // 重连所有实时通道
+  reconnectChannels() {
+    try {
+      Object.values(this.channels).forEach(c => {
+        if (c.state !== 'joined') {
+          c.subscribe().catch(() => {});
+        }
+      });
+    } catch {}
   }
 };
 
@@ -253,7 +312,7 @@ const AppState = {
 const UI = {
   closeLoader() {
     try {
-      if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
+      if (AppState.timers.forceCloseLoader) AppState.timers.forceCloseLoader.stop?.();
       const loader = Utils.$("#loadingPage");
       loader.style.opacity = 0;
       setTimeout(() => { loader.classList.add("hidden"); loader.style.display = "none"; }, 300);
@@ -341,19 +400,18 @@ const Config = {
   async sync() {
     try {
       const { data } = await Utils.request(
-        AppState.sb.from("system_config").select("*").limit(1).order("id", { ascending: true }).abortSignal(RequestController.signal)
+        AppState.sb.from("system_config").select("*").limit(1).order("id", { ascending: true })
       );
       if (data && data.length > 0) {
         AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...data[0] };
-        // 自动清理脏数据
         if (data.length > 1) {
           await Utils.request(
-            AppState.sb.from("system_config").delete().neq("id", APP_CONFIG.CONFIG_ID).abortSignal(RequestController.signal)
+            AppState.sb.from("system_config").delete().neq("id", APP_CONFIG.CONFIG_ID)
           ).catch(() => {});
         }
       } else {
         await Utils.request(
-          AppState.sb.from("system_config").insert([APP_CONFIG.DEFAULT_CONFIG]).abortSignal(RequestController.signal)
+          AppState.sb.from("system_config").insert([APP_CONFIG.DEFAULT_CONFIG])
         );
         AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
       }
@@ -372,7 +430,7 @@ const Config = {
     try {
       const saveData = { ...APP_CONFIG.DEFAULT_CONFIG, ...AppState.config, ...updateData, id: APP_CONFIG.CONFIG_ID };
       await Utils.request(
-        AppState.sb.from("system_config").upsert(saveData, { onConflict: "id" }).abortSignal(RequestController.signal)
+        AppState.sb.from("system_config").upsert(saveData, { onConflict: "id" })
       );
       AppState.config = saveData;
       return true;
@@ -399,7 +457,7 @@ const Config = {
   }
 };
 
-// ====================== 会话校验模块 ======================
+// ====================== 会话校验模块（容错升级） ======================
 const Session = {
   async invalid(reason = "账号在其他设备登录，已为你安全下线") {
     try {
@@ -416,10 +474,44 @@ const Session = {
     }
   },
 
+  // 会话校验：增加重试机制，避免误判
+  async check() {
+    if (!AppState.user || !AppState.isInit) return;
+    try {
+      const { data } = await Utils.request(
+        AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).limit(1)
+      );
+      if (data && data.length > 0) {
+        const userData = data[0];
+        // 会话token不一致，直接下线
+        if (userData.current_session_token !== AppState.sessionToken) {
+          await Session.invalid();
+          return;
+        }
+        // 账号状态异常，直接下线
+        if (userData.status === "pending" || userData.status === "ban") {
+          await Session.invalid(userData.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
+          return;
+        }
+        // 校验成功，重置重试计数
+        AppState.sessionRetryCount = 0;
+      }
+    } catch (e) {
+      // 页面隐藏时不计数，避免误判
+      if (document.hidden) return;
+      // 重试次数超限才下线
+      AppState.sessionRetryCount++;
+      if (AppState.sessionRetryCount >= APP_CONFIG.SESSION_RETRY) {
+        await Session.invalid("会话校验失败，请重新登录");
+      }
+    }
+  },
+
   initCheck() {
     try {
       if (!AppState.user) return;
       if (AppState.channels.session) AppState.sb.removeChannel(AppState.channels.session).catch(() => {});
+      // 实时监听账号状态变化
       AppState.channels.session = AppState.sb.channel("session")
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.user.id}` },
           async (payload) => {
@@ -431,21 +523,10 @@ const Session = {
           }
         )
         .subscribe();
-
-      if (AppState.timers.sessionCheck) clearInterval(AppState.timers.sessionCheck);
-      AppState.timers.sessionCheck = setInterval(async () => {
-        if (!AppState.user || !AppState.isInit) return;
-        try {
-          const { data } = await Utils.request(
-            AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).limit(1).abortSignal(RequestController.signal)
-          );
-          if (data && data.length > 0) {
-            const userData = data[0];
-            if (userData.current_session_token !== AppState.sessionToken) await Session.invalid();
-            if (userData.status === "pending" || userData.status === "ban") await Session.invalid(userData.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
-          }
-        } catch {}
-      }, APP_CONFIG.INTERVAL.SESSION_CHECK);
+      // 定时校验，使用智能定时器
+      if (AppState.timers.sessionCheck) AppState.timers.sessionCheck.stop();
+      AppState.timers.sessionCheck = Utils.createTimer(() => Session.check(), APP_CONFIG.INTERVAL.SESSION_CHECK);
+      AppState.timers.sessionCheck.start();
     } catch {}
   }
 };
@@ -485,7 +566,7 @@ const Auth = {
         AppState.sb.from("users").upsert([{
           id: authUserId, nick, email, is_admin: false,
           status: defaultStatus, created_at: new Date().toISOString()
-        }], { onConflict: "id" }).abortSignal(RequestController.signal)
+        }], { onConflict: "id" })
       );
 
       if (AppState.config.require_verify) await AppState.sb.auth.signOut().catch(() => {});
@@ -553,7 +634,7 @@ const Auth = {
       let userInfo = null;
       try {
         const { data } = await Utils.request(
-          AppState.sb.from("users").select("*").eq("id", session.user.id).limit(1).abortSignal(RequestController.signal)
+          AppState.sb.from("users").select("*").eq("id", session.user.id).limit(1)
         );
         if (data && data.length > 0) userInfo = data[0];
       } catch {}
@@ -566,7 +647,7 @@ const Auth = {
             email: session.user.email, is_admin: false,
             status: AppState.config.require_verify ? "pending" : "active",
             created_at: session.user.created_at || new Date().toISOString()
-          }]).select().limit(1).abortSignal(RequestController.signal)
+          }]).select().limit(1)
         );
         if (newUser && newUser.length > 0) userInfo = newUser[0];
       }
@@ -593,7 +674,7 @@ const Auth = {
       await Utils.request(
         AppState.sb.from("users").update({
           current_session_token: newToken, last_login_time: new Date().toISOString()
-        }).eq("id", AppState.user.id).abortSignal(RequestController.signal)
+        }).eq("id", AppState.user.id)
       );
 
       AppState.isInit = true;
@@ -642,13 +723,14 @@ const Auth = {
       RequestController.reset();
       if (AppState.user && AppState.sb) {
         await Utils.request(
-          AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.user.id).abortSignal(RequestController.signal)
+          AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.user.id)
         ).catch(() => {});
         await Utils.request(
-          AppState.sb.from("online_users").delete().eq("user_id", AppState.user.id).abortSignal(RequestController.signal)
+          AppState.sb.from("online_users").delete().eq("user_id", AppState.user.id)
         ).catch(() => {});
       }
       if (AppState.sb) await AppState.sb.auth.signOut();
+      
       AppState.reset();
       Utils.Storage.clear();
       UI.showPage("loginPage");
@@ -678,7 +760,7 @@ const Chat = {
     AppState.isLoadingMsg = true;
     try {
       const { data, error } = await Utils.request(
-        AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200).abortSignal(RequestController.signal)
+        AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200)
       );
       if (error) throw error;
       Chat.render(data || []);
@@ -762,7 +844,7 @@ const Chat = {
           nick: AppState.userNick,
           text: content,
           time: new Date().toLocaleString()
-        }]).abortSignal(RequestController.signal)
+        }])
       );
       input.value = "";
       input.style.height = "auto";
@@ -787,7 +869,7 @@ const Online = {
           user_id: AppState.user.id,
           nick: AppState.userNick,
           last_active: new Date().toISOString()
-        }, { onConflict: "user_id" }).abortSignal(RequestController.signal)
+        }, { onConflict: "user_id" })
       );
     } catch {}
   },
@@ -795,7 +877,7 @@ const Online = {
   async refresh() {
     try {
       const { data } = await Utils.request(
-        AppState.sb.from("online_users").select("*").abortSignal(RequestController.signal)
+        AppState.sb.from("online_users").select("*")
       );
       Utils.$("#onlineNum").innerText = data?.length || 0;
     } catch {}
@@ -813,10 +895,11 @@ const Online = {
 
 const Heartbeat = {
   init() {
-    if (AppState.timers.heartbeat) clearInterval(AppState.timers.heartbeat);
-    AppState.timers.heartbeat = setInterval(async () => {
+    if (AppState.timers.heartbeat) AppState.timers.heartbeat.stop();
+    AppState.timers.heartbeat = Utils.createTimer(async () => {
       if (AppState.user && AppState.isInit) await Online.mark();
     }, APP_CONFIG.INTERVAL.HEARTBEAT);
+    AppState.timers.heartbeat.start();
   }
 };
 
@@ -832,7 +915,7 @@ const LoginLog = {
           ip: ip,
           device: (navigator.userAgent || "未知设备").substring(0, 100),
           time: new Date().toLocaleString()
-        }]).abortSignal(RequestController.signal)
+        }])
       );
     } catch {}
   },
@@ -842,7 +925,7 @@ const LoginLog = {
     try {
       Notify.info("正在加载登录日志...");
       const { data, error } = await Utils.request(
-        AppState.sb.from("login_logs").select("*").eq("user_id", AppState.user.id).order("time", { ascending: false }).limit(10).abortSignal(RequestController.signal)
+        AppState.sb.from("login_logs").select("*").eq("user_id", AppState.user.id).order("time", { ascending: false }).limit(10)
       );
       if (error) throw error;
       if (!data?.length) return alert("=== 我的登录日志 ===\n\n暂无登录日志");
@@ -865,7 +948,7 @@ const Settings = {
       const newNick = Utils.$("#nickInput").value.trim();
       if (!newNick) throw new Error("请输入有效的昵称");
       await Utils.request(
-        AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.user.id).abortSignal(RequestController.signal)
+        AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.user.id)
       );
       AppState.userNick = newNick;
       Utils.Storage.set("nick", newNick);
@@ -896,10 +979,9 @@ const Settings = {
   }, 3000)
 };
 
-// ====================== 管理员模块（事件委托，无XSS风险） ======================
+// ====================== 管理员模块 ======================
 const Admin = {
   _scrollTop: 0,
-  // 通用管理员操作执行器，合并90%重复逻辑
   async execAction(options) {
     const { lockKey, btn, action, successMsg, reload = true } = options;
     if (AppState.isLocked(lockKey)) {
@@ -946,12 +1028,11 @@ const Admin = {
         Utils.$("#announceInput").value = announcement || "";
 
         const [verifyRes, userRes, logRes] = await Promise.allSettled([
-          Utils.request(AppState.sb.from("users").select("*").eq("status", "pending").abortSignal(RequestController.signal)),
-          Utils.request(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50).abortSignal(RequestController.signal)),
-          Utils.request(AppState.sb.from("login_logs").select("*").order("time", { ascending: false }).limit(20).abortSignal(RequestController.signal))
+          Utils.request(AppState.sb.from("users").select("*").eq("status", "pending")),
+          Utils.request(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50)),
+          Utils.request(AppState.sb.from("login_logs").select("*").order("time", { ascending: false }).limit(20))
         ]);
 
-        // 渲染待审核用户
         const verifyUsers = verifyRes.status === "fulfilled" && !verifyRes.value.error ? verifyRes.value.data || [] : [];
         let verifyHtml = "";
         verifyUsers.forEach(u => {
@@ -967,7 +1048,6 @@ const Admin = {
         });
         Utils.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
 
-        // 渲染所有用户
         const allUsers = userRes.status === "fulfilled" && !userRes.value.error ? userRes.value.data || [] : [];
         let userHtml = "";
         allUsers.forEach(u => {
@@ -992,7 +1072,6 @@ const Admin = {
         });
         Utils.$("#allUserList").innerHTML = userHtml || "暂无用户";
 
-        // 渲染登录日志
         const logs = logRes.status === "fulfilled" && !logRes.value.error ? logRes.value.data || [] : [];
         let logHtml = "";
         logs.forEach(log => {
@@ -1004,7 +1083,6 @@ const Admin = {
         });
         Utils.$("#allLoginLogList").innerHTML = logHtml || "暂无登录日志";
 
-        // 恢复滚动位置
         if (Admin._scrollTop) {
           Utils.$("#adminPage").scrollTop = Admin._scrollTop;
           Admin._scrollTop = 0;
@@ -1013,7 +1091,6 @@ const Admin = {
     });
   },
 
-  // 配置保存
   async saveConfig() {
     const requireVerify = Utils.$("#requireVerifyToggle").checked;
     const success = await Config.save({ require_verify: requireVerify });
@@ -1030,7 +1107,6 @@ const Admin = {
     if (success) Notify.success("公告已推送");
   },
 
-  // 消息操作
   async delMsg(msgId, btn) {
     return Admin.execAction({
       lockKey: "admin_msg",
@@ -1038,9 +1114,7 @@ const Admin = {
       successMsg: "消息已删除",
       reload: false,
       action: async () => {
-        await Utils.request(
-          AppState.sb.from("messages").delete().eq("id", msgId).abortSignal(RequestController.signal)
-        );
+        await Utils.request(AppState.sb.from("messages").delete().eq("id", msgId));
         await Chat.load();
       }
     });
@@ -1053,16 +1127,14 @@ const Admin = {
       successMsg: "所有消息已清空",
       reload: false,
       action: async () => {
-        await Utils.request(
-          AppState.sb.from("messages").delete().neq("id", null).abortSignal(RequestController.signal)
-        );
+        await Utils.request(AppState.sb.from("messages").delete().neq("id", null));
         await Chat.load();
       }
     });
   }
 };
 
-// ====================== 事件绑定（事件委托，无XSS风险） ======================
+// ====================== 事件绑定 ======================
 const EventBinder = {
   _bound: false,
   init() {
@@ -1109,7 +1181,7 @@ const EventBinder = {
       Utils.$("#saveAnnounceBtn").addEventListener("click", () => Admin.saveAnnounce());
       Utils.$("#clearAllMsgBtn").addEventListener("click", () => Admin.clearMsg());
 
-      // 管理员操作事件委托（彻底解决XSS）
+      // 管理员操作事件委托
       document.addEventListener("click", (e) => {
         const target = e.target;
         // 审核用户
@@ -1121,9 +1193,7 @@ const EventBinder = {
             btn: target,
             successMsg: status === "active" ? "用户审核通过" : "用户审核拒绝",
             action: async () => {
-              await Utils.request(
-                AppState.sb.from("users").update({ status }).eq("id", userId).abortSignal(RequestController.signal)
-              );
+              await Utils.request(AppState.sb.from("users").update({ status }).eq("id", userId));
             }
           });
         }
@@ -1136,9 +1206,7 @@ const EventBinder = {
             btn: target,
             successMsg: "用户已被强制下线",
             action: async () => {
-              await Utils.request(
-                AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId).abortSignal(RequestController.signal)
-              );
+              await Utils.request(AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId));
             }
           });
         }
@@ -1151,9 +1219,7 @@ const EventBinder = {
             btn: target,
             successMsg: isMute ? "已禁言该用户" : "已解禁该用户",
             action: async () => {
-              await Utils.request(
-                AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId).abortSignal(RequestController.signal)
-              );
+              await Utils.request(AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId));
             }
           });
         }
@@ -1166,12 +1232,10 @@ const EventBinder = {
             btn: target,
             successMsg: status === "active" ? "已解封该用户" : "已封禁该用户",
             action: async () => {
-              await Utils.request(
-                AppState.sb.from("users").update({ 
-                  status, 
-                  current_session_token: status === "ban" ? null : undefined 
-                }).eq("id", userId).abortSignal(RequestController.signal)
-              );
+              await Utils.request(AppState.sb.from("users").update({ 
+                status, 
+                current_session_token: status === "ban" ? null : undefined 
+              }).eq("id", userId));
             }
           });
         }
@@ -1198,6 +1262,15 @@ const EventBinder = {
         }
       });
 
+      // 页面可见性监听（核心修复）
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          AppState.pause();
+        } else {
+          AppState.resume();
+        }
+      });
+
       this._bound = true;
     } catch (e) {
       Notify.error("页面初始化失败，请刷新重试");
@@ -1213,11 +1286,12 @@ const App = {
     AppState.lock("init");
     let forceCloseTimer = null;
     try {
-      forceCloseTimer = setTimeout(() => {
+      forceCloseTimer = Utils.createTimer(() => {
         UI.closeLoader();
         AppState.reset();
         UI.showPage("loginPage");
       }, 5000);
+      forceCloseTimer.start();
       AppState.timers.forceCloseLoader = forceCloseTimer;
 
       UI.initTheme();
@@ -1230,7 +1304,7 @@ const App = {
         {
           auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
           realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true },
-          global: { fetch: (...args) => fetch(...args, { signal: RequestController.signal }) }
+          global: { fetch: (...args) => fetch(...args, { signal: RequestController.getSignal() }) }
         }
       );
 
@@ -1246,7 +1320,7 @@ const App = {
       AppState.reset();
       UI.showPage("loginPage");
       UI.closeLoader();
-      clearTimeout(forceCloseTimer); // 成功初始化，清除强制关闭定时器
+      forceCloseTimer.stop();
       
       // 监听认证状态
       AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
@@ -1264,11 +1338,4 @@ const App = {
 // ====================== 生命周期 ======================
 document.addEventListener("DOMContentLoaded", () => App.init());
 window.addEventListener("beforeunload", () => RequestController.reset());
-document.addEventListener("visibilitychange", Utils.debounce(async () => {
-  if (!document.hidden && AppState.user && AppState.isInit) {
-    await Online.mark();
-    await Online.refresh();
-    UI.showAdminBtn();
-  }
-}, 500));
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => UI.initTheme());
