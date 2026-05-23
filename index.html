@@ -16,7 +16,7 @@
       --transition-fast: 200ms var(--win-ease);
       --transition-normal: 300ms var(--win-ease);
       --transition-slow: 400ms var(--win-ease);
-      
+
       /* 25H2圆角规范 */
       --radius-sm: 8px;
       --radius-md: 12px;
@@ -84,12 +84,14 @@
       --scroll-bar: #4a4a4a;
     }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       min-height: 100vh;
       overflow-x: hidden;
       position: relative;
-      touch-action: pan-y; /* 仅允许垂直滚动，优化移动端体验 */
+      touch-action: pan-y;
+      /* 仅允许垂直滚动，优化移动端体验 */
     }
 
     body {
@@ -138,12 +140,22 @@
 
     /* 25H2云母浮动动画 */
     @keyframes micaFloat {
-      0%,100% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(4%, 4%) scale(1.05); }
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+      50% {
+        transform: translate(4%, 4%) scale(1.05);
+      }
     }
     @-webkit-keyframes micaFloat {
-      0%,100% { -webkit-transform: translate(0, 0) scale(1); }
-      50% { -webkit-transform: translate(4%, 4%) scale(1.05); }
+      0%,
+      100% {
+        -webkit-transform: translate(0, 0) scale(1);
+      }
+      50% {
+        -webkit-transform: translate(4%, 4%) scale(1.05);
+      }
     }
 
     /* ====================== 加载遮罩 ====================== */
@@ -166,8 +178,16 @@
       animation: spin 0.8s linear infinite;
       -webkit-animation: spin 0.8s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @-webkit-keyframes spin {
+      to {
+        -webkit-transform: rotate(360deg);
+      }
+    }
 
     /* ====================== Win11 25H2 云母组件 ====================== */
     .mica {
@@ -256,12 +276,24 @@
       will-change: transform, opacity;
     }
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     @-webkit-keyframes fadeUp {
-      from { opacity: 0; -webkit-transform: translateY(24px); }
-      to { opacity: 1; -webkit-transform: translateY(0); }
+      from {
+        opacity: 0;
+        -webkit-transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        -webkit-transform: translateY(0);
+      }
     }
 
     /* 头像 - 25H2风格 */
@@ -285,7 +317,8 @@
       position: relative;
       z-index: 2;
     }
-    .avatar-box::after, .avatar-box::before {
+    .avatar-box::after,
+    .avatar-box::before {
       content: '';
       position: absolute;
       inset: -6px;
@@ -304,12 +337,26 @@
       -webkit-animation: pulse 3s ease-in-out 1.5s infinite;
     }
     @keyframes pulse {
-      0%,100% { transform: scale(1); opacity: 0.2; }
-      50% { transform: scale(1.08); opacity: 0.1; }
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.2;
+      }
+      50% {
+        transform: scale(1.08);
+        opacity: 0.1;
+      }
     }
     @-webkit-keyframes pulse {
-      0%,100% { -webkit-transform: scale(1); opacity: 0.2; }
-      50% { -webkit-transform: scale(1.08); opacity: 0.1; }
+      0%,
+      100% {
+        -webkit-transform: scale(1);
+        opacity: 0.2;
+      }
+      50% {
+        -webkit-transform: scale(1.08);
+        opacity: 0.1;
+      }
     }
 
     .name {
@@ -369,8 +416,14 @@
       z-index: 1;
       will-change: transform, box-shadow;
     }
-    .project-card:nth-child(1) { animation-delay: 0.3s; -webkit-animation-delay: 0.3s; }
-    .project-card:nth-child(2) { animation-delay: 0.4s; -webkit-animation-delay: 0.4s; }
+    .project-card:nth-child(1) {
+      animation-delay: 0.3s;
+      -webkit-animation-delay: 0.3s;
+    }
+    .project-card:nth-child(2) {
+      animation-delay: 0.4s;
+      -webkit-animation-delay: 0.4s;
+    }
 
     /* 25H2卡片扫光效果 */
     .card-shine {
@@ -379,7 +432,7 @@
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
       transition: left 0.7s var(--win-ease);
       -webkit-transition: left 0.7s var(--win-ease);
       pointer-events: none;
@@ -392,7 +445,9 @@
       border-color: var(--border-mica-hover);
       background: var(--bg-mica-hover);
     }
-    .project-card:hover .card-shine { left: 100%; }
+    .project-card:hover .card-shine {
+      left: 100%;
+    }
 
     .card-icon {
       font-size: 36px;
@@ -463,24 +518,50 @@
     }
 
     /* ====================== 滚动条美化 ====================== */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
     ::-webkit-scrollbar-thumb {
       background: var(--scroll-bar);
       border-radius: 3px;
     }
-    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
     /* ====================== 移动端专属适配 ====================== */
     @media (max-width: 768px) {
-      .container { padding: 24px 16px; }
-      .navbar { padding: 14px 18px; margin-bottom: 40px; top: 12px; }
-      .name { font-size: 30px; }
-      .card-grid { grid-template-columns: 1fr; gap: 18px; }
-      .avatar-box { width: 96px; height: 96px; }
-      .avatar { font-size: 36px; }
-      .project-card { padding: 28px 24px; }
+      .container {
+        padding: 24px 16px;
+      }
+      .navbar {
+        padding: 14px 18px;
+        margin-bottom: 40px;
+        top: 12px;
+      }
+      .name {
+        font-size: 30px;
+      }
+      .card-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .avatar-box {
+        width: 96px;
+        height: 96px;
+      }
+      .avatar {
+        font-size: 36px;
+      }
+      .project-card {
+        padding: 28px 24px;
+      }
       /* 移动端禁用背景动画，保障性能 */
-      .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; -webkit-animation: none; }
+      .bg-mica-glow-1,
+      .bg-mica-glow-2 {
+        animation: none;
+        -webkit-animation: none;
+      }
     }
 
     /* ====================== 禁用选中优化 ====================== */
@@ -488,7 +569,8 @@
       -webkit-user-select: none;
       user-select: none;
     }
-    input, textarea {
+    input,
+    textarea {
       -webkit-user-select: text;
       user-select: text;
     }
@@ -533,7 +615,7 @@
           <p class="card-desc">Windows11 风格实时聊天平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容稳定运行。</p>
         </a>
 
-        <a href="/game" class="project-card mica" id="cardGame" aria-label="前往恐龙快跑升级版">
+        <a href="/game/dino/" class="project-card mica" id="cardGame" aria-label="前往恐龙快跑升级版">
           <div class="card-shine"></div>
           <div class="card-icon">🦖</div>
           <h3 class="card-title">恐龙快跑升级版</h3>
@@ -639,7 +721,7 @@
           metaTheme.content = '#0f0f0f';
         }
         void document.body.offsetWidth;
-      } catch(e) {
+      } catch (e) {
         console.error('主题切换失败', e);
       }
     }
@@ -660,9 +742,16 @@
     }
 
     // ====================== 跳转函数 ======================
-    function goToChat() { window.location.href = '/chat'; }
-    function goToGame() { window.location.href = '/game/dino/'; }
-    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function goToChat() {
+      window.location.href = '/chat';
+    }
+    function goToGame() {
+      // 🔧 修复：使用完整URL确保跳转到 /game/dino/ 而非 /game/
+      window.location.href = 'https://kjllin.github.io/game/dino/';
+    }
+    function goToTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     // ====================== 页面初始化 ======================
     window.addEventListener('DOMContentLoaded', () => {
