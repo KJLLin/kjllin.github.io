@@ -1,693 +1,871 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>恐龙快跑升级版-KJLLin</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
-        canvas {
-            border: 1px solid #000;
-            background-color: #f7f7f7;
-        }
-        #gameInfo {
-            margin-top: 10px;
-            font-size: 18px;
-            text-align: center;
-        }
-        #weatherInfo {
-            margin-top: 5px;
-            font-size: 14px;
-            color: #555;
-        }
-        /* 隐藏预加载的图像 */
-        #groundTexture, #dinoSpriteSheet, #coinImage, #flyImage, #xrzImage { display: none; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>恐龙快跑升级版 · KJLLin</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --bg-panel: rgba(22, 22, 40, 0.92);
+      --bg-controls: rgba(255, 255, 255, 0.06);
+      --text: #e8e8e8;
+      --text-secondary: #a0a0b8;
+      --accent: #ff6b35;
+      --accent-glow: rgba(255, 107, 53, 0.25);
+      --danger: #e74c3c;
+      --gold: #f1c40f;
+      --sky: #667eea;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+      font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* 星空背景 */
+    .stars-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    /* 主容器 */
+    .game-shell {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+      padding: env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px) 12px;
+    }
+
+    /* 顶部导航栏 */
+    .top-bar {
+      width: 100%; max-width: 820px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px; margin-bottom: 10px;
+      border-radius: var(--radius-md);
+      background: var(--bg-panel);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      z-index: 10;
+    }
+    .top-bar .title { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: 0.3px; }
+    .top-bar .title .emoji { margin-right: 6px; }
+    .back-btn {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg-controls);
+      color: var(--text); font-size: 18px; cursor: pointer;
+      display: grid; place-items: center;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .back-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.1); }
+
+    /* Canvas 容器 */
+    .canvas-wrap {
+      position: relative;
+      width: 100%; max-width: 820px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+      background: #f7f7f7;
+      flex-shrink: 0;
+    }
+    canvas {
+      display: block; width: 100%; height: auto;
+      background: #f7f7f7;
+    }
+
+    /* 分数面板 */
+    .stats {
+      width: 100%; max-width: 820px;
+      display: flex; gap: 12px; margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1; min-width: 100px;
+      padding: 12px 16px; border-radius: var(--radius-md);
+      background: var(--bg-panel);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+    .stat-value.score-color { color: var(--accent); }
+    .stat-value.coin-color { color: var(--gold); }
+
+    /* 天气标签 */
+    .weather-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+      background: rgba(255,255,255,0.08);
+    }
+    .weather-tag.sunny { color: #f1c40f; }
+    .weather-tag.windy { color: #87ceeb; }
+    .weather-tag.rainy { color: #667eea; }
+
+    /* 移动端触控按钮 */
+    .touch-controls {
+      display: none;
+      width: 100%; max-width: 820px;
+      margin-top: 10px;
+    }
+    .ctrl-row {
+      display: flex; gap: 10px;
+      justify-content: center; align-items: center;
+      flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      min-width: 56px; height: 48px; padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text); font-size: 22px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+    }
+    .ctrl-btn:active {
+      transform: scale(0.9);
+      background: rgba(255,255,255,0.12);
+    }
+    .ctrl-btn.jump-btn {
+      background: linear-gradient(135deg, var(--accent), #ff8c5a);
+      border-color: transparent;
+      font-size: 16px; font-weight: 700;
+      min-width: 80px; height: 52px;
+    }
+    .ctrl-label { font-size: 11px; color: var(--text-secondary); }
+
+    /* 提示文字 */
+    .hint {
+      text-align: center; font-size: 12px;
+      color: var(--text-secondary); margin-top: 8px;
+      opacity: 0.7;
+    }
+    .hint kbd {
+      display: inline-block; padding: 1px 6px;
+      border-radius: 4px; background: var(--bg-controls);
+      font-family: inherit; font-size: 11px;
+    }
+
+    /* 加载画面 */
+    #loader {
+      position: fixed; inset: 0; z-index: 100;
+      display: grid; place-items: center;
+      background: var(--bg);
+    }
+    .loader-spin {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .touch-controls { display: block; }
+      .game-shell { justify-content: flex-start; padding-top: 8px; }
+      .top-bar { padding: 8px 14px; margin-bottom: 8px; }
+      .top-bar .title { font-size: 15px; }
+      .stats { gap: 8px; }
+      .stat-card { padding: 10px 12px; }
+      .stat-value { font-size: 18px; }
+    }
+    @media (min-width: 769px) {
+      .hint { display: block; }
+    }
+
+    /* 隐藏预加载图像 */
+    #groundTexture, #dinoSpriteSheet, #coinImage, #flyImage, #xrzImage { display: none; }
+
+    /* 适配安全区域 */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      .game-shell { padding-bottom: env(safe-area-inset-bottom, 12px); }
+    }
+  </style>
 </head>
 <body>
-	<div id="gameInfo">I wanna be Dinosaur!</div>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div id="gameInfo">分数: <span id="score">0</span> | 金币: <span id="coins">0</span></div>
-    <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
-<div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
-<div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
-    <!-- 预加载地面贴图 -->
-    <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAABlBMVEX///9TU1NYzE1OAAAAAXRSTlMAQObYZgAAALJJREFUeF7t1EEKAyEMhtEvMNm7sPfJEVyY+1+ltLgYAsrQCtWhbxEhQvgxIJtSZypxa/WGshgzKdbq/UihMFMlt3o/CspEYoihIMaAb6mCvM6C+BTAeyo+wN4yykV/6pVfkdLpVyI1hh7GJ6QunUoLEQlQglNP2nkQkeF8+ei9cLxMue1qxVRfk1Ej0s6AEGWfVOk0QUtnK5Xo0Lac6wpdtnQqB6VxomPaz+dgF1PaqqmeWJlz1jYUaSIAAAAASUVORK5CYII=">
-    <!-- 预加载恐龙精灵图 -->
-    <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=">
-    <!-- 预加载新图片资源 -->
-    <img id="coinImage" src="https://epcdiy.org/image/coin.png" onload="onImageLoad()">
-    <img id="flyImage" src="https://epcdiy.org/image/fly.png" onload="onImageLoad()">
-    <img id="xrzImage" src="https://epcdiy.org/image/xrz.png" onload="onImageLoad()">
+  <div id="loader"><div class="loader-spin"></div></div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const coinsElement = document.getElementById('coins');
-        const weatherTextElement = document.getElementById('weatherText');
-        const windTextElement = document.getElementById('windText');
-        // --- 获取预加载的图像 ---
-        const groundTextureImg = document.getElementById('groundTexture');
-        const dinoSpriteSheetImg = document.getElementById('dinoSpriteSheet');
-        const coinImg = document.getElementById('coinImage');
-        const flyImg = document.getElementById('flyImage');
-        const xrzImg = document.getElementById('xrzImage');
+  <!-- 星空背景 -->
+  <canvas class="stars-canvas" id="starsCanvas"></canvas>
 
-        // --- 添加一个加载计数器，确保所有图片都加载完成后再开始游戏 ---
-        let imagesToLoad = 3; // coin, fly, xrz
-        let allImagesLoaded = false;
-		
-		let fps = 60;
-		let fpsInterval = 1000 / fps;
-		let lastDrawTime = performance.now();
+  <div class="game-shell">
+    <!-- 顶部栏 -->
+    <div class="top-bar">
+      <span class="title"><span class="emoji">🦖</span>恐龙快跑升级版</span>
+      <span class="weather-tag sunny" id="weatherTag">☀️ 晴朗</span>
+      <button class="back-btn" onclick="goBack()" aria-label="返回">←</button>
+    </div>
 
-        function onImageLoad() {
-            imagesToLoad--;
-            if (imagesToLoad === 0) {
-                allImagesLoaded = true;
-                console.log("All images loaded, ready to start game.");
-                // 如果游戏在等待图片加载，可以在这里开始
-                if (typeof gameLoop === 'function' && !window.gameStarted) {
-                    window.gameStarted = true;
-                    resetGame(); // 开始游戏
-                }
-            }
+    <!-- 画布 -->
+    <div class="canvas-wrap">
+      <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <!-- 分数面板 -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">🏃 分数</div>
+        <div class="stat-value score-color" id="score">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🪙 金币</div>
+        <div class="stat-value coin-color" id="coins">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💨 速度</div>
+        <div class="stat-value" id="speed">2.5</div>
+      </div>
+      <div class="stat-card" id="weatherCard">
+        <div class="stat-label">🌤 天气</div>
+        <div class="stat-value" id="weatherText" style="font-size:16px;">晴朗</div>
+        <div style="font-size:11px;color:var(--text-secondary)" id="windText">无风</div>
+      </div>
+    </div>
+
+    <!-- 移动端触控按钮 -->
+    <div class="touch-controls" id="touchControls">
+      <div class="ctrl-row">
+        <button class="ctrl-btn" id="btnWindL" title="左风">🌬️⬅</button>
+        <button class="ctrl-btn jump-btn" id="btnJump">🦘 跳跃</button>
+        <button class="ctrl-btn" id="btnWindR" title="右风">🌬️➡</button>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px;">
+        <button class="ctrl-btn" id="btnRain" title="下雨">🌧️ 下雨</button>
+        <button class="ctrl-btn" id="btnRestart" title="重新开始">🔄 重来</button>
+      </div>
+    </div>
+
+    <!-- 键盘提示 -->
+    <div class="hint">
+      按 <kbd>空格/↑</kbd> 跳跃 · <kbd>A</kbd>/<kbd>D</kbd> 刮风 · <kbd>S</kbd> 下雨 · 游戏结束按 <kbd>R</kbd> 重来
+    </div>
+  </div>
+
+  <!-- 预加载图像 -->
+  <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAABlBMVEX///9TU1NYzE1OAAAAAXRSTlMAQObYZgAAALJJREFUeF7t1EEKAyEMhtEvMNm7sPfJEVyY+1+ltLgYAsrQCtWhbxEhQvgxIJtSZypxa/WGshgzKdbq/UihMFMlt3o/CspEYoihIMaAb6mCvM6C+BTAeyo+wN4yykV/6pVfkdLpVyI1hh7GJ6QunUoLEQlQglNP2nkQkeF8+ei9cLxMue1qxVRfk1Ej0s6AEGWfVOk0QUtnK5Xo0Lac6wpdtnQqB6VxomPaz+dgF1PaqqmeWJlz1jYUaSIAAAAASUVORK5CYII=">
+  <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=">
+  <img id="coinImage" src="https://epcdiy.org/image/coin.png" onload="onImageLoad()">
+  <img id="flyImage" src="https://epcdiy.org/image/fly.png" onload="onImageLoad()">
+  <img id="xrzImage" src="https://epcdiy.org/image/xrz.png" onload="onImageLoad()">
+
+  <script>
+    // ==================== 星空背景 ====================
+    (function() {
+      const sc = document.getElementById('starsCanvas');
+      const sctx = sc.getContext('2d');
+      let stars = [];
+      const STAR_COUNT = 80;
+
+      function resizeStars() {
+        sc.width = window.innerWidth;
+        sc.height = window.innerHeight;
+        stars = [];
+        for (let i = 0; i < STAR_COUNT; i++) {
+          stars.push({
+            x: Math.random() * sc.width,
+            y: Math.random() * sc.height,
+            r: Math.random() * 1.8 + 0.5,
+            a: Math.random(),
+            da: (Math.random() - 0.5) * 0.015,
+            maxA: Math.random() * 0.5 + 0.4
+          });
         }
+      }
+      resizeStars();
+      window.addEventListener('resize', resizeStars);
 
-        // 游戏状态
-        let gameSpeed = 5;
-        let score = 0;
-        let coinsCollected = 0;
-        let isGameOver = false;
-        let isJumping = false;
-        let gravity = 0.5;
-        let jumpVelocity = -12;
-        let baseJumpVelocity = -12;
-        let velocity = 0;
-        let dinoY = canvas.height - 60;
-        // --- 新的恐龙尺寸 ---
-        let dinoHeight = 47;
-        let dinoWidth = 44;
-        // --- 地面贴图相关 ---
-        const GROUND_HEIGHT = 20;
-        const GROUND_TILE_WIDTH = 1200;
-        const ORIGINAL_GROUND_Y = canvas.height - GROUND_HEIGHT; // 原始地面贴图的Y坐标
-        const GROUND_Y = ORIGINAL_GROUND_Y - 6; // 地面贴图上移6个像素
-        const DINO_GROUND_Y = ORIGINAL_GROUND_Y - dinoHeight; // 恐龙站在地面上时的Y坐标，基于原始位置
-        let groundX = 0; // 地面贴图的X坐标偏移
-		let obstacleDistance=233;
-		let obstacleDistanceCur=0;
-
-        // 天气系统
-        let currentWeather = 'sunny';
-        let windDirection = 0;
-        let windEffect = 0;
-        let rainDrops = [];
-
-        // --- 手动天气召唤新增 ---
-        let weatherCooldown = 0; // 冷却时间计数器 (以帧为单位)
-        const cooldownDuration = 10 * 60; // 10秒冷却时间，假设每秒60帧
-        let manualWeatherActive = false; // 标记是否是手动触发的天气
-
-        // --- 风粒子系统 ---
-        let windParticles = [];
-        const maxParticles = 100; // 最大粒子数量
-        const particleSpawnRate = 0.1; // 每帧生成粒子的概率
-
-
-        // 游戏对象数组
-        let obstacles = []; // 包含所有障碍物 (仙人掌, 翼龙, 沟壑)
-        let coins = [];
-
-        // --- 恐龙动画相关 ---
-        let dinoAnimationFrame = 0;
-        let dinoAnimationTimer = 0;
-        const dinoAnimationInterval = 150; // 每150毫秒切换一次帧
-
-        // --- 恐龙对象 ---
-        const dino = {
-            x: 50,
-            y: DINO_GROUND_Y, // 初始化在地面 (基于原始位置)
-            width: dinoWidth, // --- 使用新宽度 ---
-            height: dinoHeight, // --- 使用新高度 ---
-            jump: function() {
-                if (!isJumping) {
-                    isJumping = true;
-                        const effectiveJumpVel = currentWeather === 'rainy' && manualWeatherActive ? baseJumpVelocity * 0.7 : baseJumpVelocity;
-                        velocity = effectiveJumpVel;
-                }
-            },
-            update: function() {
-                if (isJumping) {
-                    this.y += velocity;
-                    velocity += gravity;
-                    if (this.y >= DINO_GROUND_Y) { // 检查是否回到地面 (基于原始位置)
-                        this.y = DINO_GROUND_Y; // 确保精确地停在地面上 (基于原始位置)
-                        isJumping = false;
-                        velocity = 0;
-                    }
-                }
-
-                // --- 更新动画 ---
-                if (!isJumping) { // 只有在地面奔跑时才播放奔跑动画
-                    dinoAnimationTimer += 16.67; // 假设每帧大约16.67ms (60fps)
-                    if (dinoAnimationTimer >= dinoAnimationInterval) {
-                        dinoAnimationTimer = 0;
-                        // 循环播放前4帧 (索引 0, 1, 2, 3)，每帧宽50px -> 现在是44px
-                        dinoAnimationFrame = (dinoAnimationFrame + 1) % 4;
-                    }
-                }
-            },
-            draw: function() {
-                // --- 绘制动画 ---
-                if (isGameOver) {
-                    // 游戏结束时，绘制失败帧 (第5帧和第6帧，索引为4和5)
-                    // 这里我们选择绘制第5帧作为失败画面 (索引4)
-                    // --- 调整源尺寸为 44x47 ---
-                    ctx.drawImage(
-                        dinoSpriteSheetImg,
-                        176, // (frameIndex * frameWidth) -> 4 * 44
-                        0,
-                        44, // frameWidth
-                        47, // frameHeight
-                        this.x,
-                        this.y,
-                        this.width, // 目标宽度
-                        this.height // 目标高度
-                    );
-                } else {
-                    // 正常奔跑时，绘制当前奔跑帧 (前4帧，索引 0, 1, 2, 3)
-                    // --- 调整源尺寸为 44x47 ---
-                    ctx.drawImage(
-                        dinoSpriteSheetImg,
-                        dinoAnimationFrame * 44, // 根据当前帧索引计算源X坐标 (44px per frame)
-                        0, // 源Y坐标始终为0
-                        44, // 每帧的宽度
-                        47, // 每帧的高度
-                        this.x,
-                        this.y,
-                        this.width, // 目标宽度
-                        this.height // 目标高度
-                    );
-                }
-            }
-        };
-
-
-        // 输入处理
-        document.addEventListener('keydown', function(e) {
-            if ((e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') && !isGameOver) {
-                dino.jump();
-            }
-            // --- 修改：R键改为S键召唤雨天 ---
-            if (e.code === 'KeyS' && !isGameOver&&currentWeather!='rainy') { // 移除了 && weatherCooldown === 0
-                // S键召唤雨天
-                currentWeather = 'rainy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '下雨';
-                windTextElement.textContent = '无';
-                windEffect = 0;
-                windDirection = 0;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
-            }
-            if (e.code === 'KeyA' && !isGameOver&&windDirection!=-1) { // 移除了 && weatherCooldown === 0
-                // A键召唤左方向风
-                currentWeather = 'windy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '刮风';
-                windTextElement.textContent = '向左';
-                windDirection = -1;
-                windEffect = windDirection * 1.5;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
-            }
-            if (e.code === 'KeyD' && !isGameOver&&windDirection!=1) { // 移除了 && weatherCooldown === 0
-                // D键召唤右方向风
-                currentWeather = 'windy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '刮风';
-                windTextElement.textContent = '向右';
-                windDirection = 1;
-                windEffect = windDirection * 1.5;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
-            }
-            if ((e.code === 'KeyR' || e.code === 'KeyS') && isGameOver) { // 按 R 或 S 键都可以重新开始
-                resetGame();
-            }
-        });
-
-        // --- 重写沟壑掉落判断 ---
-        function checkPitFall(dinoObj, pitList) {
-            // 关键：只有在恐龙**不跳跃**（即在原始地面）时才检查
-            if (!isJumping) {
-                // 计算恐龙的 X 范围 (X1 到 X2)
-                const dinoX1 = dinoObj.x;
-                const dinoX2 = dinoObj.x + dinoObj.width;
-
-                // 遍历所有沟壑 (Z1 到 Z2)
-                for (const pit of pitList) {
-                    if (pit.type === 'pit') {
-                        const pitZ1 = pit.x;
-                        const pitZ2 = pit.x + pit.width;
-
-                        // 判断条件：X1 > Z1 且 X2 < Z2
-                        // 即恐龙的整个身体都在沟壑内部
-                        if (dinoX1 >= pitZ1 && dinoX2 <= pitZ2) {
-                             console.log("恐龙完全踏入沟壑！"); // 调试信息
-                             // 使用原始地面位置进行判断，确保逻辑一致
-                             return true; // 判定失败
-                        }
-                    }
-                }
-            }
-            // 如果恐龙在跳跃，或者不在任何沟壑内部，则不会失败
-            return false;
+      function drawStars() {
+        sctx.clearRect(0, 0, sc.width, sc.height);
+        for (const s of stars) {
+          s.a += s.da;
+          if (s.a > s.maxA || s.a < 0.1) s.da *= -1;
+          sctx.beginPath();
+          sctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          sctx.fillStyle = `rgba(255,255,255,${s.a})`;
+          sctx.fill();
         }
+        requestAnimationFrame(drawStars);
+      }
+      drawStars();
+    })();
 
+    // ==================== 返回按钮 ====================
+    function goBack() {
+      window.location.href = '/game/';
+    }
 
-        // --- 标准碰撞检测 ---
-        function checkCollision(rect1, rect2) {
-            return rect1.x < rect2.x + rect2.width &&
-                   rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height &&
-                   rect1.y + rect1.height > rect2.y;
+    // ==================== 游戏核心变量 ====================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const coinsElement = document.getElementById('coins');
+    const speedElement = document.getElementById('speed');
+    const weatherTextElement = document.getElementById('weatherText');
+    const windTextElement = document.getElementById('windText');
+    const weatherTag = document.getElementById('weatherTag');
+
+    const groundTextureImg = document.getElementById('groundTexture');
+    const dinoSpriteSheetImg = document.getElementById('dinoSpriteSheet');
+    const coinImg = document.getElementById('coinImage');
+    const flyImg = document.getElementById('flyImage');
+    const xrzImg = document.getElementById('xrzImage');
+
+    let imagesToLoad = 3;
+    let allImagesLoaded = false;
+
+    function onImageLoad() {
+      imagesToLoad--;
+      if (imagesToLoad === 0) {
+        allImagesLoaded = true;
+        if (!window.gameStarted) {
+          window.gameStarted = true;
+          resetGame();
         }
+      }
+    }
 
-        // --- 新增：生成障碍物 ---
-        function spawnObstacle() {
-            const obstacleTypes = ['cactus', 'ptera', 'pit'];
-            // --- 调整翼龙出现概率 ---
-            // 生成一个随机数，决定是生成普通障碍物还是翼龙
-            const rand = Math.random();
-            let type;
-            if (rand < 0.3) { // 30% 概率考虑翼龙
-                if (Math.random() < 0.3) { // 在这30%里，再有30%概率是翼龙 -> 总体 0.3 * 0.3 = 0.09 = 9%
-                    type = 'ptera';
-                } else {
-                    type = obstacleTypes[0]; // 默认仙人掌
-                }
-            } else if (rand < 0.7) { // 40% 概率仙人掌
-                type = 'cactus';
-            } else { // 30% 概率沟壑
-                type = 'pit';
-            }
+    let fps = 60;
+    let fpsInterval = 1000 / fps;
+    let lastDrawTime = performance.now();
 
-            // 限制障碍物生成频率，避免过于密集
-            const spawnChance = 0.5 + score * 0.00001; // 基础概率随分数缓慢增长
-            if (Math.random() > spawnChance) {
-                return; // 未达到生成概率，直接返回
-            }
+    // 游戏状态
+    let gameSpeed = 2.5;
+    let score = 0;
+    let coinsCollected = 0;
+    let isGameOver = false;
+    let isJumping = false;
+    let gravity = 0.5;
+    let baseJumpVelocity = -12;
+    let velocity = 0;
+    let dinoY = 0;
+    let dinoHeight = 47;
+    let dinoWidth = 44;
 
-            let obstacle;
-            switch (type) {
-                case 'cactus':
-                    obstacle = {
-                        x: canvas.width,
-                        y: ORIGINAL_GROUND_Y - 30, // 高度基于原始地面位置
-                        width: 20, // --- 判定宽度 ---
-                        height: 30, // --- 判定高度 ---
-                        type: 'cactus',
-                        img: xrzImg // --- 引用图片 ---
-                    };
-                    break;
-                case 'ptera':
-                    // --- 调整翼龙碰撞体积 ---
-                    const pteraWidth = 45; // 
-                    const pteraHeight =30; // 
-                    obstacle = {
-                        x: canvas.width,
-                        y: ORIGINAL_GROUND_Y - 60 - Math.random() * 60, // Y坐标在地面以上一定范围内随机
-                        width: pteraWidth, // --- 判定宽度 ---
-                        height: pteraHeight, // --- 判定高度 ---
-                        type: 'ptera',
-                        img: flyImg // --- 引用图片 ---
-                    };
-                    break;
-                case 'pit':
-                    const pitWidth = 60 + Math.random() * 60; // 沟壑宽度在60到120之间
-                    obstacle = {
-                        x: canvas.width,
-                        y: ORIGINAL_GROUND_Y, // 沟壑的Y坐标就是地面贴图的位置
-                        width: pitWidth,
-                        height: GROUND_HEIGHT, // 沟壑深度等于地面贴图高度
-                        type: 'pit'
-                    };
-                    break;
-                default:
-                    return; // 如果类型未知，不生成
-            }
-            obstacles.push(obstacle);
+    const GROUND_HEIGHT = 20;
+    const GROUND_TILE_WIDTH = 1200;
+    const ORIGINAL_GROUND_Y = canvas.height - GROUND_HEIGHT;
+    const GROUND_Y = ORIGINAL_GROUND_Y - 6;
+    const DINO_GROUND_Y = ORIGINAL_GROUND_Y - dinoHeight;
+    let groundX = 0;
+    let obstacleDistance = 233;
+    let obstacleDistanceCur = 0;
+
+    // 天气系统
+    let currentWeather = 'sunny';
+    let windDirection = 0;
+    let windEffect = 0;
+    let rainDrops = [];
+    let weatherCooldown = 0;
+    const cooldownDuration = 10 * 60;
+    let manualWeatherActive = false;
+
+    // 风粒子
+    let windParticles = [];
+    const maxParticles = 100;
+    const particleSpawnRate = 0.1;
+
+    let obstacles = [];
+    let coins = [];
+
+    let dinoAnimationFrame = 0;
+    let dinoAnimationTimer = 0;
+    const dinoAnimationInterval = 150;
+
+    const dino = {
+      x: 50,
+      y: DINO_GROUND_Y,
+      width: dinoWidth,
+      height: dinoHeight,
+      jump: function() {
+        if (!isJumping && !isGameOver) {
+          isJumping = true;
+          const effectiveJumpVel = (currentWeather === 'rainy' && manualWeatherActive) ? baseJumpVelocity * 0.7 : baseJumpVelocity;
+          velocity = effectiveJumpVel;
         }
-
-        function spawnCoin() {
-            // 提高基础生成率以便更容易看到效果
-            const baseCoinRate = 0.015; // 从 0.008 提高到 0.015
-            const coinDifficultyFactor = 1 + score * 0.00002;
-            if (Math.random() < baseCoinRate * coinDifficultyFactor) {
-                // --- 调整金币碰撞体积 ---
-                const coinRadius = 8 * 1.5; // --- 半径增加50% ---
-                coins.push({
-                    x: canvas.width,
-                    y: ORIGINAL_GROUND_Y - Math.random() * 150, // 金币的Y坐标也基于原始地面位置
-                    radius: coinRadius, // --- 判定半径 ---
-                    type: 'coin',
-                    img: coinImg // --- 引用图片 ---
-                });
-            }
-        }
-
-        // 更新天气和雨滴 (仅在手动天气模式下)
-        function updateWeatherAndEffects() {
-            // 更新冷却时间
-            if (weatherCooldown > 0) {
-                weatherCooldown--;
-                // 如果冷却结束，自动恢复到晴天
-                if (weatherCooldown === 0) {
-                    currentWeather = 'sunny';
-                    weatherTextElement.textContent = '晴朗';
-                    windTextElement.textContent = '无';
-                    windEffect = 0;
-                    windDirection = 0;
-                    rainDrops = []; // 清空雨滴
-                    windParticles = []; // 清空风粒子
-                    manualWeatherActive = false; // 重置手动标记
-                }
-            }
-            // 注意：如果冷却时间 > 0，但用户又按了新的天气键，
-            // 那么在按键事件中会立即设置新的天气状态并重置冷却时间。
-            // 因此，这里不需要做其他特殊处理。
-
-            // 如果是手动触发的雨天，则生成雨滴
-            if (currentWeather === 'rainy' && manualWeatherActive) {
-                if (Math.random() < 0.3) {
-                    rainDrops.push({
-                        x: Math.random() * canvas.width,
-                        y: -10,
-                        length: 10 + Math.random() * 10,
-                        speed: 5 + Math.random() * 5
-                    });
-                }
-                for (let i = rainDrops.length - 1; i >= 0; i--) {
-                    const drop = rainDrops[i];
-                    drop.y += drop.speed;
-                    if (drop.y > canvas.height) {
-                        rainDrops.splice(i, 1);
-                    }
-                }
-            }
-
-            // 如果是手动触发的风天，则更新和生成风粒子
-            if (currentWeather === 'windy' && manualWeatherActive) {
-                // --- 更新现有粒子 ---
-                for (let i = windParticles.length - 1; i >= 0; i--) {
-                    const p = windParticles[i];
-                    p.x += p.vx; // 根据粒子自身的速度移动
-                    p.y += p.vy; // 粒子也有垂直速度（可选，可以更自然）
-
-                    // 如果粒子移出屏幕边界，则移除它
-                    if (p.x < -10 || p.x > canvas.width + 10 || p.y < -10 || p.y > canvas.height + 10) {
-                        windParticles.splice(i, 1);
-                    }
-                }
-
-                // --- 生成新粒子 ---
-                // 根据风向决定生成位置
-                let spawnX = windDirection > 0 ? -10 : canvas.width + 10; // 从右边或左边进入
-                let spawnY = Math.random() * canvas.height; // Y轴随机
-
-                if (windParticles.length < maxParticles && Math.random() < particleSpawnRate) {
-                    windParticles.push({
-                        x: spawnX,
-                        y: spawnY,
-                        vx: windDirection * (2 + Math.random() * 3), // 粒子水平速度与风向一致
-                        vy: Math.random() * 1 - 0.5, // 粒子垂直速度随机，范围 [-0.5, 0.5]
-                        size: 1 + Math.random() * 2 // 粒子大小随机，范围 [1, 3]
-                    });
-                }
-            }
-        }
-
-        // 游戏主循环
-        function gameLoop(currentTime) {
-            if (isGameOver) {
-                drawGameOver();
-                return;
-            }
-			requestAnimationFrame(gameLoop);
-			let elapsed = currentTime - lastDrawTime;
-			if (elapsed > fpsInterval) {
-				// 减去余数以修正误差，保持时间步长稳定
-		        lastDrawTime = currentTime - (elapsed % fpsInterval);
-
-           	ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            gameSpeed = 5 + score * 0.0005 + windEffect;
-
-            updateWeatherAndEffects(); // 更新天气和所有效果
-
-            // --- 绘制地面贴图 ---
-            // 更新地面贴图位置
-            groundX -= gameSpeed;
-            // 如果第一张图完全移出屏幕左侧，则重置位置，利用第二张图继续显示
-            if (groundX <= -GROUND_TILE_WIDTH) {
-                groundX = 0;
-            }
-
-            // 绘制两张地面贴图，一张衔接另一张，形成无缝滚动
-            ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
-            ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
-
-            // --- 绘制风粒子 ---
-            if (currentWeather === 'windy' && manualWeatherActive) {
-                ctx.fillStyle = 'DarkKhaki'; // --- 设置粒子颜色 ---
-                for (const p of windParticles) {
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-			obstacleDistanceCur+=gameSpeed;
-			if(obstacleDistanceCur>obstacleDistance)
-			{
-				obstacleDistanceCur=0;
-	            // --- 生成新的障碍物 ---
-	            spawnObstacle();	
-			}
-
-            spawnCoin(); // 调用生成金币的函数
-
-            // --- 绘制和更新所有障碍物 ---
-            // 为了绘制沟壑覆盖效果，我们需要先处理非沟壑障碍物，再处理沟壑
-            let pits = [];
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                const o = obstacles[i];
-
-                // --- 移动障碍物 ---
-                o.x -= gameSpeed;
-
-                // --- 处理不同类型的障碍物 ---
-                if (o.type === 'pit') {
-                    pits.push(o); // 收集沟壑用于后续处理
-                    // 不在这里绘制沟壑，因为我们要先画其他障碍物，再用沟壑“擦除”地面
-                } else {
-                    // --- 绘制非沟壑障碍物 (使用图片) ---
-                    if (o.type === 'cactus') {
-                        // --- 绘制仙人掌图片，缩放到判定框的大小 ---
-                        ctx.drawImage(xrzImg, o.x-o.width/2, o.y-o.height, o.width*2, o.height*2);
-                    } else if (o.type === 'ptera') {
-                        // --- 绘制翼龙图片，缩放到判定框的大小 (增加50%) ---
-                        ctx.drawImage(flyImg, o.x-o.width/2, o.y-o.height/2, o.width*2, o.height*2);
-                    }
-
-                    // --- 检测与其他障碍物的碰撞 ---
-                    const dinoRect = {
-                        x: dino.x,
-                        y: dino.y,
-                        width: dino.width,
-                        height: dino.height
-                    };
-                    if (checkCollision(dinoRect, o)) {
-                        console.log("碰撞到障碍物！"); // 调试信息
-                        isGameOver = true;
-                    }
-                }
-
-                // --- 移除移出屏幕的障碍物 ---
-                if (o.x + o.width < 0) {
-                    obstacles.splice(i, 1); // 从数组中移除
-                }
-            }
-
-            // --- 现在处理沟壑：绘制并覆盖地面 ---
-            for (const pit of pits) {
-                // 绘制沟壑的背景色（露出画布的浅灰色背景），使其看起来像一个洞
-                // 为了清晰看到效果，我们用浅蓝色表示沟壑
-                // ctx.fillStyle = '#f7f7f7';
-                // ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
-
-                // 更优雅的方式：绘制一个矩形来“擦除”该区域的地面贴图
-                // 沟壑的位置仍然基于原始地面，但视觉上它会出现在移动后的地面贴图之上
-                ctx.fillStyle = '#f7f7f7'; // 使用画布背景色
-                ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
-
-                // 检测是否掉入沟壑 - 关键调用位置
-                // 将整个pit数组传入，以便函数内部循环检查
-                if (checkPitFall(dino, pits)) {
-                    isGameOver = true;
-                }
-            }
-
-
-            // --- 绘制和更新金币 ---
-            for (let i = coins.length - 1; i >= 0; i--) {
-                const c = coins[i];
-                c.x -= gameSpeed;
-
-                // --- 绘制金币图片，缩放到直径为 radius*2 的大小 (增加50%) ---
-                ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
-
-                const dx = dino.x + dino.width/2 - c.x;
-                const dy = dino.y + dino.height/2 - c.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < dino.width/2 + c.radius) {
-                    coins.splice(i, 1);
-                    coinsCollected++;
-                    score += 100;
-                    scoreElement.textContent = score;
-                    coinsElement.textContent = coinsCollected;
-                }
-
-                if (c.x + c.radius < 0) {
-                    coins.splice(i, 1);
-                }
-            }
-
-            // --- 绘制雨滴 ---
-            if (currentWeather === 'rainy' && manualWeatherActive) {
-                ctx.strokeStyle = 'blue'; // --- 设置雨滴颜色为蓝色 ---
-                ctx.lineWidth = 1;
-                for(const drop of rainDrops) {
-                    ctx.beginPath();
-                    ctx.moveTo(drop.x, drop.y);
-                    ctx.lineTo(drop.x - 5, drop.y + drop.length);
-                    ctx.stroke();
-                }
-            }
-
-            // --- 绘制冷却进度条 ---
-            if (weatherCooldown > 0) {
-                const barX = 10;
-                const barY = 10;
-                const barWidth = 100;
-                const barHeight = 10;
-                const fillWidth = (weatherCooldown / cooldownDuration) * barWidth;
-
-                // 背景
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.fillRect(barX, barY, barWidth, barHeight);
-                // 填充
-                ctx.fillStyle = 'rgba(0, 128, 255, 0.7)';
-                ctx.fillRect(barX, barY, fillWidth, barHeight);
-                // 边框
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
-            }
-
-            // --- 更新和绘制恐龙 ---
-            dino.update();
-            dino.draw(); // 调用新的draw方法
-
-            // --- 更新分数 ---
-            score++;
-            scoreElement.textContent = score;
-
-
-			}
-
-
-            //requestAnimationFrame(gameLoop);
-        }
-
-        function drawGameOver() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.font = '40px Arial';
-            ctx.fillStyle = 'white';
-            ctx.textAlign = 'center';
-            ctx.fillText('游戏结束!', canvas.width / 2, canvas.height / 2 - 40);
-
-            ctx.font = '20px Arial';
-            ctx.fillText(`最终分数: ${score}`, canvas.width / 2, canvas.height / 2);
-            ctx.fillText(`收集金币: ${coinsCollected}`, canvas.width / 2, canvas.height / 2 + 30);
-            ctx.fillText('按 R 键或 S 键重新开始', canvas.width / 2, canvas.height / 2 + 60);
-        }
-
-        function resetGame() {
-            // 等待图片加载完成再开始
-            if (!allImagesLoaded) {
-                 console.log("Waiting for images to load...");
-                 setTimeout(resetGame, 100); // 100ms后再次尝试
-                 return;
-            }
-            
-            isGameOver = false;
-            score = 0;
-            coinsCollected = 0;
-            // --- 基础速度降低50% ---
-            gameSpeed = 2.5;
-            obstacles = []; // 重置障碍物数组
-            coins = [];
-            dino.y = DINO_GROUND_Y; // 重置到地面 (基于原始位置)
+      },
+      update: function() {
+        if (isJumping) {
+          this.y += velocity;
+          velocity += gravity;
+          if (this.y >= DINO_GROUND_Y) {
+            this.y = DINO_GROUND_Y;
             isJumping = false;
             velocity = 0;
-
-            // --- 重置天气状态 ---
-            currentWeather = 'sunny';
-            windDirection = 0;
-            windEffect = 0;
-            rainDrops = [];
-            windParticles = []; // 重置风粒子数组
-            weatherTextElement.textContent = '晴朗';
-            windTextElement.textContent = '无';
-
-            // 重置手动天气变量
-            weatherCooldown = 0;
-            manualWeatherActive = false;
-
-            // 重置动画状态
-            dinoAnimationFrame = 0;
-            dinoAnimationTimer = 0;
-
-            // 重置地面贴图位置
-            groundX = 0;
-
-            scoreElement.textContent = score;
-            coinsElement.textContent = coinsCollected;
-            window.gameStarted = true; // 标记游戏已开始
-            gameLoop();
+          }
         }
+        if (!isJumping) {
+          dinoAnimationTimer += 16.67;
+          if (dinoAnimationTimer >= dinoAnimationInterval) {
+            dinoAnimationTimer = 0;
+            dinoAnimationFrame = (dinoAnimationFrame + 1) % 4;
+          }
+        }
+      },
+      draw: function() {
+        if (isGameOver) {
+          ctx.drawImage(dinoSpriteSheetImg, 176, 0, 44, 47, this.x, this.y, this.width, this.height);
+        } else {
+          ctx.drawImage(dinoSpriteSheetImg, dinoAnimationFrame * 44, 0, 44, 47, this.x, this.y, this.width, this.height);
+        }
+      }
+    };
 
-        // 开始游戏
-        resetGame(); // 使用resetGame来初始化并启动游戏
-    </script>
+    // ==================== 触屏支持 ====================
+    canvas.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
 
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+    let lastTapTime = 0;
+
+    canvas.addEventListener('touchstart', function(e) {
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      touchStartTime = Date.now();
+    });
+
+    canvas.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      const dt = Date.now() - touchStartTime;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (isGameOver) {
+        resetGame();
+        return;
+      }
+
+      // 短点击 = 跳跃
+      if (absDx < 30 && absDy < 30 && dt < 300) {
+        dino.jump();
+        return;
+      }
+
+      // 滑动检测（需要滑动超过40px）
+      if (absDx < 40 && absDy < 40) return;
+
+      if (absDy > absDx && dy < -40) {
+        // 上滑 = 跳跃
+        dino.jump();
+      } else if (absDy > absDx && dy > 40) {
+        // 下滑 = 下雨
+        if (currentWeather !== 'rainy') {
+          triggerRain();
+        }
+      } else if (absDx > absDy && dx < -40) {
+        // 左滑 = 左风
+        if (windDirection !== -1) {
+          triggerWindLeft();
+        }
+      } else if (absDx > absDy && dx > 40) {
+        // 右滑 = 右风
+        if (windDirection !== 1) {
+          triggerWindRight();
+        }
+      }
+    });
+
+    // 移动端按钮事件
+    document.getElementById('btnJump').addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      if (isGameOver) resetGame();
+      else dino.jump();
+    });
+    document.getElementById('btnWindL').addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      if (!isGameOver && windDirection !== -1) triggerWindLeft();
+    });
+    document.getElementById('btnWindR').addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      if (!isGameOver && windDirection !== 1) triggerWindRight();
+    });
+    document.getElementById('btnRain').addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      if (!isGameOver && currentWeather !== 'rainy') triggerRain();
+    });
+    document.getElementById('btnRestart').addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      if (isGameOver) resetGame();
+    });
+
+    function triggerRain() {
+      currentWeather = 'rainy';
+      manualWeatherActive = true;
+      weatherTextElement.textContent = '下雨';
+      windTextElement.textContent = '无风';
+      windEffect = 0;
+      windDirection = 0;
+      weatherCooldown = cooldownDuration;
+      rainDrops = [];
+      windParticles = [];
+      updateWeatherUI();
+    }
+    function triggerWindLeft() {
+      currentWeather = 'windy';
+      manualWeatherActive = true;
+      weatherTextElement.textContent = '刮风';
+      windTextElement.textContent = '← 左';
+      windDirection = -1;
+      windEffect = -1.5;
+      weatherCooldown = cooldownDuration;
+      rainDrops = [];
+      windParticles = [];
+      updateWeatherUI();
+    }
+    function triggerWindRight() {
+      currentWeather = 'windy';
+      manualWeatherActive = true;
+      weatherTextElement.textContent = '刮风';
+      windTextElement.textContent = '右 →';
+      windDirection = 1;
+      windEffect = 1.5;
+      weatherCooldown = cooldownDuration;
+      rainDrops = [];
+      windParticles = [];
+      updateWeatherUI();
+    }
+
+    function updateWeatherUI() {
+      if (currentWeather === 'sunny') {
+        weatherTag.className = 'weather-tag sunny';
+        weatherTag.textContent = '☀️ 晴朗';
+      } else if (currentWeather === 'windy') {
+        weatherTag.className = 'weather-tag windy';
+        weatherTag.textContent = '💨 刮风';
+      } else if (currentWeather === 'rainy') {
+        weatherTag.className = 'weather-tag rainy';
+        weatherTag.textContent = '🌧️ 下雨';
+      }
+    }
+
+    // ==================== 键盘输入 ====================
+    document.addEventListener('keydown', function(e) {
+      if ((e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') && !isGameOver) {
+        e.preventDefault();
+        dino.jump();
+      }
+      if (e.code === 'KeyS' && !isGameOver && currentWeather !== 'rainy') {
+        e.preventDefault();
+        triggerRain();
+      }
+      if (e.code === 'KeyA' && !isGameOver && windDirection !== -1) {
+        e.preventDefault();
+        triggerWindLeft();
+      }
+      if (e.code === 'KeyD' && !isGameOver && windDirection !== 1) {
+        e.preventDefault();
+        triggerWindRight();
+      }
+      if ((e.code === 'KeyR' || e.code === 'KeyS') && isGameOver) {
+        e.preventDefault();
+        resetGame();
+      }
+    });
+
+    // ==================== 游戏逻辑 ====================
+    function checkPitFall(dinoObj, pitList) {
+      if (!isJumping) {
+        const dinoX1 = dinoObj.x;
+        const dinoX2 = dinoObj.x + dinoObj.width;
+        for (const pit of pitList) {
+          if (pit.type === 'pit') {
+            if (dinoX1 >= pit.x && dinoX2 <= pit.x + pit.width) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function checkCollision(rect1, rect2) {
+      return rect1.x < rect2.x + rect2.width &&
+             rect1.x + rect1.width > rect2.x &&
+             rect1.y < rect2.y + rect2.height &&
+             rect1.y + rect1.height > rect2.y;
+    }
+
+    function spawnObstacle() {
+      const rand = Math.random();
+      let type;
+      if (rand < 0.3) {
+        type = Math.random() < 0.3 ? 'ptera' : 'cactus';
+      } else if (rand < 0.7) {
+        type = 'cactus';
+      } else {
+        type = 'pit';
+      }
+      const spawnChance = 0.5 + score * 0.00001;
+      if (Math.random() > spawnChance) return;
+
+      let obstacle;
+      switch (type) {
+        case 'cactus':
+          obstacle = { x: canvas.width, y: ORIGINAL_GROUND_Y - 30, width: 20, height: 30, type: 'cactus', img: xrzImg };
+          break;
+        case 'ptera':
+          obstacle = { x: canvas.width, y: ORIGINAL_GROUND_Y - 60 - Math.random() * 60, width: 45, height: 30, type: 'ptera', img: flyImg };
+          break;
+        case 'pit':
+          obstacle = { x: canvas.width, y: ORIGINAL_GROUND_Y, width: 60 + Math.random() * 60, height: GROUND_HEIGHT, type: 'pit' };
+          break;
+        default: return;
+      }
+      obstacles.push(obstacle);
+    }
+
+    function spawnCoin() {
+      const baseCoinRate = 0.015;
+      const coinDifficultyFactor = 1 + score * 0.00002;
+      if (Math.random() < baseCoinRate * coinDifficultyFactor) {
+        const coinRadius = 12;
+        coins.push({
+          x: canvas.width,
+          y: ORIGINAL_GROUND_Y - Math.random() * 150,
+          radius: coinRadius,
+          type: 'coin',
+          img: coinImg
+        });
+      }
+    }
+
+    function updateWeatherAndEffects() {
+      if (weatherCooldown > 0) {
+        weatherCooldown--;
+        if (weatherCooldown === 0) {
+          currentWeather = 'sunny';
+          weatherTextElement.textContent = '晴朗';
+          windTextElement.textContent = '无风';
+          windEffect = 0;
+          windDirection = 0;
+          rainDrops = [];
+          windParticles = [];
+          manualWeatherActive = false;
+          updateWeatherUI();
+        }
+      }
+      if (currentWeather === 'rainy' && manualWeatherActive) {
+        if (Math.random() < 0.3) {
+          rainDrops.push({ x: Math.random() * canvas.width, y: -10, length: 10 + Math.random() * 10, speed: 5 + Math.random() * 5 });
+        }
+        for (let i = rainDrops.length - 1; i >= 0; i--) {
+          rainDrops[i].y += rainDrops[i].speed;
+          if (rainDrops[i].y > canvas.height) rainDrops.splice(i, 1);
+        }
+      }
+      if (currentWeather === 'windy' && manualWeatherActive) {
+        for (let i = windParticles.length - 1; i >= 0; i--) {
+          const p = windParticles[i];
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < -10 || p.x > canvas.width + 10 || p.y < -10 || p.y > canvas.height + 10) {
+            windParticles.splice(i, 1);
+          }
+        }
+        if (windParticles.length < maxParticles && Math.random() < particleSpawnRate) {
+          windParticles.push({
+            x: windDirection > 0 ? -10 : canvas.width + 10,
+            y: Math.random() * canvas.height,
+            vx: windDirection * (2 + Math.random() * 3),
+            vy: Math.random() * 1 - 0.5,
+            size: 1 + Math.random() * 2
+          });
+        }
+      }
+    }
+
+    function gameLoop(currentTime) {
+      if (isGameOver) {
+        drawGameOver();
+        return;
+      }
+      requestAnimationFrame(gameLoop);
+      const elapsed = currentTime - lastDrawTime;
+      if (elapsed <= fpsInterval) return;
+
+      lastDrawTime = currentTime - (elapsed % fpsInterval);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      gameSpeed = 2.5 + score * 0.0005 + windEffect;
+
+      updateWeatherAndEffects();
+
+      groundX -= gameSpeed;
+      if (groundX <= -GROUND_TILE_WIDTH) groundX = 0;
+
+      ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
+      ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
+
+      // 风粒子
+      if (currentWeather === 'windy' && manualWeatherActive) {
+        ctx.fillStyle = 'DarkKhaki';
+        for (const p of windParticles) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      obstacleDistanceCur += gameSpeed;
+      if (obstacleDistanceCur > obstacleDistance) {
+        obstacleDistanceCur = 0;
+        spawnObstacle();
+      }
+      spawnCoin();
+
+      const pits = [];
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.x -= gameSpeed;
+        if (o.type === 'pit') {
+          pits.push(o);
+        } else {
+          if (o.type === 'cactus') {
+            ctx.drawImage(xrzImg, o.x - o.width / 2, o.y - o.height, o.width * 2, o.height * 2);
+          } else if (o.type === 'ptera') {
+            ctx.drawImage(flyImg, o.x - o.width / 2, o.y - o.height / 2, o.width * 2, o.height * 2);
+          }
+          if (checkCollision({ x: dino.x, y: dino.y, width: dino.width, height: dino.height }, o)) {
+            isGameOver = true;
+          }
+        }
+        if (o.x + o.width < 0) obstacles.splice(i, 1);
+      }
+
+      for (const pit of pits) {
+        ctx.fillStyle = '#f7f7f7';
+        ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
+        if (checkPitFall(dino, pits)) isGameOver = true;
+      }
+
+      // 金币
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i];
+        c.x -= gameSpeed;
+        ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
+        const dx = dino.x + dino.width / 2 - c.x;
+        const dy = dino.y + dino.height / 2 - c.y;
+        if (Math.sqrt(dx * dx + dy * dy) < dino.width / 2 + c.radius) {
+          coins.splice(i, 1);
+          coinsCollected++;
+          score += 100;
+        }
+        if (c.x + c.radius < 0) coins.splice(i, 1);
+      }
+
+      // 雨滴
+      if (currentWeather === 'rainy' && manualWeatherActive) {
+        ctx.strokeStyle = 'blue'; ctx.lineWidth = 1;
+        for (const drop of rainDrops) {
+          ctx.beginPath();
+          ctx.moveTo(drop.x, drop.y);
+          ctx.lineTo(drop.x - 5, drop.y + drop.length);
+          ctx.stroke();
+        }
+      }
+
+      // 冷却条
+      if (weatherCooldown > 0) {
+        const bx = 10, by = 10, bw = 100, bh = 10;
+        const fw = (weatherCooldown / cooldownDuration) * bw;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.fillStyle = 'rgba(0,128,255,0.7)';
+        ctx.fillRect(bx, by, fw, bh);
+        ctx.strokeStyle = 'black'; ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, bw, bh);
+      }
+
+      dino.update();
+      dino.draw();
+
+      score++;
+      scoreElement.textContent = score;
+      coinsElement.textContent = coinsCollected;
+      speedElement.textContent = gameSpeed.toFixed(1);
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = '40px "Segoe UI", "PingFang SC", Arial';
+      ctx.fillStyle = '#ff6b35';
+      ctx.textAlign = 'center';
+      ctx.fillText('游戏结束!', canvas.width / 2, canvas.height / 2 - 50);
+      ctx.font = '20px "Segoe UI", "PingFang SC", Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(`最终分数: ${score}`, canvas.width / 2, canvas.height / 2);
+      ctx.fillText(`收集金币: ${coinsCollected}`, canvas.width / 2, canvas.height / 2 + 30);
+      ctx.fillText('点击屏幕 / 按 R 键重新开始', canvas.width / 2, canvas.height / 2 + 62);
+    }
+
+    function resetGame() {
+      if (!allImagesLoaded) {
+        setTimeout(resetGame, 100);
+        return;
+      }
+      isGameOver = false;
+      score = 0;
+      coinsCollected = 0;
+      gameSpeed = 2.5;
+      obstacles = [];
+      coins = [];
+      dino.y = DINO_GROUND_Y;
+      isJumping = false;
+      velocity = 0;
+      currentWeather = 'sunny';
+      windDirection = 0;
+      windEffect = 0;
+      rainDrops = [];
+      windParticles = [];
+      weatherTextElement.textContent = '晴朗';
+      windTextElement.textContent = '无风';
+      weatherCooldown = 0;
+      manualWeatherActive = false;
+      dinoAnimationFrame = 0;
+      dinoAnimationTimer = 0;
+      groundX = 0;
+      obstacleDistanceCur = 0;
+      scoreElement.textContent = score;
+      coinsElement.textContent = coinsCollected;
+      speedElement.textContent = gameSpeed.toFixed(1);
+      updateWeatherUI();
+      window.gameStarted = true;
+      lastDrawTime = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 加载完成后启动
+    window.addEventListener('load', function() {
+      document.getElementById('loader').style.display = 'none';
+    });
+    resetGame();
+  </script>
 </body>
-</head>
+</html>
