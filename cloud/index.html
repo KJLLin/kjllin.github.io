@@ -187,6 +187,42 @@
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 20px; font-size: 14px; z-index: 300; background: var(--text-primary); color: var(--bg-body); box-shadow: 0 4px 16px rgba(0,0,0,0.15); animation: toastIn 0.3s var(--bounce); }
     @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
+    /* ========== 认证页面 ========== */
+    .auth-page {
+      display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 140px); padding: 20px 0;
+      animation: fadeUp 0.5s var(--win-ease) forwards;
+    }
+    .auth-card {
+      width: 100%; max-width: 400px; padding: 36px 28px;
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-rest);
+    }
+    .auth-header { text-align: center; margin-bottom: 28px; }
+    .auth-header h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .auth-header p { font-size: 13px; color: var(--text-tertiary); }
+    .auth-header .header-icon { font-size: 40px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-primary); font-size: 14px; font-family: inherit;
+      transition: border-color var(--transition-fast);
+    }
+    .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .link { color: var(--accent); font-size: 13px; cursor: pointer; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+    .auth-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
+
+    /* 用户信息栏 */
+    .user-info-bar { display: flex; align-items: center; gap: 8px; }
+    .user-avatar { width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logout-btn { padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition-fast); }
+    .logout-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(231,76,60,0.08); }
+
+    .hidden { display: none !important; }
+
     @media (max-width: 768px) {
       .top-menu { padding: 6px 10px; }
       .menu-bar { padding: 4px 6px; gap: 0; }
@@ -227,6 +263,11 @@
       <a href="/game/" class="menu-item">🎮 游戏</a>
       <a href="/cloud/" class="menu-item active">☁️ 云盘</a>
       <div class="menu-divider"></div>
+      <div class="user-info-bar hidden" id="userInfoBar">
+        <div class="user-avatar" id="userAvatarDrop">👤</div>
+        <span class="user-name" id="userNameDisplay"></span>
+        <button class="logout-btn" id="logoutMenuBtn">退出</button>
+      </div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题">🌙</button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
@@ -239,6 +280,57 @@
   </header>
 
   <div class="container">
+    <!-- ========== 认证页面（未登录时显示） ========== -->
+    <div class="auth-page" id="authPage">
+      <!-- 登录表单 -->
+      <div class="auth-card mica" id="loginCard">
+        <div class="auth-header">
+          <div class="header-icon">☁️</div>
+          <h2>资源云盘</h2>
+          <p>登录后管理你的云端文件</p>
+        </div>
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
+        </div>
+        <div class="form-group" style="text-align:right;margin-bottom:20px">
+          <a class="link" id="showRegister">没有账号？立即注册</a>
+        </div>
+        <button class="btn btn-primary" id="loginBtn">登 录</button>
+      </div>
+
+      <!-- 注册表单（默认隐藏） -->
+      <div class="auth-card mica hidden" id="registerCard">
+        <div class="auth-header">
+          <div class="header-icon">☁️</div>
+          <h2>注册账号</h2>
+          <p>创建账号后即可管理云盘文件</p>
+        </div>
+        <div class="form-group">
+          <label>用户昵称</label>
+          <input type="text" id="regNick" placeholder="请设置你的昵称" autocomplete="nickname">
+        </div>
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
+        </div>
+        <div class="form-group" style="text-align:right;margin-bottom:20px">
+          <a class="link" id="showLogin">已有账号？去登录</a>
+        </div>
+        <button class="btn btn-primary" id="regBtn">完成注册</button>
+      </div>
+    </div>
+
+    <!-- ========== 云盘内容（登录后显示） ========== -->
+    <div class="drive-content hidden" id="driveContent">
     <div class="page-header">
       <div class="header-icon">☁️</div>
       <h1 class="header-title">资源云盘</h1>
@@ -268,6 +360,7 @@
         <div class="empty-text" id="emptyText">暂无文件，上传你的第一个文件吧</div>
       </div>
     </div>
+    </div><!-- .drive-content -->
   </div>
 
   <div class="overlay hidden" id="previewOverlay">
@@ -290,10 +383,154 @@
 
     let sb = null;
     try {
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: true, detectSessionInUrl: true }
+      });
     } catch(e) {
-      console.warn('Supabase init failed, falling back to local storage');
+      console.warn('Supabase init failed');
     }
+
+    // ====================== 错误格式化 ======================
+    function formatErr(err) {
+      const msg = typeof err === 'string' ? err : (err?.message || err?.toString() || '未知错误');
+      if (msg.includes('429') || msg.includes('rate limit')) return '请求过于频繁，请稍后再试';
+      if (msg.includes('Invalid login credentials')) return '邮箱或密码错误';
+      if (msg.includes('Email not confirmed')) return '邮箱未验证，请先验证邮箱';
+      if (msg.includes('already registered') || msg.includes('already exists')) return '该邮箱已被注册，请直接登录';
+      if (msg.includes('JWT') || msg.includes('token') || msg.includes('expired')) return '登录已过期，请重新登录';
+      if (msg.includes('banned')) return '账号已被封禁';
+      return msg;
+    }
+
+    // ====================== Toast ======================
+    function showToast(msg) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    // ====================== 认证模块 ======================
+    let currentUser = null;
+
+    function showAuthPage() {
+      $('#authPage').classList.remove('hidden');
+      $('#driveContent').classList.add('hidden');
+      $('#userInfoBar').classList.add('hidden');
+    }
+
+    function showDrivePage(user) {
+      currentUser = user;
+      $('#authPage').classList.add('hidden');
+      $('#driveContent').classList.remove('hidden');
+      $('#userInfoBar').classList.remove('hidden');
+      const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+      $('#userNameDisplay').textContent = nick;
+      $('#userAvatarDrop').textContent = nick.charAt(0).toUpperCase();
+      loadAndRender();
+    }
+
+    // 登录
+    async function doLogin() {
+      const email = $('#loginEmail').value.trim();
+      const pwd = $('#loginPwd').value.trim();
+      if (!email || !pwd) { showToast('请填写邮箱和密码'); return; }
+      const btn = $('#loginBtn');
+      btn.disabled = true; btn.textContent = '登录中...';
+      try {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
+        if (error) throw error;
+      } catch(e) {
+        showToast('登录失败：' + formatErr(e));
+      } finally {
+        setTimeout(() => { btn.disabled = false; btn.textContent = '登 录'; }, 300);
+      }
+    }
+
+    // 注册
+    async function doRegister() {
+      const nick = $('#regNick').value.trim();
+      const email = $('#regEmail').value.trim();
+      const pwd = $('#regPwd').value.trim();
+      if (!nick || !email || !pwd) { showToast('请填写完整注册信息'); return; }
+      if (pwd.length < 8) { showToast('密码长度不能少于8位'); return; }
+      const btn = $('#regBtn');
+      btn.disabled = true; btn.textContent = '注册中...';
+      let authUserId = null;
+      try {
+        const { data: authData, error: authError } = await sb.auth.signUp({
+          email, password: pwd,
+          options: { data: { nick } }
+        });
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('注册失败，未获取到用户信息');
+        authUserId = authData.user.id;
+
+        // 同步写入 users 表
+        await sb.from('users').upsert([{
+          id: authUserId, nick, email, is_admin: false,
+          status: 'active', created_at: new Date().toISOString()
+        }], { onConflict: 'id' });
+
+        showToast('注册成功！请登录');
+        $('#regNick').value = ''; $('#regEmail').value = ''; $('#regPwd').value = '';
+        showLoginForm();
+      } catch(e) {
+        if (authUserId) await sb.auth.admin.deleteUser(authUserId).catch(() => {});
+        showToast('注册失败：' + formatErr(e));
+      } finally {
+        setTimeout(() => { btn.disabled = false; btn.textContent = '完成注册'; }, 300);
+      }
+    }
+
+    // 退出
+    async function doLogout() {
+      try {
+        await sb.auth.signOut();
+      } catch(e) {
+        console.warn('Sign out error:', e);
+      }
+      currentUser = null;
+      showAuthPage();
+      showToast('已安全退出');
+    }
+
+    function showLoginForm() {
+      $('#loginCard').classList.remove('hidden');
+      $('#registerCard').classList.add('hidden');
+    }
+
+    function showRegisterForm() {
+      $('#loginCard').classList.add('hidden');
+      $('#registerCard').classList.remove('hidden');
+    }
+
+    // 会话检查
+    async function checkSession() {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user) {
+          showDrivePage(session.user);
+        } else {
+          showAuthPage();
+        }
+      } catch(e) {
+        showAuthPage();
+      }
+    }
+
+    // 监听认证状态变化
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        showDrivePage(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        currentUser = null;
+        showAuthPage();
+      }
+    });
 
     // ====================== 文件管理 ======================
     async function listFiles() {
@@ -319,6 +556,7 @@
 
     async function uploadFile(file) {
       if (!sb) { showToast('云存储不可用'); return false; }
+      if (!currentUser) { showToast('请先登录'); return false; }
       const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       try {
         const { error } = await sb.storage.from(BUCKET_NAME).upload(path, file, {
@@ -329,13 +567,18 @@
         return true;
       } catch(e) {
         console.error('Upload failed:', e.message);
-        showToast('上传失败: ' + e.message);
+        if (e.message?.includes('row-level security') || e.message?.includes('JWT')) {
+          showToast('上传失败：请先登录');
+        } else {
+          showToast('上传失败: ' + e.message);
+        }
         return false;
       }
     }
 
     async function deleteCloudFile(name) {
       if (!sb) return false;
+      if (!currentUser) { showToast('请先登录'); return false; }
       try {
         const { error } = await sb.storage.from(BUCKET_NAME).remove([name]);
         if (error) throw error;
@@ -525,18 +768,17 @@
       document.body.removeChild(a);
     }
 
-    // ====================== Toast ======================
-    function showToast(msg) {
-      const existing = document.querySelector('.toast');
-      if (existing) existing.remove();
-      const t = document.createElement('div');
-      t.className = 'toast';
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2500);
-    }
-
     // ====================== 事件 ======================
+    // 认证事件
+    $('#loginBtn').addEventListener('click', doLogin);
+    $('#loginPwd').addEventListener('keydown', e => e.key === 'Enter' && doLogin());
+    $('#regBtn').addEventListener('click', doRegister);
+    $('#regPwd').addEventListener('keydown', e => e.key === 'Enter' && doRegister());
+    $('#showRegister').addEventListener('click', showRegisterForm);
+    $('#showLogin').addEventListener('click', showLoginForm);
+    $('#logoutMenuBtn').addEventListener('click', doLogout);
+
+    // 云盘事件
     $('#uploadBtn').addEventListener('click', () => $('#fileInput').click());
     $('#fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
     $('#refreshBtn').addEventListener('click', () => loadAndRender());
@@ -599,7 +841,9 @@
     window.addEventListener('DOMContentLoaded', initTheme);
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
 
-    loadAndRender();
+    // ====================== 初始化 ======================
+    initTheme();
+    checkSession();
   </script>
 </body>
 </html>
