@@ -131,7 +131,7 @@ const Utils = {
   },
 
   // 邮箱格式校验
-  isEmail(str) { return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(String(str).trim()); },
+  isEmail(str) { return /^[a-zA-Z0-9]+(?:[._%+-][a-zA-Z0-9]+)*@[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/.test(String(str).trim()); },
 
   // 错误信息格式化（友好提示）
   formatErr(err) {
@@ -1176,11 +1176,12 @@ const EventBinder = {
 
       // 聊天输入框（修复：页面隐藏时不执行自动高度）
       const msgInput = Utils.$("#msgInput");
-      msgInput.addEventListener("input", function() {
+      const adjustHeight = Utils.debounce(() => {
         if (document.hidden) return;
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 120) + "px";
-      });
+        msgInput.style.height = "auto";
+        msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + "px";
+      }, 150);
+      msgInput.addEventListener("input", () => adjustHeight());
       Utils.$("#sendBtn").addEventListener("click", () => Chat.send());
       msgInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -1319,7 +1320,8 @@ const App = {
         UI.closeLoader();
         AppState.reset();
         UI.showPage("loginPage");
-      }, 5000);
+        Notify.error("加载超时，请刷新页面重试");
+      }, 10000);
       AppState.timers.forceCloseLoader = forceCloseTimer;
 
       UI.initTheme();
@@ -1340,18 +1342,16 @@ const App = {
       Chat.init();
       EventBinder.init();
       
-      // 清理残留会话
-      const { data: { session } } = await AppState.sb.auth.getSession();
-      if (session?.user) await AppState.sb.auth.signOut().catch(() => {});
-
-      // 初始化页面
-      AppState.reset();
-      UI.showPage("loginPage");
-      UI.closeLoader();
-      clearTimeout(forceCloseTimer);
-      
-      // 监听认证状态
+      // 监听认证状态（会立即触发 INITIAL_SESSION 事件）
       AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
+
+      // 检查现有会话，如果没有则显示登录页
+      const { data: { session } } = await AppState.sb.auth.getSession();
+      if (!session) {
+        UI.showPage("loginPage");
+        UI.closeLoader();
+      }
+      clearTimeout(forceCloseTimer);
     } catch (e) {
       Notify.error(`初始化失败：${Utils.formatErr(e)}`);
       UI.closeLoader();

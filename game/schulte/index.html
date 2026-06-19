@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f3f3f3">
+  <meta name="description" content="舒尔特方格注意力训练 - KJLLin">
+  <title>舒尔特方格 · KJLLin</title>
+  <style>
+    html {
+      --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-fast: 200ms var(--win-ease);
+      --transition-normal: 300ms var(--win-ease);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50%;
+      transition: background-color var(--transition-normal);
+      -webkit-transition: background-color var(--transition-normal);
+      scroll-behavior: smooth;
+    }
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+      font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent; outline: none;
+      transition: inherit; -webkit-transition: inherit;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --bg-body: #f3f3f3;
+      --bg-mica: rgba(255, 255, 255, 0.85);
+      --bg-mica-scroll: rgba(255, 255, 255, 0.92);
+      --bg-mica-hover: rgba(255, 255, 255, 0.9);
+      --border-mica: rgba(0, 0, 0, 0.06);
+      --border-mica-hover: rgba(0, 120, 212, 0.12);
+      --text-primary: #1a1a1a;
+      --text-secondary: #5e5e5e;
+      --text-tertiary: #8e8e8e;
+      --accent: #0078d4;
+      --accent-light: #0099ff;
+      --accent-glow: rgba(0, 120, 212, 0.1);
+      --accent-glow-weak: rgba(0, 120, 212, 0.05);
+      --shadow-rest: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.09);
+      --shadow-scroll: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --scroll-bar: #c4c4c4;
+      --cell-bg: #f8f9fc;
+      --cell-hover: #e8f0fe;
+      --cell-correct: #d4edda;
+      --cell-wrong: #f8d7da;
+      --cell-next: #e3f2fd;
+    }
+    [data-theme="dark"]:root {
+      --bg-body: #0f0f0f;
+      --bg-mica: rgba(20, 20, 20, 0.85);
+      --bg-mica-scroll: rgba(20, 20, 20, 0.92);
+      --bg-mica-hover: rgba(26, 26, 26, 0.9);
+      --border-mica: rgba(255, 255, 255, 0.07);
+      --border-mica-hover: rgba(0, 120, 212, 0.2);
+      --text-primary: #f0f0f0;
+      --text-secondary: #a0a0a0;
+      --text-tertiary: #707070;
+      --accent: #0078d4;
+      --accent-light: #0099ff;
+      --accent-glow: rgba(0, 120, 212, 0.15);
+      --accent-glow-weak: rgba(0, 120, 212, 0.07);
+      --shadow-rest: 0 2px 8px rgba(0, 0, 0, 0.25);
+      --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.35);
+      --shadow-scroll: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --scroll-bar: #4a4a4a;
+      --cell-bg: #1e1e2e;
+      --cell-hover: #2a2a3e;
+      --cell-correct: #1a3a2a;
+      --cell-wrong: #3a1a1a;
+      --cell-next: #1a2a3a;
+    }
+
+    html, body {
+      width: 100%; min-height: 100vh; overflow-x: hidden;
+      position: relative; touch-action: pan-y;
+    }
+    body { background: var(--bg-body); color: var(--text-primary); }
+
+    .bg-base {
+      position: fixed; inset: 0; background: var(--bg-body);
+      z-index: -3; pointer-events: none;
+    }
+    .bg-mica-glow-1 {
+      position: fixed; top: -15%; left: -10%;
+      width: 55%; height: 55%; border-radius: var(--radius-full);
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+      z-index: -2; pointer-events: none;
+      animation: micaFloat 14s ease-in-out infinite;
+      -webkit-animation: micaFloat 14s ease-in-out infinite;
+    }
+    .bg-mica-glow-2 {
+      position: fixed; bottom: -15%; right: -10%;
+      width: 60%; height: 60%; border-radius: var(--radius-full);
+      background: radial-gradient(circle, var(--accent-glow-weak), transparent 70%);
+      z-index: -2; pointer-events: none;
+      animation: micaFloat 16s ease-in-out infinite reverse;
+      -webkit-animation: micaFloat 16s ease-in-out infinite reverse;
+    }
+    @keyframes micaFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(4%, 4%) scale(1.05); }
+    }
+    @-webkit-keyframes micaFloat {
+      0%, 100% { -webkit-transform: translate(0, 0) scale(1); }
+      50% { -webkit-transform: translate(4%, 4%) scale(1.05); }
+    }
+
+    .mica {
+      background: var(--bg-mica);
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border-mica);
+    }
+
+    .container {
+      max-width: 600px; margin: 0 auto;
+      padding: 28px 16px; position: relative; z-index: 1;
+    }
+
+    /* 返回按钮 */
+    .back-btn {
+      position: absolute; top: 12px; left: 12px; z-index: 10;
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica);
+      background: var(--bg-mica);
+      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+      color: var(--text-primary); font-size: 18px; cursor: pointer;
+      display: grid; place-items: center;
+      box-shadow: var(--shadow-rest);
+    }
+    .back-btn:hover { background: var(--bg-mica-hover); }
+    .back-btn:active { transform: scale(0.95); }
+
+    /* 主题切换按钮 */
+    .theme-btn {
+      position: absolute; top: 12px; right: 12px; z-index: 10;
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica);
+      background: var(--bg-mica);
+      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+      color: var(--text-primary); font-size: 16px; cursor: pointer;
+      display: grid; place-items: center;
+      box-shadow: var(--shadow-rest);
+    }
+    .theme-btn:hover { background: var(--bg-mica-hover); }
+    .theme-btn:active { transform: scale(0.95); }
+
+    /* 主卡片 */
+    .card {
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest);
+      padding: 32px 28px;
+      animation: fadeUp 0.7s var(--win-ease) forwards;
+      -webkit-animation: fadeUp 0.7s var(--win-ease) forwards;
+      margin-top: 56px;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @-webkit-keyframes fadeUp {
+      from { opacity: 0; -webkit-transform: translateY(24px); }
+      to { opacity: 1; -webkit-transform: translateY(0); }
+    }
+
+    /* 标题区域 */
+    .game-header {
+      text-align: center; margin-bottom: 24px;
+    }
+    .game-icon { font-size: 48px; margin-bottom: 8px; }
+    .game-title {
+      font-size: 26px; font-weight: 700;
+      background: linear-gradient(90deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; display: inline-block; margin-bottom: 6px;
+    }
+    .game-desc {
+      font-size: 14px; color: var(--text-secondary); line-height: 1.6;
+    }
+
+    /* 控制栏 */
+    .controls {
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
+    }
+    .size-label {
+      font-size: 14px; color: var(--text-secondary); font-weight: 500;
+    }
+    .size-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-mica);
+      background: var(--bg-mica); color: var(--text-primary);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .size-btn:hover { background: var(--bg-mica-hover); border-color: var(--border-mica-hover); }
+    .size-btn.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+
+    /* 计时器 & 信息 */
+    .info-bar {
+      display: flex; justify-content: space-around; align-items: center;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .info-item {
+      text-align: center;
+    }
+    .info-label {
+      font-size: 11px; color: var(--text-tertiary); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 4px;
+    }
+    .info-value {
+      font-size: 28px; font-weight: 700; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .info-value.best { font-size: 20px; color: var(--text-secondary); }
+
+    /* 网格 */
+    .grid-wrapper {
+      display: flex; justify-content: center; margin-bottom: 20px;
+    }
+    .grid {
+      display: grid; gap: 8px;
+      width: 100%; max-width: 420px;
+      aspect-ratio: 1 / 1;
+    }
+    .cell {
+      display: grid; place-items: center;
+      background: var(--cell-bg);
+      border: 1px solid var(--border-mica);
+      border-radius: var(--radius-sm);
+      font-size: 22px; font-weight: 700;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+      user-select: none; -webkit-user-select: none;
+      position: relative;
+    }
+    .cell:hover {
+      background: var(--cell-hover);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+    .cell:active {
+      transform: scale(0.94);
+    }
+    .cell.correct {
+      background: var(--cell-correct);
+      color: #28a745;
+      pointer-events: none;
+      animation: cellPop 0.3s ease;
+    }
+    [data-theme="dark"] .cell.correct { color: #4caf50; }
+    .cell.wrong {
+      background: var(--cell-wrong);
+      color: #dc3545;
+      animation: cellShake 0.4s ease;
+    }
+    [data-theme="dark"] .cell.wrong { color: #f44336; }
+    .cell.next-hint {
+      box-shadow: 0 0 0 2px var(--accent);
+      background: var(--cell-next);
+    }
+    @keyframes cellPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    @keyframes cellShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    /* 按钮 */
+    .btn-row {
+      display: flex; justify-content: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .btn {
+      padding: 10px 28px; border-radius: 22px;
+      border: 1px solid var(--border-mica);
+      background: var(--bg-mica);
+      color: var(--text-primary);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: all var(--transition-fast);
+      user-select: none; -webkit-user-select: none;
+    }
+    .btn:hover { background: var(--bg-mica-hover); border-color: var(--border-mica-hover); }
+    .btn:active { transform: scale(0.96); }
+    .btn.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .btn.primary:hover {
+      background: var(--accent-light); border-color: var(--accent-light);
+    }
+
+    /* 完成提示 */
+    .complete-msg {
+      text-align: center; margin-bottom: 16px;
+      font-size: 18px; font-weight: 700; color: #28a745;
+      animation: fadeUp 0.5s var(--win-ease) forwards;
+    }
+    [data-theme="dark"] .complete-msg { color: #4caf50; }
+
+    /* 页脚 */
+    .footer {
+      text-align: center; padding: 30px 20px;
+      font-size: 13px; color: var(--text-tertiary);
+      border-top: 1px solid var(--border-mica);
+      margin-top: 30px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    @media (max-width: 768px) {
+      .container { padding: 24px 12px; }
+      .card { padding: 24px 16px; margin-top: 48px; }
+      .game-title { font-size: 22px; }
+      .cell { font-size: 18px; }
+      .grid { gap: 6px; }
+      .info-value { font-size: 24px; }
+      .info-value.best { font-size: 18px; }
+      .bg-mica-glow-1, .bg-mica-glow-2 {
+        animation: none; -webkit-animation: none;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .cell { font-size: 15px; }
+      .grid { gap: 4px; }
+      .card { padding: 20px 12px; }
+      .size-btn { padding: 5px 10px; font-size: 12px; }
+    }
+
+    * { -webkit-user-select: none; user-select: none; }
+    input, textarea { -webkit-user-select: text; user-select: text; }
+  </style>
+</head>
+<body>
+  <div class="bg-base"></div>
+  <div class="bg-mica-glow-1"></div>
+  <div class="bg-mica-glow-2"></div>
+
+  <button class="back-btn" onclick="goBack()" aria-label="返回游戏中心" title="返回游戏中心">←</button>
+  <button id="themeBtn" class="theme-btn" aria-label="切换深色/浅色模式" title="切换主题">🌙</button>
+
+  <div class="container">
+    <div class="card mica">
+      <div class="game-header">
+        <div class="game-icon">🔢</div>
+        <h1 class="game-title">舒尔特方格</h1>
+        <p class="game-desc">按顺序依次点击数字 1 → 2 → 3 …，<br>越快越好，锻炼专注力！</p>
+      </div>
+
+      <div class="controls">
+        <span class="size-label">规格：</span>
+        <button class="size-btn active" data-size="5">5×5</button>
+        <button class="size-btn" data-size="3">3×3</button>
+        <button class="size-btn" data-size="4">4×4</button>
+        <button class="size-btn" data-size="6">6×6</button>
+        <button class="size-btn" data-size="7">7×7</button>
+      </div>
+
+      <div class="info-bar">
+        <div class="info-item">
+          <div class="info-label">⏱ 用时</div>
+          <div class="info-value" id="timer">0.00s</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">🏆 最佳</div>
+          <div class="info-value best" id="bestTime">--</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">🎯 进度</div>
+          <div class="info-value" id="progress">0/25</div>
+        </div>
+      </div>
+
+      <div class="grid-wrapper">
+        <div class="grid" id="grid"></div>
+      </div>
+
+      <div id="completeMsg" class="complete-msg" style="display:none;"></div>
+
+      <div class="btn-row">
+        <button class="btn primary" id="btnRestart" onclick="restart()">🔄 重新开始</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;font-size:0.72em;color:#8b8faa;opacity:0.7;">© 2026 KJLLin · 舒尔特方格注意力训练</div>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const themeBtn = document.getElementById('themeBtn');
+    const gridEl = document.getElementById('grid');
+    const timerEl = document.getElementById('timer');
+    const bestTimeEl = document.getElementById('bestTime');
+    const progressEl = document.getElementById('progress');
+    const completeMsg = document.getElementById('completeMsg');
+    const sizeBtns = document.querySelectorAll('.size-btn');
+
+    let gridSize = 5;
+    let numbers = [];
+    let currentIndex = 0;
+    let totalNumbers = 0;
+    let timerInterval = null;
+    let startTime = 0;
+    let isRunning = false;
+    let isComplete = false;
+    let touchStartData = {};
+
+    function goBack() {
+      window.location.href = '/game/';
+    }
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function getBestKey() {
+      return 'schulte_best_' + gridSize;
+    }
+
+    function getBestTime() {
+      try {
+        const v = localStorage.getItem(getBestKey());
+        return v ? parseFloat(v) : null;
+      } catch (e) { return null; }
+    }
+
+    function saveBestTime(t) {
+      try {
+        const prev = getBestTime();
+        if (prev === null || t < prev) {
+          localStorage.setItem(getBestKey(), t.toFixed(2));
+          return true;
+        }
+        return false;
+      } catch (e) { return false; }
+    }
+
+    function updateBestDisplay() {
+      const best = getBestTime();
+      bestTimeEl.textContent = best !== null ? best.toFixed(2) + 's' : '--';
+    }
+
+    function formatTime(ms) {
+      return (ms / 1000).toFixed(2) + 's';
+    }
+
+    function updateTimer() {
+      const elapsed = Date.now() - startTime;
+      timerEl.textContent = formatTime(elapsed);
+    }
+
+    function startTimer() {
+      if (isRunning) return;
+      isRunning = true;
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 50);
+    }
+
+    function stopTimer() {
+      isRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      updateTimer();
+    }
+
+    function highlightNext() {
+      const cells = gridEl.querySelectorAll('.cell');
+      cells.forEach(c => c.classList.remove('next-hint'));
+      if (currentIndex < totalNumbers) {
+        const nextNum = currentIndex + 1;
+        for (const c of cells) {
+          if (parseInt(c.textContent) === nextNum) {
+            c.classList.add('next-hint');
+            break;
+          }
+        }
+      }
+    }
+
+    function renderGrid() {
+      totalNumbers = gridSize * gridSize;
+      numbers = shuffle(
+        Array.from({ length: totalNumbers }, (_, i) => i + 1)
+      );
+      currentIndex = 0;
+      isComplete = false;
+      completeMsg.style.display = 'none';
+      stopTimer();
+      timerEl.textContent = '0.00s';
+      progressEl.textContent = '0/' + totalNumbers;
+      updateBestDisplay();
+
+      gridEl.style.gridTemplateColumns = 'repeat(' + gridSize + ', 1fr)';
+      gridEl.innerHTML = '';
+
+      for (let i = 0; i < totalNumbers; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.textContent = numbers[i];
+        cell.addEventListener('click', () => handleCellClick(cell));
+        cell.addEventListener('touchstart', handleTouchStart);
+        cell.addEventListener('touchend', e => handleTouchEnd(e, () => handleCellClick(cell)));
+        gridEl.appendChild(cell);
+      }
+
+      highlightNext();
+    }
+
+    function handleCellClick(cell) {
+      if (isComplete) return;
+
+      const num = parseInt(cell.textContent);
+      const expected = currentIndex + 1;
+
+      if (num === expected) {
+        if (!isRunning) startTimer();
+        cell.classList.add('correct');
+        currentIndex++;
+        progressEl.textContent = currentIndex + '/' + totalNumbers;
+
+        if (currentIndex >= totalNumbers) {
+          isComplete = true;
+          stopTimer();
+          const elapsed = Date.now() - startTime;
+          const elapsedSec = elapsed / 1000;
+          const isNewBest = saveBestTime(elapsedSec);
+          updateBestDisplay();
+
+          let msg = '🎉 完成！用时 ' + elapsedSec.toFixed(2) + ' 秒';
+          if (isNewBest) {
+            msg += ' — 🏆 新纪录！';
+          }
+          completeMsg.textContent = msg;
+          completeMsg.style.display = 'block';
+
+          const cells = gridEl.querySelectorAll('.cell');
+          cells.forEach(c => c.classList.remove('next-hint'));
+        } else {
+          highlightNext();
+        }
+      } else {
+        cell.classList.add('wrong');
+        setTimeout(() => cell.classList.remove('wrong'), 400);
+      }
+    }
+
+    function handleTouchStart(e) {
+      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+    }
+
+    function handleTouchEnd(e, callback) {
+      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
+      const dx = Math.abs(t.x - touchStartData.x);
+      const dy = Math.abs(t.y - touchStartData.y);
+      const dt = t.time - touchStartData.time;
+      if (dx < 10 && dy < 10 && dt < 300) {
+        e.preventDefault(); e.stopPropagation(); callback();
+      }
+    }
+
+    function restart() {
+      renderGrid();
+    }
+
+    function setGridSize(size) {
+      if (size === gridSize) return;
+      gridSize = size;
+      sizeBtns.forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.size) === size);
+      });
+      renderGrid();
+    }
+
+    sizeBtns.forEach(btn => {
+      btn.addEventListener('click', () => setGridSize(parseInt(btn.dataset.size)));
+      btn.addEventListener('touchstart', handleTouchStart);
+      btn.addEventListener('touchend', e => handleTouchEnd(e, () => setGridSize(parseInt(btn.dataset.size))));
+    });
+
+    // 主题
+    function initTheme() {
+      try {
+        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const localDark = localStorage.getItem('theme') === 'dark';
+        if (localDark || sysDark) {
+          root.dataset.theme = 'dark';
+          themeBtn.textContent = '☀️';
+          metaTheme.content = '#0f0f0f';
+        } else {
+          themeBtn.textContent = '🌙';
+          metaTheme.content = '#f3f3f3';
+        }
+      } catch (e) { themeBtn.textContent = '🌙'; }
+    }
+
+    function toggleTheme() {
+      try {
+        const isDark = root.dataset.theme === 'dark';
+        if (isDark) {
+          root.dataset.theme = '';
+          localStorage.removeItem('theme');
+          themeBtn.textContent = '🌙';
+          metaTheme.content = '#f3f3f3';
+        } else {
+          root.dataset.theme = 'dark';
+          localStorage.setItem('theme', 'dark');
+          themeBtn.textContent = '☀️';
+          metaTheme.content = '#0f0f0f';
+        }
+      } catch (e) {}
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      renderGrid();
+    });
+    themeBtn.addEventListener('click', toggleTheme);
+    themeBtn.addEventListener('touchstart', handleTouchStart);
+    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
+  </script>
+</body>
+</html>
