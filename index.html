@@ -11,39 +11,25 @@
   <style>
     /* ====================== Win11 25H2 全局规范 ====================== */
     html {
-      /* 25H2官方动画缓动 */
       --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
       --transition-fast: 200ms var(--win-ease);
       --transition-normal: 300ms var(--win-ease);
       --transition-slow: 400ms var(--win-ease);
-
-      /* 25H2圆角规范 */
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
       --radius-full: 50%;
-
-      /* 全局过渡继承 */
       transition: background-color var(--transition-normal);
       -webkit-transition: background-color var(--transition-normal);
       scroll-behavior: smooth;
     }
-
-    /* 全局重置 - 25H2规范 */
     * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+      margin: 0; padding: 0; box-sizing: border-box;
       font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      outline: none;
-      transition: inherit;
-      -webkit-transition: inherit;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      -webkit-tap-highlight-color: transparent; outline: none;
+      transition: inherit; -webkit-transition: inherit;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
-
-    /* 25H2深浅模式全局变量 - 全链路同步 */
     :root {
       --bg-body: #f3f3f3;
       --bg-mica: rgba(255, 255, 255, 0.85);
@@ -63,7 +49,6 @@
       --shadow-scroll: 0 4px 12px rgba(0, 0, 0, 0.08);
       --scroll-bar: #c4c4c4;
     }
-
     [data-theme="dark"]:root {
       --bg-body: #0f0f0f;
       --bg-mica: rgba(20, 20, 20, 0.85);
@@ -83,713 +68,248 @@
       --shadow-scroll: 0 4px 12px rgba(0, 0, 0, 0.3);
       --scroll-bar: #4a4a4a;
     }
-
-    html,
-    body {
-      width: 100%;
-      min-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-      touch-action: pan-y;
-      /* 仅允许垂直滚动，优化移动端体验 */
-    }
-
-    body {
-      background: var(--bg-body);
-      color: var(--text-primary);
-    }
-
-    /* ====================== Win11 25H2 云母背景 ====================== */
-    .bg-base {
-      position: fixed;
-      inset: 0;
-      background: var(--bg-body);
-      z-index: -3;
-      pointer-events: none;
-    }
+    html, body { width: 100%; min-height: 100vh; overflow-x: hidden; position: relative; touch-action: pan-y; }
+    body { background: var(--bg-body); color: var(--text-primary); }
+    .bg-base { position: fixed; inset: 0; background: var(--bg-body); z-index: -3; pointer-events: none; }
     .bg-mica-glow-1 {
-      position: fixed;
-      top: -15%;
-      left: -10%;
-      width: 55%;
-      height: 55%;
+      position: fixed; top: -15%; left: -10%; width: 55%; height: 55%;
       border-radius: var(--radius-full);
       background: radial-gradient(circle, var(--accent-glow), transparent 70%);
-      z-index: -2;
-      pointer-events: none;
-      transition: background var(--transition-normal);
-      -webkit-transition: background var(--transition-normal);
+      z-index: -2; pointer-events: none;
       animation: micaFloat 14s ease-in-out infinite;
-      -webkit-animation: micaFloat 14s ease-in-out infinite;
     }
     .bg-mica-glow-2 {
-      position: fixed;
-      bottom: -15%;
-      right: -10%;
-      width: 60%;
-      height: 60%;
+      position: fixed; bottom: -15%; right: -10%; width: 60%; height: 60%;
       border-radius: var(--radius-full);
       background: radial-gradient(circle, var(--accent-glow-weak), transparent 70%);
-      z-index: -2;
-      pointer-events: none;
-      transition: background var(--transition-normal);
-      -webkit-transition: background var(--transition-normal);
+      z-index: -2; pointer-events: none;
       animation: micaFloat 16s ease-in-out infinite reverse;
-      -webkit-animation: micaFloat 16s ease-in-out infinite reverse;
     }
-
-    /* 25H2云母浮动动画 */
     @keyframes micaFloat {
-      0%,
-      100% {
-        transform: translate(0, 0) scale(1);
-      }
-      50% {
-        transform: translate(4%, 4%) scale(1.05);
-      }
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(4%, 4%) scale(1.05); }
     }
-    @-webkit-keyframes micaFloat {
-      0%,
-      100% {
-        -webkit-transform: translate(0, 0) scale(1);
-      }
-      50% {
-        -webkit-transform: translate(4%, 4%) scale(1.05);
-      }
-    }
-
-    /* ====================== 加载遮罩 ====================== */
     #loader {
-      position: fixed;
-      inset: 0;
-      background: var(--bg-body);
-      display: grid;
-      place-items: center;
-      z-index: 9999;
+      position: fixed; inset: 0; background: var(--bg-body);
+      display: grid; place-items: center; z-index: 9999;
       transition: opacity var(--transition-normal);
-      -webkit-transition: opacity var(--transition-normal);
     }
     .loader-spin {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--accent-glow);
-      border-top: 3px solid var(--accent);
+      width: 40px; height: 40px;
+      border: 3px solid var(--accent-glow); border-top: 3px solid var(--accent);
       border-radius: var(--radius-full);
       animation: spin 0.8s linear infinite;
-      -webkit-animation: spin 0.8s linear infinite;
     }
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-    @-webkit-keyframes spin {
-      to {
-        -webkit-transform: rotate(360deg);
-      }
-    }
-
-    /* ====================== Win11 25H2 云母组件 ====================== */
+    @keyframes spin { to { transform: rotate(360deg); } }
     .mica {
       background: var(--bg-mica);
-      -webkit-backdrop-filter: blur(24px);
-      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
       border: 1px solid var(--border-mica);
-      /* 不支持毛玻璃的降级方案 */
-      @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-        background: var(--bg-body);
-      }
     }
-
-    /* ====================== 布局容器 ====================== */
-    .container {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 28px 16px;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* ====================== Win11 25H2 导航栏 ====================== */
+    .container { max-width: 960px; margin: 0 auto; padding: 28px 16px; position: relative; z-index: 1; }
     .navbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 20px;
-      border-radius: var(--radius-md);
-      margin-bottom: 50px;
-      box-shadow: var(--shadow-rest);
-      position: sticky;
-      top: 16px;
-      z-index: 90;
-      will-change: box-shadow, background, transform;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 20px; border-radius: var(--radius-md); margin-bottom: 50px;
+      box-shadow: var(--shadow-rest); position: sticky; top: 16px; z-index: 90;
     }
     .navbar.scrolled {
-      background: var(--bg-mica-scroll);
-      box-shadow: var(--shadow-scroll);
+      background: var(--bg-mica-scroll); box-shadow: var(--shadow-scroll);
       transform: translateY(-2px);
-      -webkit-transform: translateY(-2px);
     }
-    .logo {
-      font-size: 22px;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: 0.2px;
-    }
-
-    /* ====================== Win11 25H2 按钮 ====================== */
+    .logo { font-size: 22px; font-weight: 600; color: var(--accent); letter-spacing: 0.2px; }
     .win-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-sm);
-      border: none;
-      font-size: 18px;
-      background: rgba(220, 220, 220, 0.4);
-      color: var(--text-primary);
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      -webkit-user-select: none;
-      user-select: none;
-      will-change: transform, background;
+      width: 40px; height: 40px; border-radius: var(--radius-sm); border: none;
+      font-size: 18px; background: rgba(220, 220, 220, 0.4);
+      color: var(--text-primary); display: grid; place-items: center; cursor: pointer;
+      -webkit-user-select: none; user-select: none;
     }
-    [data-theme="dark"] .win-btn {
-      background: rgba(40, 40, 40, 0.4);
-    }
-    .win-btn:hover {
-      background: rgba(220, 220, 220, 0.6);
-    }
-    [data-theme="dark"] .win-btn:hover {
-      background: rgba(50, 50, 50, 0.6);
-    }
-    .win-btn:active {
-      transform: scale(0.95);
-      -webkit-transform: scale(0.95);
-    }
-
-    /* ====================== 个人信息区域 ====================== */
-    .profile {
-      text-align: center;
-      margin-bottom: 70px;
-      animation: fadeUp 0.8s var(--win-ease) forwards;
-      -webkit-animation: fadeUp 0.8s var(--win-ease) forwards;
-      will-change: transform, opacity;
-    }
-    @keyframes fadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(24px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    @-webkit-keyframes fadeUp {
-      from {
-        opacity: 0;
-        -webkit-transform: translateY(24px);
-      }
-      to {
-        opacity: 1;
-        -webkit-transform: translateY(0);
-      }
-    }
-
-    /* 头像 - 25H2风格 */
-    .avatar-box {
-      width: 104px;
-      height: 104px;
-      margin: 0 auto 22px;
-      position: relative;
-    }
+    [data-theme="dark"] .win-btn { background: rgba(40, 40, 40, 0.4); }
+    .win-btn:hover { background: rgba(220, 220, 220, 0.6); }
+    [data-theme="dark"] .win-btn:hover { background: rgba(50, 50, 50, 0.6); }
+    .win-btn:active { transform: scale(0.95); }
+    .profile { text-align: center; margin-bottom: 70px; animation: fadeUp 0.8s var(--win-ease) forwards; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .avatar-box { width: 104px; height: 104px; margin: 0 auto 22px; position: relative; }
     .avatar {
-      width: 100%;
-      height: 100%;
-      border-radius: var(--radius-full);
+      width: 100%; height: 100%; border-radius: var(--radius-full);
       background: linear-gradient(135deg, var(--accent), var(--accent-light));
-      color: #fff;
-      font-size: 40px;
-      font-weight: 700;
-      display: grid;
-      place-items: center;
-      box-shadow: 0 8px 24px var(--accent-glow);
-      position: relative;
-      z-index: 2;
+      color: #fff; font-size: 40px; font-weight: 700;
+      display: grid; place-items: center;
+      box-shadow: 0 8px 24px var(--accent-glow); position: relative; z-index: 2;
     }
-    .avatar-box::after,
-    .avatar-box::before {
-      content: '';
-      position: absolute;
-      inset: -6px;
-      border-radius: var(--radius-full);
-      background: var(--accent);
-      z-index: 1;
-      opacity: 0.2;
-      pointer-events: none;
+    .avatar-box::after, .avatar-box::before {
+      content: ''; position: absolute; inset: -6px; border-radius: var(--radius-full);
+      background: var(--accent); z-index: 1; opacity: 0.2; pointer-events: none;
     }
-    .avatar-box::after {
-      animation: pulse 3s ease-in-out infinite;
-      -webkit-animation: pulse 3s ease-in-out infinite;
-    }
-    .avatar-box::before {
-      animation: pulse 3s ease-in-out 1.5s infinite;
-      -webkit-animation: pulse 3s ease-in-out 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%,
-      100% {
-        transform: scale(1);
-        opacity: 0.2;
-      }
-      50% {
-        transform: scale(1.08);
-        opacity: 0.1;
-      }
-    }
-    @-webkit-keyframes pulse {
-      0%,
-      100% {
-        -webkit-transform: scale(1);
-        opacity: 0.2;
-      }
-      50% {
-        -webkit-transform: scale(1.08);
-        opacity: 0.1;
-      }
-    }
-
+    .avatar-box::after { animation: pulse 3s ease-in-out infinite; }
+    .avatar-box::before { animation: pulse 3s ease-in-out 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.2; } 50% { transform: scale(1.08); opacity: 0.1; } }
     .name {
-      font-size: 36px;
-      font-weight: 600;
-      margin-bottom: 12px;
+      font-size: 36px; font-weight: 600; margin-bottom: 12px;
       background: linear-gradient(90deg, var(--text-primary), var(--accent));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      display: inline-block;
+      -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block;
     }
-    .desc {
-      font-size: 16px;
-      color: var(--text-secondary);
-      max-width: 600px;
-      margin: 0 auto;
-      line-height: 1.7;
-      font-weight: 400;
-    }
-
-    /* ====================== 项目标题 ====================== */
-    .section-title {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 28px;
-      text-align: center;
-      opacity: 0;
-      animation: fadeUp 0.7s var(--win-ease) forwards 0.2s;
-      -webkit-animation: fadeUp 0.7s var(--win-ease) forwards 0.2s;
-    }
-
-    /* ====================== 卡片网格 ====================== */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
-      margin-bottom: 80px;
-    }
-
-    /* ====================== Win11 25H2 项目卡片 ====================== */
+    .desc { font-size: 16px; color: var(--text-secondary); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+    .section-title { font-size: 24px; font-weight: 600; margin-bottom: 28px; text-align: center; opacity: 0; animation: fadeUp 0.7s var(--win-ease) forwards 0.2s; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 80px; }
     .project-card {
-      display: block;
-      padding: 32px 28px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-rest);
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      opacity: 0;
-      animation: fadeUp 0.7s var(--win-ease) forwards;
-      -webkit-animation: fadeUp 0.7s var(--win-ease) forwards;
-      -webkit-user-select: none;
-      user-select: none;
-      z-index: 1;
-      will-change: transform, box-shadow;
+      display: block; padding: 32px 28px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest); text-decoration: none; color: inherit;
+      cursor: pointer; position: relative; overflow: hidden;
+      opacity: 0; animation: fadeUp 0.7s var(--win-ease) forwards;
+      -webkit-user-select: none; user-select: none; z-index: 1;
     }
-    .project-card:nth-child(1) {
-      animation-delay: 0.3s;
-      -webkit-animation-delay: 0.3s;
-    }
-    .project-card:nth-child(2) {
-      animation-delay: 0.4s;
-      -webkit-animation-delay: 0.4s;
-    }
-
-    /* 25H2卡片扫光效果 */
+    .project-card:nth-child(1) { animation-delay: 0.3s; }
+    .project-card:nth-child(2) { animation-delay: 0.4s; }
     .card-shine {
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-      transition: left 0.7s var(--win-ease);
-      -webkit-transition: left 0.7s var(--win-ease);
-      pointer-events: none;
-      z-index: 0;
+      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      transition: left 0.7s var(--win-ease); pointer-events: none; z-index: 0;
     }
-    .project-card:hover {
-      transform: translateY(-6px);
-      -webkit-transform: translateY(-6px);
-      box-shadow: var(--shadow-hover);
-      border-color: var(--border-mica-hover);
-      background: var(--bg-mica-hover);
-    }
-    .project-card:hover .card-shine {
-      left: 100%;
-    }
-
-    .card-icon {
-      font-size: 36px;
-      margin-bottom: 18px;
-      position: relative;
-      z-index: 2;
-      pointer-events: none;
-      transition: transform var(--transition-fast);
-      -webkit-transition: transform var(--transition-fast);
-    }
-    .project-card:hover .card-icon {
-      transform: scale(1.1);
-      -webkit-transform: scale(1.1);
-    }
-
-    .card-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: var(--accent);
-      position: relative;
-      z-index: 2;
-      pointer-events: none;
-    }
-    .card-desc {
-      font-size: 14px;
-      color: var(--text-tertiary);
-      line-height: 1.6;
-      position: relative;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    /* ====================== 返回顶部按钮 ====================== */
+    .project-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); border-color: var(--border-mica-hover); background: var(--bg-mica-hover); }
+    .project-card:hover .card-shine { left: 100%; }
+    .card-icon { font-size: 36px; margin-bottom: 18px; position: relative; z-index: 2; pointer-events: none; transition: transform var(--transition-fast); }
+    .project-card:hover .card-icon { transform: scale(1.1); }
+    .card-title { font-size: 20px; font-weight: 600; margin-bottom: 10px; color: var(--accent); position: relative; z-index: 2; pointer-events: none; }
+    .card-desc { font-size: 14px; color: var(--text-tertiary); line-height: 1.6; position: relative; z-index: 2; pointer-events: none; }
     #backTop {
-      position: fixed;
-      right: 24px;
-      bottom: 24px;
-      width: 46px;
-      height: 46px;
-      border-radius: var(--radius-sm);
-      border: none;
-      font-size: 17px;
-      cursor: pointer;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 80;
+      position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
+      border-radius: var(--radius-sm); border: none; font-size: 17px;
+      cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
       transition: opacity var(--transition-fast), transform var(--transition-fast);
-      -webkit-transition: opacity var(--transition-fast), transform var(--transition-fast);
-      will-change: opacity, transform;
     }
-    #backTop.show {
-      opacity: 1;
-      pointer-events: all;
-    }
-    #backTop:active {
-      transform: scale(0.95);
-      -webkit-transform: scale(0.95);
-    }
-
-    /* ====================== 页脚 ====================== */
-    .footer {
-      text-align: center;
-      padding: 30px 20px;
-      font-size: 13px;
-      color: var(--text-tertiary);
-      border-top: 1px solid var(--border-mica);
-    }
-
-    /* ====================== 滚动条美化 ====================== */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--scroll-bar);
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    /* ====================== 移动端专属适配 ====================== */
+    #backTop.show { opacity: 1; pointer-events: all; }
+    #backTop:active { transform: scale(0.95); }
+    .footer { text-align: center; padding: 30px 20px; font-size: 13px; color: var(--text-tertiary); border-top: 1px solid var(--border-mica); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
     @media (max-width: 768px) {
-      .container {
-        padding: 24px 16px;
-      }
-      .navbar {
-        padding: 14px 18px;
-        margin-bottom: 40px;
-        top: 12px;
-      }
-      .name {
-        font-size: 30px;
-      }
-      .card-grid {
-        grid-template-columns: 1fr;
-        gap: 18px;
-      }
-      .avatar-box {
-        width: 96px;
-        height: 96px;
-      }
-      .avatar {
-        font-size: 36px;
-      }
-      .project-card {
-        padding: 28px 24px;
-      }
-      /* 移动端禁用背景动画，保障性能 */
-      .bg-mica-glow-1,
-      .bg-mica-glow-2 {
-        animation: none;
-        -webkit-animation: none;
-      }
+      .container { padding: 24px 16px; }
+      .navbar { padding: 14px 18px; margin-bottom: 40px; top: 12px; }
+      .name { font-size: 30px; }
+      .card-grid { grid-template-columns: 1fr; gap: 18px; }
+      .avatar-box { width: 96px; height: 96px; }
+      .avatar { font-size: 36px; }
+      .project-card { padding: 28px 24px; }
+      .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
-
-    /* ====================== 禁用选中优化 ====================== */
-    * {
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    input,
-    textarea {
-      -webkit-user-select: text;
-      user-select: text;
-    }
+    * { -webkit-user-select: none; user-select: none; }
+    input, textarea { -webkit-user-select: text; user-select: text; }
   </style>
 </head>
-
 <body>
-  <!-- Win11 25H2 云母背景层 -->
   <div class="bg-base"></div>
   <div class="bg-mica-glow-1"></div>
   <div class="bg-mica-glow-2"></div>
-
-  <!-- 加载遮罩 -->
-  <div id="loader">
-    <div class="loader-spin"></div>
-  </div>
+  <div id="loader"><div class="loader-spin"></div></div>
 
   <div class="container">
-    <!-- 导航栏 -->
-    <nav class="navbar mica" id="navbar" aria-label="主导航">
+    <nav class="navbar mica" id="navbar">
       <div class="logo">KJLLin</div>
       <button id="themeBtn" class="win-btn mica" aria-label="切换深色/浅色模式">🌙</button>
     </nav>
 
-    <!-- 个人信息 -->
-    <section class="profile" aria-label="个人信息">
-      <div class="avatar-box">
-        <div class="avatar">K</div>
-      </div>
+    <section class="profile">
+      <div class="avatar-box"><div class="avatar">K</div></div>
       <h1 class="name">KJLLin</h1>
       <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
     </section>
 
-    <!-- 项目展示 -->
-    <section aria-label="我的作品">
+    <section>
       <h2 class="section-title">我的作品</h2>
       <div class="card-grid">
-        <a href="/chat" class="project-card mica" id="cardChat" aria-label="前往在线聊天系统">
+        <a href="/chat" class="project-card mica" id="cardChat">
           <div class="card-shine"></div>
           <div class="card-icon">💬</div>
           <h3 class="card-title">在线聊天系统</h3>
           <p class="card-desc">Windows11 风格实时聊天平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容稳定运行。</p>
         </a>
-
-        <a href="/game/" class="project-card mica" id="cardGame" aria-label="前往游戏中心">
+        <a href="/game/" class="project-card mica" id="cardGame">
           <div class="card-shine"></div>
           <div class="card-icon">🎮</div>
           <h3 class="card-title">游戏中心</h3>
-          <p class="card-desc">精选小游戏合集，包含恐龙快跑升级版等经典游戏，支持触屏操作，随时随地畅玩。</p>
+          <p class="card-desc">精选小游戏合集，包含恐龙快跑升级版、舒尔特方格等经典游戏，支持触屏操作，随时随地畅玩。</p>
         </a>
       </div>
     </section>
 
-    <!-- 页脚 -->
-    <footer class="footer">
-      © 2026 KJLLin · All Rights Reserved
-    </footer>
+    <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
   </div>
 
-  <!-- 返回顶部按钮 -->
   <button id="backTop" class="win-btn mica" aria-label="返回顶部">↑</button>
 
   <script>
-    // ====================== 工具函数 ======================
     const $ = s => document.querySelector(s);
     const $$ = s => document.querySelectorAll(s);
     const root = document.documentElement;
     const metaTheme = $('meta[name="theme-color"]');
-
-    // 核心元素
     const themeBtn = $('#themeBtn');
     const loader = $('#loader');
     const backTop = $('#backTop');
     const navbar = $('#navbar');
     const cardChat = $('#cardChat');
     const cardGame = $('#cardGame');
-
-    // 全局状态
     let isScrolling = false;
     let touchStartData = {};
 
-    // ====================== 触摸点击判定 - 彻底解决滚动误触 ======================
-    // 触摸开始记录数据
     function handleTouchStart(e) {
-      touchStartData = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        time: Date.now()
-      };
+      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
     }
-
-    // 触摸结束判定是否为点击
     function handleTouchEnd(e, callback) {
-      const touchEndData = {
-        x: e.changedTouches[0].clientX,
-        y: e.changedTouches[0].clientY,
-        time: Date.now()
-      };
-
-      // 计算位移和时长
-      const deltaX = Math.abs(touchEndData.x - touchStartData.x);
-      const deltaY = Math.abs(touchEndData.y - touchStartData.y);
-      const deltaTime = touchEndData.time - touchStartData.time;
-
-      // 只有位移<10px、时长<300ms才判定为点击
-      if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
-        e.preventDefault();
-        e.stopPropagation();
-        callback();
-      }
+      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
+      const dx = Math.abs(t.x - touchStartData.x);
+      const dy = Math.abs(t.y - touchStartData.y);
+      const dt = t.time - touchStartData.time;
+      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
     }
 
-    // ====================== 主题系统 - 终极同步修复 ======================
     function initTheme() {
       try {
         const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const localDark = localStorage.getItem('theme') === 'dark';
-        const useDark = localDark || sysDark;
-
-        if (useDark) {
-          root.dataset.theme = 'dark';
-          themeBtn.textContent = '☀️';
-          metaTheme.content = '#0f0f0f';
-        } else {
-          themeBtn.textContent = '🌙';
-          metaTheme.content = '#f3f3f3';
-        }
-        // 温和触发重绘，无闪烁
-        void document.body.offsetWidth;
-      } catch (e) {
-        console.error('主题初始化失败', e);
-        themeBtn.textContent = '🌙';
-      }
+        if (localDark || sysDark) { root.dataset.theme = 'dark'; themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
+        else { themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
+      } catch(e) { themeBtn.textContent = '🌙'; }
     }
-
     function toggleTheme() {
       try {
         const isDark = root.dataset.theme === 'dark';
-        if (isDark) {
-          root.dataset.theme = '';
-          localStorage.removeItem('theme');
-          themeBtn.textContent = '🌙';
-          metaTheme.content = '#f3f3f3';
-        } else {
-          root.dataset.theme = 'dark';
-          localStorage.setItem('theme', 'dark');
-          themeBtn.textContent = '☀️';
-          metaTheme.content = '#0f0f0f';
-        }
-        void document.body.offsetWidth;
-      } catch (e) {
-        console.error('主题切换失败', e);
-      }
+        if (isDark) { root.dataset.theme = ''; localStorage.removeItem('theme'); themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
+        else { root.dataset.theme = 'dark'; localStorage.setItem('theme', 'dark'); themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
+      } catch(e) {}
     }
-
-    // ====================== 滚动事件节流优化 ======================
     function handleScroll() {
       if (isScrolling) return;
       isScrolling = true;
-
       requestAnimationFrame(() => {
-        const scrollTop = window.scrollY;
-        // 返回顶部显示控制
-        backTop.classList.toggle('show', scrollTop > 300);
-        // 导航栏滚动效果
-        navbar.classList.toggle('scrolled', scrollTop > 20);
+        backTop.classList.toggle('show', window.scrollY > 300);
+        navbar.classList.toggle('scrolled', window.scrollY > 20);
         isScrolling = false;
       });
     }
+    function goToChat() { window.location.href = '/chat'; }
+    function goToGame() { window.location.href = '/game/'; }
+    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-    // ====================== 跳转函数 ======================
-    function goToChat() {
-      window.location.href = '/chat';
-    }
-    function goToGame() {
-      window.location.href = '/game/';
-    }
-    function goToTop() {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // ====================== 页面初始化 ======================
     window.addEventListener('DOMContentLoaded', () => {
       initTheme();
-      // 页面加载完成关闭遮罩
-      setTimeout(() => {
-        loader.style.opacity = 0;
-        setTimeout(() => loader.remove(), 300);
-      }, 400);
+      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 300); }, 400);
     });
-
-    // ====================== 事件绑定 ======================
-    // 主题按钮
     themeBtn.addEventListener('click', toggleTheme);
     themeBtn.addEventListener('touchstart', handleTouchStart);
-    themeBtn.addEventListener('touchend', (e) => handleTouchEnd(e, toggleTheme));
-
-    // 聊天卡片
+    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
     cardChat.addEventListener('click', goToChat);
     cardChat.addEventListener('touchstart', handleTouchStart);
-    cardChat.addEventListener('touchend', (e) => handleTouchEnd(e, goToChat));
-
-    // 游戏卡片
+    cardChat.addEventListener('touchend', e => handleTouchEnd(e, goToChat));
     cardGame.addEventListener('click', goToGame);
     cardGame.addEventListener('touchstart', handleTouchStart);
-    cardGame.addEventListener('touchend', (e) => handleTouchEnd(e, goToGame));
-
-    // 返回顶部
+    cardGame.addEventListener('touchend', e => handleTouchEnd(e, goToGame));
     backTop.addEventListener('click', goToTop);
     backTop.addEventListener('touchstart', handleTouchStart);
-    backTop.addEventListener('touchend', (e) => handleTouchEnd(e, goToTop));
-
-    // 滚动监听
+    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
     window.addEventListener('scroll', handleScroll);
-
-    // 系统主题变化自动跟随
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
-
-    // ====================== 页面卸载清理事件监听 ======================
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);
       themeBtn.removeEventListener('click', toggleTheme);
