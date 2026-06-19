@@ -236,10 +236,21 @@
     @media (max-width: 520px) {
       .menu-item { display: none; }
       .hamburger { display: grid; }
+      .user-info-bar .user-name { display: none; }
+      .user-info-bar .logout-btn { display: none; }
+      .user-info-bar { gap: 4px; }
+      .auth-card { padding: 24px 18px; }
+      .auth-header .header-icon { font-size: 32px; }
+      .auth-header h2 { font-size: 20px; }
+      .file-name { max-width: 160px; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .search-box { min-width: auto; }
+      .storage-info { margin-left: 0; }
     }
     @media (min-width: 521px) {
       .hamburger { display: none !important; }
       .mobile-menu-dropdown { display: none !important; }
+      .mobile-menu-logout { display: none !important; }
     }
 
     ::-webkit-scrollbar { width: 6px; }
@@ -390,6 +401,13 @@
       console.warn('Supabase init failed');
     }
 
+    // ====================== HTML 转义 ======================
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
     // ====================== 错误格式化 ======================
     function formatErr(err) {
       const msg = typeof err === 'string' ? err : (err?.message || err?.toString() || '未知错误');
@@ -420,6 +438,9 @@
       $('#authPage').classList.remove('hidden');
       $('#driveContent').classList.add('hidden');
       $('#userInfoBar').classList.add('hidden');
+      // 移除移动端菜单中的用户项
+      const m = $('#mobileMenu');
+      m.querySelectorAll('.mobile-menu-logout,.mobile-menu-user').forEach(e => e.remove());
     }
 
     function showDrivePage(user) {
@@ -430,7 +451,25 @@
       const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
       $('#userNameDisplay').textContent = nick;
       $('#userAvatarDrop').textContent = nick.charAt(0).toUpperCase();
+      // 更新移动端菜单
+      updateMobileMenu(nick);
       loadAndRender();
+    }
+
+    function updateMobileMenu(nick) {
+      const m = $('#mobileMenu');
+      m.querySelectorAll('.mobile-menu-logout,.mobile-menu-user').forEach(e => e.remove());
+      if (!nick) return;
+      const userItem = document.createElement('span');
+      userItem.className = 'menu-item mobile-menu-user';
+      userItem.style.cssText = 'pointer-events:none;font-weight:600;color:var(--accent)';
+      userItem.textContent = '👤 ' + nick;
+      m.appendChild(userItem);
+      const logoutLink = document.createElement('a');
+      logoutLink.className = 'menu-item mobile-menu-logout';
+      logoutLink.textContent = '🚪 退出登录';
+      logoutLink.addEventListener('click', e => { e.preventDefault(); doLogout(); mobileMenu.classList.remove('open'); });
+      m.appendChild(logoutLink);
     }
 
     // 登录
@@ -456,10 +495,11 @@
       const email = $('#regEmail').value.trim();
       const pwd = $('#regPwd').value.trim();
       if (!nick || !email || !pwd) { showToast('请填写完整注册信息'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { showToast('密码长度不能少于8位'); return; }
+      if (nick.length > 20) { showToast('昵称不能超过20个字符'); return; }
       const btn = $('#regBtn');
       btn.disabled = true; btn.textContent = '注册中...';
-      let authUserId = null;
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({
           email, password: pwd,
@@ -467,11 +507,10 @@
         });
         if (authError) throw authError;
         if (!authData.user) throw new Error('注册失败，未获取到用户信息');
-        authUserId = authData.user.id;
 
         // 同步写入 users 表
         await sb.from('users').upsert([{
-          id: authUserId, nick, email, is_admin: false,
+          id: authData.user.id, nick, email, is_admin: false,
           status: 'active', created_at: new Date().toISOString()
         }], { onConflict: 'id' });
 
@@ -479,7 +518,6 @@
         $('#regNick').value = ''; $('#regEmail').value = ''; $('#regPwd').value = '';
         showLoginForm();
       } catch(e) {
-        if (authUserId) await sb.auth.admin.deleteUser(authUserId).catch(() => {});
         showToast('注册失败：' + formatErr(e));
       } finally {
         setTimeout(() => { btn.disabled = false; btn.textContent = '完成注册'; }, 300);
@@ -523,14 +561,21 @@
     }
 
     // 监听认证状态变化
-    sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        showDrivePage(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        currentUser = null;
-        showAuthPage();
-      }
-    });
+    if (sb) {
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          // 静默刷新，不打断用户
+          if (session?.user) currentUser = session.user;
+          return;
+        }
+        if (event === 'SIGNED_IN' && session?.user) {
+          showDrivePage(session.user);
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          currentUser = null;
+          showAuthPage();
+        }
+      });
+    }
 
     // ====================== 文件管理 ======================
     async function listFiles() {
@@ -645,9 +690,14 @@
 
     async function loadAndRender() {
       showLoading(true);
-      cachedFiles = await listFiles();
-      renderFiles();
-      showLoading(false);
+      try {
+        cachedFiles = await listFiles();
+        renderFiles();
+      } catch(e) {
+        console.warn('loadAndRender error:', e);
+      } finally {
+        showLoading(false);
+      }
     }
 
     function renderFiles() {
@@ -672,17 +722,18 @@
         empty.style.display = 'none';
         list.innerHTML = filtered.map((f, i) => {
           const url = getPublicUrl(f.name);
+          const displayName = escapeHtml(f.name.replace(/^\d+_/, ''));
           return `
           <div class="file-item mica" style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both">
             <div class="file-icon">${getFileIcon(f.type, f.name)}</div>
             <div class="file-info">
-              <div class="file-name" title="${f.name}">${f.name.replace(/^\d+_/, '')}</div>
+              <div class="file-name" title="${displayName}">${displayName}</div>
               <div class="file-meta">${formatSize(f.size)} · ${formatDate(f.updated || f.created)}</div>
             </div>
             <div class="file-actions">
-              <button class="file-btn" onclick="previewFile('${url}','${f.name.replace(/^\d+_/, '')}','${f.type}')" title="预览">👁</button>
-              <button class="file-btn" onclick="downloadFile('${url}','${f.name.replace(/^\d+_/, '')}')" title="下载">⬇</button>
-              <button class="file-btn del-btn" onclick="deleteFile('${f.name}')" title="删除">🗑</button>
+              <button class="file-btn" data-action="preview" data-url="${escapeHtml(url)}" data-name="${displayName}" data-type="${escapeHtml(f.type)}" title="预览">👁</button>
+              <button class="file-btn" data-action="download" data-url="${escapeHtml(url)}" data-name="${displayName}" title="下载">⬇</button>
+              <button class="file-btn del-btn" data-action="delete" data-name="${escapeHtml(f.name)}" title="删除">🗑</button>
             </div>
           </div>`;
         }).join('');
@@ -708,7 +759,7 @@
       const pct = Math.min(100, Math.round((total / MAX) * 100));
       $('#storageText').textContent = total ? `已用 ${formatSize(total)}` : '已用 --';
       $('#storageBar').style.width = pct + '%';
-      $('#storageBar').style.background = pct > 80 ? '#f39c12' : pct > 95 ? 'var(--danger)' : 'var(--accent)';
+      $('#storageBar').style.background = pct > 95 ? 'var(--danger)' : pct > 80 ? '#f39c12' : 'var(--accent)';
     }
 
     // ====================== 上传 ======================
@@ -742,15 +793,24 @@
       $('#previewTitle').textContent = name;
       const content = $('#previewContent');
       if (type.startsWith('image/')) {
-        content.innerHTML = `<img src="${url}" alt="${name}">`;
+        content.innerHTML = `<img src="${url}" alt="${escapeHtml(name)}">`;
       } else if (type.startsWith('video/')) {
         content.innerHTML = `<video controls src="${url}"></video>`;
       } else if (type.startsWith('audio/')) {
         content.innerHTML = `<audio controls src="${url}"></audio>`;
       } else if (type.startsWith('text/') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css') || name.endsWith('.md')) {
-        fetch(url).then(r => r.text()).then(text => {
-          content.innerHTML = `<pre>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
-        }).catch(() => content.innerHTML = '<pre>无法加载文件内容</pre>');
+        fetch(url).then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+          const pre = document.createElement('pre');
+          pre.textContent = text;
+          content.innerHTML = '';
+          content.appendChild(pre);
+        }).catch(() => {
+          content.innerHTML = '';
+          const p = document.createElement('p');
+          p.style.color = 'var(--text-tertiary)';
+          p.textContent = '无法加载文件内容';
+          content.appendChild(p);
+        });
       } else {
         content.innerHTML = `<p style="color:var(--text-tertiary)">此文件类型不支持在线预览</p><p style="margin-top:8px">你可以直接下载查看</p>`;
       }
@@ -767,6 +827,20 @@
       a.click();
       document.body.removeChild(a);
     }
+
+    // 文件列表事件委托
+    $('#fileList').addEventListener('click', function(e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === 'preview') {
+        previewFile(btn.dataset.url, btn.dataset.name, btn.dataset.type);
+      } else if (action === 'download') {
+        downloadFile(btn.dataset.url, btn.dataset.name);
+      } else if (action === 'delete') {
+        deleteFile(btn.dataset.name);
+      }
+    });
 
     // ====================== 事件 ======================
     // 认证事件
@@ -805,16 +879,16 @@
     const themeBtn = $('#themeBtn');
     function initTheme() {
       try {
-        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const localDark = localStorage.getItem('theme') === 'dark';
-        if (localDark || sysDark) { root.dataset.theme = 'dark'; themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
-        else { themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
+        const saved = localStorage.getItem('theme');
+        const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) { root.dataset.theme = 'dark'; themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
+        else { root.dataset.theme = ''; themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
       } catch(e) { themeBtn.textContent = '🌙'; }
     }
     function toggleTheme() {
       try {
         const isDark = root.dataset.theme === 'dark';
-        if (isDark) { root.dataset.theme = ''; localStorage.removeItem('theme'); themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
+        if (isDark) { root.dataset.theme = ''; localStorage.setItem('theme', 'light'); themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
         else { root.dataset.theme = 'dark'; localStorage.setItem('theme', 'dark'); themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
       } catch(e) {}
     }
@@ -843,7 +917,12 @@
 
     // ====================== 初始化 ======================
     initTheme();
-    checkSession();
+    if (sb) {
+      checkSession();
+    } else {
+      showAuthPage();
+      showToast('云存储服务暂不可用，请检查网络连接');
+    }
   </script>
 </body>
 </html>

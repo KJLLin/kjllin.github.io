@@ -74,7 +74,7 @@ const Utils = {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { timer = null; fn(...args); }, wait);
     };
-    debounced.cancel = () => timer && clearTimeout(timer);
+    debounced.cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
     return debounced;
   },
 
@@ -97,11 +97,20 @@ const Utils = {
     return {
       start() {
         if (timer) clearInterval(timer);
-        timer = setInterval(() => !paused && fn(), interval);
+        paused = false;
+        timer = setInterval(() => fn(), interval);
       },
-      pause() { paused = true; },
-      resume() { paused = false; },
-      stop() { clearInterval(timer); timer = null; }
+      pause() {
+        paused = true;
+        if (timer) { clearInterval(timer); timer = null; }
+      },
+      resume() {
+        if (!paused) return;
+        paused = false;
+        if (timer) clearInterval(timer);
+        timer = setInterval(() => fn(), interval);
+      },
+      stop() { if (timer) { clearInterval(timer); timer = null; } paused = false; }
     };
   },
 
@@ -118,14 +127,17 @@ const Utils = {
 
   // 统一请求处理（全错误捕获，超时控制）
   async request(promise, timeoutMsg = "请求超时") {
+    let timer;
     try {
       const res = await Promise.race([
         promise,
-        new Promise((_, rej) => setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API))
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API); })
       ]);
+      clearTimeout(timer);
       if (res?.error) throw res.error;
       return res;
     } catch (e) {
+      clearTimeout(timer);
       throw new Error(Utils.formatErr(e));
     }
   },
@@ -245,7 +257,11 @@ const AppState = {
     } catch {}
     this.channels = Object.create(null);
     // 清理所有定时器
-    Object.values(this.timers).forEach(t => t.stop?.());
+    if (this.timers.forceCloseLoader) clearTimeout(this.timers.forceCloseLoader);
+    Object.values(this.timers).forEach(t => {
+      if (typeof t === 'number') clearTimeout(t);
+      else t.stop?.();
+    });
     this.timers = Object.create(null);
     // 重置UI
     const adminBtn = Utils.$("#adminBtn");
@@ -586,7 +602,6 @@ const Auth = {
       ["regNick", "regEmail", "regPwd"].forEach(id => Utils.$(`#${id}`).value = "");
       UI.showPage("loginPage");
     } catch (e) {
-      if (authUserId) await AppState.sb.auth.admin.deleteUser(authUserId).catch(() => {});
       Notify.error(`注册失败：${Utils.formatErr(e)}`);
     } finally {
       setTimeout(() => {
@@ -629,7 +644,11 @@ const Auth = {
     AppState.lock("auth");
 
     try {
-      if (event === "TOKEN_EXPIRED" || event === "SIGNED_OUT") {
+      // 静默事件：不打断用户会话
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
+      if (event === "PASSWORD_RECOVERY" || event === "MFA_CHALLENGE_VERIFIED") return;
+
+      if (event === "TOKEN_EXPIRED" || event === "SIGNED_OUT" || event === "USER_DELETED") {
         AppState.reset();
         UI.showPage("loginPage");
         UI.closeLoader();
@@ -701,6 +720,7 @@ const Auth = {
 
       setTimeout(async () => {
         try {
+          Chat.init(); // 重新初始化 Chat（reset 会清理 debounces）
           Session.initCheck();
           await Chat.load();
           Chat.initRealtime();
