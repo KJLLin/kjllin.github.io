@@ -1337,42 +1337,42 @@ const App = {
     AppState.lock("init");
     let forceCloseTimer = null;
     try {
-      // 兜底定时器延长到35秒，覆盖 handleAuthChange 最坏情况
+      // 15秒兜底：无论发生什么都关闭 loader
       forceCloseTimer = setTimeout(() => {
         UI.closeLoader();
         AppState.reset();
         UI.showPage("loginPage");
         Notify.error("加载超时，请刷新页面重试");
-      }, 35000);
+      }, 15000);
       AppState.timers.forceCloseLoader = forceCloseTimer;
 
       UI.initTheme();
       if (!window.supabase) throw new Error("Supabase SDK加载失败，请刷新页面重试");
 
-      // 初始化Supabase客户端（不覆盖 global.fetch，避免破坏 SDK 内部信号机制）
       AppState.sb = window.supabase.createClient(
-        APP_CONFIG.SUPABASE_URL,
-        APP_CONFIG.SUPABASE_KEY,
-        {
-          auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
-          realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true }
-        }
+        APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_KEY,
+        { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
+          realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true } }
       );
 
-      // 初始化模块
       Chat.init();
       EventBinder.init();
-      
-      // 监听认证状态（会立即触发 INITIAL_SESSION 事件）
-      AppState.sb.auth.onAuthStateChange((event, session) => Auth.handleAuthChange(event, session));
 
-      // 检查现有会话，如果没有则显示登录页
+      // 先查 session，再注册监听 —— 避免 INITIAL_SESSION 竞态
       const { data: { session } } = await AppState.sb.auth.getSession();
       if (!session) {
         UI.showPage("loginPage");
         UI.closeLoader();
         clearTimeout(forceCloseTimer);
+        // 注册监听以备后续登录
+        AppState.sb.auth.onAuthStateChange((e, s) => Auth.handleAuthChange(e, s));
+        AppState.unlock("init");
+        return;
       }
+
+      // 有 session：注册监听并手动触发初始化
+      AppState.sb.auth.onAuthStateChange((e, s) => Auth.handleAuthChange(e, s));
+      await Auth.handleAuthChange('INITIAL_SESSION', session);
     } catch (e) {
       Notify.error(`初始化失败：${Utils.formatErr(e)}`);
       UI.closeLoader();

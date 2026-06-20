@@ -16,6 +16,10 @@
   <!-- EasyMDE -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+  <!-- KaTeX 数学公式 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -319,6 +323,25 @@
       background: var(--bg-mica) !important;
       color: var(--text-tertiary) !important;
     }
+    /* 移动端工具栏换行 */
+    @media (max-width: 640px) {
+      .EasyMDEContainer .editor-toolbar {
+        display: flex; flex-wrap: wrap; gap: 2px;
+        padding: 4px; justify-content: center;
+      }
+      .EasyMDEContainer .editor-toolbar button {
+        width: 32px; height: 32px; margin: 0; padding: 0;
+        font-size: 12px;
+      }
+      .EasyMDEContainer .editor-toolbar i.separator {
+        display: none;
+      }
+      .EasyMDEContainer .editor-statusbar { font-size: 11px; }
+      .EasyMDEContainer .CodeMirror { font-size: 13px; }
+    }
+    /* 数学公式 */
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+    .katex { font-size: 1.1em; }
 
     /* ====================== 帖子列表 ====================== */
     .post-list { display: flex; flex-direction: column; gap: 16px; }
@@ -708,6 +731,31 @@
       let sb;
       let currentUser;
       let easyMDE;
+
+      // ====================== Markdown + 数学公式渲染 ======================
+      function renderMarkdown(content) {
+        // 预处理数学公式：$$...$$ 和 $...$
+        let processed = content;
+        const displayMath = [];
+        const inlineMath = [];
+        // 先处理 $$...$$ 块级公式
+        processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
+          try {
+            return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
+          } catch(e) {
+            return '<pre>' + escapeHtml(formula) + '</pre>';
+          }
+        });
+        // 再处理 $...$ 行内公式
+        processed = processed.replace(/\$(.+?)\$/g, (_, formula) => {
+          try {
+            return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
+          } catch(e) {
+            return '<code>' + escapeHtml(formula) + '</code>';
+          }
+        });
+        return marked.parse(processed);
+      }
       let loadedPosts = [];
 
       try {
@@ -761,6 +809,10 @@
           maxHeight: '500px',
           renderingConfig: {
             codeSyntaxHighlighting: true
+          },
+          previewRender: function(plainText, preview) {
+            preview.innerHTML = renderMarkdown(plainText);
+            return preview;
           }
         });
       }
@@ -855,7 +907,7 @@
           list.innerHTML = data.map((p, i) => {
             let htmlContent;
             try {
-              htmlContent = marked.parse(p.content || '');
+              htmlContent = renderMarkdown(p.content || '');
             } catch(e) {
               htmlContent = '<p>' + escapeHtml(p.content || '') + '</p>';
             }
