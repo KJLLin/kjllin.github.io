@@ -298,8 +298,12 @@
       border: 1px solid var(--border-mica) !important;
       border-bottom: none !important;
       background: var(--bg-mica) !important;
+      touch-action: manipulation;
     }
-    .EasyMDEContainer .editor-toolbar button { color: var(--text-secondary) !important; }
+    .EasyMDEContainer .editor-toolbar button {
+      color: var(--text-secondary) !important;
+      touch-action: manipulation;
+    }
     .EasyMDEContainer .editor-toolbar button:hover,
     .EasyMDEContainer .editor-toolbar button.active {
       color: var(--accent) !important;
@@ -335,16 +339,15 @@
     /* 移动端工具栏换行 */
     @media (max-width: 640px) {
       .EasyMDEContainer .editor-toolbar {
-        display: flex; flex-wrap: wrap; gap: 2px;
-        padding: 4px; justify-content: center;
+        display: flex; flex-wrap: wrap; gap: 1px;
+        padding: 6px 4px; justify-content: flex-start;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
       }
       .EasyMDEContainer .editor-toolbar button {
-        width: 32px; height: 32px; margin: 0; padding: 0;
-        font-size: 12px;
+        width: 36px; height: 36px; margin: 1px; padding: 0;
+        font-size: 13px; flex-shrink: 0;
       }
-      .EasyMDEContainer .editor-toolbar i.separator {
-        display: none;
-      }
+      .EasyMDEContainer .editor-toolbar i.separator { display: inline-block; width: 1px; margin: 0 4px; height: 24px; align-self: center; }
       .EasyMDEContainer .editor-statusbar { font-size: 11px; }
       .EasyMDEContainer .CodeMirror { font-size: 13px; }
     }
@@ -1079,12 +1082,14 @@
           if (error) throw error;
 
           toast('讨论发布成功！');
+          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
           clearEditor();
           document.getElementById('postFormWrap').style.display = 'none';
           destroyEditor();
           loadPosts();
         } catch(e) {
           toast('发布失败：' + (e.message || '未知错误'));
+          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
         } finally {
           btn.disabled = false;
           btn.textContent = '发布讨论';
