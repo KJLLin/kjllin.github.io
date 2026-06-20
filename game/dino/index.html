@@ -63,6 +63,7 @@
             #touchBtns { display: flex; }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 	<div id="gameInfo">I wanna be Dinosaur!</div>
@@ -71,6 +72,9 @@
     <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
 <div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
 <div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
+    <div id="cloudScores" style="margin-top:8px;font-size:14px;color:#555;text-align:center;">
+      云端最高分: <span id="dinoCloudBest">-</span> | 我云最高分: <span id="dinoMyBest">-</span>
+    </div>
     <div id="touchBtns">
         <button class="touch-btn" id="btnLeft">🌬 左风</button>
         <button class="touch-btn" id="btnJump" style="font-weight:bold;font-size:20px;">🦘 跳跃</button>
@@ -126,6 +130,7 @@
         let score = 0;
         let coinsCollected = 0;
         let isGameOver = false;
+        let scoreSaved = false; // 防止重复保存云端分数
         let isJumping = false;
         let gravity = 0.5;
         let jumpVelocity = -12;
@@ -146,6 +151,35 @@
 		let obstacleDistanceCur=0;
 
         // 天气系统
+        const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const GAME_NAME = 'dino';
+
+        async function saveScore(finalScore) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+          const userId = session.user.id;
+          const userEmail = session.user.email || '';
+          const nick = userEmail.split('@')[0] || userId.substring(0, 8);
+
+          await supabase.from('game_scores').insert({
+            user_id: userId,
+            nick: nick,
+            game: GAME_NAME,
+            score: finalScore
+          });
+
+          const { data: cloudBest } = await supabase
+            .from('game_scores').select('score').eq('game', GAME_NAME)
+            .order('score', { ascending: false }).limit(1).single();
+          const { data: myBest } = await supabase
+            .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
+            .order('score', { ascending: false }).limit(1).single();
+
+          if (cloudBest) document.getElementById('dinoCloudBest').textContent = cloudBest.score;
+          if (myBest) document.getElementById('dinoMyBest').textContent = myBest.score;
+        }
         let currentWeather = 'sunny';
         let windDirection = 0;
         let windEffect = 0;
@@ -574,6 +608,10 @@
         // 游戏主循环
         function gameLoop(currentTime) {
             if (isGameOver) {
+                if (!scoreSaved && score > 0) {
+                  scoreSaved = true;
+                  saveScore(score);
+                }
                 drawGameOver();
                 return;
             }
@@ -777,6 +815,7 @@
             }
             
             isGameOver = false;
+            scoreSaved = false;
             score = 0;
             coinsCollected = 0;
             // --- 基础速度降低50% ---
