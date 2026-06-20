@@ -398,19 +398,20 @@ const UI = {
 
   initTheme() {
     try {
-      const isDark = Utils.Storage.get("theme") === "dark" || window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.dataset.theme = isDark ? "dark" : "";
-      Utils.$("#toggleThemeBtn").innerText = isDark ? "切换浅色模式" : "切换深色模式";
+      const mode = Utils.Storage.get("theme");
+      const dark = mode === 'dark' || (!mode && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "";
+      Utils.$("#toggleThemeBtn").innerText = mode === 'dark' ? "☀️ 浅色模式" : mode === 'light' ? "🌙 深色模式" : "🅐 跟随系统";
     } catch {}
   },
 
   toggleTheme() {
     try {
-      const root = document.documentElement;
-      const isDark = root.dataset.theme === "dark";
-      root.dataset.theme = isDark ? "" : "dark";
-      isDark ? Utils.Storage.remove("theme") : Utils.Storage.set("theme", "dark");
-      Utils.$("#toggleThemeBtn").innerText = isDark ? "切换深色模式" : "切换浅色模式";
+      const mode = Utils.Storage.get("theme");
+      if (!mode) Utils.Storage.set("theme", "light");
+      else if (mode === 'light') Utils.Storage.set("theme", "dark");
+      else Utils.Storage.remove("theme");
+      this.initTheme();
     } catch { Notify.error("主题切换失败"); }
   },
 
