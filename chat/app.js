@@ -1349,14 +1349,13 @@ const App = {
       UI.initTheme();
       if (!window.supabase) throw new Error("Supabase SDK加载失败，请刷新页面重试");
 
-      // 初始化Supabase客户端
+      // 初始化Supabase客户端（不覆盖 global.fetch，避免破坏 SDK 内部信号机制）
       AppState.sb = window.supabase.createClient(
         APP_CONFIG.SUPABASE_URL,
         APP_CONFIG.SUPABASE_KEY,
         {
           auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
-          realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true },
-          global: { fetch: (url, options = {}) => fetch(url, { ...options, signal: RequestController.getSignal() }) }
+          realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true }
         }
       );
 
