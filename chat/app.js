@@ -352,6 +352,11 @@ const UI = {
 
   showPage(pageId) {
     try {
+      // 统一登录：跳转到 /login/ 页面，登录后返回当前页
+      if (pageId === "loginPage" || pageId === "registerPage") {
+        window.location.href = '/login/?redirect=/chat';
+        return;
+      }
       const needLogin = ["chatPage", "settingPage", "adminPage"].includes(pageId);
       if (needLogin && !AppState.isInit) {
         AppState.reset();
@@ -1341,8 +1346,7 @@ const App = {
       forceCloseTimer = setTimeout(() => {
         UI.closeLoader();
         AppState.reset();
-        UI.showPage("loginPage");
-        Notify.error("加载超时，请刷新页面重试");
+        window.location.href = '/login/?redirect=/chat';
       }, 15000);
       AppState.timers.forceCloseLoader = forceCloseTimer;
 
@@ -1361,11 +1365,9 @@ const App = {
       // 先查 session，再注册监听 —— 避免 INITIAL_SESSION 竞态
       const { data: { session } } = await AppState.sb.auth.getSession();
       if (!session) {
-        UI.showPage("loginPage");
         UI.closeLoader();
         clearTimeout(forceCloseTimer);
-        // 注册监听以备后续登录
-        AppState.sb.auth.onAuthStateChange((e, s) => Auth.handleAuthChange(e, s));
+        window.location.href = '/login/?redirect=/chat';
         AppState.unlock("init");
         return;
       }
@@ -1377,7 +1379,7 @@ const App = {
       Notify.error(`初始化失败：${Utils.formatErr(e)}`);
       UI.closeLoader();
       AppState.reset();
-      UI.showPage("loginPage");
+      window.location.href = '/login/?redirect=/chat';
     } finally {
       AppState.unlock("init");
     }

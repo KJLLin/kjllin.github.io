@@ -440,12 +440,8 @@
     let currentUser = null;
 
     function showAuthPage() {
-      $('#authPage').classList.remove('hidden');
-      $('#driveContent').classList.add('hidden');
-      $('#userInfoBar').classList.add('hidden');
-      // 移除移动端菜单中的用户项
-      const m = $('#mobileMenu');
-      m.querySelectorAll('.mobile-menu-logout,.mobile-menu-user').forEach(e => e.remove());
+      // 跳转到统一登录页，登录后返回云盘
+      window.location.href = '/login/?redirect=/cloud/';
     }
 
     function showDrivePage(user) {
