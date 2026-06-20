@@ -132,7 +132,7 @@
           <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
         </div>
         <div class="captcha-wrap">
-          <div class="h-captcha" id="captchaLogin"></div>
+          <div class="h-captcha" id="captchaLogin" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaLogin" data-expired-callback="onCaptchaLoginExpired"></div>
         </div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
@@ -152,7 +152,7 @@
           <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
         </div>
         <div class="captcha-wrap">
-          <div class="h-captcha" id="captchaRegister"></div>
+          <div class="h-captcha" id="captchaRegister" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaRegister" data-expired-callback="onCaptchaRegisterExpired"></div>
         </div>
         <button class="btn" id="regBtn">完成注册</button>
       </div>
@@ -206,46 +206,28 @@
     });
 
     // ====================== hCaptcha 人机验证 ======================
-    let captchaWidgetIds = {};
-    function initCaptchas() {
-      if (typeof hcaptcha === 'undefined') { setTimeout(initCaptchas, 300); return; }
-      // 先清空可能已自动渲染的
-      try { hcaptcha.reset(); } catch(_) {}
-      // 手动渲染并记录 widget ID
-      ['captchaLogin', 'captchaRegister'].forEach(did => {
-        const el = document.getElementById(did);
-        if (el && !el.dataset.rendered) {
-          captchaWidgetIds[did] = hcaptcha.render(did, {
-            sitekey: 'abe0d880-7704-481a-b892-9b982f7c5890',
-            theme: isActuallyDark() ? 'dark' : 'light',
-            size: 'normal'
-          });
-          el.dataset.rendered = '1';
-        }
-      });
-    }
-    function verifyCaptcha(widgetDomId) {
+    let captchaTokens = { login: '', register: '' };
+    window.onCaptchaLogin = function(token) { captchaTokens.login = token; };
+    window.onCaptchaLoginExpired = function() { captchaTokens.login = ''; };
+    window.onCaptchaRegister = function(token) { captchaTokens.register = token; };
+    window.onCaptchaRegisterExpired = function() { captchaTokens.register = ''; };
+
+    function verifyCaptcha(key) {
       if (typeof hcaptcha === 'undefined') return true; // CDN 不可用时降级
-      const wid = captchaWidgetIds[widgetDomId];
-      const token = wid !== undefined ? hcaptcha.getResponse(wid) : '';
-      if (!token) { toast('请完成人机验证'); return false; }
+      if (!captchaTokens[key]) { toast('请完成人机验证'); return false; }
       return true;
     }
-    function resetCaptcha(widgetDomId) {
-      try {
-        const wid = captchaWidgetIds[widgetDomId];
-        if (wid !== undefined && typeof hcaptcha !== 'undefined') hcaptcha.reset(wid);
-      } catch(_) {}
+    function resetCaptcha(key) {
+      captchaTokens[key] = '';
+      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
     }
-    // 页面加载后初始化
-    initCaptchas();
 
     // 登录
     $('#loginBtn').addEventListener('click', async () => {
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
       if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
-      if (!verifyCaptcha('captchaLogin')) return;
+      if (!verifyCaptcha('login')) return;
       const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
@@ -254,7 +236,7 @@
       } catch(e) {
         toast('登录失败：' + formatErr(e));
         btn.disabled = false; btn.textContent = '登 录';
-        resetCaptcha('captchaLogin');
+        resetCaptcha('login');
       }
     });
     $('#loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
@@ -267,7 +249,7 @@
       if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
-      if (!verifyCaptcha('captchaRegister')) return;
+      if (!verifyCaptcha('register')) return;
       const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });
