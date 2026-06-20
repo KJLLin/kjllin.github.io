@@ -8,6 +8,8 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 的个人主页 | 聊天系统 | 游戏中心 | 资源云盘">
   <title>KJLLin · 个人主页</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     /* ====================== Win11 全局规范 ====================== */
     html {
@@ -300,6 +302,74 @@
       background: var(--accent-glow); color: var(--accent); font-weight: 500;
     }
 
+    /* ====================== 公告区 ====================== */
+    .announce-section { margin-bottom: 70px; }
+    .announce-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .announce-header h2 { font-size: 24px; font-weight: 600; }
+    .announce-auth-area { display: flex; align-items: center; gap: 8px; }
+    .announce-list { display: flex; flex-direction: column; gap: 16px; }
+    .announce-card {
+      padding: 20px 24px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest); position: relative; overflow: hidden;
+      opacity: 0; animation: slideUp 0.6s var(--win-ease) forwards;
+    }
+    .announce-card:nth-child(1) { animation-delay: 0.05s; }
+    .announce-card:nth-child(2) { animation-delay: 0.1s; }
+    .announce-card:nth-child(3) { animation-delay: 0.15s; }
+    .announce-meta {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+      font-size: 12px; color: var(--text-tertiary);
+    }
+    .announce-meta .author { font-weight: 600; color: var(--accent); }
+    .announce-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+    .announce-content { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+    .announce-content h1,.announce-content h2,.announce-content h3 { margin: 12px 0 6px; color: var(--text-primary); }
+    .announce-content h1 { font-size: 1.3em; } .announce-content h2 { font-size: 1.15em; } .announce-content h3 { font-size: 1.05em; }
+    .announce-content p { margin: 6px 0; }
+    .announce-content code {
+      background: var(--accent-glow); padding: 2px 6px; border-radius: 4px;
+      font-family: "Consolas","Cascadia Code","SF Mono",monospace; font-size: 0.9em;
+    }
+    .announce-content pre {
+      background: var(--bg-mica-hover); padding: 14px; border-radius: var(--radius-sm);
+      overflow-x: auto; font-size: 13px; line-height: 1.5;
+    }
+    .announce-content pre code { background: none; padding: 0; }
+    .announce-content ul,.announce-content ol { padding-left: 20px; margin: 6px 0; }
+    .announce-content a { color: var(--accent); }
+    .announce-content blockquote {
+      border-left: 3px solid var(--accent); padding-left: 12px;
+      margin: 8px 0; color: var(--text-tertiary);
+    }
+    .announce-empty { text-align: center; padding: 40px; color: var(--text-tertiary); font-size: 14px; }
+
+    /* 发布表单 */
+    .post-form-wrap { margin-bottom: 24px; display: none; }
+    .post-form-wrap.show { display: block; }
+    .post-form {
+      padding: 20px 24px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest);
+    }
+    .post-form .form-group { margin-bottom: 14px; }
+    .post-form label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+    .post-form input, .post-form textarea {
+      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-primary); font-size: 14px; font-family: inherit;
+      transition: border-color var(--transition-fast);
+    }
+    .post-form textarea { min-height: 120px; resize: vertical; font-family: "Consolas","Cascadia Code","SF Mono",monospace; }
+    .post-form input:focus, .post-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .post-form .btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+    @media (max-width: 520px) {
+      .announce-card { padding: 16px 18px; }
+      .announce-header { flex-direction: column; align-items: flex-start; }
+    }
+
     /* ====================== 返回顶部 ====================== */
     #backTop {
       position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
@@ -397,6 +467,37 @@
         <span class="status-badge"><span class="status-dot"></span> 在线</span>
         <span class="status-badge">🛠️ 前端开发</span>
         <span class="status-badge">📍 中国</span>
+      </div>
+    </section>
+
+    <!-- ==================== 公告区 ==================== -->
+    <section class="announce-section">
+      <div class="announce-header">
+        <h2>📢 公告</h2>
+        <div class="announce-auth-area" id="announceAuthArea">
+          <button class="menu-item" id="announceLoginBtn" style="font-size:13px;padding:7px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--accent);cursor:pointer;font-family:inherit">登录后发布公告</button>
+        </div>
+      </div>
+      <!-- 发布表单 -->
+      <div class="post-form-wrap" id="postFormWrap">
+        <div class="post-form mica">
+          <div class="form-group">
+            <label>标题</label>
+            <input type="text" id="postTitle" placeholder="公告标题..." maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>内容（支持 Markdown）</label>
+            <textarea id="postContent" placeholder="支持 Markdown 格式：**粗体** *斜体* `代码` &#10;- 列表&#10;> 引用&#10;## 标题"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="menu-item" id="cancelPostBtn" style="font-size:13px;padding:7px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--text-secondary);cursor:pointer;font-family:inherit">取消</button>
+            <button class="menu-item" id="submitPostBtn" style="font-size:13px;padding:7px 20px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">发布</button>
+          </div>
+        </div>
+      </div>
+      <!-- 公告列表 -->
+      <div class="announce-list" id="announceList">
+        <div class="announce-empty" id="announceEmpty">📭 暂无公告</div>
       </div>
     </section>
 
@@ -633,6 +734,137 @@
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);
     });
+
+    // ====================== 公告系统 ======================
+    (function(){
+      const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+      let sb, currentUser;
+
+      try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } }); } catch(e) {}
+
+      function escapeHtml(s) { return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+      function formatDate(iso) { if(!iso)return'';const d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); }
+
+      function toast(msg) {
+        const e = document.querySelector('.toast');
+        if(e) e.remove();
+        const t = document.createElement('div');
+        t.className='toast'; t.textContent=msg;
+        document.body.appendChild(t);
+        setTimeout(()=>t.remove(), 2500);
+      }
+
+      function updateAuthUI(user) {
+        currentUser = user;
+        const area = document.getElementById('announceAuthArea');
+        if (user) {
+          const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+          area.innerHTML = '<span style="font-size:13px;color:var(--text-secondary);margin-right:8px">👤 '+escapeHtml(nick)+'</span>'+
+            '<button id="announcePostBtn" style="font-size:13px;padding:7px 16px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">📝 发布公告</button>'+
+            '<button id="announceLogoutBtn" style="font-size:13px;padding:7px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--text-secondary);cursor:pointer;font-family:inherit">退出</button>';
+          document.getElementById('announcePostBtn').addEventListener('click', () => { document.getElementById('postFormWrap').classList.toggle('show'); });
+          document.getElementById('announceLogoutBtn').addEventListener('click', doLogout);
+        } else {
+          area.innerHTML = '<button id="announceLoginBtn" style="font-size:13px;padding:7px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--accent);cursor:pointer;font-family:inherit">登录后发布公告</button>';
+          document.getElementById('announceLoginBtn').addEventListener('click', () => { window.location.href = '/cloud/'; });
+          document.getElementById('postFormWrap').classList.remove('show');
+        }
+      }
+
+      async function doLogout() {
+        try { await sb.auth.signOut(); } catch(e) {}
+        currentUser = null;
+        updateAuthUI(null);
+        toast('已退出');
+      }
+
+      async function loadAnnouncements() {
+        const list = document.getElementById('announceList');
+        const empty = document.getElementById('announceEmpty');
+        if (!sb) { empty.textContent = '公告服务暂不可用'; return; }
+        try {
+          const { data, error } = await sb.from('posts').select('*').order('created_at', { ascending: false }).limit(20);
+          if (error) throw error;
+          if (!data || data.length === 0) {
+            list.innerHTML = ''; list.appendChild(empty); empty.style.display = '';
+            return;
+          }
+          empty.style.display = 'none';
+          list.innerHTML = data.map((p,i) => {
+            let html;
+            try { html = marked.parse(p.content); } catch(e) { html = '<p>'+escapeHtml(p.content)+'</p>'; }
+            return '<div class="announce-card mica" style="animation-delay:'+(i*0.05)+'s">'+
+              '<div class="announce-meta"><span class="author">'+escapeHtml(p.nick)+'</span> · '+formatDate(p.created_at)+
+              (currentUser && currentUser.id === p.user_id ? ' · <a href="#" class="del-post" data-id="'+p.id+'" style="color:var(--danger);font-size:11px;cursor:pointer">删除</a>' : '')+
+              '</div>'+
+              '<div class="announce-title">'+escapeHtml(p.title)+'</div>'+
+              '<div class="announce-content">'+html+'</div>'+
+              '</div>';
+          }).join('');
+          // 绑定删除事件
+          list.querySelectorAll('.del-post').forEach(a => a.addEventListener('click', async function(e) {
+            e.preventDefault();
+            if (!confirm('确定删除这条公告吗？')) return;
+            const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
+            if (error) { toast('删除失败'); return; }
+            toast('已删除');
+            loadAnnouncements();
+          }));
+        } catch(e) {
+          empty.textContent = '公告加载失败';
+          console.warn('Announcements:', e);
+        }
+      }
+
+      async function submitPost() {
+        const title = document.getElementById('postTitle').value.trim();
+        const content = document.getElementById('postContent').value.trim();
+        if (!title || !content) { toast('请填写标题和内容'); return; }
+        if (!currentUser) { toast('请先登录'); return; }
+        const btn = document.getElementById('submitPostBtn');
+        btn.disabled = true; btn.textContent = '发布中...';
+        try {
+          const nick = currentUser.user_metadata?.nick || currentUser.email?.split('@')[0] || '用户';
+          const { error } = await sb.from('posts').insert([{ user_id: currentUser.id, nick, title, content }]);
+          if (error) throw error;
+          toast('公告发布成功！');
+          document.getElementById('postTitle').value = '';
+          document.getElementById('postContent').value = '';
+          document.getElementById('postFormWrap').classList.remove('show');
+          loadAnnouncements();
+        } catch(e) {
+          toast('发布失败：' + (e.message || '未知错误'));
+        } finally {
+          btn.disabled = false; btn.textContent = '发布';
+        }
+      }
+
+      document.getElementById('submitPostBtn').addEventListener('click', submitPost);
+      document.getElementById('cancelPostBtn').addEventListener('click', () => {
+        document.getElementById('postFormWrap').classList.remove('show');
+      });
+
+      // 认证监听
+      if (sb) {
+        sb.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            if (session?.user) { updateAuthUI(session.user); loadAnnouncements(); }
+          } else if (event === 'SIGNED_OUT') {
+            updateAuthUI(null); loadAnnouncements();
+          } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) currentUser = session.user;
+          }
+        });
+        sb.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) updateAuthUI(session.user);
+          else updateAuthUI(null);
+          loadAnnouncements();
+        });
+      } else {
+        loadAnnouncements(); // 即使无 sb，也尝试加载（显示错误状态）
+      }
+    })();
   </script>
 </body>
 </html>
