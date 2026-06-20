@@ -868,6 +868,7 @@ const Chat = {
     const input = Utils.$("#msgInput");
     const text = input.value.trim();
     if (!text) return Notify.error("不能发送空消息");
+    if (text.length > 500) return Notify.error("消息不能超过500个字符");
 
     const sendBtn = Utils.$("#sendBtn");
     sendBtn.disabled = true;
