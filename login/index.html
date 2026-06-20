@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f3f3f3">
+  <title>登录 · KJLLin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    html {
+      --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --transition-fast: 200ms var(--win-ease);
+      --transition-normal: 300ms var(--win-ease);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+      transition: background-color var(--transition-normal);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
+    :root {
+      --bg-body: #f3f3f3; --bg-mica: rgba(255,255,255,0.85); --bg-mica-hover: rgba(255,255,255,0.95);
+      --border-mica: rgba(0,0,0,0.08); --text-primary: #1a1a1a; --text-secondary: #5e5e5e; --text-tertiary: #8e8e8e;
+      --accent: #0078d4; --accent-light: #0099ff; --accent-glow: rgba(0,120,212,0.1); --danger: #e74c3c;
+      --shadow-rest: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    [data-theme="dark"]:root {
+      --bg-body: #0f0f0f; --bg-mica: rgba(22,22,22,0.9); --bg-mica-hover: rgba(28,28,28,0.95);
+      --border-mica: rgba(255,255,255,0.08); --text-primary: #f0f0f0; --text-secondary: #a0a0a0; --text-tertiary: #707070;
+      --accent-glow: rgba(0,120,212,0.15); --shadow-rest: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    html, body { width: 100%; min-height: 100vh; }
+    body { background: var(--bg-body); color: var(--text-primary); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .bg-mica-glow-1 {
+      position: fixed; top: -20%; left: -10%; width: 60%; height: 60%; border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%); z-index: 0; pointer-events: none;
+    }
+    .bg-mica-glow-2 {
+      position: fixed; bottom: -20%; right: -10%; width: 60%; height: 60%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,120,212,0.05), transparent 70%); z-index: 0; pointer-events: none;
+    }
+    .login-container { position: relative; z-index: 1; width: 100%; max-width: 420px; }
+    .auth-card {
+      background: var(--bg-mica); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-mica); border-radius: var(--radius-lg);
+      padding: 40px 32px; box-shadow: var(--shadow-rest);
+      animation: fadeUp 0.5s var(--win-ease);
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .auth-header { text-align: center; margin-bottom: 32px; }
+    .auth-header .icon { font-size: 44px; margin-bottom: 8px; }
+    .auth-header h1 { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .auth-header p { font-size: 13px; color: var(--text-tertiary); }
+    .tabs { display: flex; margin-bottom: 24px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.04); padding: 3px; }
+    [data-theme="dark"] .tabs { background: rgba(255,255,255,0.04); }
+    .tab {
+      flex: 1; padding: 10px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;
+      background: transparent; color: var(--text-tertiary); font-family: inherit; transition: all var(--transition-fast);
+    }
+    .tab.active { background: var(--bg-mica-hover); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .form-panel { display: none; }
+    .form-panel.active { display: block; animation: fadeUp 0.3s var(--win-ease); }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: rgba(0,0,0,0.02);
+      color: var(--text-primary); font-size: 15px; font-family: inherit; transition: border-color var(--transition-fast);
+    }
+    [data-theme="dark"] .form-group input { background: rgba(255,255,255,0.03); }
+    .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); outline: none; }
+    .btn {
+      width: 100%; padding: 13px; border-radius: var(--radius-sm); border: none;
+      font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+      background: var(--accent); color: #fff; transition: all var(--transition-fast);
+    }
+    .btn:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.6; pointer-events: none; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 24px;
+      border-radius: 20px; font-size: 14px; z-index: 300; background: var(--text-primary); color: var(--bg-body);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15); animation: toastIn 0.3s var(--bounce);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
+    .back-link { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-tertiary); text-decoration: none; }
+    .back-link:hover { color: var(--accent); }
+    .theme-btn {
+      position: fixed; top: 16px; right: 16px; width: 38px; height: 38px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary);
+      font-size: 16px; cursor: pointer; display: grid; place-items: center; z-index: 10;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: var(--transition-fast);
+    }
+    .theme-btn:hover { border-color: var(--accent); }
+    @media (max-width: 480px) {
+      .auth-card { padding: 28px 20px; }
+      .auth-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mica-glow-1"></div>
+  <div class="bg-mica-glow-2"></div>
+  <button id="themeBtn" class="theme-btn" title="浅色/深色/自动">🌙</button>
+
+  <div class="login-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="icon">🔐</div>
+        <h1>KJLLin</h1>
+        <p>统一账号登录 · 聊天/云盘/讨论版通用</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">登录</button>
+        <button class="tab" data-tab="register">注册</button>
+      </div>
+
+      <!-- 登录面板 -->
+      <div class="form-panel active" id="loginPanel">
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
+        </div>
+        <button class="btn" id="loginBtn">登 录</button>
+      </div>
+
+      <!-- 注册面板 -->
+      <div class="form-panel" id="registerPanel">
+        <div class="form-group">
+          <label>用户昵称</label>
+          <input type="text" id="regNick" placeholder="请设置你的昵称" autocomplete="nickname" maxlength="20">
+        </div>
+        <div class="form-group">
+          <label>邮箱地址</label>
+          <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>密码（至少8位）</label>
+          <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
+        </div>
+        <button class="btn" id="regBtn">完成注册</button>
+      </div>
+    </div>
+    <a href="/" class="back-link">← 返回首页</a>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
+
+    const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+
+    let sb;
+    try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true } }); } catch(e) {}
+
+    const redirect = new URLSearchParams(location.search).get('redirect') || '/';
+
+    function toast(msg) {
+      const e = document.querySelector('.toast'); if (e) e.remove();
+      const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+    }
+
+    function formatErr(err) {
+      const msg = typeof err === 'string' ? err : (err?.message || err?.toString() || '未知错误');
+      if (msg.includes('Invalid login credentials')) return '邮箱或密码错误';
+      if (msg.includes('Email not confirmed')) return '邮箱未验证，请先验证邮箱';
+      if (msg.includes('already registered') || msg.includes('already exists')) return '该邮箱已被注册';
+      if (msg.includes('429')) return '请求过于频繁，请稍后再试';
+      return msg;
+    }
+
+    // 如果已登录，直接跳转
+    if (sb) {
+      sb.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) { window.location.href = redirect; }
+      });
+    }
+
+    // Tab 切换
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab === 'login' ? 'loginPanel' : 'registerPanel').classList.add('active');
+      });
+    });
+
+    // 登录
+    $('#loginBtn').addEventListener('click', async () => {
+      const email = $('#loginEmail').value.trim();
+      const pwd = $('#loginPwd').value.trim();
+      if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
+      const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
+      try {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
+        if (error) throw error;
+        window.location.href = redirect;
+      } catch(e) {
+        toast('登录失败：' + formatErr(e));
+        btn.disabled = false; btn.textContent = '登 录';
+      }
+    });
+    $('#loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
+
+    // 注册
+    $('#regBtn').addEventListener('click', async () => {
+      const nick = $('#regNick').value.trim();
+      const email = $('#regEmail').value.trim();
+      const pwd = $('#regPwd').value.trim();
+      if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
+      if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
+      const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
+      try {
+        const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('注册失败');
+        // 同步写入 users 表
+        await sb.from('users').upsert([{ id: authData.user.id, nick, email, is_admin: false, status: 'active', created_at: new Date().toISOString() }], { onConflict: 'id' });
+        toast('注册成功！正在登录...');
+        setTimeout(() => window.location.href = redirect, 800);
+      } catch(e) {
+        toast('注册失败：' + formatErr(e));
+        btn.disabled = false; btn.textContent = '完成注册';
+      }
+    });
+    $('#regPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#regBtn').click(); });
+
+    // 主题（三模式）
+    const themeBtn = $('#themeBtn');
+    function getSystemDark() { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function isActuallyDark() { const m = localStorage.getItem('theme'); return m === 'dark' || (!m && getSystemDark()); }
+    function updateThemeUI() {
+      const m = localStorage.getItem('theme'), d = isActuallyDark();
+      root.dataset.theme = d ? 'dark' : '';
+      metaTheme.content = d ? '#0f0f0f' : '#f3f3f3';
+      themeBtn.textContent = m === 'dark' ? '☀️' : m === 'light' ? '🌙' : '🅐';
+    }
+    themeBtn.addEventListener('click', () => {
+      const m = localStorage.getItem('theme');
+      if (!m) localStorage.setItem('theme', 'light');
+      else if (m === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
+    });
+    updateThemeUI();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+  </script>
+</body>
+</html>
