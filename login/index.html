@@ -132,7 +132,7 @@
           <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
         </div>
         <div class="captcha-wrap">
-          <div class="h-captcha" id="captchaLogin" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal"></div>
+          <div class="h-captcha" id="captchaLogin"></div>
         </div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
@@ -152,7 +152,7 @@
           <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
         </div>
         <div class="captcha-wrap">
-          <div class="h-captcha" id="captchaRegister" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal"></div>
+          <div class="h-captcha" id="captchaRegister"></div>
         </div>
         <button class="btn" id="regBtn">完成注册</button>
       </div>
@@ -206,22 +206,39 @@
     });
 
     // ====================== hCaptcha 人机验证 ======================
-    function getCaptchaToken(widgetId) {
-      try {
-        if (typeof hcaptcha !== 'undefined') return hcaptcha.getResponse(widgetId);
-      } catch(_) {}
-      return '';
+    let captchaWidgetIds = {};
+    function initCaptchas() {
+      if (typeof hcaptcha === 'undefined') { setTimeout(initCaptchas, 300); return; }
+      // 先清空可能已自动渲染的
+      try { hcaptcha.reset(); } catch(_) {}
+      // 手动渲染并记录 widget ID
+      ['captchaLogin', 'captchaRegister'].forEach(did => {
+        const el = document.getElementById(did);
+        if (el && !el.dataset.rendered) {
+          captchaWidgetIds[did] = hcaptcha.render(did, {
+            sitekey: 'abe0d880-7704-481a-b892-9b982f7c5890',
+            theme: isActuallyDark() ? 'dark' : 'light',
+            size: 'normal'
+          });
+          el.dataset.rendered = '1';
+        }
+      });
     }
-    function resetCaptcha(widgetId) {
-      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(widgetId); } catch(_) {}
-    }
-    function verifyCaptcha(widgetId, widgetEl) {
-      // hCaptcha JS 未加载时降级：允许通过（用户网络无法访问 hCaptcha CDN）
-      if (typeof hcaptcha === 'undefined') return true;
-      const token = getCaptchaToken(widgetId);
+    function verifyCaptcha(widgetDomId) {
+      if (typeof hcaptcha === 'undefined') return true; // CDN 不可用时降级
+      const wid = captchaWidgetIds[widgetDomId];
+      const token = wid !== undefined ? hcaptcha.getResponse(wid) : '';
       if (!token) { toast('请完成人机验证'); return false; }
       return true;
     }
+    function resetCaptcha(widgetDomId) {
+      try {
+        const wid = captchaWidgetIds[widgetDomId];
+        if (wid !== undefined && typeof hcaptcha !== 'undefined') hcaptcha.reset(wid);
+      } catch(_) {}
+    }
+    // 页面加载后初始化
+    initCaptchas();
 
     // 登录
     $('#loginBtn').addEventListener('click', async () => {
