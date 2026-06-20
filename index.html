@@ -176,6 +176,7 @@
       display: none; position: absolute; top: 100%; left: 16px; right: 16px;
       margin-top: 8px; padding: 8px; border-radius: var(--radius-md);
       box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px;
+      pointer-events: all; z-index: 101;
     }
     .mobile-menu-dropdown.open { display: flex; }
 
@@ -338,8 +339,8 @@
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
     @media (max-width: 520px) {
-      .menu-item { display: none; }
-      .menu-item.mobile-show { display: block; }
+      .menu-bar .menu-item { display: none; }
+      .menu-bar .menu-item.mobile-show { display: block; }
       .hamburger { display: grid; }
       .menu-divider { display: none; }
     }
