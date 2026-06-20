@@ -16,7 +16,8 @@
   <!-- highlight.js -->
   <link rel="stylesheet" id="hljsTheme" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-  <!-- EasyMDE -->
+  <!-- hCaptcha -->
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
   <!-- KaTeX 数学公式 -->
@@ -581,6 +582,9 @@
         </div>
         <textarea id="postContent" style="display:none;"></textarea>
         <div id="editorContainer"></div>
+        <div class="captcha-line" id="discussCaptchaLine" style="margin-bottom:16px;min-height:78px">
+          <div class="h-captcha" id="captchaDiscuss"></div>
+        </div>
         <div class="btn-row">
           <button class="btn btn-secondary" id="cancelPostBtn">取消</button>
           <button class="btn btn-primary" id="submitPostBtn">发布讨论</button>
@@ -774,6 +778,20 @@
       let sb;
       let currentUser;
       let easyMDE;
+      let captchaDiscussWid = null;
+
+      // ====================== hCaptcha 初始化 ======================
+      function initCaptcha() {
+        if (typeof hcaptcha === 'undefined') { setTimeout(initCaptcha, 300); return; }
+        try {
+          captchaDiscussWid = hcaptcha.render('captchaDiscuss', {
+            sitekey: 'abe0d880-7704-481a-b892-9b982f7c5890',
+            theme: isActuallyDark() ? 'dark' : 'light',
+            size: 'normal'
+          });
+        } catch(e) { console.warn('hCaptcha init:', e); }
+      }
+      initCaptcha();
 
       // ====================== Markdown + 数学公式渲染 ======================
       // 配置 marked.js 使用 highlight.js
@@ -1053,6 +1071,13 @@
         if (!title) { toast('请输入讨论标题'); return; }
         if (!content) { toast('请输入讨论内容'); return; }
         if (!currentUser) { toast('请先登录'); return; }
+        // hCaptcha 验证（已登录用户发帖也需验证，防刷）
+        try {
+          if (typeof hcaptcha !== 'undefined') {
+            const resp = hcaptcha.getResponse(captchaDiscussWid);
+            if (!resp) { toast('请完成人机验证'); return; }
+          }
+        } catch(_) {}
 
         const btn = document.getElementById('submitPostBtn');
         btn.disabled = true;
