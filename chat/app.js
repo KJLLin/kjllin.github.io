@@ -38,7 +38,7 @@ const Utils = {
       try { const k = "__t__"; localStorage.setItem(k, k); localStorage.removeItem(k); return true; }
       catch { return false; }
     })(),
-    get(k) { return this._ok ? (localStorage.getItem(k) || "") : ""; },
+    get(k) { try { return this._ok ? (localStorage.getItem(k) || "") : ""; } catch { return ""; } },
     set(k, v) { try { return this._ok ? (localStorage.setItem(k, v), true) : false; } catch { return false; } },
     remove(k) { try { return this._ok ? (localStorage.removeItem(k), true) : false; } catch { return false; } },
     clear() { try { return this._ok ? (localStorage.clear(), true) : false; } catch { return false; } }
@@ -715,6 +715,7 @@ const Auth = {
 
       UI.showPage("chatPage");
       UI.closeLoader();
+      if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
       Utils.$("#userTag").innerText = `用户：${AppState.userNick}`;
       // 清空登录输入框
       ["loginEmail", "loginPwd"].forEach(id => Utils.$(`#${id}`).value = "");
@@ -1336,13 +1337,13 @@ const App = {
     AppState.lock("init");
     let forceCloseTimer = null;
     try {
-      // 强制关闭加载页的超时定时器
+      // 兜底定时器延长到35秒，覆盖 handleAuthChange 最坏情况
       forceCloseTimer = setTimeout(() => {
         UI.closeLoader();
         AppState.reset();
         UI.showPage("loginPage");
         Notify.error("加载超时，请刷新页面重试");
-      }, 10000);
+      }, 35000);
       AppState.timers.forceCloseLoader = forceCloseTimer;
 
       UI.initTheme();
@@ -1355,7 +1356,7 @@ const App = {
         {
           auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
           realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true },
-          global: { fetch: (...args) => fetch(...args, { signal: RequestController.getSignal() }) }
+          global: { fetch: (url, options = {}) => fetch(url, { ...options, signal: RequestController.getSignal() }) }
         }
       );
 
@@ -1371,8 +1372,8 @@ const App = {
       if (!session) {
         UI.showPage("loginPage");
         UI.closeLoader();
+        clearTimeout(forceCloseTimer);
       }
-      clearTimeout(forceCloseTimer);
     } catch (e) {
       Notify.error(`初始化失败：${Utils.formatErr(e)}`);
       UI.closeLoader();

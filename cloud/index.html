@@ -107,7 +107,7 @@
     .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
     .menu-btn:active { transform: scale(0.92); }
     .hamburger { display: none; }
-    .mobile-menu-dropdown { display: none; position: absolute; top: 100%; left: 16px; right: 16px; margin-top: 8px; padding: 8px; border-radius: var(--radius-md); box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px; }
+    .mobile-menu-dropdown { display: none; position: absolute; top: 100%; left: 16px; right: 16px; margin-top: 8px; padding: 8px; border-radius: var(--radius-md); box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px; pointer-events: all; z-index: 101; }
     .mobile-menu-dropdown.open { display: flex; }
 
     .container { max-width: 960px; margin: 0 auto; padding: 80px 16px 40px; position: relative; z-index: 1; }
@@ -237,7 +237,7 @@
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
     @media (max-width: 520px) {
-      .menu-item { display: none; }
+      .menu-bar .menu-item { display: none; }
       .hamburger { display: grid; }
       .user-info-bar .user-name { display: none; }
       .user-info-bar .logout-btn { display: none; }
