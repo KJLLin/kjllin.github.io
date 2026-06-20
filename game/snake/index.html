@@ -299,6 +299,7 @@
       .mobile-hint { display: none; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="bg-base"></div>
@@ -325,6 +326,14 @@
       <div class="score-item">
         <div class="score-label">最高分</div>
         <div class="score-value best" id="best">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">云端最高分</div>
+        <div class="score-value best" id="cloudBest">-</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">我云最高分</div>
+        <div class="score-value best" id="myBest">-</div>
       </div>
     </div>
 
@@ -447,6 +456,37 @@
     // ============ 贪吃蛇游戏核心 ============
     const gameCanvas = $('#gameCanvas');
     const ctx = gameCanvas.getContext('2d');
+
+    // ============ Supabase 云存储 ============
+    const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const GAME_NAME = 'snake';
+
+    async function saveScore(finalScore) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+      const userEmail = session.user.email || '';
+      const nick = userEmail.split('@')[0] || userId.substring(0, 8);
+
+      await supabase.from('game_scores').insert({
+        user_id: userId,
+        nick: nick,
+        game: GAME_NAME,
+        score: finalScore
+      });
+
+      const { data: cloudBest } = await supabase
+        .from('game_scores').select('score').eq('game', GAME_NAME)
+        .order('score', { ascending: false }).limit(1).single();
+      const { data: myBest } = await supabase
+        .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
+        .order('score', { ascending: false }).limit(1).single();
+
+      if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
+      if (myBest) $('#myBest').textContent = myBest.score;
+    }
 
     const COLS = 20;
     const ROWS = 20;
@@ -622,6 +662,8 @@
       if (gameLoopId) cancelAnimationFrame(gameLoopId);
       gameLoopId = null;
       draw();
+      // 云存储最高分
+      if (score > 0) saveScore(score);
       // 显示弹窗
       $('#modalScore').textContent = score;
       $('#modalBest').textContent = '最高分: ' + highScore;

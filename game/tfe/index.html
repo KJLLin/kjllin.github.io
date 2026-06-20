@@ -250,6 +250,7 @@ pre, code, .mono, .tile, .score-val {
   .overlay-title { font-size: 24px; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="bg-glow-1"></div>
@@ -279,6 +280,14 @@ pre, code, .mono, .tile, .score-val {
     <div class="score-box">
       <div class="score-label">最高分</div>
       <div class="score-val" id="bestScore">0</div>
+    </div>
+    <div class="score-box">
+      <div class="score-label">云端最高分</div>
+      <div class="score-val" id="cloudBest">-</div>
+    </div>
+    <div class="score-box">
+      <div class="score-label">我云最高分</div>
+      <div class="score-val" id="myBest">-</div>
     </div>
     <button class="new-game-btn" id="newGameBtn">新游戏</button>
   </div>
@@ -345,6 +354,36 @@ pre, code, .mono, .tile, .score-val {
   });
 
   // ==================== Game State ====================
+  const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const GAME_NAME = 'tfe';
+
+  async function saveScore(finalScore) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const userId = session.user.id;
+    const userEmail = session.user.email || '';
+    const nick = userEmail.split('@')[0] || userId.substring(0, 8);
+
+    await supabase.from('game_scores').insert({
+      user_id: userId,
+      nick: nick,
+      game: GAME_NAME,
+      score: finalScore
+    });
+
+    const { data: cloudBest } = await supabase
+      .from('game_scores').select('score').eq('game', GAME_NAME)
+      .order('score', { ascending: false }).limit(1).single();
+    const { data: myBest } = await supabase
+      .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
+      .order('score', { ascending: false }).limit(1).single();
+
+    if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
+    if (myBest) $('#myBest').textContent = myBest.score;
+  }
+
   const SIZE = 4;
   let grid = new Array(SIZE * SIZE).fill(0);
   let score = 0;
@@ -495,12 +534,14 @@ pre, code, .mono, .tile, .score-val {
       overlayBtn.textContent = '再来一局';
       overlay.classList.remove('hidden');
       gameOver = true;
+      if (score > 0) saveScore(score);
     } else if (!canMove()) {
       overlayTitle.textContent = '游戏结束';
       overlaySub.textContent = '没有可用移动了';
       overlayBtn.textContent = '重新开始';
       overlay.classList.remove('hidden');
       gameOver = true;
+      if (score > 0) saveScore(score);
     }
   }
 
