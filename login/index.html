@@ -7,7 +7,6 @@
   <meta name="theme-color" content="#f3f3f3">
   <title>登录 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     html {
       --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -77,6 +76,13 @@
     .btn:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.6; pointer-events: none; }
+    .captcha-row { display: flex; align-items: center; gap: 8px; }
+    .captcha-question { font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; font-family: "Consolas","Cascadia Code",monospace; min-width: 80px; }
+    .captcha-input { width: 60px; padding: 11px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: rgba(0,0,0,0.02); color: var(--text-primary); font-size: 17px; text-align: center; font-family: "Consolas","Cascadia Code",monospace; }
+    [data-theme="dark"] .captcha-input { background: rgba(255,255,255,0.03); }
+    .captcha-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); outline: none; }
+    .captcha-refresh { width: 40px; height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-secondary); font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+    .captcha-refresh:hover { border-color: var(--accent); color: var(--accent); }
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 24px;
       border-radius: 20px; font-size: 14px; z-index: 300; background: var(--text-primary); color: var(--bg-body);
@@ -126,7 +132,15 @@
           <label>密码</label>
           <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
         </div>
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAABFq0V7XG5gWm5Ta" data-theme="auto" data-size="normal" data-callback="onTurnstileCallback"></div>
+        <div class="form-group">
+          <label>人机验证</label>
+          <div class="captcha-row">
+            <span id="captchaQuestion" class="captcha-question">3 + 5 = ?</span>
+            <span>=</span>
+            <input type="number" id="captchaAnswer" class="captcha-input" placeholder="?" autocomplete="off" inputmode="numeric">
+            <button type="button" id="captchaRefresh" class="captcha-refresh" title="换一题">🔄</button>
+          </div>
+        </div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
 
@@ -144,7 +158,15 @@
           <label>密码（至少8位）</label>
           <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
         </div>
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAABFq0V7XG5gWm5Ta" data-theme="auto" data-size="normal" data-callback="onTurnstileCallback"></div>
+        <div class="form-group">
+          <label>人机验证</label>
+          <div class="captcha-row">
+            <span id="captchaQuestionReg" class="captcha-question">3 + 5 = ?</span>
+            <span>=</span>
+            <input type="number" id="captchaAnswerReg" class="captcha-input" placeholder="?" autocomplete="off" inputmode="numeric">
+            <button type="button" id="captchaRefreshReg" class="captcha-refresh" title="换一题">🔄</button>
+          </div>
+        </div>
         <button class="btn" id="regBtn">完成注册</button>
       </div>
     </div>
@@ -197,36 +219,37 @@
     });
 
     // Turnstile token 存储（由自动渲染的 callback 写入）
-    let _turnstileToken = null;
-    window.onTurnstileCallback = function(token) { _turnstileToken = token; };
-
-    // 共享 Turnstile 验证辅助
-    async function verifyTurnstile() {
-      if (typeof turnstile === 'undefined') return true; // JS 未加载，降级通过
-      const widget = document.querySelector('.form-panel.active .cf-turnstile');
-      if (!widget) return true;
-      const token = _turnstileToken || turnstile.getResponse(widget);
-      if (token) return true;
-      // 等待 3 秒
-      const result = await Promise.race([
-        new Promise(resolve => {
-          const iv = setInterval(() => {
-            const t = _turnstileToken || turnstile.getResponse(widget);
-            if (t) { clearInterval(iv); resolve(true); }
-          }, 150);
-          setTimeout(() => { clearInterval(iv); resolve(false); }, 3000);
-        })
-      ]);
-      if (!result) toast('人机验证失败，请刷新页面后重试');
-      return result;
+    let _captchaAnswer = 0;
+    function refreshCaptcha(questionEl, answerEl) {
+      const a = Math.floor(Math.random() * 20) + 1;
+      const b = Math.floor(Math.random() * 20) + 1;
+      const ops = ['+', '-', '×'];
+      const op = ops[Math.floor(Math.random() * 3)];
+      let result;
+      if (op === '+') { result = a + b; }
+      else if (op === '-') { result = a - b; }
+      else { result = a * b; }
+      _captchaAnswer = result;
+      questionEl.textContent = `${a} ${op} ${b} = ?`;
+      if (answerEl) answerEl.value = '';
     }
+    function verifyCaptcha(answerEl) {
+      const val = parseInt(answerEl.value);
+      if (isNaN(val)) { toast('请输入验证答案'); return false; }
+      if (val !== _captchaAnswer) { toast('验证答案错误，请重试'); refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer')); return false; }
+      return true;
+    }
+    refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer'));
+    refreshCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg'));
+    $('#captchaRefresh').addEventListener('click', () => refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer')));
+    $('#captchaRefreshReg').addEventListener('click', () => refreshCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg')));
 
     // 登录
     $('#loginBtn').addEventListener('click', async () => {
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
       if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
-      if (!(await verifyTurnstile())) return;
+      if (!verifyCaptcha($('#captchaAnswer'))) return;
 
       const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
       try {
@@ -236,8 +259,7 @@
       } catch(e) {
         toast('登录失败：' + formatErr(e));
         btn.disabled = false; btn.textContent = '登 录';
-        // Token 可能过期，重置 Turnstile
-        try { if (typeof turnstile !== 'undefined') turnstile.reset(document.querySelector('.cf-turnstile')); } catch(_){}
+        refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer'));
       }
     });
     $('#loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
@@ -250,7 +272,7 @@
       if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
-      if (!(await verifyTurnstile())) return;
+      if (!verifyCaptcha($('#captchaAnswerReg'))) return;
       const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });
