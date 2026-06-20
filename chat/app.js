@@ -481,13 +481,16 @@ function bindEvents() {
     msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
   });
 
-  // 移动端：对话列表切换返回按钮
-  $('#chatPartnerName').addEventListener('click', () => {
-    if (window.innerWidth <= 768) {
-      document.getElementById('sidebar').classList.remove('hidden-mobile');
-      document.getElementById('chatMain').classList.add('hidden-mobile');
-    }
-  });
+  // 移动端：点击对话头部返回列表（绑定到整个 header）
+  const headerEl = document.getElementById('chatViewHeader');
+  if (headerEl) {
+    headerEl.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('hidden-mobile');
+        document.getElementById('chatMain').classList.add('hidden-mobile');
+      }
+    });
+  }
 }
 
 // ====================== 初始化 ======================
