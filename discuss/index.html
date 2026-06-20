@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f3f3f3">
+  <meta name="description" content="KJLLin 讨论版 | 使用 Markdown 自由交流">
+  <title>讨论版 · KJLLin</title>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- marked.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- EasyMDE -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+
+  <style>
+    /* ====================== Win11 全局规范 ====================== */
+    html {
+      --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --transition-fast: 200ms var(--win-ease);
+      --transition-normal: 300ms var(--win-ease);
+      --transition-slow: 400ms var(--win-ease);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50%;
+      transition: background-color var(--transition-normal);
+      -webkit-transition: background-color var(--transition-normal);
+      scroll-behavior: smooth;
+    }
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+      font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent; outline: none;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    pre, code, .mono, .CodeMirror, .editor-toolbar button {
+      font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace !important;
+    }
+    :root {
+      --bg-body: #f3f3f3;
+      --bg-mica: rgba(255, 255, 255, 0.85);
+      --bg-mica-scroll: rgba(255, 255, 255, 0.92);
+      --bg-mica-hover: rgba(255, 255, 255, 0.9);
+      --border-mica: rgba(0, 0, 0, 0.06);
+      --border-mica-hover: rgba(0, 120, 212, 0.12);
+      --text-primary: #1a1a1a;
+      --text-secondary: #5e5e5e;
+      --text-tertiary: #8e8e8e;
+      --accent: #0078d4;
+      --accent-light: #0099ff;
+      --accent-glow: rgba(0, 120, 212, 0.1);
+      --accent-glow-weak: rgba(0, 120, 212, 0.05);
+      --danger: #e81123;
+      --shadow-rest: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,0.09);
+      --shadow-scroll: 0 4px 12px rgba(0,0,0,0.08);
+      --scroll-bar: #c4c4c4;
+    }
+    [data-theme="dark"]:root {
+      --bg-body: #0f0f0f;
+      --bg-mica: rgba(20,20,20,0.85);
+      --bg-mica-scroll: rgba(20,20,20,0.92);
+      --bg-mica-hover: rgba(26,26,26,0.9);
+      --border-mica: rgba(255,255,255,0.07);
+      --border-mica-hover: rgba(0,120,212,0.2);
+      --text-primary: #f0f0f0;
+      --text-secondary: #a0a0a0;
+      --text-tertiary: #707070;
+      --accent: #0078d4;
+      --accent-light: #0099ff;
+      --accent-glow: rgba(0,120,212,0.15);
+      --accent-glow-weak: rgba(0,120,212,0.07);
+      --danger: #ff6b6b;
+      --shadow-rest: 0 2px 8px rgba(0,0,0,0.25);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,0.35);
+      --shadow-scroll: 0 4px 12px rgba(0,0,0,0.3);
+      --scroll-bar: #4a4a4a;
+    }
+    html, body { width: 100%; min-height: 100vh; overflow-x: hidden; position: relative; touch-action: pan-y; }
+    body { background: var(--bg-body); color: var(--text-primary); }
+
+    /* ====================== 粒子背景 ====================== */
+    #particlesCanvas {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    }
+    .bg-base { position: fixed; inset: 0; background: var(--bg-body); z-index: -3; pointer-events: none; }
+    .bg-mica-glow-1 {
+      position: fixed; top: -15%; left: -10%; width: 55%; height: 55%;
+      border-radius: var(--radius-full);
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+      z-index: -2; pointer-events: none;
+      animation: micaFloat 14s ease-in-out infinite;
+    }
+    .bg-mica-glow-2 {
+      position: fixed; bottom: -15%; right: -10%; width: 60%; height: 60%;
+      border-radius: var(--radius-full);
+      background: radial-gradient(circle, var(--accent-glow-weak), transparent 70%);
+      z-index: -2; pointer-events: none;
+      animation: micaFloat 16s ease-in-out infinite reverse;
+    }
+    @keyframes micaFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(4%, 4%) scale(1.05); }
+    }
+
+    /* ====================== 加载遮罩 ====================== */
+    #loader {
+      position: fixed; inset: 0; background: var(--bg-body); z-index: 9999;
+      display: grid; place-items: center;
+      transition: opacity 0.5s var(--win-ease);
+    }
+    .loader-content { text-align: center; }
+    .loader-spin {
+      width: 44px; height: 44px; margin: 0 auto 16px;
+      border: 3px solid var(--accent-glow); border-top: 3px solid var(--accent);
+      border-radius: var(--radius-full);
+      animation: spin 0.8s linear infinite;
+    }
+    .loader-text { font-size: 14px; color: var(--text-tertiary); animation: fadePulse 2s ease-in-out infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadePulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+    /* ====================== 云母组件 ====================== */
+    .mica {
+      background: var(--bg-mica);
+      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+      border: 1px solid var(--border-mica);
+    }
+
+    /* ====================== 顶部菜单栏 ====================== */
+    .top-menu {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 8px 16px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .menu-bar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 8px; border-radius: var(--radius-md);
+      box-shadow: var(--shadow-rest);
+      pointer-events: all;
+      transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    }
+    .menu-bar.scrolled {
+      background: var(--bg-mica-scroll);
+      box-shadow: var(--shadow-scroll);
+      transform: translateY(-2px);
+    }
+    .menu-logo {
+      font-size: 18px; font-weight: 700; color: var(--accent);
+      padding: 6px 14px; letter-spacing: 0.2px;
+      margin-right: 4px;
+    }
+    .menu-item {
+      padding: 7px 14px; border-radius: var(--radius-sm);
+      font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
+      text-decoration: none; cursor: pointer;
+      border: none; background: none;
+      transition: all var(--transition-fast);
+      white-space: nowrap; position: relative;
+      letter-spacing: 0.3px;
+    }
+    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
+    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
+    .menu-item.active::after {
+      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+      width: 16px; height: 2px; border-radius: 1px; background: var(--accent);
+    }
+    .menu-divider { width: 1px; height: 20px; background: var(--border-mica); margin: 0 4px; }
+    .menu-btn {
+      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+      font-size: 16px; cursor: pointer;
+      background: rgba(220,220,220,0.4); color: var(--text-primary);
+      display: grid; place-items: center;
+      transition: all var(--transition-fast);
+    }
+    [data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
+    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
+    .menu-btn:active { transform: scale(0.92); }
+
+    /* 移动端汉堡菜单 */
+    .hamburger { display: none; }
+    .mobile-menu-dropdown {
+      display: none; position: absolute; top: 100%; left: 16px; right: 16px;
+      margin-top: 8px; padding: 8px; border-radius: var(--radius-md);
+      box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px;
+      pointer-events: all; z-index: 101;
+    }
+    .mobile-menu-dropdown.open { display: flex; }
+
+    /* ====================== 布局 ====================== */
+    .container { max-width: 860px; margin: 0 auto; padding: 80px 16px 40px; position: relative; z-index: 1; }
+
+    /* ====================== 页面标题 ====================== */
+    .page-title {
+      text-align: center; margin-bottom: 36px; animation: fadeUp 0.6s var(--win-ease) forwards;
+    }
+    .page-title h1 {
+      font-size: 28px; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .page-title p {
+      font-size: 14px; color: var(--text-tertiary);
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ====================== 认证区域 ====================== */
+    .auth-area {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+      padding: 12px 20px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest);
+    }
+    .auth-area .user-info {
+      display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-secondary);
+    }
+    .auth-area .user-info .nick { font-weight: 600; color: var(--accent); }
+    .auth-btns { display: flex; gap: 8px; align-items: center; }
+    .login-prompt {
+      text-align: center; padding: 48px 20px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest); margin-bottom: 24px;
+      animation: fadeUp 0.5s var(--win-ease) 0.1s both;
+    }
+    .login-prompt .icon { font-size: 48px; margin-bottom: 12px; }
+    .login-prompt .text { font-size: 16px; color: var(--text-secondary); margin-bottom: 16px; }
+    .login-prompt .hint { font-size: 13px; color: var(--text-tertiary); }
+
+    /* ====================== 发布表单 ====================== */
+    .post-form-wrap { margin-bottom: 28px; }
+    .post-form {
+      padding: 24px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest);
+      animation: fadeUp 0.5s var(--win-ease) 0.15s both;
+    }
+    .post-form .form-row {
+      display: flex; gap: 12px; align-items: center; margin-bottom: 14px;
+    }
+    .post-form .form-row input {
+      flex: 1; padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-primary); font-size: 14px; font-family: inherit;
+      transition: border-color var(--transition-fast);
+    }
+    .post-form .form-row input:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .post-form .btn-row {
+      display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;
+    }
+    .btn {
+      font-size: 13px; padding: 8px 20px; border-radius: var(--radius-sm);
+      border: none; cursor: pointer; font-family: inherit; font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-light); }
+    .btn-primary:active { transform: scale(0.96); }
+    .btn-secondary {
+      background: var(--bg-mica); color: var(--text-secondary);
+      border: 1px solid var(--border-mica);
+    }
+    .btn-secondary:hover { border-color: var(--border-mica-hover); color: var(--accent); }
+    .btn-danger {
+      background: transparent; color: var(--danger); font-size: 12px;
+      padding: 4px 10px; border: 1px solid transparent;
+    }
+    .btn-danger:hover { border-color: var(--danger); background: rgba(232,17,35,0.06); }
+    .btn-sm { font-size: 12px; padding: 6px 14px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ====================== EasyMDE 主题覆盖 ====================== */
+    .EasyMDEContainer { margin-bottom: 0; }
+    .EasyMDEContainer .CodeMirror {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica) !important;
+      background: var(--bg-mica) !important;
+      color: var(--text-primary) !important;
+      font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace !important;
+      font-size: 14px; line-height: 1.7;
+    }
+    .EasyMDEContainer .CodeMirror-cursor { border-left-color: var(--accent) !important; }
+    .EasyMDEContainer .CodeMirror-selected { background: var(--accent-glow) !important; }
+    .EasyMDEContainer .editor-toolbar {
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      border: 1px solid var(--border-mica) !important;
+      border-bottom: none !important;
+      background: var(--bg-mica) !important;
+    }
+    .EasyMDEContainer .editor-toolbar button { color: var(--text-secondary) !important; }
+    .EasyMDEContainer .editor-toolbar button:hover,
+    .EasyMDEContainer .editor-toolbar button.active {
+      color: var(--accent) !important;
+      background: var(--accent-glow) !important;
+      border-color: var(--accent) !important;
+    }
+    .EasyMDEContainer .editor-preview {
+      background: var(--bg-mica) !important;
+      color: var(--text-primary) !important;
+    }
+    .EasyMDEContainer .editor-preview a { color: var(--accent); }
+    .EasyMDEContainer .editor-preview pre {
+      background: var(--bg-mica-hover);
+      padding: 14px; border-radius: var(--radius-sm);
+      overflow-x: auto; font-size: 13px;
+    }
+    .EasyMDEContainer .editor-preview blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 12px; color: var(--text-tertiary);
+    }
+    .EasyMDEContainer .editor-statusbar {
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      border: 1px solid var(--border-mica) !important;
+      border-top: none !important;
+      background: var(--bg-mica) !important;
+      color: var(--text-tertiary) !important;
+    }
+
+    /* ====================== 帖子列表 ====================== */
+    .post-list { display: flex; flex-direction: column; gap: 16px; }
+    .post-card {
+      padding: 24px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-rest); position: relative;
+      opacity: 0; animation: fadeUp 0.5s var(--win-ease) forwards;
+      transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+    }
+    .post-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+    .post-card .post-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
+    }
+    .post-card .post-title {
+      font-size: 19px; font-weight: 600; color: var(--text-primary); flex: 1;
+      word-break: break-word;
+    }
+    .post-card .post-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .post-card .post-meta {
+      font-size: 12px; color: var(--text-tertiary); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .post-card .post-meta .author { font-weight: 600; color: var(--accent); }
+    .post-card .post-content {
+      font-size: 14px; color: var(--text-secondary); line-height: 1.75;
+      word-break: break-word;
+    }
+    .post-card .post-content h1,
+    .post-card .post-content h2,
+    .post-card .post-content h3,
+    .post-card .post-content h4 { margin: 16px 0 8px; color: var(--text-primary); }
+    .post-card .post-content h1 { font-size: 1.35em; }
+    .post-card .post-content h2 { font-size: 1.2em; }
+    .post-card .post-content h3 { font-size: 1.1em; }
+    .post-card .post-content p { margin: 8px 0; }
+    .post-card .post-content code {
+      background: var(--accent-glow); padding: 2px 6px; border-radius: 4px;
+      font-family: "Consolas","Cascadia Code","SF Mono",monospace; font-size: 0.9em;
+    }
+    .post-card .post-content pre {
+      background: var(--bg-mica-hover); padding: 14px; border-radius: var(--radius-sm);
+      overflow-x: auto; font-size: 13px; line-height: 1.6;
+    }
+    .post-card .post-content pre code { background: none; padding: 0; }
+    .post-card .post-content ul,
+    .post-card .post-content ol { padding-left: 20px; margin: 6px 0; }
+    .post-card .post-content a { color: var(--accent); }
+    .post-card .post-content blockquote {
+      border-left: 3px solid var(--accent); padding-left: 12px;
+      margin: 8px 0; color: var(--text-tertiary);
+    }
+    .post-card .post-content img { max-width: 100%; border-radius: var(--radius-sm); margin: 8px 0; }
+    .post-card .post-content table {
+      border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px;
+    }
+    .post-card .post-content th,
+    .post-card .post-content td {
+      border: 1px solid var(--border-mica); padding: 8px 12px; text-align: left;
+    }
+    .post-card .post-content th { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+    .post-empty {
+      text-align: center; padding: 48px 20px; color: var(--text-tertiary);
+      font-size: 15px; animation: fadeUp 0.5s var(--win-ease) 0.1s both;
+    }
+
+    /* ====================== Toast 提示 ====================== */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+      padding: 10px 24px; border-radius: var(--radius-sm);
+      background: var(--bg-mica-scroll); color: var(--text-primary);
+      font-size: 14px; z-index: 9998;
+      box-shadow: var(--shadow-hover);
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      border: 1px solid var(--border-mica);
+      animation: toastIn 0.3s var(--bounce);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+    /* ====================== 返回顶部 ====================== */
+    #backTop {
+      position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
+      border-radius: var(--radius-sm); border: none; font-size: 17px;
+      cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+    }
+    #backTop.show { opacity: 1; pointer-events: all; }
+    #backTop:active { transform: scale(0.95); }
+    #backTop:hover { transform: translateY(-2px); }
+
+    /* ====================== 页脚 ====================== */
+    .footer { text-align: center; padding: 40px 20px; font-size: 13px; color: var(--text-tertiary); border-top: 1px solid var(--border-mica); margin-top: 40px; }
+
+    /* ====================== 滚动条 ====================== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--scroll-bar); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* ====================== 响应式 ====================== */
+    @media (max-width: 768px) {
+      .top-menu { padding: 6px 10px; }
+      .menu-bar { padding: 4px 6px; gap: 0; }
+      .menu-item { padding: 6px 10px; font-size: 12px; }
+      .menu-logo { font-size: 16px; padding: 6px 10px; }
+      .menu-divider { display: none; }
+      .container { padding: 72px 16px 40px; }
+      .page-title h1 { font-size: 24px; }
+      .post-card { padding: 18px; }
+      .post-form { padding: 18px; }
+      .auth-area { padding: 12px 16px; flex-direction: column; align-items: flex-start; }
+      .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
+      .EasyMDEContainer .CodeMirror { font-size: 13px; }
+    }
+    @media (max-width: 520px) {
+      .menu-bar .menu-item { display: none; }
+      .menu-bar .menu-item.mobile-show { display: block; }
+      .hamburger { display: grid; }
+      .menu-divider { display: none; }
+      .post-card .post-header { flex-direction: column; }
+      .post-card .post-actions { align-self: flex-end; }
+      .post-form .form-row { flex-direction: column; align-items: stretch; }
+      .EasyMDEContainer .editor-toolbar button {
+        padding: 4px; width: 28px; height: 28px;
+      }
+    }
+    @media (min-width: 521px) {
+      .hamburger { display: none !important; }
+      .mobile-menu-dropdown { display: none !important; }
+    }
+
+    * { -webkit-user-select: none; user-select: none; }
+    input, textarea, .CodeMirror { -webkit-user-select: text; user-select: text; }
+  </style>
+</head>
+<body>
+  <div class="bg-base"></div>
+  <canvas id="particlesCanvas"></canvas>
+  <div class="bg-mica-glow-1"></div>
+  <div class="bg-mica-glow-2"></div>
+
+  <div id="loader">
+    <div class="loader-content">
+      <div class="loader-spin"></div>
+      <div class="loader-text">正在加载...</div>
+    </div>
+  </div>
+
+  <!-- ==================== 顶部菜单栏 ==================== -->
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item">🏠 首页</a>
+      <a href="/chat" class="menu-item">💬 聊天</a>
+      <a href="/game/" class="menu-item">🎮 游戏</a>
+      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <div class="menu-divider"></div>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item">🏠 首页</a>
+      <a href="/chat" class="menu-item">💬 聊天</a>
+      <a href="/game/" class="menu-item">🎮 游戏</a>
+      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- ==================== 页面标题 ==================== -->
+    <section class="page-title">
+      <h1>💡 讨论版</h1>
+      <p>使用 Markdown 格式自由交流，分享想法与问题</p>
+    </section>
+
+    <!-- ==================== 认证区域 ==================== -->
+    <div class="auth-area mica" id="authArea">
+      <div class="user-info" id="userInfo">
+        <span style="color:var(--text-tertiary);font-size:14px;">未登录</span>
+      </div>
+      <div class="auth-btns" id="authBtns"></div>
+    </div>
+
+    <!-- ==================== 登录提示（未登录时显示） ==================== -->
+    <div class="login-prompt mica" id="loginPrompt">
+      <div class="icon">🔒</div>
+      <div class="text">请登录后参与讨论</div>
+      <div class="hint">前往云盘页面登录，或点击上方按钮跳转</div>
+    </div>
+
+    <!-- ==================== 发布表单（登录后显示） ==================== -->
+    <div class="post-form-wrap" id="postFormWrap" style="display:none;">
+      <div class="post-form mica">
+        <div class="form-row">
+          <input type="text" id="postTitle" placeholder="输入讨论标题..." maxlength="100">
+        </div>
+        <textarea id="postContent" style="display:none;"></textarea>
+        <div id="editorContainer"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="cancelPostBtn">取消</button>
+          <button class="btn btn-primary" id="submitPostBtn">发布讨论</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 帖子列表 ==================== -->
+    <div class="post-list" id="postList">
+      <div class="post-empty" id="postEmpty">📭 暂无讨论</div>
+    </div>
+
+    <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
+  </div>
+
+  <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
+
+  <script>
+    // ====================== 工具函数 ======================
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
+
+    const themeBtn = $('#themeBtn');
+    const loader = $('#loader');
+    const backTop = $('#backTop');
+    const menuBar = $('#menuBar');
+    const hamburgerBtn = $('#hamburgerBtn');
+    const mobileMenu = $('#mobileMenu');
+    let isScrolling = false;
+    let touchStartData = {};
+
+    // ====================== 粒子背景 ======================
+    (function() {
+      const canvas = document.getElementById('particlesCanvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const count = 50;
+      let animId;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function createParticles() {
+        particles = [];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            r: Math.random() * 2 + 0.5,
+            o: Math.random() * 0.5 + 0.1
+          });
+        }
+      }
+      createParticles();
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const isDark = root.dataset.theme === 'dark';
+        const color = isDark ? '255,255,255' : '0,120,212';
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = canvas.width;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.y > canvas.height) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${color},${p.o})`;
+          ctx.fill();
+        }
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(${color},${0.04 * (1 - dist / 120)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        animId = requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ====================== 触摸点击判定 ======================
+    function handleTouchStart(e) {
+      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+    }
+    function handleTouchEnd(e, callback) {
+      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
+      const dx = Math.abs(t.x - touchStartData.x);
+      const dy = Math.abs(t.y - touchStartData.y);
+      const dt = t.time - touchStartData.time;
+      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
+    }
+
+    // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
+    function getSystemDark() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function isActuallyDark() {
+      const mode = localStorage.getItem('theme');
+      return mode === 'dark' || (!mode && getSystemDark());
+    }
+    function updateThemeUI() {
+      const mode = localStorage.getItem('theme');
+      const dark = isActuallyDark();
+      root.dataset.theme = dark ? 'dark' : '';
+      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
+      if (mode === 'dark') themeBtn.textContent = '☀️';
+      else if (mode === 'light') themeBtn.textContent = '🌙';
+      else themeBtn.textContent = '🅐';
+    }
+    function toggleTheme() {
+      const mode = localStorage.getItem('theme');
+      if (!mode) localStorage.setItem('theme', 'light');
+      else if (mode === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+
+    // ====================== 滚动 ======================
+    function handleScroll() {
+      if (isScrolling) return;
+      isScrolling = true;
+      requestAnimationFrame(() => {
+        backTop.classList.toggle('show', window.scrollY > 300);
+        menuBar.classList.toggle('scrolled', window.scrollY > 20);
+        isScrolling = false;
+      });
+    }
+    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    // ====================== 移动端菜单 ======================
+    function toggleMobileMenu() {
+      mobileMenu.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
+        mobileMenu.classList.remove('open');
+      }
+    });
+
+    // ====================== 初始化 ======================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateThemeUI();
+      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 500);
+    });
+
+    themeBtn.addEventListener('click', toggleTheme);
+    themeBtn.addEventListener('touchstart', handleTouchStart);
+    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    hamburgerBtn.addEventListener('click', toggleMobileMenu);
+    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
+    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    backTop.addEventListener('click', goToTop);
+    backTop.addEventListener('touchstart', handleTouchStart);
+    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('beforeunload', () => {
+      window.removeEventListener('scroll', handleScroll);
+    });
+
+    // ====================== 讨论版核心逻辑 ======================
+    (function() {
+      const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+
+      let sb;
+      let currentUser;
+      let easyMDE;
+      let loadedPosts = [];
+
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+      } catch(e) {
+        console.warn('Supabase init failed:', e);
+      }
+
+      // ====================== 工具函数 ======================
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const now = new Date();
+        const diff = now - d;
+        if (diff < 60000) return '刚刚';
+        if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+        if (diff < 172800000) return '昨天 ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }) +
+          ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function toast(msg) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2500);
+      }
+
+      // ====================== EasyMDE 初始化 ======================
+      function initEditor() {
+        if (easyMDE) return;
+        const textarea = document.getElementById('postContent');
+        easyMDE = new EasyMDE({
+          element: textarea,
+          placeholder: '支持 Markdown 格式...\n\n# 标题\n**粗体** *斜体* `代码`\n- 列表项\n> 引用\n\n```\n代码块\n```',
+          spellChecker: false,
+          autoDownloadFontAwesome: false,
+          status: ['lines', 'words', 'cursor'],
+          toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'code', 'link', 'image', 'table', '|', 'preview', 'side-by-side', '|', 'guide'],
+          minHeight: '240px',
+          maxHeight: '500px',
+          renderingConfig: {
+            codeSyntaxHighlighting: true
+          }
+        });
+      }
+
+      function destroyEditor() {
+        if (easyMDE) {
+          easyMDE.toTextArea();
+          easyMDE = null;
+        }
+      }
+
+      function getEditorContent() {
+        return easyMDE ? easyMDE.value() : '';
+      }
+
+      function clearEditor() {
+        if (easyMDE) easyMDE.value('');
+        document.getElementById('postTitle').value = '';
+      }
+
+      // ====================== 认证 UI ======================
+      function updateAuthUI(user) {
+        currentUser = user;
+        const authBtns = document.getElementById('authBtns');
+        const userInfo = document.getElementById('userInfo');
+        const loginPrompt = document.getElementById('loginPrompt');
+        const postFormWrap = document.getElementById('postFormWrap');
+
+        if (user) {
+          const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+          userInfo.innerHTML = '<span class="nick">👤 ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
+          authBtns.innerHTML =
+            '<button class="btn btn-primary btn-sm" id="newPostBtn">📝 发帖</button>' +
+            '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
+          loginPrompt.style.display = 'none';
+
+          document.getElementById('newPostBtn').addEventListener('click', () => {
+            postFormWrap.style.display = 'block';
+            initEditor();
+            postFormWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => { if (easyMDE) easyMDE.codemirror.focus(); }, 300);
+          });
+          document.getElementById('logoutBtn').addEventListener('click', doLogout);
+        } else {
+          userInfo.innerHTML = '<span style="color:var(--text-tertiary);font-size:14px;">未登录</span>';
+          authBtns.innerHTML =
+            '<a href="/cloud/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
+          loginPrompt.style.display = 'block';
+          postFormWrap.style.display = 'none';
+          destroyEditor();
+        }
+      }
+
+      async function doLogout() {
+        try { await sb.auth.signOut(); } catch(e) {}
+        currentUser = null;
+        updateAuthUI(null);
+        toast('已退出登录');
+        loadPosts();
+      }
+
+      // ====================== 帖子列表 ======================
+      async function loadPosts() {
+        const list = document.getElementById('postList');
+        const empty = document.getElementById('postEmpty');
+
+        if (!sb) {
+          empty.textContent = '讨论服务暂不可用';
+          empty.style.display = '';
+          return;
+        }
+
+        try {
+          const { data, error } = await sb
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+          if (error) throw error;
+
+          loadedPosts = data || [];
+
+          if (!data || data.length === 0) {
+            list.innerHTML = '';
+            list.appendChild(empty);
+            empty.style.display = '';
+            return;
+          }
+
+          empty.style.display = 'none';
+          list.innerHTML = data.map((p, i) => {
+            let htmlContent;
+            try {
+              htmlContent = marked.parse(p.content || '');
+            } catch(e) {
+              htmlContent = '<p>' + escapeHtml(p.content || '') + '</p>';
+            }
+
+            const isOwner = currentUser && currentUser.id === p.user_id;
+            const deleteBtn = isOwner
+              ? '<button class="btn btn-danger del-post-btn" data-id="' + p.id + '" title="删除帖子">🗑 删除</button>'
+              : '';
+
+            return '<div class="post-card mica" style="animation-delay:' + (i * 0.03) + 's">' +
+              '<div class="post-header">' +
+                '<div class="post-title">' + escapeHtml(p.title || '无标题') + '</div>' +
+                '<div class="post-actions">' + deleteBtn + '</div>' +
+              '</div>' +
+              '<div class="post-meta">' +
+                '<span class="author">' + escapeHtml(p.nick || '匿名') + '</span>' +
+                '<span>·</span>' +
+                '<span>' + formatDate(p.created_at) + '</span>' +
+              '</div>' +
+              '<div class="post-content">' + htmlContent + '</div>' +
+              '</div>';
+          }).join('');
+
+          // 绑定删除按钮事件
+          list.querySelectorAll('.del-post-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+              const postId = this.dataset.id;
+              const post = loadedPosts.find(p => p.id === postId);
+              const title = post ? post.title : '这条讨论';
+              if (!confirm('确定删除「' + title + '」吗？此操作不可撤销。')) return;
+
+              const { error } = await sb.from('posts').delete().eq('id', postId);
+              if (error) { toast('删除失败：' + error.message); return; }
+              toast('已删除');
+              loadPosts();
+            });
+          });
+        } catch(e) {
+          console.warn('Load posts error:', e);
+          empty.textContent = '加载讨论失败，请刷新页面重试';
+          empty.style.display = '';
+        }
+      }
+
+      // ====================== 发布帖子 ======================
+      async function submitPost() {
+        const title = document.getElementById('postTitle').value.trim();
+        const content = getEditorContent().trim();
+
+        if (!title) { toast('请输入讨论标题'); return; }
+        if (!content) { toast('请输入讨论内容'); return; }
+        if (!currentUser) { toast('请先登录'); return; }
+
+        const btn = document.getElementById('submitPostBtn');
+        btn.disabled = true;
+        btn.textContent = '发布中...';
+
+        try {
+          const nick = currentUser.user_metadata?.nick || currentUser.email?.split('@')[0] || '用户';
+          const { error } = await sb.from('posts').insert([{
+            user_id: currentUser.id,
+            nick: nick,
+            title: title,
+            content: content
+          }]);
+
+          if (error) throw error;
+
+          toast('讨论发布成功！');
+          clearEditor();
+          document.getElementById('postFormWrap').style.display = 'none';
+          destroyEditor();
+          loadPosts();
+        } catch(e) {
+          toast('发布失败：' + (e.message || '未知错误'));
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '发布讨论';
+        }
+      }
+
+      document.getElementById('submitPostBtn').addEventListener('click', submitPost);
+      document.getElementById('cancelPostBtn').addEventListener('click', () => {
+        document.getElementById('postFormWrap').style.display = 'none';
+        clearEditor();
+        destroyEditor();
+      });
+
+      // ====================== 认证监听 ======================
+      if (sb) {
+        sb.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            if (session?.user) {
+              updateAuthUI(session.user);
+              loadPosts();
+            }
+          } else if (event === 'SIGNED_OUT') {
+            updateAuthUI(null);
+            document.getElementById('postFormWrap').style.display = 'none';
+            destroyEditor();
+            loadPosts();
+          } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) currentUser = session.user;
+          }
+        });
+
+        sb.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            updateAuthUI(session.user);
+          } else {
+            updateAuthUI(null);
+          }
+          loadPosts();
+        });
+      } else {
+        updateAuthUI(null);
+        loadPosts();
+      }
+    })();
+  </script>
+</body>
+</html>
