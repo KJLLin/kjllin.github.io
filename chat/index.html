@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3b82f6">
-  <title>在线聊天室</title>
+  <title>站内信 · KJLLin</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -106,7 +106,7 @@
 
     <!-- 聊天输入栏 -->
     <div class="chat-input-wrapper">
-      <textarea id="msgInput" placeholder="输入消息，Shift+Enter换行，Enter发送..." rows="1"></textarea>
+      <textarea id="msgInput" placeholder="输入消息，Shift+Enter换行，Enter发送..." rows="1" maxlength="500"></textarea>
       <button id="sendBtn" class="btn btn-primary btn-send">发送</button>
     </div>
   </section>
