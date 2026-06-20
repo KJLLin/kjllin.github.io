@@ -219,7 +219,7 @@
     });
 
     // Turnstile token 存储（由自动渲染的 callback 写入）
-    let _captchaAnswer = 0;
+    // ====================== 数学验证码（每个面板独立答案） ======================
     function refreshCaptcha(questionEl, answerEl) {
       const a = Math.floor(Math.random() * 20) + 1;
       const b = Math.floor(Math.random() * 20) + 1;
@@ -229,14 +229,15 @@
       if (op === '+') { result = a + b; }
       else if (op === '-') { result = a - b; }
       else { result = a * b; }
-      _captchaAnswer = result;
       questionEl.textContent = `${a} ${op} ${b} = ?`;
+      questionEl.dataset.answer = result;  // 答案存储在元素上，各面板独立
       if (answerEl) answerEl.value = '';
     }
-    function verifyCaptcha(answerEl) {
+    function verifyCaptcha(questionEl, answerEl) {
       const val = parseInt(answerEl.value);
+      const expected = parseInt(questionEl.dataset.answer || '0');
       if (isNaN(val)) { toast('请输入验证答案'); return false; }
-      if (val !== _captchaAnswer) { toast('验证答案错误，请重试'); refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer')); return false; }
+      if (val !== expected) { toast('验证答案错误，请重试'); refreshCaptcha(questionEl, answerEl); return false; }
       return true;
     }
     refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer'));
@@ -249,7 +250,7 @@
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
       if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
-      if (!verifyCaptcha($('#captchaAnswer'))) return;
+      if (!verifyCaptcha($('#captchaQuestion'), $('#captchaAnswer'))) return;
 
       const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
       try {
@@ -272,7 +273,7 @@
       if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
-      if (!verifyCaptcha($('#captchaAnswerReg'))) return;
+      if (!verifyCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg'))) return;
       const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });
