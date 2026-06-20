@@ -1,1393 +1,544 @@
-// ====================== 核心配置（唯一常量源，无冗余） ======================
-const APP_CONFIG = Object.freeze({
+// ====================== 配置 ======================
+const CFG = Object.freeze({
   SUPABASE_URL: "https://ayavdkodhdmcxfufnnxo.supabase.co",
   SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc",
-  TIMEOUT: { API: 10000, LOGIN: 20000, IP_FETCH: 3000 },
-  INTERVAL: { HEARTBEAT: 30000, SESSION_CHECK: 60000, VISIBILITY_DEBOUNCE: 300 },
-  IP_API_LIST: ["https://api.ip.sb/ip", "https://ip.3322.net", "https://api.ipify.org?format=text"],
-  IP_CACHE_TTL: 3600000,
-  DEFAULT_CONFIG: Object.freeze({ id: 1, require_verify: false, sensitive_words: "", announcement: "" }),
-  CONFIG_ID: 1,
-  SESSION_MAX_RETRY: 2
 });
 
-// ====================== 请求控制器（核心修复：无永久失效、无内存泄漏） ======================
-const RequestController = {
-  _controllers: new Set(),
-  // 每个请求生成独立Signal，彻底解决页面切换导致的请求失效
-  getSignal() {
-    const controller = new AbortController();
-    this._controllers.add(controller);
-    controller.signal.addEventListener('abort', () => this._controllers.delete(controller), { once: true });
-    return controller.signal;
-  },
-  // 全局取消所有请求，重置环境
-  reset() {
-    try {
-      this._controllers.forEach(c => !c.signal.aborted && c.abort());
-      this._controllers.clear();
-    } catch {}
-  }
+// ====================== DOM 引用 ======================
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+// ====================== Supabase ======================
+let sb;
+
+// ====================== 全局状态 ======================
+const S = {
+  user: null,          // { id, email, nick }
+  partners: {},        // { [id]: { nick, email } }
+  conversations: [],   // [{ partnerId, latestText, latestTime, unread }]
+  selectedId: null,
+  messages: [],
+  channel: null,
+  searchLock: false,
 };
 
-// ====================== 工具函数（精简、健壮、无冗余） ======================
-const Utils = {
-  // 本地存储（修复this指向，增加异常容错）
-  Storage: {
-    _ok: (() => {
-      try { const k = "__t__"; localStorage.setItem(k, k); localStorage.removeItem(k); return true; }
-      catch { return false; }
-    })(),
-    get(k) { try { return this._ok ? (localStorage.getItem(k) || "") : ""; } catch { return ""; } },
-    set(k, v) { try { return this._ok ? (localStorage.setItem(k, v), true) : false; } catch { return false; } },
-    remove(k) { try { return this._ok ? (localStorage.removeItem(k), true) : false; } catch { return false; } },
-    clear() { try { return this._ok ? (localStorage.clear(), true) : false; } catch { return false; } }
-  },
-
-  // DOM查询缓存（避免重复查询，提升性能）
-  $cache: Object.create(null),
-  $(selector) {
-    if (!this.$cache[selector]) {
-      this.$cache[selector] = document.querySelector(selector) || {
-        addEventListener: () => {}, removeEventListener: () => {},
-        innerText: '', innerHTML: '', value: '', disabled: false, checked: false,
-        classList: { add: () => {}, remove: () => {} }, style: { display: 'none' }
-      };
-    }
-    return this.$cache[selector];
-  },
-  $$(selector) { return document.querySelectorAll(selector) || []; },
-  clearCache() { this.$cache = Object.create(null); },
-
-  // XSS防护
-  escapeHtml(str) {
+// ====================== 工具函数 ======================
+const U = {
+  escape(str) {
     if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
-
-  // 防抖（支持取消）
-  debounce(fn, wait) {
-    let timer = null;
-    const debounced = (...args) => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { timer = null; fn(...args); }, wait);
-    };
-    debounced.cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
-    return debounced;
+  time(str) {
+    if (!str) return '';
+    const d = new Date(str);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (isToday) return `${hh}:${mm}`;
+    const M = d.getMonth() + 1;
+    const D = d.getDate();
+    return `${M}/${D} ${hh}:${mm}`;
   },
-
-  // 节流（避免重复执行）
-  throttle(fn, limit) {
-    let inThrottle = false;
-    return function(...args) {
-      if (!inThrottle) {
-        inThrottle = true;
-        Promise.resolve(fn.apply(this, args))
-          .finally(() => setTimeout(() => inThrottle = false, limit));
-      }
-    };
-  },
-
-  // 智能定时器（支持暂停/恢复，适配页面可见性）
-  createTimer(fn, interval) {
-    let timer = null;
-    let paused = false;
-    return {
-      start() {
-        if (timer) clearInterval(timer);
-        paused = false;
-        timer = setInterval(() => fn(), interval);
-      },
-      pause() {
-        paused = true;
-        if (timer) { clearInterval(timer); timer = null; }
-      },
-      resume() {
-        if (!paused) return;
-        paused = false;
-        if (timer) clearInterval(timer);
-        timer = setInterval(() => fn(), interval);
-      },
-      stop() { if (timer) { clearInterval(timer); timer = null; } paused = false; }
-    };
-  },
-
-  // 兼容全环境的UUID生成
-  uuid() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      try { return crypto.randomUUID(); } catch {}
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-  },
-
-  // 统一请求处理（全错误捕获，超时控制）
-  async request(promise, timeoutMsg = "请求超时") {
-    let timer;
+  async request(promise, msg) {
     try {
-      const res = await Promise.race([
-        promise,
-        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(timeoutMsg)), APP_CONFIG.TIMEOUT.API); })
-      ]);
-      clearTimeout(timer);
-      if (res?.error) throw res.error;
-      return res;
+      const r = await promise;
+      if (r.error) throw r.error;
+      return r;
     } catch (e) {
-      clearTimeout(timer);
-      throw new Error(Utils.formatErr(e));
+      Toast.error(msg || e.message || '请求失败');
+      throw e;
     }
   },
-
-  // 邮箱格式校验
-  isEmail(str) { return /^[a-zA-Z0-9]+(?:[._%+-][a-zA-Z0-9]+)*@[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/.test(String(str).trim()); },
-
-  // 错误信息格式化（友好提示）
-  formatErr(err) {
-    const msg = typeof err === "string" ? err : (err?.message || err?.toString() || "未知错误");
-    if (msg.includes("429") || msg.includes("rate limit")) return "请求过于频繁，请1分钟后再试";
-    if (msg.includes("JWT") || msg.includes("token") || msg.includes("expired")) return "登录已过期，请重新登录";
-    if (msg.includes("Email not confirmed")) return "邮箱未验证，请验证后登录";
-    if (msg.includes("Invalid login credentials")) return "邮箱或密码错误";
-    if (msg.includes("already registered")) return "该邮箱已被注册，请直接登录";
-    if (msg.includes("banned")) return "账号已被封禁";
-    if (msg.includes("multiple rows")) return "数据异常，已自动修复，请重试";
-    return msg;
-  },
-
-  // 兼容低版本的Promise.any
-  promiseAny(promises) {
-    if (Promise.any) return Promise.any(promises);
-    return new Promise((res, rej) => {
-      if (!promises.length) rej(new Error("所有请求失败"));
-      let errCount = 0;
-      promises.forEach(p => Promise.resolve(p).then(res).catch(() => {
-        if (++errCount === promises.length) rej(new Error("所有请求失败"));
-      }));
-    });
-  }
 };
 
-// ====================== IP获取模块（精简，无冗余） ======================
-const IPUtils = {
-  async getIP() {
-    const cache = sessionStorage.getItem("user_ip");
-    const cacheTime = sessionStorage.getItem("user_ip_time");
-    if (cache && cacheTime && Date.now() - Number(cacheTime) < APP_CONFIG.IP_CACHE_TTL) return cache;
-
-    try {
-      const promises = APP_CONFIG.IP_API_LIST.map(api =>
-        fetch(api, { method: "GET", signal: RequestController.getSignal(), headers: { Accept: "text/plain" } })
-          .then(res => res.ok ? res.text().then(t => t.trim()) : Promise.reject())
-      );
-      const ip = await Utils.promiseAny(promises);
-      if (!/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip)) throw new Error();
-      
-      sessionStorage.setItem("user_ip", ip);
-      sessionStorage.setItem("user_ip_time", Date.now().toString());
-      return ip;
-    } catch {
-      return "未知IP";
-    }
+// ====================== Toast 通知 ======================
+const Toast = {
+  _t: null,
+  show(text, type) {
+    const el = $('#toast');
+    if (this._t) clearTimeout(this._t);
+    el.className = `toast ${type}`;
+    el.textContent = text;
+    el.classList.remove('hidden');
+    this._t = setTimeout(() => el.classList.add('hidden'), 4000);
   },
-  clearCache() {
-    sessionStorage.removeItem("user_ip");
-    sessionStorage.removeItem("user_ip_time");
-  }
+  info(t) { this.show(t, 'info'); },
+  error(t) { this.show(t, 'error'); },
+  success(t) { this.show(t, 'success'); },
 };
 
-// ====================== 通知模块（精简，无冗余） ======================
-const Notify = {
-  _timer: null,
-  show(type, text) {
-    try {
-      if (this._timer) clearTimeout(this._timer);
-      const el = Utils.$("#winNotify");
-      el.className = `win-notify ${type}`;
-      el.innerText = text;
-      el.classList.remove("hidden");
-      this._timer = setTimeout(() => { el.classList.add("hidden"); this._timer = null; }, 6000);
-    } catch { alert(text); }
-  },
-  success: (t) => Notify.show('success', t),
-  error: (t) => Notify.show('error', t),
-  warning: (t) => Notify.show('warning', t),
-  info: (t) => Notify.show('info', t)
-};
-
-// ====================== 全局状态（精简，无冗余，全生命周期管理） ======================
-const AppState = {
-  sb: null,
-  user: null,
-  userNick: Utils.Storage.get("nick"),
-  sessionToken: Utils.Storage.get("chat_current_session_token"),
-  isInit: false,
-  isLoadingMsg: false,
-  config: { ...APP_CONFIG.DEFAULT_CONFIG },
-  _locks: Object.freeze({
-    login: false, logout: false, auth: false, init: false, register: false,
-    admin_load: false, admin_verify: false, admin_offline: false, admin_mute: false,
-    admin_status: false, admin_pwd: false, admin_config: false, admin_msg: false,
-    page_resume: false
-  }),
-  channels: Object.create(null),
-  timers: Object.create(null),
-  debounces: Object.create(null),
-  sessionRetryCount: 0,
-
-  lock(key) { return this._locks.hasOwnProperty(key) && (this._locks[key] = true); },
-  unlock(key) { return this._locks.hasOwnProperty(key) && (this._locks[key] = false); },
-  isLocked(key) { return this._locks[key] || false; },
-
-  // 全量重置，无任何残留
-  reset() {
-    RequestController.reset();
-    // 清理防抖实例
-    Object.values(this.debounces).forEach(d => d.cancel?.());
-    this.debounces = Object.create(null);
-    // 清理实时通道
-    try {
-      if (this.sb) Object.values(this.channels).forEach(c => {
-        c.unsubscribe().catch(() => {});
-        this.sb.removeChannel(c).catch(() => {});
-      });
-    } catch {}
-    this.channels = Object.create(null);
-    // 清理所有定时器
-    if (this.timers.forceCloseLoader) clearTimeout(this.timers.forceCloseLoader);
-    Object.values(this.timers).forEach(t => {
-      if (typeof t === 'number') clearTimeout(t);
-      else t.stop?.();
-    });
-    this.timers = Object.create(null);
-    // 重置UI
-    const adminBtn = Utils.$("#adminBtn");
-    adminBtn.style.display = "none";
-    adminBtn.classList.add("hidden");
-    // 重置状态
-    this.user = null;
-    this.userNick = "";
-    this.sessionToken = "";
-    this.isInit = false;
-    this.isLoadingMsg = false;
-    this.config = { ...APP_CONFIG.DEFAULT_CONFIG };
-    this.sessionRetryCount = 0;
-    // 清理存储
-    Utils.Storage.remove("chat_current_session_token");
-    Utils.Storage.remove("nick");
-    IPUtils.clearCache();
-    Utils.clearCache();
-    // 重置按钮
-    ["loginBtn", "regBtn", "sendBtn", "logoutBtn"].forEach(id => {
-      const btn = Utils.$(`#${id}`);
-      btn.disabled = false;
-      btn.innerText = id === "loginBtn" ? "登录" : id === "regBtn" ? "注册" : id === "sendBtn" ? "发送" : "退出登录";
-    });
-    // 解锁所有锁
-    Object.keys(this._locks).forEach(k => this.unlock(k));
-    // 清空输入框
-    ["msgInput", "loginEmail", "loginPwd", "regNick", "regEmail", "regPwd", "nickInput", "newPwdInput"].forEach(id => {
-      Utils.$(`#${id}`).value = "";
-    });
-  },
-
-  // 页面切回时的环境恢复（加锁防重复执行）
-  async resume() {
-    if (!this.user || !this.isInit || this.isLocked("page_resume")) return;
-    this.lock("page_resume");
-    try {
-      RequestController.reset();
-      // 校验会话有效性
-      const { data: { session } } = await this.sb.auth.getSession();
-      if (!session) {
-        await Session.invalid("登录已过期，请重新登录");
-        return;
-      }
-      // 重连断连的实时通道
-      this.reconnectChannels();
-      // 恢复定时任务
-      Object.values(this.timers).forEach(t => t.resume?.());
-      // 同步最新状态
-      await Promise.allSettled([Config.sync(), Online.mark(), Online.refresh(), Chat.load()]);
-      // 重置重试计数
-      this.sessionRetryCount = 0;
-    } catch (e) {
-      console.warn("页面恢复失败", e);
-    } finally {
-      this.unlock("page_resume");
-    }
-  },
-
-  // 页面隐藏时的暂停处理
-  pause() {
-    if (!this.user || !this.isInit) return;
-    Object.values(this.timers).forEach(t => t.pause?.());
-  },
-
-  // 重连实时通道（修复：准确判断通道状态）
-  reconnectChannels() {
-    try {
-      Object.values(this.channels).forEach(c => {
-        if (['closed', 'errored', 'timed_out'].includes(c.state)) {
-          c.subscribe().catch(() => {});
-        }
-      });
-    } catch {}
-  }
-};
-
-// ====================== UI模块（精简，无冗余，体验优化） ======================
-const UI = {
-  closeLoader() {
-    try {
-      if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
-      const loader = Utils.$("#loadingPage");
-      loader.style.opacity = 0;
-      setTimeout(() => { loader.classList.add("hidden"); loader.style.display = "none"; }, 300);
-    } catch { Utils.$("#loadingPage")?.remove(); }
-  },
-
-  showPage(pageId) {
-    try {
-      // 统一登录：跳转到 /login/ 页面，登录后返回当前页
-      if (pageId === "loginPage" || pageId === "registerPage") {
-        window.location.href = '/login/?redirect=/chat';
-        return;
-      }
-      const needLogin = ["chatPage", "settingPage", "adminPage"].includes(pageId);
-      if (needLogin && !AppState.isInit) {
-        AppState.reset();
-        UI.showPage("loginPage");
-        UI.closeLoader();
-        return;
-      }
-      if (pageId === "adminPage" && !AppState.user?.isAdmin) {
-        Notify.error("你没有管理员权限");
-        return;
-      }
-      // 切换页面
-      Utils.$$(".page").forEach(p => {
-        p.classList.remove("active");
-        p.classList.add("hidden");
-      });
-      const target = Utils.$(`#${pageId}`);
-      target.classList.remove("hidden");
-      target.classList.add("active");
-      target.scrollTop = 0;
-      // 页面后置处理
-      if (pageId === "chatPage") {
-        setTimeout(() => {
-          UI.showAdminBtn();
-          Utils.$("#msgInput").focus(); // 自动聚焦输入框，提升体验
-        }, 50);
-      }
-    } catch (e) { Notify.error("页面切换失败：" + Utils.formatErr(e)); }
-  },
-
-  showAdminBtn() {
-    try {
-      const btn = Utils.$("#adminBtn");
-      if (!AppState.user?.isAdmin) {
-        btn.style.display = "none";
-        btn.classList.add("hidden");
-        return false;
-      }
-      btn.classList.remove("hidden");
-      btn.style.display = "inline-block";
-      return true;
-    } catch { return false; }
-  },
-
-  initTheme() {
-    try {
-      const mode = Utils.Storage.get("theme");
-      const dark = mode === 'dark' || (!mode && window.matchMedia("(prefers-color-scheme: dark)").matches);
-      document.documentElement.dataset.theme = dark ? "dark" : "";
-      Utils.$("#toggleThemeBtn").innerText = mode === 'dark' ? "☀️ 浅色模式" : mode === 'light' ? "🌙 深色模式" : "🅐 跟随系统";
-    } catch {}
-  },
-
-  toggleTheme() {
-    try {
-      const mode = Utils.Storage.get("theme");
-      if (!mode) Utils.Storage.set("theme", "light");
-      else if (mode === 'light') Utils.Storage.set("theme", "dark");
-      else Utils.Storage.remove("theme");
-      this.initTheme();
-    } catch { Notify.error("主题切换失败"); }
-  },
-
-  updateUserAvatar(nick) {
-    try { Utils.$("#userAvatar").innerText = (nick || "用户").charAt(0); }
-    catch {}
-  },
-
-  updateAnnounce(content) {
-    try {
-      const bar = Utils.$("#announceBar");
-      const textEl = Utils.$("#announceText");
-      if (content?.trim()) {
-        textEl.innerText = content;
-        bar.classList.remove("hidden");
-      } else {
-        bar.classList.add("hidden");
-      }
-    } catch {}
-  }
-};
-
-// ====================== 系统配置模块（精简，无冗余） ======================
-const Config = {
-  async sync() {
-    try {
-      const { data } = await Utils.request(
-        AppState.sb.from("system_config").select("*").limit(1).order("id", { ascending: true })
-      );
-      if (data && data.length > 0) {
-        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...data[0] };
-        // 自动清理脏数据
-        if (data.length > 1) {
-          await Utils.request(
-            AppState.sb.from("system_config").delete().neq("id", APP_CONFIG.CONFIG_ID)
-          ).catch(() => {});
-        }
-      } else {
-        await Utils.request(AppState.sb.from("system_config").insert([APP_CONFIG.DEFAULT_CONFIG]));
-        AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
-      }
-    } catch (e) {
-      console.warn("配置同步失败", e);
-      AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG };
-    }
-  },
-
-  async save(updateData) {
-    if (AppState.isLocked("admin_config")) {
-      Notify.warning("正在保存配置，请稍候...");
-      return false;
-    }
-    AppState.lock("admin_config");
-    try {
-      const saveData = { ...APP_CONFIG.DEFAULT_CONFIG, ...AppState.config, ...updateData, id: APP_CONFIG.CONFIG_ID };
-      await Utils.request(AppState.sb.from("system_config").upsert(saveData, { onConflict: "id" }));
-      AppState.config = saveData;
-      return true;
-    } catch (e) {
-      Notify.error("配置保存失败：" + Utils.formatErr(e));
-      return false;
-    } finally {
-      AppState.unlock("admin_config");
-    }
-  },
-
-  initRealtime() {
-    try {
-      if (AppState.channels.config) AppState.sb.removeChannel(AppState.channels.config).catch(() => {});
-      AppState.channels.config = AppState.sb.channel("config")
-        .on("postgres_changes", { event: "*", schema: "public", table: "system_config" }, (payload) => {
-          if (payload.new) {
-            AppState.config = { ...APP_CONFIG.DEFAULT_CONFIG, ...payload.new };
-            UI.updateAnnounce(payload.new.announcement);
-          }
-        })
-        .subscribe();
-    } catch {}
-  }
-};
-
-// ====================== 会话校验模块（修复：无强制下线误判） ======================
-const Session = {
-  async invalid(reason = "账号在其他设备登录，已为你安全下线") {
-    try {
-      Notify.error(reason);
-      AppState.isInit = false;
-      if (AppState.sb) await AppState.sb.auth.signOut().catch(() => {});
-      AppState.reset();
-      Utils.Storage.clear();
-      UI.showPage("loginPage");
-      setTimeout(() => window.location.reload(), 800);
-    } catch {
-      AppState.reset();
-      window.location.href = `${window.location.origin}/chat`;
-    }
-  },
-
-  // 会话校验：页面隐藏时不计数，重试超限才下线
-  async check() {
-    if (!AppState.user || !AppState.isInit) return;
-    try {
-      const { data } = await Utils.request(
-        AppState.sb.from("users").select("current_session_token, status").eq("id", AppState.user.id).limit(1)
-      );
-      if (data && data.length > 0) {
-        const userData = data[0];
-        if (userData.current_session_token !== AppState.sessionToken) await Session.invalid();
-        if (userData.status === "pending" || userData.status === "ban") {
-          await Session.invalid(userData.status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
-        }
-        AppState.sessionRetryCount = 0;
-      }
-    } catch (e) {
-      if (document.hidden) return;
-      AppState.sessionRetryCount++;
-      if (AppState.sessionRetryCount >= APP_CONFIG.SESSION_MAX_RETRY) {
-        await Session.invalid("会话校验失败，请重新登录");
-      }
-    }
-  },
-
-  initCheck() {
-    try {
-      if (!AppState.user) return;
-      if (AppState.channels.session) AppState.sb.removeChannel(AppState.channels.session).catch(() => {});
-      // 实时监听账号状态变化
-      AppState.channels.session = AppState.sb.channel("session")
-        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${AppState.user.id}` },
-          async (payload) => {
-            try {
-              const { current_session_token, status } = payload.new || {};
-              if (current_session_token && current_session_token !== AppState.sessionToken) await Session.invalid();
-              if (status === "pending" || status === "ban") {
-                await Session.invalid(status === "ban" ? "账号已被封禁" : "账号正在等待管理员审核");
-              }
-            } catch {}
-          }
-        )
-        .subscribe();
-      // 定时兜底校验
-      if (AppState.timers.sessionCheck) AppState.timers.sessionCheck.stop();
-      AppState.timers.sessionCheck = Utils.createTimer(() => Session.check(), APP_CONFIG.INTERVAL.SESSION_CHECK);
-      AppState.timers.sessionCheck.start();
-    } catch {}
-  }
-};
-
-// ====================== 认证模块（精简，无冗余，全容错） ======================
-const Auth = {
-  register: Utils.throttle(async () => {
-    if (AppState.isLocked("register")) return Notify.warning("正在注册中，请稍候...");
-    AppState.lock("register");
-    const regBtn = Utils.$("#regBtn");
-    regBtn.disabled = true;
-    regBtn.innerText = "注册中...";
-    let authUserId = null;
-
-    try {
-      const nick = Utils.$("#regNick").value.trim();
-      const email = Utils.$("#regEmail").value.trim();
-      const pwd = Utils.$("#regPwd").value.trim();
-      
-      if (!nick || !email || !pwd) throw new Error("请填写完整注册信息");
-      if (!Utils.isEmail(email)) throw new Error("请输入正确的邮箱格式");
-      if (pwd.length < 8) throw new Error("密码长度不能少于8位");
-
-      await Config.sync();
-      const defaultStatus = AppState.config.require_verify ? "pending" : "active";
-      const { data: authData, error: authError } = await Utils.request(
-        AppState.sb.auth.signUp({
-          email, password: pwd,
-          options: { data: { nick }, emailRedirectTo: `${window.location.origin}/chat` }
-        }), "注册请求超时"
-      );
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("注册失败，未获取到用户信息");
-      authUserId = authData.user.id;
-
-      await Utils.request(
-        AppState.sb.from("users").upsert([{
-          id: authUserId, nick, email, is_admin: false,
-          status: defaultStatus, created_at: new Date().toISOString()
-        }], { onConflict: "id" })
-      );
-
-      if (AppState.config.require_verify) await AppState.sb.auth.signOut().catch(() => {});
-      Notify.success(AppState.config.require_verify ? "注册成功！账号正在等待管理员审核" : "注册成功，请前往邮箱验证后登录");
-      ["regNick", "regEmail", "regPwd"].forEach(id => Utils.$(`#${id}`).value = "");
-      UI.showPage("loginPage");
-    } catch (e) {
-      Notify.error(`注册失败：${Utils.formatErr(e)}`);
-    } finally {
-      setTimeout(() => {
-        AppState.unlock("register");
-        regBtn.disabled = false;
-        regBtn.innerText = "完成注册";
-      }, 300);
-    }
-  }, 2000),
-
-  login: Utils.throttle(async () => {
-    if (AppState.isLocked("login")) return Notify.warning("正在登录中，请稍候...");
-    AppState.lock("login");
-    const loginBtn = Utils.$("#loginBtn");
-    loginBtn.disabled = true;
-    loginBtn.innerText = "登录中...";
-
-    try {
-      const email = Utils.$("#loginEmail").value.trim();
-      const pwd = Utils.$("#loginPwd").value.trim();
-      if (!email || !pwd) throw new Error("请填写邮箱和密码");
-      if (!Utils.isEmail(email)) throw new Error("请输入正确的邮箱格式");
-
-      await Utils.request(
-        AppState.sb.auth.signInWithPassword({ email, password: pwd }), "登录请求超时"
-      );
-    } catch (e) {
-      Notify.error(`登录失败：${Utils.formatErr(e)}`);
-    } finally {
-      setTimeout(() => {
-        AppState.unlock("login");
-        loginBtn.disabled = false;
-        loginBtn.innerText = "登录";
-      }, 300);
-    }
-  }, 2000),
-
-  async handleAuthChange(event, session) {
-    if (AppState.isLocked("auth")) return;
-    AppState.lock("auth");
-
-    try {
-      // 静默事件：不打断用户会话
-      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
-      if (event === "PASSWORD_RECOVERY" || event === "MFA_CHALLENGE_VERIFIED") return;
-
-      if (event === "TOKEN_EXPIRED" || event === "SIGNED_OUT" || event === "USER_DELETED") {
-        AppState.reset();
-        UI.showPage("loginPage");
-        UI.closeLoader();
-        return;
-      }
-      if (!["SIGNED_IN", "INITIAL_SESSION"].includes(event) || !session?.user) {
-        AppState.reset();
-        UI.showPage("loginPage");
-        UI.closeLoader();
-        return;
-      }
-
-      await Config.sync();
-      let userInfo = null;
-      try {
-        const { data } = await Utils.request(
-          AppState.sb.from("users").select("*").eq("id", session.user.id).limit(1)
-        );
-        if (data && data.length > 0) userInfo = data[0];
-      } catch {}
-
-      if (!userInfo) {
-        const { data: newUser } = await Utils.request(
-          AppState.sb.from("users").insert([{
-            id: session.user.id,
-            nick: session.user.user_metadata?.nick || session.user.email.split('@')[0],
-            email: session.user.email, is_admin: false,
-            status: AppState.config.require_verify ? "pending" : "active",
-            created_at: session.user.created_at || new Date().toISOString()
-          }]).select().limit(1)
-        );
-        if (newUser && newUser.length > 0) userInfo = newUser[0];
-      }
-
-      if (!userInfo) throw new Error("用户信息初始化失败，请刷新重试");
-      if (userInfo.status === "ban") throw new Error("账号已被封禁，无法登录");
-      if (userInfo.status === "pending") {
-        await AppState.sb.auth.signOut().catch(() => {});
-        throw new Error("你的账号正在等待管理员审核，审核通过后即可登录");
-      }
-
-      Notify.info("账号验证成功，正在进入聊天...");
-      AppState.user = session.user;
-      AppState.user.isAdmin = [true, 'true', 1].includes(userInfo.is_admin);
-      AppState.userNick = Utils.Storage.get("nick") || userInfo.nick || "用户";
-      Utils.Storage.set("nick", AppState.userNick);
-      UI.updateUserAvatar(AppState.userNick);
-
-      Utils.Storage.remove("chat_current_session_token");
-      const newToken = Utils.uuid();
-      AppState.sessionToken = newToken;
-      Utils.Storage.set("chat_current_session_token", newToken);
-
-      await Utils.request(
-        AppState.sb.from("users").update({
-          current_session_token: newToken, last_login_time: new Date().toISOString()
-        }).eq("id", AppState.user.id)
-      );
-
-      AppState.isInit = true;
-      Notify.success("登录成功，欢迎使用");
-      if (AppState.user.isAdmin) Notify.success("管理员账号登录成功！");
-
-      UI.showPage("chatPage");
-      UI.closeLoader();
-      if (AppState.timers.forceCloseLoader) clearTimeout(AppState.timers.forceCloseLoader);
-      Utils.$("#userTag").innerText = `用户：${AppState.userNick}`;
-      // 清空登录输入框
-      ["loginEmail", "loginPwd"].forEach(id => Utils.$(`#${id}`).value = "");
-
-      setTimeout(async () => {
-        try {
-          Chat.init(); // 重新初始化 Chat（reset 会清理 debounces）
-          Session.initCheck();
-          await Chat.load();
-          Chat.initRealtime();
-          await Online.mark();
-          await Online.refresh();
-          Online.initRealtime();
-          Config.initRealtime();
-          Heartbeat.init();
-          await LoginLog.record();
-        } catch {
-          Notify.warning("部分功能加载失败，不影响聊天使用");
-        }
-      }, 0);
-    } catch (e) {
-      Notify.error(`登录异常：${Utils.formatErr(e)}`);
-      AppState.reset();
-      await AppState.sb.auth.signOut().catch(() => {});
-      UI.showPage("loginPage");
-      UI.closeLoader();
-    } finally {
-      AppState.unlock("auth");
-    }
-  },
-
-  async logout() {
-    if (AppState.isLocked("logout")) return Notify.warning("正在退出中，请稍候...");
-    AppState.lock("logout");
-    const logoutBtn = Utils.$("#logoutBtn");
-    logoutBtn.disabled = true;
-    logoutBtn.innerText = "退出中...";
-
-    try {
-      Notify.info("正在安全退出...");
-      RequestController.reset();
-      if (AppState.user && AppState.sb) {
-        await Utils.request(
-          AppState.sb.from("users").update({ current_session_token: null }).eq("id", AppState.user.id)
-        ).catch(() => {});
-        await Utils.request(
-          AppState.sb.from("online_users").delete().eq("user_id", AppState.user.id)
-        ).catch(() => {});
-      }
-      if (AppState.sb) await AppState.sb.auth.signOut();
-      
-      AppState.reset();
-      Utils.Storage.clear();
-      UI.showPage("loginPage");
-      Notify.success("已安全退出登录");
-    } catch (e) {
-      Notify.error(`退出失败：${Utils.formatErr(e)}`);
-      AppState.reset();
-      Utils.Storage.clear();
-      UI.showPage("loginPage");
-    } finally {
-      setTimeout(() => {
-        AppState.unlock("logout");
-        logoutBtn.disabled = false;
-        logoutBtn.innerText = "退出登录";
-      }, 300);
-    }
-  }
-};
-
-// ====================== 聊天模块（精简，体验优化） ======================
-const Chat = {
+// ====================== 主题 ======================
+const Theme = {
   init() {
-    AppState.debounces.loadMsg = Utils.debounce(() => Chat.load(), 300);
+    const mode = localStorage.getItem('theme');
+    if (mode === 'dark') {
+      document.documentElement.dataset.theme = 'dark';
+    } else if (mode === 'light') {
+      document.documentElement.dataset.theme = 'light';
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    this._updateBtn();
   },
+  toggle() {
+    const mode = localStorage.getItem('theme');
+    if (!mode || mode === 'auto') {
+      localStorage.setItem('theme', 'dark');
+      document.documentElement.dataset.theme = 'dark';
+    } else if (mode === 'dark') {
+      localStorage.setItem('theme', 'light');
+      document.documentElement.dataset.theme = 'light';
+    } else {
+      localStorage.removeItem('theme');
+      delete document.documentElement.dataset.theme;
+    }
+    this._updateBtn();
+  },
+  _updateBtn() {
+    const mode = localStorage.getItem('theme');
+    const btn = $('#themeBtn');
+    if (!btn) return;
+    if (mode === 'dark') btn.textContent = '🌙';
+    else if (mode === 'light') btn.textContent = '☀️';
+    else btn.textContent = '🅐';
+  },
+};
+
+// ====================== 对话列表 ======================
+const ConvList = {
   async load() {
-    if (AppState.isLoadingMsg || !AppState.user) return;
-    AppState.isLoadingMsg = true;
-    try {
-      const { data, error } = await Utils.request(
-        AppState.sb.from("messages").select("*").order("id", { ascending: true }).limit(200)
-      );
-      if (error) throw error;
-      Chat.render(data || []);
-    } catch (e) {
-      Notify.error(e.message);
-    } finally {
-      AppState.isLoadingMsg = false;
+    if (!S.user) return;
+    const { data } = await sb
+      .from('private_messages')
+      .select('id, sender_id, recipient_id, text, created_at, read')
+      .or(`sender_id.eq.${S.user.id},recipient_id.eq.${S.user.id}`)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (!data) { this.render(); return; }
+
+    const convMap = {};
+    for (const m of data) {
+      const pid = m.sender_id === S.user.id ? m.recipient_id : m.sender_id;
+      if (!convMap[pid]) {
+        convMap[pid] = { latestText: m.text, latestTime: m.created_at, unread: 0 };
+      }
+      if (m.recipient_id === S.user.id && !m.read) {
+        convMap[pid].unread++;
+      }
     }
+
+    S.conversations = Object.entries(convMap).map(([pid, v]) => ({
+      partnerId: pid,
+      latestText: v.latestText,
+      latestTime: v.latestTime,
+      unread: v.unread,
+    }));
+    S.conversations.sort((a, b) => new Date(b.latestTime) - new Date(a.latestTime));
+
+    // 批量加载用户信息
+    const ids = S.conversations.map(c => c.partnerId);
+    if (ids.length) {
+      const { data: users } = await sb.from('users').select('id, nick, email').in('id', ids);
+      if (users) {
+        for (const u of users) S.partners[u.id] = { nick: u.nick, email: u.email };
+      }
+    }
+
+    this.render();
   },
 
-  render(list) {
-    try {
-      const box = Utils.$("#msgBox");
-      const emptyState = Utils.$("#msgEmptyState");
-      if (!list || list.length === 0) {
-        box.innerHTML = "";
-        emptyState.classList.remove("hidden");
-        return;
-      }
-      emptyState.classList.add("hidden");
-      let html = "";
-      list.forEach(msg => {
-        if (!msg?.id) return;
-        const isMe = msg.user_id === AppState.user.id;
-        const nick = Utils.escapeHtml(msg.nick || "匿名用户");
-        const text = Utils.escapeHtml(msg.text || "");
-        const time = Utils.escapeHtml(msg.time || "");
-        const msgId = Utils.escapeHtml(msg.id.toString());
-        const delBtn = AppState.user.isAdmin ? `<button class="btn btn-danger btn-sm msg-del-btn" data-msg-id="${msgId}">删除</button>` : '';
-        
-        html += `
-          <div class="msg-item ${isMe ? 'msg-me' : 'msg-other'}">
-            <div class="avatar">${nick.charAt(0)}</div>
-            <div class="msg-content">
-              <div class="msg-name">${nick}</div>
-              <div class="bubble-wrapper">
-                <div class="bubble">${text}</div>
-              </div>
-              <div class="msg-time">${time}</div>
+  render() {
+    const el = $('#convList');
+    if (!S.conversations.length) {
+      el.innerHTML = '<div class="conv-empty">暂无对话，搜索用户邮箱发起私信</div>';
+      return;
+    }
+    let html = '';
+    for (const c of S.conversations) {
+      const p = S.partners[c.partnerId];
+      const name = U.escape(p?.nick || p?.email || c.partnerId);
+      const text = U.escape(c.latestText || '').substring(0, 40);
+      const time = U.time(c.latestTime);
+      const badge = c.unread > 0 ? `<span class="conv-badge">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
+      const active = c.partnerId === S.selectedId ? ' active' : '';
+      html += `
+        <div class="conv-item${active}" data-id="${c.partnerId}">
+          <div class="conv-avatar">${name.charAt(0)}</div>
+          <div class="conv-body">
+            <div class="conv-top">
+              <span class="conv-name">${name}</span>
+              <span class="conv-time">${time}</span>
             </div>
-            ${delBtn}
+            <div class="conv-preview">${text}${badge}</div>
           </div>
-        `;
+        </div>`;
+    }
+    el.innerHTML = html;
+  },
+
+  // 更新单个对话（收到新消息时）
+  async refreshOne(partnerId, text, createdAt) {
+    let conv = S.conversations.find(c => c.partnerId === partnerId);
+    if (conv) {
+      conv.latestText = text;
+      conv.latestTime = createdAt;
+      if (partnerId !== S.selectedId) conv.unread++;
+      S.conversations.sort((a, b) => new Date(b.latestTime) - new Date(a.latestTime));
+    } else {
+      S.conversations.unshift({
+        partnerId,
+        latestText: text,
+        latestTime: createdAt,
+        unread: partnerId !== S.selectedId ? 1 : 0,
       });
-      box.innerHTML = html;
-      box.scrollTop = box.scrollHeight;
-    } catch (e) {
-      Notify.error("消息渲染失败");
-      console.error(e);
+      // 加载新用户信息
+      const { data } = await sb.from('users').select('id, nick, email').eq('id', partnerId).limit(1);
+      if (data?.length) S.partners[partnerId] = { nick: data[0].nick, email: data[0].email };
+    }
+    this.render();
+    // 保持选中状态高亮
+    if (S.selectedId) {
+      const item = $(`.conv-item[data-id="${S.selectedId}"]`);
+      if (item) item.classList.add('active');
     }
   },
+};
 
-  initRealtime() {
-    try {
-      if (AppState.channels.chat) AppState.sb.removeChannel(AppState.channels.chat).catch(() => {});
-      AppState.channels.chat = AppState.sb.channel("chat")
-        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => AppState.debounces.loadMsg())
-        .subscribe();
-    } catch {}
+// ====================== 聊天视图 ======================
+const ChatView = {
+  async open(partnerId) {
+    S.selectedId = partnerId;
+    S.messages = [];
+
+    $('#chatPlaceholder').classList.add('hidden');
+    $('#chatView').classList.remove('hidden');
+
+    // 移动端：隐藏侧栏，显示聊天区
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.add('hidden-mobile');
+      document.getElementById('chatMain').classList.remove('hidden-mobile');
+    }
+
+    const p = S.partners[partnerId];
+    $('#chatPartnerName').textContent = p ? `与 ${p.nick || p.email} 的对话` : '对话';
+
+    // 加载消息
+    const { data } = await sb
+      .from('private_messages')
+      .select('*')
+      .or(`and(sender_id.eq.${S.user.id},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${S.user.id})`)
+      .order('created_at', { ascending: true })
+      .limit(200);
+
+    S.messages = data || [];
+    this.render();
+    this.scrollBottom();
+    this.markRead(partnerId);
+    ConvList.render();
+
+    setTimeout(() => $('#msgInput').focus(), 100);
   },
 
-  send: Utils.throttle(async () => {
-    if (!AppState.user || !AppState.isInit) return Notify.error("请先登录");
-    const input = Utils.$("#msgInput");
+  render() {
+    const el = $('#msgList');
+    let html = '';
+    for (const m of S.messages) {
+      const isMe = m.sender_id === S.user.id;
+      const text = U.escape(m.text);
+      const time = U.time(m.created_at);
+      html += `
+        <div class="msg-row ${isMe ? 'msg-me' : 'msg-them'}">
+          <div class="msg-bubble">${text}</div>
+          <div class="msg-time">${time}</div>
+        </div>`;
+    }
+    el.innerHTML = html;
+    this.scrollBottom();
+  },
+
+  append(msg) {
+    const el = $('#msgList');
+    const isMe = msg.sender_id === S.user.id;
+    const text = U.escape(msg.text);
+    const time = U.time(msg.created_at);
+    el.insertAdjacentHTML('beforeend', `
+      <div class="msg-row ${isMe ? 'msg-me' : 'msg-them'} msg-new">
+        <div class="msg-bubble">${text}</div>
+        <div class="msg-time">${time}</div>
+      </div>
+    `);
+    this.scrollBottom();
+  },
+
+  scrollBottom() {
+    const el = $('#msgList');
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  },
+
+  async markRead(partnerId) {
+    await sb
+      .from('private_messages')
+      .update({ read: true })
+      .eq('recipient_id', S.user.id)
+      .eq('sender_id', partnerId)
+      .eq('read', false);
+    // 刷新对话列表中的未读数
+    const conv = S.conversations.find(c => c.partnerId === partnerId);
+    if (conv) { conv.unread = 0; ConvList.render(); }
+  },
+
+  async send() {
+    if (!S.selectedId) return;
+    const input = $('#msgInput');
     const text = input.value.trim();
-    if (!text) return Notify.error("不能发送空消息");
-    if (text.length > 500) return Notify.error("消息不能超过500个字符");
+    if (!text) return Toast.error('不能发送空消息');
+    if (text.length > 500) return Toast.error('消息不能超过500个字符');
 
-    const sendBtn = Utils.$("#sendBtn");
-    sendBtn.disabled = true;
-    sendBtn.innerText = "发送中...";
+    const btn = $('#sendBtn');
+    btn.disabled = true;
+    btn.textContent = '发送中...';
 
     try {
-      // 敏感词过滤+提示
-      const { sensitive_words } = AppState.config;
-      let content = text;
-      let hasSensitive = false;
-      const wordList = (sensitive_words || "").split(",").map(w => w.trim()).filter(w => w);
-      wordList.forEach(word => {
-        if (content.includes(word)) hasSensitive = true;
-        content = content.replaceAll(word, "***");
-      });
-      if (hasSensitive) Notify.warning("内容包含敏感词，已自动替换");
-
-      await Utils.request(
-        AppState.sb.from("messages").insert([{
-          user_id: AppState.user.id,
-          nick: AppState.userNick,
-          text: content,
-          time: new Date().toLocaleString()
-        }])
+      const { data: inserted } = await U.request(
+        sb.from('private_messages').insert([{
+          sender_id: S.user.id,
+          recipient_id: S.selectedId,
+          text,
+        }]).select('*').single(),
+        '发送失败'
       );
-      input.value = "";
-      input.style.height = "auto";
-      input.focus(); // 发送后自动聚焦，方便连续发送
-      await Chat.load();
-    } catch (e) {
-      Notify.error(e.message);
+      // 立即更新 UI（乐观渲染，防止实时推送延迟）
+      if (inserted) {
+        S.messages.push(inserted);
+        ChatView.append(inserted);
+        ConvList.refreshOne(S.selectedId, inserted.text, inserted.created_at);
+      }
+      input.value = '';
+      input.style.height = 'auto';
+      $('#msgInput').focus();
+    } catch {
+      // 错误已在 U.request 中处理
     } finally {
-      sendBtn.disabled = false;
-      sendBtn.innerText = "发送";
+      btn.disabled = false;
+      btn.textContent = '发送';
     }
-  }, 1000)
+  },
 };
 
-// ====================== 在线&心跳模块（精简，无冗余） ======================
-const Online = {
-  async mark() {
-    if (!AppState.user || !AppState.isInit) return;
-    try {
-      await Utils.request(
-        AppState.sb.from("online_users").upsert({
-          user_id: AppState.user.id,
-          nick: AppState.userNick,
-          last_active: new Date().toISOString()
-        }, { onConflict: "user_id" })
-      );
-    } catch {}
+// ====================== 搜索用户 ======================
+const Search = {
+  async input(term) {
+    const el = $('#searchResults');
+    const trimmed = term.trim();
+    if (!trimmed) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+
+    const { data } = await sb
+      .from('users')
+      .select('id, nick, email')
+      .ilike('email', `%${trimmed}%`)
+      .neq('id', S.user.id)
+      .limit(5);
+
+    if (!data?.length) {
+      el.innerHTML = '<div class="search-empty">未找到用户</div>';
+      el.classList.remove('hidden');
+      return;
+    }
+
+    let html = '';
+    for (const u of data) {
+      html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
+        <span class="search-avatar">${(u.nick || u.email).charAt(0)}</span>
+        <div class="search-info">
+          <span class="search-nick">${U.escape(u.nick || '未设置昵称')}</span>
+          <span class="search-email">${U.escape(u.email)}</span>
+        </div>
+      </div>`;
+    }
+    el.innerHTML = html;
+    el.classList.remove('hidden');
   },
 
-  async refresh() {
-    try {
-      const { data } = await Utils.request(AppState.sb.from("online_users").select("*"));
-      Utils.$("#onlineNum").innerText = data?.length || 0;
-    } catch {}
-  },
+  select(userId, nick, email) {
+    // 添加/更新 partner 信息
+    S.partners[userId] = { nick, email };
+    $('#searchResults').classList.add('hidden');
+    $('#searchResults').innerHTML = '';
+    $('#searchInput').value = '';
 
-  initRealtime() {
-    try {
-      if (AppState.channels.online) AppState.sb.removeChannel(AppState.channels.online).catch(() => {});
-      AppState.channels.online = AppState.sb.channel("online")
-        .on("postgres_changes", { event: "*", schema: "public", table: "online_users" }, () => Online.refresh())
-        .subscribe();
-    } catch {}
-  }
-};
-
-const Heartbeat = {
-  init() {
-    if (AppState.timers.heartbeat) AppState.timers.heartbeat.stop();
-    AppState.timers.heartbeat = Utils.createTimer(async () => {
-      if (AppState.user && AppState.isInit) await Online.mark();
-    }, APP_CONFIG.INTERVAL.HEARTBEAT);
-    AppState.timers.heartbeat.start();
-  }
-};
-
-// ====================== 登录日志模块（精简，无冗余） ======================
-const LoginLog = {
-  async record() {
-    if (!AppState.user) return;
-    try {
-      const ip = await IPUtils.getIP();
-      await Utils.request(
-        AppState.sb.from("login_logs").insert([{
-          user_id: AppState.user.id,
-          ip: ip,
-          device: (navigator.userAgent || "未知设备").substring(0, 100),
-          time: new Date().toLocaleString()
-        }])
-      );
-    } catch {}
-  },
-
-  async showMy() {
-    if (!AppState.user || !AppState.isInit) return Notify.error("请先登录");
-    try {
-      Notify.info("正在加载登录日志...");
-      const { data, error } = await Utils.request(
-        AppState.sb.from("login_logs").select("*").eq("user_id", AppState.user.id).order("time", { ascending: false }).limit(10)
-      );
-      if (error) throw error;
-      if (!data?.length) return alert("=== 我的登录日志 ===\n\n暂无登录日志");
-      let text = "=== 我的登录日志 ===\n\n";
-      data.forEach((log, i) => {
-        text += `${i+1}. IP：${Utils.escapeHtml(log.ip || "未知")}\n   时间：${Utils.escapeHtml(log.time || "未知")}\n   设备：${Utils.escapeHtml(log.device || "未知")}\n\n`;
+    // 如果还没有该对话，创建一个空对话
+    if (!S.conversations.find(c => c.partnerId === userId)) {
+      S.conversations.unshift({
+        partnerId: userId,
+        latestText: '',
+        latestTime: new Date().toISOString(),
+        unread: 0,
       });
-      alert(text);
-    } catch (e) {
-      Notify.error(e.message);
+      ConvList.render();
     }
+    ChatView.open(userId);
+  },
+};
+
+// ====================== 实时订阅 ======================
+const Realtime = {
+  subscribe() {
+    if (!S.user) return;
+    if (S.channel) { sb.removeChannel(S.channel).catch(() => {}); S.channel = null; }
+
+    S.channel = sb
+      .channel('private_messages_changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'private_messages', filter: `recipient_id=eq.${S.user.id}` },
+        (payload) => {
+          const msg = payload.new;
+          // 如果是当前选中对话，直接在聊天窗口追加
+          if (msg.sender_id === S.selectedId) {
+            S.messages.push(msg);
+            ChatView.append(msg);
+            ChatView.markRead(msg.sender_id);
+          }
+          // 更新对话列表
+          ConvList.refreshOne(msg.sender_id, msg.text, msg.created_at);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'private_messages', filter: `sender_id=eq.${S.user.id}` },
+        (payload) => {
+          const msg = payload.new;
+          // 去重：如果消息已在列表中，忽略实时推送
+          const exists = S.messages.some(m => m.id === msg.id);
+          if (exists) return;
+          // 自己发送的消息：刷新消息列表
+          if (msg.recipient_id === S.selectedId) {
+            S.messages.push(msg);
+            ChatView.append(msg);
+          }
+          ConvList.refreshOne(msg.recipient_id, msg.text, msg.created_at);
+        }
+      )
+      .subscribe();
+  },
+};
+
+// ====================== 事件绑定 ======================
+function bindEvents() {
+  // 退出登录
+  $('#logoutBtn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    window.location.href = '/login/?redirect=/chat';
+  });
+
+  // 主题切换
+  $('#themeBtn').addEventListener('click', () => Theme.toggle());
+
+  // 搜索输入（防抖）
+  let searchTimer;
+  $('#searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => Search.input($('#searchInput').value), 300);
+  });
+  // 点击外部关闭搜索下拉
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.sidebar-search')) {
+      $('#searchResults').classList.add('hidden');
+    }
+  });
+
+  // 搜索下拉点击
+  $('#searchResults').addEventListener('click', (e) => {
+    const item = e.target.closest('.search-item');
+    if (item) {
+      Search.select(item.dataset.id, item.dataset.nick, item.dataset.email);
+    }
+  });
+
+  // 对话列表点击
+  $('#convList').addEventListener('click', (e) => {
+    const item = e.target.closest('.conv-item');
+    if (item) {
+      document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      ChatView.open(item.dataset.id);
+    }
+  });
+
+  // 发送消息
+  $('#sendBtn').addEventListener('click', () => ChatView.send());
+  const msgInput = $('#msgInput');
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      ChatView.send();
+    }
+  });
+  msgInput.addEventListener('input', () => {
+    msgInput.style.height = 'auto';
+    msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+  });
+
+  // 移动端：对话列表切换返回按钮
+  $('#chatPartnerName').addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('hidden-mobile');
+      document.getElementById('chatMain').classList.add('hidden-mobile');
+    }
+  });
+}
+
+// ====================== 初始化 ======================
+async function init() {
+  Theme.init();
+
+  // 创建 Supabase 客户端
+  if (!window.supabase) {
+    Toast.error('SDK 加载失败，请刷新页面');
+    return;
   }
-};
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
+    auth: { autoRefreshToken: true, persistSession: true },
+  });
 
-// ====================== 设置模块（精简，无冗余） ======================
-const Settings = {
-  async saveNick() {
-    if (!AppState.user || !AppState.isInit) return Notify.error("请先登录");
-    try {
-      const newNick = Utils.$("#nickInput").value.trim();
-      if (!newNick) throw new Error("请输入有效的昵称");
-      await Utils.request(
-        AppState.sb.from("users").update({ nick: newNick }).eq("id", AppState.user.id)
-      );
-      AppState.userNick = newNick;
-      Utils.Storage.set("nick", newNick);
-      Utils.$("#userTag").innerText = `用户：${newNick}`;
-      UI.updateUserAvatar(newNick);
-      Utils.$("#nickInput").value = "";
-      Notify.success("昵称保存成功");
-      await Online.mark();
-    } catch (e) {
-      Notify.error(e.message);
-    }
-  },
-
-  updatePwd: Utils.throttle(async () => {
-    if (!AppState.user || !AppState.isInit) return Notify.error("请先登录");
-    try {
-      const newPwd = Utils.$("#newPwdInput").value.trim();
-      if (newPwd.length < 8) throw new Error("密码长度不能少于8位");
-      await Utils.request(
-        AppState.sb.auth.updateUser({ password: newPwd }), "修改密码请求超时"
-      );
-      Notify.success("密码修改成功，请重新登录");
-      Utils.$("#newPwdInput").value = "";
-      setTimeout(() => Auth.logout(), 1500);
-    } catch (e) {
-      Notify.error(`修改失败：${Utils.formatErr(e)}`);
-    }
-  }, 3000)
-};
-
-// ====================== 管理员模块（精简，无冗余，全容错） ======================
-const Admin = {
-  _scrollTop: 0,
-  // 通用操作执行器（合并90%重复逻辑）
-  async execAction(options) {
-    const { lockKey, btn, action, successMsg, reload = true } = options;
-    if (AppState.isLocked(lockKey)) {
-      Notify.warning("正在处理，请稍候...");
-      return false;
-    }
-    AppState.lock(lockKey);
-    const originText = btn?.innerText || "";
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = "处理中...";
-    }
-    try {
-      await action();
-      Notify.success(successMsg);
-      if (reload) {
-        Admin._scrollTop = Utils.$("#adminPage").scrollTop;
-        await Admin.loadData();
-      }
-      return true;
-    } catch (e) {
-      Notify.error(Utils.formatErr(e));
-      return false;
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerText = originText;
-      }
-      AppState.unlock(lockKey);
-    }
-  },
-
-  async loadData() {
-    return Admin.execAction({
-      lockKey: "admin_load",
-      successMsg: "管理数据加载完成",
-      reload: false,
-      action: async () => {
-        Notify.info("正在加载管理数据...");
-        await Config.sync();
-        const { require_verify, sensitive_words, announcement } = AppState.config;
-        Utils.$("#requireVerifyToggle").checked = require_verify || false;
-        Utils.$("#sensitiveWordsInput").value = sensitive_words || "";
-        Utils.$("#announceInput").value = announcement || "";
-
-        const [verifyRes, userRes, logRes] = await Promise.allSettled([
-          Utils.request(AppState.sb.from("users").select("*").eq("status", "pending")),
-          Utils.request(AppState.sb.from("users").select("*").order("created_at", { ascending: false }).limit(50)),
-          Utils.request(AppState.sb.from("login_logs").select("*").order("time", { ascending: false }).limit(20))
-        ]);
-
-        // 渲染待审核用户
-        const verifyUsers = verifyRes.status === "fulfilled" && !verifyRes.value.error ? verifyRes.value.data || [] : [];
-        let verifyHtml = "";
-        verifyUsers.forEach(u => {
-          verifyHtml += `
-            <div class="list-item">
-              <span>${Utils.escapeHtml(u.email)}（${Utils.escapeHtml(u.nick)}）</span>
-              <div class="btn-group">
-                <button class="btn btn-primary btn-sm admin-verify-btn" data-user-id="${Utils.escapeHtml(u.id)}" data-status="active">通过</button>
-                <button class="btn btn-danger btn-sm admin-verify-btn" data-user-id="${Utils.escapeHtml(u.id)}" data-status="ban">拒绝</button>
-              </div>
-            </div>
-          `;
-        });
-        Utils.$("#verifyUserList").innerHTML = verifyHtml || "暂无待审核用户";
-
-        // 渲染所有用户
-        const allUsers = userRes.status === "fulfilled" && !userRes.value.error ? userRes.value.data || [] : [];
-        let userHtml = "";
-        allUsers.forEach(u => {
-          const status = u.status === "active" ? "正常" : u.status === "ban" ? "封禁" : "待审核";
-          const muteText = u.is_mute ? "解禁" : "禁言";
-          const online = u.current_session_token ? "在线" : "离线";
-          const statusBtnText = u.status === "ban" ? "解封" : "封禁";
-          const statusBtnClass = u.status === "ban" ? "btn-primary" : "btn-danger";
-          const statusTarget = u.status === "ban" ? "active" : "ban";
-          
-          userHtml += `
-            <div class="list-item">
-              <span>${Utils.escapeHtml(u.email)}（${Utils.escapeHtml(u.nick)} | ${status} | ${online}）</span>
-              <div class="btn-group">
-                <button class="btn btn-secondary btn-sm admin-resetpwd-btn" data-email="${Utils.escapeHtml(u.email)}">重置密码</button>
-                <button class="btn btn-warning btn-sm admin-mute-btn" data-user-id="${Utils.escapeHtml(u.id)}" data-mute="${!u.is_mute}">${muteText}</button>
-                <button class="btn ${statusBtnClass} btn-sm admin-status-btn" data-user-id="${Utils.escapeHtml(u.id)}" data-status="${statusTarget}">${statusBtnText}</button>
-                <button class="btn btn-danger btn-sm admin-offline-btn" data-user-id="${Utils.escapeHtml(u.id)}">强制下线</button>
-              </div>
-            </div>
-          `;
-        });
-        Utils.$("#allUserList").innerHTML = userHtml || "暂无用户";
-
-        // 渲染登录日志
-        const logs = logRes.status === "fulfilled" && !logRes.value.error ? logRes.value.data || [] : [];
-        let logHtml = "";
-        logs.forEach(log => {
-          logHtml += `
-            <div class="list-item">
-              <span>IP：${Utils.escapeHtml(log.ip || '未知')} | ${Utils.escapeHtml(log.time || '未知')} | ${Utils.escapeHtml(log.device?.substring(0, 30) || '未知')}...</span>
-            </div>
-          `;
-        });
-        Utils.$("#allLoginLogList").innerHTML = logHtml || "暂无登录日志";
-
-        // 恢复滚动位置
-        if (Admin._scrollTop) {
-          Utils.$("#adminPage").scrollTop = Admin._scrollTop;
-          Admin._scrollTop = 0;
-        }
-      }
-    });
-  },
-
-  // 配置保存
-  async saveConfig() {
-    const requireVerify = Utils.$("#requireVerifyToggle").checked;
-    const success = await Config.save({ require_verify: requireVerify });
-    if (success) Notify.success(`系统配置保存成功，新用户注册${requireVerify ? "需要管理员审核" : "无需审核"}`);
-  },
-  async saveSensitive() {
-    const words = Utils.$("#sensitiveWordsInput").value.trim();
-    const success = await Config.save({ sensitive_words: words });
-    if (success) Notify.success("敏感词保存成功");
-  },
-  async saveAnnounce() {
-    const content = Utils.$("#announceInput").value.trim();
-    const success = await Config.save({ announcement: content });
-    if (success) Notify.success("公告已推送");
-  },
-
-  // 消息操作
-  async delMsg(msgId, btn) {
-    return Admin.execAction({
-      lockKey: "admin_msg",
-      btn,
-      successMsg: "消息已删除",
-      reload: false,
-      action: async () => {
-        await Utils.request(AppState.sb.from("messages").delete().eq("id", msgId));
-        await Chat.load();
-      }
-    });
-  },
-  async clearMsg() {
-    if (!confirm("确定要清空所有历史消息吗？此操作不可恢复！")) return;
-    return Admin.execAction({
-      lockKey: "admin_msg",
-      btn: Utils.$("#clearAllMsgBtn"),
-      successMsg: "所有消息已清空",
-      reload: false,
-      action: async () => {
-        await Utils.request(AppState.sb.from("messages").delete().neq("id", null));
-        await Chat.load();
-      }
-    });
+  // 检查认证状态
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    window.location.href = '/login/?redirect=/chat';
+    return;
   }
-};
 
-// ====================== 事件绑定（修复：无冒泡问题，无重复绑定） ======================
-const EventBinder = {
-  _bound: false,
-  init() {
-    if (this._bound) return;
-    try {
-      // 登录注册
-      Utils.$("#toRegisterBtn").addEventListener("click", () => UI.showPage("registerPage"));
-      Utils.$("#toLoginBtn").addEventListener("click", () => UI.showPage("loginPage"));
-      Utils.$("#loginBtn").addEventListener("click", () => Auth.login());
-      Utils.$("#regBtn").addEventListener("click", () => Auth.register());
-      Utils.$("#loginPwd").addEventListener("keydown", (e) => e.key === "Enter" && Auth.login());
-      Utils.$("#regPwd").addEventListener("keydown", (e) => e.key === "Enter" && Auth.register());
-      Utils.$("#logoutBtn").addEventListener("click", () => Auth.logout());
+  S.user = session.user;
 
-      // 聊天输入框（修复：页面隐藏时不执行自动高度）
-      const msgInput = Utils.$("#msgInput");
-      const adjustHeight = Utils.debounce(() => {
-        if (document.hidden) return;
-        msgInput.style.height = "auto";
-        msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + "px";
-      }, 150);
-      msgInput.addEventListener("input", () => adjustHeight());
-      Utils.$("#sendBtn").addEventListener("click", () => Chat.send());
-      msgInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          Chat.send();
-        }
-      });
-
-      // 页面导航
-      Utils.$("#settingBtn").addEventListener("click", () => UI.showPage("settingPage"));
-      Utils.$("#adminBtn").addEventListener("click", () => { Admin.loadData(); UI.showPage("adminPage"); });
-      Utils.$("#backToChatBtn").addEventListener("click", () => UI.showPage("chatPage"));
-      Utils.$("#backToChatFromAdminBtn").addEventListener("click", () => UI.showPage("chatPage"));
-
-      // 设置
-      Utils.$("#saveNickBtn").addEventListener("click", () => Settings.saveNick());
-      Utils.$("#toggleThemeBtn").addEventListener("click", () => UI.toggleTheme());
-      Utils.$("#updatePwdBtn").addEventListener("click", () => Settings.updatePwd());
-      Utils.$("#showLoginLogBtn").addEventListener("click", () => LoginLog.showMy());
-
-      // 管理员配置
-      Utils.$("#saveConfigBtn").addEventListener("click", () => Admin.saveConfig());
-      Utils.$("#saveSwBtn").addEventListener("click", () => Admin.saveSensitive());
-      Utils.$("#saveAnnounceBtn").addEventListener("click", () => Admin.saveAnnounce());
-      Utils.$("#clearAllMsgBtn").addEventListener("click", () => Admin.clearMsg());
-
-      // 管理员操作事件委托（修复：用closest避免冒泡问题）
-      document.addEventListener("click", (e) => {
-        const target = e.target.closest("[class*='admin-'], [class*='msg-del-btn']");
-        if (!target) return;
-        // 审核用户
-        if (target.classList.contains("admin-verify-btn")) {
-          const userId = target.dataset.userId;
-          const status = target.dataset.status;
-          Admin.execAction({
-            lockKey: "admin_verify",
-            btn: target,
-            successMsg: status === "active" ? "用户审核通过" : "用户审核拒绝",
-            action: async () => {
-              await Utils.request(AppState.sb.from("users").update({ status }).eq("id", userId));
-            }
-          });
-        }
-        // 强制下线
-        if (target.classList.contains("admin-offline-btn")) {
-          const userId = target.dataset.userId;
-          if (!confirm("确定要强制该用户下线吗？")) return;
-          Admin.execAction({
-            lockKey: "admin_offline",
-            btn: target,
-            successMsg: "用户已被强制下线",
-            action: async () => {
-              await Utils.request(AppState.sb.from("users").update({ current_session_token: null }).eq("id", userId));
-            }
-          });
-        }
-        // 禁言/解禁
-        if (target.classList.contains("admin-mute-btn")) {
-          const userId = target.dataset.userId;
-          const isMute = target.dataset.mute === "true";
-          Admin.execAction({
-            lockKey: "admin_mute",
-            btn: target,
-            successMsg: isMute ? "已禁言该用户" : "已解禁该用户",
-            action: async () => {
-              await Utils.request(AppState.sb.from("users").update({ is_mute: isMute }).eq("id", userId));
-            }
-          });
-        }
-        // 封禁/解封
-        if (target.classList.contains("admin-status-btn")) {
-          const userId = target.dataset.userId;
-          const status = target.dataset.status;
-          Admin.execAction({
-            lockKey: "admin_status",
-            btn: target,
-            successMsg: status === "active" ? "已解封该用户" : "已封禁该用户",
-            action: async () => {
-              await Utils.request(AppState.sb.from("users").update({ 
-                status, 
-                current_session_token: status === "ban" ? null : undefined 
-              }).eq("id", userId));
-            }
-          });
-        }
-        // 重置密码
-        if (target.classList.contains("admin-resetpwd-btn")) {
-          const email = target.dataset.email;
-          if (!confirm(`确定要给邮箱 ${email} 发送密码重置邮件吗？\n注意：频繁发送会触发限流，请谨慎操作`)) return;
-          Admin.execAction({
-            lockKey: "admin_pwd",
-            btn: target,
-            successMsg: "密码重置邮件已发送，请注意查收",
-            reload: false,
-            action: async () => {
-              await Utils.request(
-                AppState.sb.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/chat` }), "重置邮件发送超时"
-              );
-            }
-          });
-        }
-        // 删除消息
-        if (target.classList.contains("msg-del-btn")) {
-          const msgId = target.dataset.msgId;
-          Admin.delMsg(msgId, target);
-        }
-      });
-
-      // 页面可见性监听（加防抖，避免频繁触发）
-      const visibilityHandler = Utils.debounce(() => {
-        if (document.hidden) {
-          AppState.pause();
-        } else {
-          AppState.resume();
-        }
-      }, APP_CONFIG.INTERVAL.VISIBILITY_DEBOUNCE);
-      document.addEventListener("visibilitychange", visibilityHandler);
-
-      this._bound = true;
-    } catch (e) {
-      Notify.error("页面初始化失败，请刷新重试");
-      console.error(e);
-    }
+  // 获取用户昵称
+  const { data: userData } = await sb.from('users').select('nick, email').eq('id', S.user.id).limit(1);
+  if (userData?.length) {
+    S.user.nick = userData[0].nick;
+    S.user.email = userData[0].email;
+  } else {
+    S.user.nick = S.user.email?.split('@')[0] || '用户';
   }
-};
 
-// ====================== 应用初始化（精简，无冗余） ======================
-const App = {
-  async init() {
-    if (AppState.isLocked("init")) return;
-    AppState.lock("init");
-    let forceCloseTimer = null;
-    try {
-      // 15秒兜底：无论发生什么都关闭 loader
-      forceCloseTimer = setTimeout(() => {
-        UI.closeLoader();
-        AppState.reset();
-        window.location.href = '/login/?redirect=/chat';
-      }, 15000);
-      AppState.timers.forceCloseLoader = forceCloseTimer;
+  // 显示用户信息
+  $('#userTag').textContent = S.user.nick || S.user.email;
 
-      UI.initTheme();
-      if (!window.supabase) throw new Error("Supabase SDK加载失败，请刷新页面重试");
+  // 绑定事件
+  bindEvents();
 
-      AppState.sb = window.supabase.createClient(
-        APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_KEY,
-        { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: Utils.Storage._ok ? window.localStorage : null },
-          realtime: { timeout: APP_CONFIG.TIMEOUT.API, heartbeatIntervalMs: APP_CONFIG.INTERVAL.HEARTBEAT, reconnect: true } }
-      );
+  // 加载对话列表
+  await ConvList.load();
 
-      Chat.init();
-      EventBinder.init();
+  // 订阅实时消息
+  Realtime.subscribe();
 
-      // 先查 session，再注册监听 —— 避免 INITIAL_SESSION 竞态
-      const { data: { session } } = await AppState.sb.auth.getSession();
-      if (!session) {
-        UI.closeLoader();
-        clearTimeout(forceCloseTimer);
-        window.location.href = '/login/?redirect=/chat';
-        AppState.unlock("init");
-        return;
-      }
-
-      // 有 session：注册监听并手动触发初始化
-      AppState.sb.auth.onAuthStateChange((e, s) => Auth.handleAuthChange(e, s));
-      await Auth.handleAuthChange('INITIAL_SESSION', session);
-    } catch (e) {
-      Notify.error(`初始化失败：${Utils.formatErr(e)}`);
-      UI.closeLoader();
-      AppState.reset();
-      window.location.href = '/login/?redirect=/chat';
-    } finally {
-      AppState.unlock("init");
-    }
-  }
-};
+  // 隐藏加载遮罩
+  const overlay = $('#loadingOverlay');
+  overlay.style.opacity = '0';
+  setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+}
 
 // ====================== 生命周期 ======================
-document.addEventListener("DOMContentLoaded", () => App.init());
-window.addEventListener("beforeunload", () => RequestController.reset());
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => UI.initTheme());
+document.addEventListener('DOMContentLoaded', init);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => Theme.init());

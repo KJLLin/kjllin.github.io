@@ -122,6 +122,13 @@
         <div class="info-row"><span class="label">最近登录</span><span class="value" id="infoLastLogin">--</span></div>
         <div class="info-row"><span class="label">账号状态</span><span class="value" id="infoStatus" style="color:var(--success)">正常</span></div>
       </div>
+      <div class="card mica">
+        <h2>📱 最近登录设备</h2>
+        <div class="info-row"><span class="label">当前设备</span><span class="value" id="deviceCurrent">检测中...</span></div>
+        <div class="info-row"><span class="label">最近登录时间</span><span class="value" id="deviceLastLogin">--</span></div>
+        <div class="info-row"><span class="label">IP 地址</span><span class="value" id="deviceIP">获取中...</span></div>
+        <div class="info-row"><span class="label">登录方式</span><span class="value" id="deviceMethod">邮箱登录</span></div>
+      </div>
       <button class="btn btn-danger" id="logoutBtn" style="width:100%;margin-top:8px">退出登录</button>
     </div>
   </div>
@@ -135,6 +142,8 @@
 
     function toast(m){const e=document.querySelector('.toast');if(e)e.remove();const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
     function formatDate(iso){if(!iso)return'--';const d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
+    function parseUA(){const u=navigator.userAgent;let b='Unknown';if(u.includes('Edg/'))b='Edge';else if(u.includes('Chrome/'))b='Chrome';else if(u.includes('Firefox/'))b='Firefox';else if(u.includes('Safari/')&&!u.includes('Chrome/'))b='Safari';let os='Unknown';if(u.includes('Windows'))os='Windows';else if(u.includes('Mac OS'))os='Mac';else if(u.includes('Linux')&&!u.includes('Android'))os='Linux';else if(u.includes('Android'))os='Android';else if(u.includes('iOS')||u.includes('iPhone')||u.includes('iPad'))os='iOS';return{browser:b,os:os}}
+    async function loadIP(){try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();return d.ip}catch(e){return'获取失败'}}
 
     async function loadUser(){
       if(!sb)return;
@@ -152,6 +161,12 @@
         const{data}=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
         if(data?.length){$('#infoLastLogin').textContent=formatDate(data[0].last_login_time);$('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核'}
       }catch(e){}
+      const ua=parseUA();$('#deviceCurrent').textContent=ua.browser+' / '+ua.os;
+      try{
+        const{data:d2}=await sb.from('users').select('last_login_time').eq('id',user.id).limit(1);
+        if(d2?.length){$('#deviceLastLogin').textContent=formatDate(d2[0].last_login_time)}
+      }catch(e){}
+      loadIP().then(ip=>{$('#deviceIP').textContent=ip})
     }
 
     $('#saveNickBtn').addEventListener('click',async()=>{

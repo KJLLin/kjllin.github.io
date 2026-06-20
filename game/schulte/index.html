@@ -219,7 +219,7 @@
       font-variant-numeric: tabular-nums;
     }
     .info-value.best { font-size: 20px; color: var(--text-secondary); }
-    .info-value.next-num { font-size: 30px; font-family: "Consolas", "Cascadia Code", "SF Mono", monospace; }
+    
 
     /* 网格 */
     .grid-wrapper {
@@ -263,15 +263,8 @@
       animation: cellShake 0.4s ease;
     }
     [data-theme="dark"] .cell.wrong { color: #f44336; }
-    .cell.next-hint {
-      outline: 2px solid var(--accent);
-      outline-offset: 1px;
-      box-shadow: 0 0 0 3px var(--accent), 0 0 12px rgba(0, 120, 212, 0.4);
-      background: var(--cell-next);
-      animation: nextPulse 1.2s ease-in-out infinite;
-    }
-    @keyframes nextPulse {
-      0%, 100% { box-shadow: 0 0 0 3px var(--accent), 0 0 8px rgba(0, 120, 212, 0.3); }
+    
+    
       50%      { box-shadow: 0 0 0 4px var(--accent), 0 0 18px rgba(0, 120, 212, 0.5); }
     }
     @keyframes cellPop {
@@ -390,10 +383,7 @@
           <div class="info-label">🎯 进度</div>
           <div class="info-value" id="progress">0/25</div>
         </div>
-        <div class="info-item">
-          <div class="info-label">👉 下一个</div>
-          <div class="info-value next-num" id="nextNum">1</div>
-        </div>
+        
       </div>
 
       <div class="grid-wrapper">
@@ -497,23 +487,7 @@
       updateTimer();
     }
 
-    function highlightNext() {
-      const cells = gridEl.querySelectorAll('.cell');
-      const nextNumEl = document.getElementById('nextNum');
-      cells.forEach(c => c.classList.remove('next-hint'));
-      if (currentIndex < totalNumbers) {
-        const nextNum = currentIndex + 1;
-        for (const c of cells) {
-          if (parseInt(c.textContent) === nextNum) {
-            c.classList.add('next-hint');
-            break;
-          }
-        }
-        if (nextNumEl) nextNumEl.textContent = nextNum;
-      } else {
-        if (nextNumEl) nextNumEl.textContent = '✓';
-      }
-    }
+    function highlightNext() { /* 已移除下一个数字提示 */ }
 
     function renderGrid() {
       totalNumbers = gridSize * gridSize;
