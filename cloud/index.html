@@ -25,6 +25,9 @@
       -webkit-tap-highlight-color: transparent; outline: none;
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
+    pre, code, .mono, .file-name, .preview-content pre, .search-box {
+      font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace;
+    }
     :root {
       --bg-body: #f3f3f3;
       --bg-mica: rgba(255,255,255,0.85);
@@ -279,7 +282,7 @@
         <span class="user-name" id="userNameDisplay"></span>
         <button class="logout-btn" id="logoutMenuBtn">退出</button>
       </div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -877,20 +880,26 @@
 
     // ====================== 主题 ======================
     const themeBtn = $('#themeBtn');
-    function initTheme() {
-      try {
-        const saved = localStorage.getItem('theme');
-        const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (dark) { root.dataset.theme = 'dark'; themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
-        else { root.dataset.theme = ''; themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
-      } catch(e) { themeBtn.textContent = '🌙'; }
+    function getSystemDark() { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function isActuallyDark() {
+      const mode = localStorage.getItem('theme');
+      return mode === 'dark' || (!mode && getSystemDark());
+    }
+    function updateThemeUI() {
+      const mode = localStorage.getItem('theme');
+      const dark = isActuallyDark();
+      root.dataset.theme = dark ? 'dark' : '';
+      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
+      if (mode === 'dark') themeBtn.textContent = '☀️';
+      else if (mode === 'light') themeBtn.textContent = '🌙';
+      else themeBtn.textContent = '🅐';
     }
     function toggleTheme() {
-      try {
-        const isDark = root.dataset.theme === 'dark';
-        if (isDark) { root.dataset.theme = ''; localStorage.setItem('theme', 'light'); themeBtn.textContent = '🌙'; metaTheme.content = '#f3f3f3'; }
-        else { root.dataset.theme = 'dark'; localStorage.setItem('theme', 'dark'); themeBtn.textContent = '☀️'; metaTheme.content = '#0f0f0f'; }
-      } catch(e) {}
+      const mode = localStorage.getItem('theme');
+      if (!mode) localStorage.setItem('theme', 'light');
+      else if (mode === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
     }
     themeBtn.addEventListener('click', toggleTheme);
 
@@ -912,11 +921,11 @@
       });
     });
 
-    window.addEventListener('DOMContentLoaded', initTheme);
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
+    window.addEventListener('DOMContentLoaded', updateThemeUI);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
 
     // ====================== 初始化 ======================
-    initTheme();
+    updateThemeUI();
     if (sb) {
       checkSession();
     } else {

@@ -25,6 +25,9 @@
       transition: inherit; -webkit-transition: inherit;
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
+    pre, code, .mono, .search-box {
+      font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace;
+    }
 
     :root {
       --bg-body: #f3f3f3;
@@ -244,6 +247,28 @@
       font-weight: 500;
     }
 
+    /* 搜索栏 */
+    .search-wrap {
+      margin-bottom: 24px; opacity: 0;
+      animation: fadeUp 0.7s var(--win-ease) 0.15s forwards;
+    }
+    .search-box {
+      width: 100%; padding: 12px 18px; border-radius: var(--radius-md);
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-primary); font-size: 14px; outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .search-box:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .search-box::placeholder { color: var(--text-tertiary); }
+    .no-results {
+      text-align: center; padding: 40px 20px; color: var(--text-tertiary);
+      font-size: 14px; display: none;
+    }
+    .no-results.show { display: block; }
+
     /* 页脚 */
     .footer {
       text-align: center; padding: 30px 20px;
@@ -283,7 +308,7 @@
         <button class="back-btn" onclick="goHome()" aria-label="返回主页">←</button>
         <span class="logo">游戏中心</span>
       </div>
-      <button id="themeBtn" class="theme-btn" aria-label="切换深色/浅色模式">🌙</button>
+      <button id="themeBtn" class="theme-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
     </nav>
 
     <!-- 页头 -->
@@ -293,12 +318,17 @@
       <p class="header-desc">精选小游戏合集，随时开玩</p>
     </header>
 
+    <!-- 搜索栏 -->
+    <div class="search-wrap">
+      <input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索游戏..." autocomplete="off">
+    </div>
+
     <!-- 游戏列表 -->
     <section>
       <h2 class="section-title">全部游戏</h2>
-      <div class="card-grid">
+      <div class="card-grid" id="gameGrid">
 
-        <a href="/game/dino/" class="game-card mica">
+        <a href="/game/dino/" class="game-card mica" data-keywords="恐龙 跑酷 dino 躲避 金币 天气">
           <div class="card-shine"></div>
           <div class="card-icon">🦖</div>
           <h3 class="card-title">恐龙快跑升级版</h3>
@@ -310,7 +340,7 @@
           </div>
         </a>
 
-        <a href="/game/schulte/" class="game-card mica">
+        <a href="/game/schulte/" class="game-card mica" data-keywords="舒尔特 方格 注意力 数字 专注 训练 计时">
           <div class="card-shine"></div>
           <div class="card-icon">🔢</div>
           <h3 class="card-title">舒尔特方格</h3>
@@ -323,6 +353,7 @@
         </a>
 
       </div>
+      <div class="no-results" id="noResults">😕 没有找到匹配的游戏</div>
     </section>
 
     <!-- 页脚 -->
@@ -340,9 +371,7 @@
     let isScrolling = false;
     let touchStartData = {};
 
-    function goHome() {
-      window.location.href = '/';
-    }
+    function goHome() { window.location.href = '/'; }
 
     // 触摸点击判定
     function handleTouchStart(e) {
@@ -353,40 +382,44 @@
       const dx = Math.abs(t.x - touchStartData.x);
       const dy = Math.abs(t.y - touchStartData.y);
       const dt = t.time - touchStartData.time;
-      if (dx < 10 && dy < 10 && dt < 300) {
-        e.preventDefault(); e.stopPropagation(); callback();
-      }
+      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
     }
 
-    // 主题
-    function initTheme() {
-      try {
-        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const localDark = localStorage.getItem('theme') === 'dark';
-        if (localDark || sysDark) {
-          root.dataset.theme = 'dark';
-          themeBtn.textContent = '☀️';
-          metaTheme.content = '#0f0f0f';
-        } else {
-          themeBtn.textContent = '🌙';
-          metaTheme.content = '#f3f3f3';
-        }
-      } catch(e) { themeBtn.textContent = '🌙'; }
+    // 搜索
+    function filterGames() {
+      const q = $('#searchBox').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.game-card');
+      let any = false;
+      cards.forEach(c => {
+        const kw = (c.dataset.keywords || '') + ' ' + (c.querySelector('.card-title')?.textContent || '') + ' ' + (c.querySelector('.card-desc')?.textContent || '');
+        const show = !q || kw.toLowerCase().includes(q);
+        c.style.display = show ? '' : 'none';
+        if (show) any = true;
+      });
+      $('#noResults').classList.toggle('show', !any);
     }
 
+    // 主题（三模式）
+    function getSystemDark() { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function isActuallyDark() {
+      const mode = localStorage.getItem('theme');
+      return mode === 'dark' || (!mode && getSystemDark());
+    }
+    function updateThemeUI() {
+      const mode = localStorage.getItem('theme');
+      const dark = isActuallyDark();
+      root.dataset.theme = dark ? 'dark' : '';
+      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
+      if (mode === 'dark') themeBtn.textContent = '☀️';
+      else if (mode === 'light') themeBtn.textContent = '🌙';
+      else themeBtn.textContent = '🅐';
+    }
     function toggleTheme() {
-      const isDark = root.dataset.theme === 'dark';
-      if (isDark) {
-        root.dataset.theme = '';
-        localStorage.removeItem('theme');
-        themeBtn.textContent = '🌙';
-        metaTheme.content = '#f3f3f3';
-      } else {
-        root.dataset.theme = 'dark';
-        localStorage.setItem('theme', 'dark');
-        themeBtn.textContent = '☀️';
-        metaTheme.content = '#0f0f0f';
-      }
+      const mode = localStorage.getItem('theme');
+      if (!mode) localStorage.setItem('theme', 'light');
+      else if (mode === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
     }
 
     function handleScroll() {
@@ -398,12 +431,13 @@
       });
     }
 
-    window.addEventListener('DOMContentLoaded', initTheme);
+    window.addEventListener('DOMContentLoaded', updateThemeUI);
     themeBtn.addEventListener('click', toggleTheme);
     themeBtn.addEventListener('touchstart', handleTouchStart);
     themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    $('#searchBox').addEventListener('input', filterGames);
     window.addEventListener('scroll', handleScroll);
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', initTheme);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
   </script>
 </body>
 </html>
