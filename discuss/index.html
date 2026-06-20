@@ -583,7 +583,7 @@
         <textarea id="postContent" style="display:none;"></textarea>
         <div id="editorContainer"></div>
         <div class="captcha-line" id="discussCaptchaLine" style="margin-bottom:16px;min-height:78px">
-          <div class="h-captcha" id="captchaDiscuss"></div>
+          <div class="h-captcha" id="captchaDiscuss" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaDiscuss" data-expired-callback="onCaptchaDiscussExpired"></div>
         </div>
         <div class="btn-row">
           <button class="btn btn-secondary" id="cancelPostBtn">取消</button>
@@ -778,20 +778,9 @@
       let sb;
       let currentUser;
       let easyMDE;
-      let captchaDiscussWid = null;
-
-      // ====================== hCaptcha 初始化 ======================
-      function initCaptcha() {
-        if (typeof hcaptcha === 'undefined') { setTimeout(initCaptcha, 300); return; }
-        try {
-          captchaDiscussWid = hcaptcha.render('captchaDiscuss', {
-            sitekey: 'abe0d880-7704-481a-b892-9b982f7c5890',
-            theme: isActuallyDark() ? 'dark' : 'light',
-            size: 'normal'
-          });
-        } catch(e) { console.warn('hCaptcha init:', e); }
-      }
-      initCaptcha();
+      let captchaToken = '';
+      window.onCaptchaDiscuss = function(token) { captchaToken = token; };
+      window.onCaptchaDiscussExpired = function() { captchaToken = ''; };
 
       // ====================== Markdown + 数学公式渲染 ======================
       // 配置 marked.js 使用 highlight.js
@@ -1071,13 +1060,8 @@
         if (!title) { toast('请输入讨论标题'); return; }
         if (!content) { toast('请输入讨论内容'); return; }
         if (!currentUser) { toast('请先登录'); return; }
-        // hCaptcha 验证（已登录用户发帖也需验证，防刷）
-        try {
-          if (typeof hcaptcha !== 'undefined') {
-            const resp = hcaptcha.getResponse(captchaDiscussWid);
-            if (!resp) { toast('请完成人机验证'); return; }
-          }
-        } catch(_) {}
+        // hCaptcha 验证
+        try { if (typeof hcaptcha !== 'undefined' && !captchaToken) { toast('请完成人机验证'); return; } } catch(_) {}
 
         const btn = document.getElementById('submitPostBtn');
         btn.disabled = true;
