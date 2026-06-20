@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#f3f3f3">
   <title>登录 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <style>
     html {
       --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -76,13 +77,11 @@
     .btn:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
     .btn:active { transform: scale(0.98); }
     .btn:disabled { opacity: 0.6; pointer-events: none; }
-    .captcha-row { display: flex; align-items: center; gap: 8px; }
-    .captcha-question { font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; font-family: "Consolas","Cascadia Code",monospace; min-width: 80px; }
-    .captcha-input { width: 60px; padding: 11px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: rgba(0,0,0,0.02); color: var(--text-primary); font-size: 17px; text-align: center; font-family: "Consolas","Cascadia Code",monospace; }
-    [data-theme="dark"] .captcha-input { background: rgba(255,255,255,0.03); }
-    .captcha-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); outline: none; }
-    .captcha-refresh { width: 40px; height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-secondary); font-size: 16px; cursor: pointer; display: grid; place-items: center; }
-    .captcha-refresh:hover { border-color: var(--accent); color: var(--accent); }
+    .captcha-wrap { margin-bottom: 18px; display: flex; justify-content: center; min-height: 78px; }
+    .captcha-wrap .h-captcha { transform-origin: center; }
+    @media (max-width: 380px) {
+      .captcha-wrap .h-captcha { transform: scale(0.85); }
+    }
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 24px;
       border-radius: 20px; font-size: 14px; z-index: 300; background: var(--text-primary); color: var(--bg-body);
@@ -132,14 +131,8 @@
           <label>密码</label>
           <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
         </div>
-        <div class="form-group">
-          <label>人机验证</label>
-          <div class="captcha-row">
-            <span id="captchaQuestion" class="captcha-question">3 + 5 = ?</span>
-            <span>=</span>
-            <input type="number" id="captchaAnswer" class="captcha-input" placeholder="?" autocomplete="off" inputmode="numeric">
-            <button type="button" id="captchaRefresh" class="captcha-refresh" title="换一题">🔄</button>
-          </div>
+        <div class="captcha-wrap">
+          <div class="h-captcha" id="captchaLogin" data-sitekey="10000000-ffff-ffff-ffff-000000000001" data-theme="auto" data-size="normal"></div>
         </div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
@@ -158,14 +151,8 @@
           <label>密码（至少8位）</label>
           <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
         </div>
-        <div class="form-group">
-          <label>人机验证</label>
-          <div class="captcha-row">
-            <span id="captchaQuestionReg" class="captcha-question">3 + 5 = ?</span>
-            <span>=</span>
-            <input type="number" id="captchaAnswerReg" class="captcha-input" placeholder="?" autocomplete="off" inputmode="numeric">
-            <button type="button" id="captchaRefreshReg" class="captcha-refresh" title="换一题">🔄</button>
-          </div>
+        <div class="captcha-wrap">
+          <div class="h-captcha" id="captchaRegister" data-sitekey="10000000-ffff-ffff-ffff-000000000001" data-theme="auto" data-size="normal"></div>
         </div>
         <button class="btn" id="regBtn">完成注册</button>
       </div>
@@ -218,40 +205,30 @@
       });
     });
 
-    // Turnstile token 存储（由自动渲染的 callback 写入）
-    // ====================== 数学验证码（每个面板独立答案） ======================
-    function refreshCaptcha(questionEl, answerEl) {
-      const a = Math.floor(Math.random() * 20) + 1;
-      const b = Math.floor(Math.random() * 20) + 1;
-      const ops = ['+', '-', '×'];
-      const op = ops[Math.floor(Math.random() * 3)];
-      let result;
-      if (op === '+') { result = a + b; }
-      else if (op === '-') { result = a - b; }
-      else { result = a * b; }
-      questionEl.textContent = `${a} ${op} ${b} = ?`;
-      questionEl.dataset.answer = result;  // 答案存储在元素上，各面板独立
-      if (answerEl) answerEl.value = '';
+    // ====================== hCaptcha 人机验证 ======================
+    function getCaptchaToken(widgetId) {
+      try {
+        if (typeof hcaptcha !== 'undefined') return hcaptcha.getResponse(widgetId);
+      } catch(_) {}
+      return '';
     }
-    function verifyCaptcha(questionEl, answerEl) {
-      const val = parseInt(answerEl.value);
-      const expected = parseInt(questionEl.dataset.answer || '0');
-      if (isNaN(val)) { toast('请输入验证答案'); return false; }
-      if (val !== expected) { toast('验证答案错误，请重试'); refreshCaptcha(questionEl, answerEl); return false; }
+    function resetCaptcha(widgetId) {
+      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(widgetId); } catch(_) {}
+    }
+    function verifyCaptcha(widgetId, widgetEl) {
+      // hCaptcha JS 未加载时降级：允许通过（用户网络无法访问 hCaptcha CDN）
+      if (typeof hcaptcha === 'undefined') return true;
+      const token = getCaptchaToken(widgetId);
+      if (!token) { toast('请完成人机验证'); return false; }
       return true;
     }
-    refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer'));
-    refreshCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg'));
-    $('#captchaRefresh').addEventListener('click', () => refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer')));
-    $('#captchaRefreshReg').addEventListener('click', () => refreshCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg')));
 
     // 登录
     $('#loginBtn').addEventListener('click', async () => {
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
       if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
-      if (!verifyCaptcha($('#captchaQuestion'), $('#captchaAnswer'))) return;
-
+      if (!verifyCaptcha('captchaLogin')) return;
       const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
@@ -260,7 +237,7 @@
       } catch(e) {
         toast('登录失败：' + formatErr(e));
         btn.disabled = false; btn.textContent = '登 录';
-        refreshCaptcha($('#captchaQuestion'), $('#captchaAnswer'));
+        resetCaptcha('captchaLogin');
       }
     });
     $('#loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
@@ -273,7 +250,7 @@
       if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
-      if (!verifyCaptcha($('#captchaQuestionReg'), $('#captchaAnswerReg'))) return;
+      if (!verifyCaptcha('captchaRegister')) return;
       const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });
