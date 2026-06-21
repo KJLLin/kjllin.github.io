@@ -779,46 +779,6 @@
       window.onCaptchaDiscuss = function(token) { captchaToken = token; };
       window.onCaptchaDiscussExpired = function() { captchaToken = ''; };
 
-      // ====================== Markdown + 数学公式渲染 ======================
-      // 配置 marked.js 使用 highlight.js
-      if (typeof hljs !== 'undefined') {
-        marked.setOptions({
-          highlight: function(code, lang) {
-            if (lang && hljs.getLanguage(lang)) {
-              try {
-                return hljs.highlight(code, { language: lang }).value;
-              } catch(e) {}
-            }
-            try {
-              return hljs.highlightAuto(code).value;
-            } catch(e) {}
-            return escapeHtml(code);
-          }
-        });
-      }
-
-        const displayMath = [];
-        const inlineMath = [];
-        // 先处理 $$...$$ 块级公式
-        processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
-          try {
-            return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
-          } catch(e) {
-            return '<pre>' + escapeHtml(formula) + '</pre>';
-          }
-        });
-        // 再处理 $...$ 行内公式
-        processed = processed.replace(/\$(.+?)\$/g, (_, formula) => {
-          try {
-            return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
-          } catch(e) {
-            return '<code>' + escapeHtml(formula) + '</code>';
-          }
-        });
-        return marked.parse(processed);
-      }
-
-      }
       let loadedPosts = [];
 
       try {
