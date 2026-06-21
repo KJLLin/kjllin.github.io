@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 游戏中心 | 精选小游戏合集">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>游戏中心 · KJLLin</title>
   <style>
     html {
@@ -308,7 +309,7 @@
         <button class="back-btn" onclick="goHome()" aria-label="返回主页">←</button>
         <span class="logo">游戏中心</span>
       </div>
-      <button id="themeBtn" class="theme-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
     </nav>
 
     <!-- 页头 -->
@@ -434,9 +435,9 @@
       const dark = isActuallyDark();
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.textContent = '切换';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
     }
     function toggleTheme() {
       const mode = localStorage.getItem('theme');

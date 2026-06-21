@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#f3f3f3">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>登录 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
@@ -135,6 +136,7 @@
           <div class="h-captcha" id="captchaLogin" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaLogin" data-expired-callback="onCaptchaLoginExpired"></div>
         </div>
         <button class="btn" id="loginBtn">登 录</button>
+        <button class="btn" id="magicLinkBtn" style="background:transparent;border:1px solid var(--border-mica);color:var(--text-secondary);margin-top:10px;font-weight:400"><i class="fas fa-magic"></i> 发送魔法登录链接</button>
       </div>
 
       <!-- 注册面板 -->
@@ -240,6 +242,22 @@
       }
     });
     $('#loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
+
+    // 魔法链接登录
+    $('#magicLinkBtn').addEventListener('click', async () => {
+      const email = $('#loginEmail').value.trim();
+      if (!email) { toast('请填写邮箱地址'); return; }
+      const btn = $('#magicLinkBtn'); btn.disabled = true; btn.textContent = '发送中...';
+      try {
+        const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + '/login/?redirect=' + encodeURIComponent(redirect) } });
+        if (error) throw error;
+        toast('魔法链接已发送到 ' + email + '，请查收邮件');
+      } catch(e) {
+        toast('发送失败：' + formatErr(e));
+      } finally {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic"></i> 发送魔法登录链接';
+      }
+    });
 
     // 注册
     $('#regBtn').addEventListener('click', async () => {
