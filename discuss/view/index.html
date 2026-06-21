@@ -567,9 +567,9 @@
       const dark = isActuallyDark();
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
 
       // 切换 highlight.js 主题
       const hlCss = document.querySelector('link[href*="highlight.js"]');

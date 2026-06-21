@@ -436,7 +436,7 @@
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
       if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-      else if (mode === 'light') themeBtn.textContent = '切换';
+      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
       else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
     }
     function toggleTheme() {

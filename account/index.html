@@ -256,7 +256,7 @@
     function updateThemeUI(){
       const m=localStorage.getItem('theme'),d=m==='dark'||(!m&&getSystemDark());
       root.dataset.theme=d?'dark':'';metaTheme.content=d?'#0f0f0f':'#f3f3f3';
-      themeBtn.textContent=m==='dark'?'☀️':m==='light'?'切换':'🅐';
+      themeBtn.innerHTML=m==='dark'?'<i class="fas fa-sun"></i>':m==='light'?'<i class="fas fa-moon"></i>':'<i class="fas fa-circle-half-stroke"></i>';
     }
     themeBtn.addEventListener('click',()=>{
       const m=localStorage.getItem('theme');
