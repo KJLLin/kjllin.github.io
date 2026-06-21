@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="讨论帖 · KJLLin">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>帖子 · KJLLin</title>
 
   <!-- CDN -->
@@ -418,3 +417,437 @@
 </head>
 <body>
   <div class="bg-base"></div>
+  <canvas id="particlesCanvas"></canvas>
+  <div class="bg-mica-glow-1"></div>
+  <div class="bg-mica-glow-2"></div>
+
+  <div id="loader">
+    <div class="loader-content">
+      <div class="loader-spin"></div>
+      <div class="loader-text">正在加载帖子...</div>
+    </div>
+  </div>
+
+  <!-- ==================== 顶部菜单栏 ==================== -->
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item">🏠 首页</a>
+      <a href="/chat" class="menu-item">📨 站内信</a>
+      <a href="/game/" class="menu-item">🎮 游戏</a>
+      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/account/" class="menu-item">🔒 账号</a>
+      <div class="menu-divider"></div>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item">🏠 首页</a>
+      <a href="/chat" class="menu-item">📨 站内信</a>
+      <a href="/game/" class="menu-item">🎮 游戏</a>
+      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/account/" class="menu-item">🔒 账号</a>
+    </div>
+  </header>
+
+  <div class="container" id="mainContainer">
+    <!-- 内容由 JS 渲染 -->
+  </div>
+
+  <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
+
+  <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
+
+  <script>
+    // ====================== 元素引用 ======================
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
+    const themeBtn = $('#themeBtn');
+    const loader = $('#loader');
+    const backTop = $('#backTop');
+    const menuBar = $('#menuBar');
+    const hamburgerBtn = $('#hamburgerBtn');
+    const mobileMenu = $('#mobileMenu');
+    const mainContainer = $('#mainContainer');
+    let isScrolling = false;
+    let touchStartData = {};
+
+    // ====================== 粒子背景 ======================
+    (function() {
+      const canvas = document.getElementById('particlesCanvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const count = 50;
+      let animId;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function createParticles() {
+        particles = [];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            r: Math.random() * 2 + 0.5,
+            o: Math.random() * 0.5 + 0.1
+          });
+        }
+      }
+      createParticles();
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const isDark = root.dataset.theme === 'dark';
+        const color = isDark ? '255,255,255' : '0,120,212';
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = canvas.width;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.y > canvas.height) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${color},${p.o})`;
+          ctx.fill();
+        }
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(${color},${0.04 * (1 - dist / 120)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        animId = requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ====================== 触摸点击判定 ======================
+    function handleTouchStart(e) {
+      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+    }
+    function handleTouchEnd(e, callback) {
+      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
+      const dx = Math.abs(t.x - touchStartData.x);
+      const dy = Math.abs(t.y - touchStartData.y);
+      const dt = t.time - touchStartData.time;
+      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
+    }
+
+    // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
+    function getSystemDark() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function isActuallyDark() {
+      const mode = localStorage.getItem('theme');
+      return mode === 'dark' || (!mode && getSystemDark());
+    }
+    function updateThemeUI() {
+      const mode = localStorage.getItem('theme');
+      const dark = isActuallyDark();
+      root.dataset.theme = dark ? 'dark' : '';
+      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
+      if (mode === 'dark') themeBtn.textContent = '☀️';
+      else if (mode === 'light') themeBtn.textContent = '🌙';
+      else themeBtn.textContent = '🅐';
+
+      // 切换 highlight.js 主题
+      const hlCss = document.querySelector('link[href*="highlight.js"]');
+      if (hlCss) {
+        hlCss.href = dark
+          ? 'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css'
+          : 'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css';
+      }
+    }
+    function toggleTheme() {
+      const mode = localStorage.getItem('theme');
+      if (!mode) localStorage.setItem('theme', 'light');
+      else if (mode === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+
+    // ====================== 滚动 ======================
+    function handleScroll() {
+      if (isScrolling) return;
+      isScrolling = true;
+      requestAnimationFrame(() => {
+        backTop.classList.toggle('show', window.scrollY > 300);
+        menuBar.classList.toggle('scrolled', window.scrollY > 20);
+        isScrolling = false;
+      });
+    }
+    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    // ====================== 移动端菜单 ======================
+    function toggleMobileMenu() {
+      mobileMenu.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
+        mobileMenu.classList.remove('open');
+      }
+    });
+
+    // ====================== 事件绑定 ======================
+    themeBtn.addEventListener('click', toggleTheme);
+    themeBtn.addEventListener('touchstart', handleTouchStart);
+    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    hamburgerBtn.addEventListener('click', toggleMobileMenu);
+    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
+    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    backTop.addEventListener('click', goToTop);
+    backTop.addEventListener('touchstart', handleTouchStart);
+    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('beforeunload', () => {
+      window.removeEventListener('scroll', handleScroll);
+    });
+
+    // ====================== Markdown 渲染 + 代码复制 ======================
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const now = new Date();
+      const diff = now - d;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+      if (diff < 172800000) return '昨天 ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) +
+        ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function wrapCodeBlocks(container) {
+      container.querySelectorAll('pre').forEach(pre => {
+        if (pre.parentElement.classList.contains('code-block-wrapper')) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = '📋';
+        copyBtn.title = '复制代码';
+        wrapper.appendChild(copyBtn);
+
+        copyBtn.addEventListener('click', () => {
+          const code = pre.textContent || '';
+          navigator.clipboard.writeText(code).then(() => {
+            copyBtn.textContent = '✓';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+              copyBtn.textContent = '📋';
+              copyBtn.classList.remove('copied');
+            }, 2000);
+          }).catch(() => {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch(_) {}
+            document.body.removeChild(ta);
+            copyBtn.textContent = '✓';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+              copyBtn.textContent = '📋';
+              copyBtn.classList.remove('copied');
+            }, 2000);
+          });
+        });
+
+        // touch devices: always show
+        copyBtn.addEventListener('touchstart', e => e.stopPropagation());
+      });
+    }
+
+    function renderMarkdown(raw) {
+      if (!raw) return '<p style="color:var(--text-tertiary);font-style:italic;">（无内容）</p>';
+      // 配置 marked
+      if (typeof marked.setOptions === 'function') {
+        marked.setOptions({
+          breaks: true,
+          gfm: true
+        });
+      }
+      let html;
+      try {
+        html = marked.parse(raw);
+      } catch(e) {
+        html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + escapeHtml(raw) + '</pre>';
+      }
+      return html;
+    }
+
+    function renderPost(post) {
+      // 更新标题
+      document.title = (post.title || '无标题') + ' · KJLLin';
+
+      // 构建面包屑
+      const breadcrumb = '<div class="back-link-wrap">' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '</div>';
+
+      // 构建帖子卡片
+      let html = breadcrumb;
+      html += '<div class="post-card mica">';
+      html += '<div class="post-header">';
+      html += '<h1 class="post-title">' + escapeHtml(post.title || '无标题') + '</h1>';
+      html += '<div class="post-meta">';
+      html += '<span class="author">' + escapeHtml(post.nick || '匿名') + '</span>';
+      html += '<span class="dot"></span>';
+      html += '<span>' + formatDate(post.created_at) + '</span>';
+      if (post.edited_at) {
+        html += '<span class="dot"></span>';
+        html += '<span>已编辑</span>';
+      }
+      html += '</div>';
+      html += '</div>';
+      html += '<hr class="divider">';
+      html += '<div class="markdown-body" id="markdownBody">';
+      html += renderMarkdown(post.content);
+      html += '</div>';
+      html += '</div>';
+
+      mainContainer.innerHTML = html;
+
+      // 代码块包装
+      const mdBody = document.getElementById('markdownBody');
+      if (mdBody) {
+        wrapCodeBlocks(mdBody);
+      }
+
+      // KaTeX 渲染
+      if (typeof renderMathInElement !== 'undefined') {
+        try {
+          renderMathInElement(document.body, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\[', right: '\\]', display: true },
+              { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false
+          });
+        } catch(e) {
+          console.warn('KaTeX render error:', e);
+        }
+      }
+    }
+
+    function showNotFound() {
+      document.title = '找不到帖子 · KJLLin';
+      const breadcrumb = '<div class="back-link-wrap">' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '</div>';
+      mainContainer.innerHTML = breadcrumb +
+        '<div class="not-found mica">' +
+        '<div class="icon">📭</div>' +
+        '<h2>找不到这篇帖子</h2>' +
+        '<p>帖子可能已被删除，或者链接地址不正确</p>' +
+        '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
+        '</div>';
+    }
+
+    function showError(msg) {
+      document.title = '加载失败 · KJLLin';
+      const breadcrumb = '<div class="back-link-wrap">' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '</div>';
+      mainContainer.innerHTML = breadcrumb +
+        '<div class="not-found mica">' +
+        '<div class="icon">⚠️</div>' +
+        '<h2>加载帖子失败</h2>' +
+        '<p>' + escapeHtml(msg || '未知错误') + '</p>' +
+        '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
+        '</div>';
+    }
+
+    // ====================== 核心：加载帖子 ======================
+    async function loadPost() {
+      const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+
+      // 从 URL 获取 id
+      const params = new URLSearchParams(window.location.search);
+      const postId = params.get('id');
+
+      if (!postId) {
+        showNotFound();
+        return;
+      }
+
+      let sb;
+      try {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      } catch(e) {
+        showError('数据库连接失败，请刷新页面重试');
+        return;
+      }
+
+      try {
+        const { data, error } = await sb
+          .from('posts')
+          .select('*')
+          .eq('id', postId)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            showNotFound();
+          } else {
+            showError('请求失败：' + error.message);
+          }
+          return;
+        }
+
+        if (!data) {
+          showNotFound();
+          return;
+        }
+
+        renderPost(data);
+      } catch(e) {
+        showError('加载帖子时发生错误');
+        console.warn('Load post error:', e);
+      }
+    }
+
+    // ====================== 初始化 ======================
+    window.addEventListener('DOMContentLoaded', async () => {
+      updateThemeUI();
+      await loadPost();
+      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 400);
+    });
+  </script>
+</body>
+</html>
