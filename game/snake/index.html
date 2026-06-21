@@ -6,6 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>贪吃蛇 · KJLLin</title>
   <style>
     html {
@@ -389,9 +390,9 @@
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
       const themeBtn = $('#themeBtn');
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
       // 更新粒子颜色
       particles.forEach(p => {
         p.color = dark ? 'rgba(0, 120, 212, 0.08)' : 'rgba(0, 120, 212, 0.12)';

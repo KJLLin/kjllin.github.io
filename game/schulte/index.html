@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="舒尔特方格注意力训练 - KJLLin">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>舒尔特方格 · KJLLin</title>
   <style>
     html {
@@ -596,13 +597,13 @@
         const localDark = localStorage.getItem('theme') === 'dark';
         if (localDark || sysDark) {
           root.dataset.theme = 'dark';
-          themeBtn.textContent = '☀️';
+          themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
           metaTheme.content = '#0f0f0f';
         } else {
-          themeBtn.textContent = '🌙';
+          themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
           metaTheme.content = '#f3f3f3';
         }
-      } catch (e) { themeBtn.textContent = '🌙'; }
+      } catch (e) { themeBtn.innerHTML = '<i class="fas fa-moon"></i>'; }
     }
 
     function toggleTheme() {
@@ -611,12 +612,12 @@
         if (isDark) {
           root.dataset.theme = '';
           localStorage.removeItem('theme');
-          themeBtn.textContent = '🌙';
+          themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
           metaTheme.content = '#f3f3f3';
         } else {
           root.dataset.theme = 'dark';
           localStorage.setItem('theme', 'dark');
-          themeBtn.textContent = '☀️';
+          themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
           metaTheme.content = '#0f0f0f';
         }
       } catch (e) {}

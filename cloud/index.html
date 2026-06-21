@@ -7,8 +7,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 资源云盘 - 云端文件管理">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>资源云盘 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <style>
     html {
       --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -278,28 +280,28 @@
     <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
       <div class="menu-divider"></div>
-      <a href="/" class="menu-item">🏠 首页</a>
-      <a href="/chat" class="menu-item">📨 站内信</a>
-      <a href="/game/" class="menu-item">🎮 游戏</a>
-      <a href="/cloud/" class="menu-item active">☁️ 云盘</a>
-      <a href="/discuss/" class="menu-item">💬 讨论</a>
-      <a href="/account/" class="menu-item">🔒 账号</a>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item active"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <div class="user-info-bar hidden" id="userInfoBar">
         <div class="user-avatar" id="userAvatarDrop">👤</div>
         <span class="user-name" id="userNameDisplay"></span>
         <button class="logout-btn" id="logoutMenuBtn">退出</button>
       </div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
-      <a href="/" class="menu-item">🏠 首页</a>
-      <a href="/chat" class="menu-item">📨 站内信</a>
-      <a href="/game/" class="menu-item">🎮 游戏</a>
-      <a href="/cloud/" class="menu-item active">☁️ 云盘</a>
-      <a href="/discuss/" class="menu-item">💬 讨论</a>
-      <a href="/account/" class="menu-item">🔒 账号</a>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item active"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
     </div>
   </header>
 
@@ -378,6 +380,15 @@
     </div>
 
     <div class="upload-progress-wrap mica" id="uploadProgressWrap" style="padding:14px 18px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest)">
+
+    <!-- hCaptcha（大文件上传时显示） -->
+    <div id="captchaModal" class="overlay hidden" style="z-index:250">
+      <div class="preview-card" style="max-width:380px;text-align:center">
+        <h3 style="margin-bottom:12px">文件超过5MB，请完成验证</h3>
+        <div class="h-captcha" id="captchaCloud" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-callback="onCloudCaptcha" data-expired-callback="onCloudCaptchaExpired"></div>
+        <button class="btn btn-outline" id="captchaCancelBtn" style="margin-top:12px">取消</button>
+      </div>
+    </div>
       <div class="upload-progress-text">
         <span id="uploadProgressLabel">正在上传...</span>
         <span id="uploadProgressPercent">0%</span>
@@ -934,9 +945,9 @@
       const dark = isActuallyDark();
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.textContent = '切换';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
     }
     function toggleTheme() {
       const mode = localStorage.getItem('theme');
@@ -967,6 +978,65 @@
 
     window.addEventListener('DOMContentLoaded', updateThemeUI);
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+
+    // ====================== 大文件人机验证（>5MB + 防绕过） ======================
+    let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
+    window.onCloudCaptcha = function(t) { _cloudCaptchaToken = t; if (_captchaResolve) { _captchaResolve(true); _captchaResolve = null; } };
+    window.onCloudCaptchaExpired = function() { _cloudCaptchaToken = ''; };
+
+    function requireCaptcha(targetFile) {
+      return new Promise((resolve) => {
+        _captchaTarget = targetFile;
+        if (_cloudCaptchaToken) { _cloudCaptchaToken = ''; resolve(true); return; }
+        _captchaResolve = resolve;
+        $('#captchaModal').classList.remove('hidden');
+        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+      });
+    }
+    $('#captchaCancelBtn').addEventListener('click', () => {
+      $('#captchaModal').classList.add('hidden');
+      if (_captchaResolve) { _captchaResolve(false); _captchaResolve = null; }
+      _cloudCaptchaToken = '';
+      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+    });
+
+    // 防绕过：定时检查 console + devtools 检测
+    let _antiBypass = Date.now();
+    (function antiBypassCheck() {
+      const now = Date.now();
+      // 检测debugger断点
+      if (now - _antiBypass > 2000) { _cloudCaptchaToken = ''; }
+      _antiBypass = now;
+      // 检测devtools
+      const threshold = 160;
+      if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+        _cloudCaptchaToken = '';
+      }
+    })();
+    setInterval(() => {
+      _antiBypass = Date.now();
+      const threshold = 160;
+      if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+        _cloudCaptchaToken = '';
+        $('#captchaModal').classList.add('hidden');
+        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+      }
+    }, 3000);
+
+    // 修改 handleFiles 函数，添加大文件验证
+    const _origHandleFiles = handleFiles;
+    handleFiles = async function(fileList) {
+      const files = Array.from(fileList);
+      const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+      if (largeFiles.length > 0) {
+        const ok = await requireCaptcha(largeFiles[0].name);
+        if (!ok) { showToast('验证取消'); return; }
+        _cloudCaptchaToken = '';
+        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+        $('#captchaModal').classList.add('hidden');
+      }
+      return _origHandleFiles(fileList);
+    };
 
     // ====================== 初始化 ======================
     updateThemeUI();
