@@ -14,19 +14,9 @@
   </script>
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- marked.js -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- highlight.js -->
-  <link rel="stylesheet" id="hljsTheme" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
-  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-  <!-- hCaptcha -->
-  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-  <!-- KaTeX 数学公式 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -538,23 +528,23 @@
     <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
       <div class="menu-divider"></div>
-      <a href="/" class="menu-item">🏠 首页</a>
-      <a href="/chat" class="menu-item">📨 站内信</a>
-      <a href="/game/" class="menu-item">🎮 游戏</a>
-      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active">💡 讨论</a>
-      <a href="/account/" class="menu-item">🔒 账号</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
-      <a href="/" class="menu-item">🏠 首页</a>
-      <a href="/chat" class="menu-item">📨 站内信</a>
-      <a href="/game/" class="menu-item">🎮 游戏</a>
-      <a href="/cloud/" class="menu-item">☁️ 云盘</a>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active">💡 讨论</a>
-      <a href="/account/" class="menu-item">🔒 账号</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
     </div>
   </header>
 
@@ -575,7 +565,7 @@
 
     <!-- ==================== 登录提示（未登录时显示） ==================== -->
     <div class="login-prompt mica" id="loginPrompt">
-      <div class="icon">🔒</div>
+      <div class="icon"><i class="fas fa-lock"></i></div>
       <div class="text">请登录后参与讨论</div>
       <div class="hint"><a href="/login/?redirect=/discuss/" style="color:var(--accent);text-decoration:none;font-weight:600">→ 前往登录</a></div>
     </div>
@@ -600,7 +590,7 @@
 
     <!-- ==================== 帖子列表 ==================== -->
     <div class="post-list" id="postList">
-      <div class="post-empty" id="postEmpty">📭 暂无讨论</div>
+      <div class="post-empty" id="postEmpty"><i class="fas fa-inbox"></i> 暂无讨论</div>
     </div>
 
     <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
@@ -807,9 +797,6 @@
         });
       }
 
-      function renderMarkdown(content) {
-        // 预处理数学公式：$$...$$ 和 $...$
-        let processed = content;
         const displayMath = [];
         const inlineMath = [];
         // 先处理 $$...$$ 块级公式
@@ -831,33 +818,6 @@
         return marked.parse(processed);
       }
 
-      function enhanceCodeBlocks(container) {
-        container.querySelectorAll('pre').forEach(pre => {
-          // 跳过已经处理过的
-          if (pre.parentElement.classList.contains('code-block-wrapper')) return;
-          const wrapper = document.createElement('div');
-          wrapper.className = 'code-block-wrapper';
-          const btn = document.createElement('button');
-          btn.className = 'copy-btn';
-          btn.textContent = '📋';
-          btn.title = '复制代码';
-          btn.addEventListener('click', function() {
-            const code = pre.textContent || pre.innerText || '';
-            navigator.clipboard.writeText(code).then(() => {
-              btn.textContent = '✓';
-              btn.classList.add('copied');
-              setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copied'); }, 2000);
-            }).catch(() => {
-              btn.textContent = '✗';
-              setTimeout(() => { btn.textContent = '📋'; }, 1500);
-            });
-          });
-          // 触摸设备：始终显示按钮
-          btn.addEventListener('touchstart', function(e) { e.stopPropagation(); });
-          pre.parentNode.insertBefore(wrapper, pre);
-          wrapper.appendChild(pre);
-          wrapper.appendChild(btn);
-        });
       }
       let loadedPosts = [];
 
@@ -898,7 +858,19 @@
       }
 
       // ====================== EasyMDE 初始化 ======================
+      let _easymdeLoaded = false;
+
+      function loadEasyMDE(cb) {
+        if (_easymdeLoaded) { cb(); return; }
+        if (window.EasyMDE) { _easymdeLoaded = true; cb(); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js';
+        s.onload = () => { _easymdeLoaded = true; cb(); };
+        document.head.appendChild(s);
+      }
+
       function initEditor() {
+        if (!window.EasyMDE) { loadEasyMDE(initEditor); return; }
         if (easyMDE) return;
         const textarea = document.getElementById('postContent');
         easyMDE = new EasyMDE({
@@ -914,8 +886,12 @@
             codeSyntaxHighlighting: true
           },
           previewRender: function(plainText, preview) {
-            preview.innerHTML = renderMarkdown(plainText);
-            enhanceCodeBlocks(preview);
+            // 简单预览: 用marked(如可用)或纯文本
+            if (typeof marked !== 'undefined') {
+              preview.innerHTML = marked.parse(plainText);
+            } else {
+              preview.textContent = plainText;
+            }
             return preview;
           }
         });
@@ -947,9 +923,9 @@
 
         if (user) {
           const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-          userInfo.innerHTML = '<span class="nick">👤 ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
+          userInfo.innerHTML = '<span class="nick"><i class='fas fa-user'></i> ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
           authBtns.innerHTML =
-            '<button class="btn btn-primary btn-sm" id="newPostBtn">📝 发帖</button>' +
+            '<button class="btn btn-primary btn-sm" id="newPostBtn"><i class="fas fa-pen-to-square"></i> 发帖</button>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
           loginPrompt.style.display = 'none';
 
@@ -1054,13 +1030,18 @@
             });
           });
 
-          // 增强代码块
-          list.querySelectorAll('.post-content').forEach(el => enhanceCodeBlocks(el));
+          // 绑定删除
+          list.querySelectorAll('.del-post-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+              if (!confirm('确定删除此讨论？')) return;
+              const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
               if (error) { toast('删除失败：' + error.message); return; }
               toast('已删除');
               loadPosts();
             });
           });
+
+          // 绑定编辑
         } catch(e) {
           console.warn('Load posts error:', e);
           empty.textContent = '加载讨论失败，请刷新页面重试';
