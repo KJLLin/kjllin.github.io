@@ -9,6 +9,9 @@
   <meta name="description" content="KJLLin 讨论版 | 使用 Markdown 自由交流">
   <title>讨论版 · KJLLin</title>
 
+  <script>// 即使CDN加载慢，5秒后也强制关闭loader
+    setTimeout(function(){ var l=document.getElementById('loader'); if(l){l.style.opacity='0';setTimeout(function(){l.remove()},500);} }, 5000);
+  </script>
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- marked.js -->
@@ -542,7 +545,7 @@
       <a href="/discuss/" class="menu-item active">💡 讨论</a>
       <a href="/account/" class="menu-item">🔒 账号</a>
       <div class="menu-divider"></div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -711,9 +714,9 @@
       const dark = isActuallyDark();
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
       // 切换 highlight.js 主题
       const hljsTheme = document.getElementById('hljsTheme');
       if (hljsTheme) {
