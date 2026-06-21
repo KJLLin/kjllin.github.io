@@ -16,10 +16,12 @@ const S = {
   user: null,          // { id, email, nick }
   partners: {},        // { [id]: { nick, email } }
   conversations: [],   // [{ partnerId, latestText, latestTime, unread }]
+  blockedList: [],     // [{ blocked_id }] from user_blocks table
   selectedId: null,
   messages: [],
   channel: null,
   searchLock: false,
+  convMenuPartner: null, // 当前菜单指向的用户
 };
 
 // ====================== 工具函数 ======================
@@ -109,6 +111,10 @@ const Theme = {
 const ConvList = {
   async load() {
     if (!S.user) return;
+    // 加载屏蔽列表
+    const { data: blocks } = await sb.from('user_blocks').select('blocked_id').eq('blocker_id', S.user.id);
+    S.blockedList = blocks || [];
+
     const { data } = await sb
       .from('private_messages')
       .select('id, sender_id, recipient_id, text, created_at, read')
@@ -150,32 +156,59 @@ const ConvList = {
   },
 
   render() {
-    const el = $('#convList');
-    if (!S.conversations.length) {
-      el.innerHTML = '<div class="conv-empty">暂无对话，搜索用户邮箱发起私信</div>';
-      return;
+    const list = $('#convList');
+    const blockedEl = $('#blockedList');
+    const blockedSection = $('#blockedSection');
+    const blockedCount = $('#blockedCount');
+
+    // 分离已屏蔽和未屏蔽的对话
+    const blockedIds = new Set(S.blockedList.map(b => b.blocked_id));
+    const normal = S.conversations.filter(c => !blockedIds.has(c.partnerId));
+    const blocked = S.conversations.filter(c => blockedIds.has(c.partnerId));
+
+    // 渲染正常对话
+    if (!normal.length && !blocked.length) {
+      list.innerHTML = '<div class="conv-empty">暂无对话，搜索用户邮箱发起私信</div>';
+    } else if (!normal.length) {
+      list.innerHTML = '<div class="conv-empty">暂无活跃对话</div>';
+    } else {
+      list.innerHTML = normal.map(c => this._renderItem(c)).join('');
     }
-    let html = '';
-    for (const c of S.conversations) {
-      const p = S.partners[c.partnerId];
-      const name = U.escape(p?.nick || p?.email || c.partnerId);
-      const text = U.escape(c.latestText || '').substring(0, 40);
-      const time = U.time(c.latestTime);
-      const badge = c.unread > 0 ? `<span class="conv-badge">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
-      const active = c.partnerId === S.selectedId ? ' active' : '';
-      html += `
-        <div class="conv-item${active}" data-id="${c.partnerId}">
-          <div class="conv-avatar">${name.charAt(0)}</div>
-          <div class="conv-body">
-            <div class="conv-top">
-              <span class="conv-name">${name}</span>
-              <span class="conv-time">${time}</span>
-            </div>
-            <div class="conv-preview">${text}${badge}</div>
+
+    // 渲染屏蔽用户区域
+    if (blocked.length) {
+      blockedSection.style.display = '';
+      blockedCount.textContent = blocked.length;
+      blockedEl.innerHTML = blocked.map(c => this._renderItem(c, true)).join('');
+    } else {
+      blockedSection.style.display = 'none';
+    }
+
+    // 保持选中状态高亮
+    if (S.selectedId) {
+      const item = document.querySelector(`.conv-item[data-id="${S.selectedId}"]`);
+      if (item) item.classList.add('active');
+    }
+  },
+
+  _renderItem(c, isBlocked = false) {
+    const p = S.partners[c.partnerId];
+    const name = U.escape(p?.nick || p?.email || c.partnerId);
+    const text = U.escape(c.latestText || '').substring(0, 40);
+    const time = U.time(c.latestTime);
+    const badge = c.unread > 0 ? `<span class="conv-badge">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
+    return `
+      <div class="conv-item" data-id="${c.partnerId}">
+        <div class="conv-avatar">${name.charAt(0)}</div>
+        <div class="conv-body">
+          <div class="conv-top">
+            <span class="conv-name">${name}</span>
+            <span class="conv-time">${time}</span>
           </div>
-        </div>`;
-    }
-    el.innerHTML = html;
+          <div class="conv-preview">${text}${badge}</div>
+        </div>
+        <button class="conv-menu-trigger" data-id="${c.partnerId}" data-blocked="${isBlocked}" title="更多操作">⋮</button>
+      </div>`;
   },
 
   // 更新单个对话（收到新消息时）
@@ -203,6 +236,37 @@ const ConvList = {
       const item = $(`.conv-item[data-id="${S.selectedId}"]`);
       if (item) item.classList.add('active');
     }
+  },
+};
+
+// ====================== 屏蔽/删除操作 ======================
+const BlockActions = {
+  async blockUser(partnerId) {
+    try {
+      await sb.from('user_blocks').upsert({ blocker_id: S.user.id, blocked_id: partnerId }, { onConflict: 'blocker_id,blocked_id' });
+      S.blockedList.push({ blocked_id: partnerId });
+      if (S.selectedId === partnerId) { S.selectedId = null; $('#chatView').classList.add('hidden'); $('#chatPlaceholder').classList.remove('hidden'); }
+      ConvList.render();
+      Toast.success('已屏蔽该用户');
+    } catch(e) { Toast.error('操作失败'); }
+  },
+  async unblockUser(partnerId) {
+    try {
+      await sb.from('user_blocks').delete().eq('blocker_id', S.user.id).eq('blocked_id', partnerId);
+      S.blockedList = S.blockedList.filter(b => b.blocked_id !== partnerId);
+      ConvList.render();
+      Toast.success('已取消屏蔽');
+    } catch(e) { Toast.error('操作失败'); }
+  },
+  async deleteConversation(partnerId) {
+    if (!confirm('确定删除与该用户的所有聊天记录？（仅你这边删除，对方不受影响）')) return;
+    try {
+      await sb.from('private_messages').delete().eq('sender_id', S.user.id).eq('recipient_id', partnerId);
+      S.conversations = S.conversations.filter(c => c.partnerId !== partnerId);
+      if (S.selectedId === partnerId) { S.selectedId = null; $('#chatView').classList.add('hidden'); $('#chatPlaceholder').classList.remove('hidden'); }
+      ConvList.render();
+      Toast.success('聊天记录已删除');
+    } catch(e) { Toast.error('删除失败'); }
   },
 };
 
@@ -457,8 +521,14 @@ function bindEvents() {
     }
   });
 
-  // 对话列表点击
+  // 对话列表点击（区分普通点击和菜单按钮）
   $('#convList').addEventListener('click', (e) => {
+    const menuBtn = e.target.closest('.conv-menu-trigger');
+    if (menuBtn) {
+      e.stopPropagation();
+      showConvMenu(menuBtn.dataset.id, menuBtn.dataset.blocked === 'true', menuBtn);
+      return;
+    }
     const item = e.target.closest('.conv-item');
     if (item) {
       document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
@@ -466,6 +536,73 @@ function bindEvents() {
       ChatView.open(item.dataset.id);
     }
   });
+
+  // 屏蔽用户列表点击
+  $('#blockedList').addEventListener('click', (e) => {
+    const menuBtn = e.target.closest('.conv-menu-trigger');
+    if (menuBtn) {
+      e.stopPropagation();
+      showConvMenu(menuBtn.dataset.id, true, menuBtn);
+      return;
+    }
+    const item = e.target.closest('.conv-item');
+    if (item) {
+      document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      ChatView.open(item.dataset.id);
+    }
+  });
+
+  // 屏蔽用户折叠/展开
+  $('#blockedHeader').addEventListener('click', () => {
+    const list = $('#blockedList');
+    const header = $('#blockedHeader');
+    const chevron = $('#blockedChevron');
+    const isOpen = list.style.display !== 'none';
+    list.style.display = isOpen ? 'none' : '';
+    header.classList.toggle('open', !isOpen);
+  });
+
+  // 全局点击关闭菜单
+  document.addEventListener('click', () => {
+    $('#convMenu').classList.add('hidden');
+  });
+
+  // 菜单选项点击
+  $('#convMenu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const action = e.target.closest('.conv-menu-item')?.dataset.action;
+    const pid = S.convMenuPartner;
+    $('#convMenu').classList.add('hidden');
+    if (!pid || !action) return;
+    if (action === 'block') BlockActions.blockUser(pid);
+    else if (action === 'unblock') BlockActions.unblockUser(pid);
+    else if (action === 'delete') BlockActions.deleteConversation(pid);
+  });
+
+  function showConvMenu(partnerId, isBlocked, anchor) {
+    S.convMenuPartner = partnerId;
+    const menu = $('#convMenu');
+    const rect = anchor.getBoundingClientRect();
+    menu.querySelector('[data-action="block"]').style.display = isBlocked ? 'none' : '';
+    menu.querySelector('[data-action="unblock"]').style.display = isBlocked ? '' : 'none';
+    menu.classList.remove('hidden');
+    menu.style.left = Math.min(rect.right - 160, window.innerWidth - 170) + 'px';
+    menu.style.top = rect.bottom + 4 + 'px';
+    e.stopPropagation();
+  }
+
+  // 全局点击关闭菜单（修正：上面已绑定，这里确保showConvMenu中的e是全局的）
+  window.showConvMenu = function(partnerId, isBlocked, anchor) {
+    S.convMenuPartner = partnerId;
+    const menu = $('#convMenu');
+    const rect = anchor.getBoundingClientRect();
+    menu.querySelector('[data-action="block"]').style.display = isBlocked ? 'none' : '';
+    menu.querySelector('[data-action="unblock"]').style.display = isBlocked ? '' : 'none';
+    menu.classList.remove('hidden');
+    menu.style.left = Math.min(rect.right - 160, window.innerWidth - 170) + 'px';
+    menu.style.top = (rect.bottom + 4) + 'px';
+  };
 
   // 发送消息
   $('#sendBtn').addEventListener('click', () => ChatView.send());
