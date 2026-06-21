@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 的个人主页 | 站内信 | 游戏中心 | 资源云盘">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>KJLLin · 个人主页</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ====================== Win11 全局规范 ====================== */
     html {
@@ -74,10 +74,7 @@
     body { background: var(--bg-body); color: var(--text-primary); }
 
     /* ====================== 粒子背景 ====================== */
-    #particlesCanvas {
-      position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    }
-    .bg-base { position: fixed; inset: 0; background: var(--bg-body); z-index: -3; pointer-events: none; }
+.bg-base { position: fixed; inset: 0; background: var(--bg-body); z-index: -3; pointer-events: none; }
     .bg-mica-glow-1 {
       position: fixed; top: -15%; left: -10%; width: 55%; height: 55%;
       border-radius: var(--radius-full);
@@ -364,3 +361,266 @@
 </head>
 <body>
   <div class="bg-base"></div>
+  <div class="bg-mica-glow-1"></div>
+  <div class="bg-mica-glow-2"></div>
+
+  <div id="loader">
+    <div class="loader-content">
+      <div class="loader-spin"></div>
+      <div class="loader-text">正在加载...</div>
+    </div>
+  </div>
+
+  <!-- ==================== 顶部菜单栏 ==================== -->
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item active" data-nav="home"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item" data-nav="chat"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item" data-nav="game"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item" data-nav="cloud"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+      <div class="menu-divider"></div>
+      <span id="navUserArea" class="nav-user-area">
+        <a href="/login/" class="menu-item" id="navLoginBtn" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>
+      </span>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item active" data-nav="home"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item" data-nav="chat"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item" data-nav="game"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item" data-nav="cloud"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- ==================== 个人信息 ==================== -->
+    <section class="profile">
+      <div class="avatar-box"><div class="avatar">K</div></div>
+      <h1 class="name" id="typeName">KJLLin<span class="cursor"></span></h1>
+      <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
+      <div class="status-row">
+        <span class="status-badge"><span class="status-dot"></span> 在线</span>
+        <span class="status-badge">🛠️ 前端开发</span>
+        <span class="status-badge">📍 中国</span>
+      </div>
+    </section>
+
+    <!-- ==================== 作品展示 ==================== -->
+    <section>
+      <h2 class="section-title">我的作品</h2>
+      <div class="card-grid">
+        <a href="/chat" class="project-card mica" id="cardChat">
+          <div class="card-shine"></div>
+          <div class="card-icon"><i class="fas fa-envelope"></i></div>
+          <h3 class="card-title">站内信</h3>
+          <p class="card-desc">Win11 风格实时消息平台，内置账号系统、管理员后台、敏感词过滤、深色模式，全端兼容。</p>
+          <div class="card-tags"><span class="tag">实时通信</span><span class="tag">Supabase</span><span class="tag">管理后台</span></div>
+        </a>
+
+        <a href="/game/" class="project-card mica" id="cardGame">
+          <div class="card-shine"></div>
+          <div class="card-icon"><i class="fas fa-gamepad"></i></div>
+          <h3 class="card-title">游戏中心</h3>
+          <p class="card-desc">精选小游戏合集：恐龙快跑升级版、舒尔特方格注意力训练，支持触屏操作。</p>
+          <div class="card-tags"><span class="tag">跑酷</span><span class="tag">专注力</span><span class="tag">触屏</span></div>
+        </a>
+
+        <a href="/cloud/" class="project-card mica" id="cardCloud">
+          <div class="card-shine"></div>
+          <div class="card-icon"><i class="fas fa-cloud"></i></div>
+          <h3 class="card-title">资源云盘</h3>
+          <p class="card-desc">在线文件管理工具，支持上传、下载、预览多种文件格式，数据云端存储跨设备同步。</p>
+          <div class="card-tags"><span class="tag">文件管理</span><span class="tag">云端存储</span><span class="tag">跨设备</span></div>
+        </a>
+      </div>
+    </section>
+
+    <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
+  </div>
+
+  <button id="backTop" class="win-btn mica" aria-label="返回顶部">↑</button>
+
+  <script>
+    // ====================== 工具函数 ======================
+    const $ = s => document.querySelector(s);
+    const root = document.documentElement;
+    const metaTheme = $('meta[name="theme-color"]');
+
+    const themeBtn = $('#themeBtn');
+    const loader = $('#loader');
+    const backTop = $('#backTop');
+    const menuBar = $('#menuBar');
+    const hamburgerBtn = $('#hamburgerBtn');
+    const mobileMenu = $('#mobileMenu');
+    let isScrolling = false;
+    let touchStartData = {};
+
+// ====================== 打字机效果 ======================
+    (function() {
+      const el = document.getElementById('typeName');
+      const text = 'KJLLin';
+      const cursor = el.querySelector('.cursor');
+      let i = 0;
+      el.textContent = '';
+      el.appendChild(cursor);
+      function type() {
+        if (i < text.length) {
+          el.textContent = text.substring(0, i + 1);
+          el.appendChild(cursor);
+          i++;
+          setTimeout(type, 120 + Math.random() * 80);
+        }
+      }
+      setTimeout(type, 400);
+    })();
+
+    // ====================== 涟漪效果 ======================
+    document.addEventListener('click', function(e) {
+      const card = e.target.closest('.project-card');
+      if (!card) return;
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple';
+      const rect = card.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      card.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+
+    // ====================== 触摸点击判定 ======================
+    function handleTouchStart(e) {
+      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+    }
+    function handleTouchEnd(e, callback) {
+      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
+      const dx = Math.abs(t.x - touchStartData.x);
+      const dy = Math.abs(t.y - touchStartData.y);
+      const dt = t.time - touchStartData.time;
+      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
+    }
+
+    // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
+    function getSystemDark() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function isActuallyDark() {
+      const mode = localStorage.getItem('theme');
+      return mode === 'dark' || (!mode && getSystemDark());
+    }
+    function updateThemeUI() {
+      const mode = localStorage.getItem('theme');
+      const dark = isActuallyDark();
+      root.dataset.theme = dark ? 'dark' : '';
+      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
+      // 图标：浅色模式显示🌙(提示可切深色)，深色模式显示☀️(提示可切浅色)，自动模式显示🅐
+      if (mode === 'dark') themeBtn.textContent = '☀️';
+      else if (mode === 'light') themeBtn.textContent = '🌙';
+      else themeBtn.textContent = '🅐';
+    }
+    function toggleTheme() {
+      const mode = localStorage.getItem('theme');
+      // 循环：无(auto) → light → dark → 无(auto)
+      if (!mode) localStorage.setItem('theme', 'light');
+      else if (mode === 'light') localStorage.setItem('theme', 'dark');
+      else localStorage.removeItem('theme');
+      updateThemeUI();
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+
+    // ====================== 滚动 ======================
+    function handleScroll() {
+      if (isScrolling) return;
+      isScrolling = true;
+      requestAnimationFrame(() => {
+        backTop.classList.toggle('show', window.scrollY > 300);
+        menuBar.classList.toggle('scrolled', window.scrollY > 20);
+        isScrolling = false;
+      });
+    }
+    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    // ====================== 移动端菜单 ======================
+    function toggleMobileMenu() {
+      mobileMenu.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
+        mobileMenu.classList.remove('open');
+      }
+    });
+
+    // ====================== 初始化 ======================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateThemeUI();
+      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 500);
+    });
+
+    themeBtn.addEventListener('click', toggleTheme);
+    themeBtn.addEventListener('touchstart', handleTouchStart);
+    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    hamburgerBtn.addEventListener('click', toggleMobileMenu);
+    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
+    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    backTop.addEventListener('click', goToTop);
+    backTop.addEventListener('touchstart', handleTouchStart);
+    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
+    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('beforeunload', () => {
+      window.removeEventListener('scroll', handleScroll);
+    });
+
+    // ====================== 登录状态 + 未读站内信 ======================
+    (function(){
+      const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+      let sb;
+      try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } }); } catch(e) {}
+
+      async function updateUserUI() {
+        const area = document.getElementById('navUserArea');
+        if (!sb) { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; return; }
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (session?.user) {
+            const nick = session.user.user_metadata?.nick || session.user.email?.split('@')[0] || '用户';
+            // 查询未读私信
+            let unread = 0;
+            try {
+              const { count } = await sb.from('private_messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('recipient_id', session.user.id).eq('read', false);
+              unread = count || 0;
+            } catch(_) {}
+            const dot = unread > 0 ? '<span class="unread-dot"></span>' : '';
+            area.innerHTML = dot + '<a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信' + (unread > 0 ? ' (' + unread + ')' : '') + '</a>' +
+              '<a href="/account/" class="menu-item">👤 ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
+          } else {
+            area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
+          }
+        } catch(_) {
+          area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
+        }
+      }
+
+      if (sb) {
+        sb.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI();
+        });
+      }
+      updateUserUI();
+      // 页面重新可见时刷新未读数
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) updateUserUI(); });
+    })();
+  </script>
+</body>
+</html>
