@@ -1018,8 +1018,18 @@
         if (!title) { toast('请输入讨论标题'); return; }
         if (!content) { toast('请输入讨论内容'); return; }
         if (!currentUser) { toast('请先登录'); return; }
-        // hCaptcha 验证
-        try { if (typeof hcaptcha !== 'undefined' && !captchaToken) { toast('请完成人机验证'); return; } } catch(_) {}
+        // 服务器端 hCaptcha 验证
+        if (typeof hcaptcha !== 'undefined') {
+          if (!captchaToken) { toast('请完成人机验证'); return; }
+          try {
+            const res = await fetch('https://ayavdkodhdmcxfufnnxo.supabase.co/functions/v1/verify-captcha', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: captchaToken })
+            });
+            const d = await res.json();
+            if (!d.success) { toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
+          } catch(_) {} // Edge Function挂掉时降级
+        }
 
         const btn = document.getElementById('submitPostBtn');
         btn.disabled = true;

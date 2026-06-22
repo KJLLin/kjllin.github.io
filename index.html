@@ -386,7 +386,7 @@
       <span id="navUserArea" class="nav-user-area">
         <a href="/login/" class="menu-item" id="navLoginBtn" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>
       </span>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -522,9 +522,9 @@
       root.dataset.theme = dark ? 'dark' : '';
       metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
       // 图标：浅色模式显示🌙(提示可切深色)，深色模式显示☀️(提示可切浅色)，自动模式显示🅐
-      if (mode === 'dark') themeBtn.textContent = '☀️';
-      else if (mode === 'light') themeBtn.textContent = '🌙';
-      else themeBtn.textContent = '🅐';
+      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
     }
     function toggleTheme() {
       const mode = localStorage.getItem('theme');
@@ -603,7 +603,7 @@
             } catch(_) {}
             const dot = unread > 0 ? '<span class="unread-dot"></span>' : '';
             area.innerHTML = dot + '<a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信' + (unread > 0 ? ' (' + unread + ')' : '') + '</a>' +
-              '<a href="/account/" class="menu-item">👤 ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
+              '<a href="/account/" class="menu-item"><i class='fas fa-user'></i> ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
           } else {
             area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
           }
