@@ -8,10 +8,6 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 讨论版 | 使用 Markdown 自由交流">
   <title>讨论版 · KJLLin</title>
-
-  <script>// 即使CDN加载慢，5秒后也强制关闭loader
-    setTimeout(function(){ var l=document.getElementById('loader'); if(l){l.style.opacity='0';setTimeout(function(){l.remove()},500);} }, 5000);
-  </script>
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -749,7 +745,8 @@
     // ====================== 初始化 ======================
     window.addEventListener('DOMContentLoaded', () => {
       updateThemeUI();
-      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 500);
+      // 立即关闭loader
+      setTimeout(() => { if(loader){loader.style.opacity='0';setTimeout(()=>loader.remove(),300);} }, 300);
     });
 
     themeBtn.addEventListener('click', toggleTheme);
@@ -783,6 +780,7 @@
 
       try {
         sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+        console.log('Supabase init OK');
       } catch(e) {
         console.warn('Supabase init failed:', e);
       }
@@ -922,16 +920,19 @@
         if (!sb) {
           empty.textContent = '讨论服务暂不可用';
           empty.style.display = '';
+          console.warn('loadPosts: sb is null');
           return;
         }
 
         try {
+          console.log('loadPosts: fetching from posts table...');
           const { data, error } = await sb
             .from('posts')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(50);
 
+          console.log('loadPosts: result', { count: data?.length, error });
           if (error) throw error;
 
           loadedPosts = data || [];
