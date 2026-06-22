@@ -214,10 +214,19 @@
     window.onCaptchaRegister = function(token) { captchaTokens.register = token; };
     window.onCaptchaRegisterExpired = function() { captchaTokens.register = ''; };
 
-    function verifyCaptcha(key) {
-      if (typeof hcaptcha === 'undefined') return true; // CDN 不可用时降级
+    // ====================== 服务器端 hCaptcha 验证 ======================
+    async function verifyCaptcha(key) {
+      if (typeof hcaptcha === 'undefined') return true;
       if (!captchaTokens[key]) { toast('请完成人机验证'); return false; }
-      return true;
+      try {
+        const res = await fetch('https://ayavdkodhdmcxfufnnxo.supabase.co/functions/v1/verify-captcha', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: captchaTokens[key] })
+        });
+        const data = await res.json();
+        if (!data.success) { toast('人机验证未通过，请重试'); resetCaptcha(key); return false; }
+        return true;
+      } catch(e) { return true; } // Edge Function 挂掉时降级
     }
     function resetCaptcha(key) {
       captchaTokens[key] = '';
@@ -229,7 +238,7 @@
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
       if (!email || !pwd) { toast('请填写邮箱和密码'); return; }
-      if (!verifyCaptcha('login')) return;
+      if (!(await verifyCaptcha('login'))) return;
       const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = '登录中...';
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
@@ -267,7 +276,7 @@
       if (!nick || !email || !pwd) { toast('请填写完整注册信息'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('请输入正确的邮箱格式'); return; }
       if (pwd.length < 8) { toast('密码长度不能少于8位'); return; }
-      if (!verifyCaptcha('register')) return;
+      if (!(await verifyCaptcha('register'))) return;
       const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '注册中...';
       try {
         const { data: authData, error: authError } = await sb.auth.signUp({ email, password: pwd, options: { data: { nick } } });

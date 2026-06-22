@@ -288,7 +288,7 @@
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <div class="user-info-bar hidden" id="userInfoBar">
-        <div class="user-avatar" id="userAvatarDrop">👤</div>
+        <div class="user-avatar" id="userAvatarDrop"><i class="fas fa-user"></i></div>
         <span class="user-name" id="userNameDisplay"></span>
         <button class="logout-btn" id="logoutMenuBtn">退出</button>
       </div>
@@ -311,7 +311,7 @@
       <!-- 登录表单 -->
       <div class="auth-card mica" id="loginCard">
         <div class="auth-header">
-          <div class="header-icon">☁️</div>
+          <div class="header-icon"><i class="fas fa-cloud"></i></div>
           <h2>资源云盘</h2>
           <p>登录后管理你的云端文件</p>
         </div>
@@ -332,7 +332,7 @@
       <!-- 注册表单（默认隐藏） -->
       <div class="auth-card mica hidden" id="registerCard">
         <div class="auth-header">
-          <div class="header-icon">☁️</div>
+          <div class="header-icon"><i class="fas fa-cloud"></i></div>
           <h2>注册账号</h2>
           <p>创建账号后即可管理云盘文件</p>
         </div>
@@ -358,7 +358,7 @@
     <!-- ========== 云盘内容（登录后显示） ========== -->
     <div class="drive-content hidden" id="driveContent">
     <div class="page-header">
-      <div class="header-icon">☁️</div>
+      <div class="header-icon"><i class="fas fa-cloud"></i></div>
       <h1 class="header-title">资源云盘</h1>
       <p class="header-sub">云端存储 · 随时随地访问你的文件</p>
     </div>
@@ -399,7 +399,7 @@
     <div style="position:relative">
       <div class="file-list" id="fileList"></div>
       <div class="empty-state" id="emptyState">
-        <div class="empty-icon">📭</div>
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
         <div class="empty-text" id="emptyText">暂无文件，上传你的第一个文件吧</div>
       </div>
     </div>
@@ -491,7 +491,7 @@
       const userItem = document.createElement('span');
       userItem.className = 'menu-item mobile-menu-user';
       userItem.style.cssText = 'pointer-events:none;font-weight:600;color:var(--accent)';
-      userItem.textContent = '👤 ' + nick;
+      userItem.textContent = '<i class="fas fa-user"></i> ' + nick;
       m.appendChild(userItem);
       const logoutLink = document.createElement('a');
       logoutLink.className = 'menu-item mobile-menu-logout';
@@ -722,7 +722,7 @@
       if (type.includes('pdf')) return '📕';
       if (type.includes('zip') || type.includes('rar') || type.includes('tar') || type.includes('7z')) return '📦';
       if (type.includes('text') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css')) return '📄';
-      if (name.endsWith('.md')) return '📝';
+      if (name.endsWith('.md')) return '\u{1F4DD}';
       if (name.endsWith('.doc') || name.endsWith('.docx')) return '📃';
       if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '📊';
       if (name.endsWith('.ppt') || name.endsWith('.pptx')) return '📽️';
@@ -791,7 +791,7 @@
             <div class="file-actions">
               <button class="file-btn" data-action="preview" data-url="${escapeHtml(url)}" data-name="${displayName}" data-type="${escapeHtml(f.type)}" title="预览">👁</button>
               <button class="file-btn" data-action="download" data-url="${escapeHtml(url)}" data-name="${displayName}" title="下载">⬇</button>
-              <button class="file-btn del-btn" data-action="delete" data-name="${escapeHtml(f.name)}" title="删除">🗑</button>
+              <button class="file-btn del-btn" data-action="delete" data-name="${escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
             </div>
           </div>`;
         }).join('');
@@ -981,7 +981,17 @@
 
     // ====================== 大文件人机验证（>5MB + 防绕过） ======================
     let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
-    window.onCloudCaptcha = function(t) { _cloudCaptchaToken = t; if (_captchaResolve) { _captchaResolve(true); _captchaResolve = null; } };
+    window.onCloudCaptcha = async function(t) {
+      _cloudCaptchaToken = t;
+      try {
+        const res = await fetch('https://ayavdkodhdmcxfufnnxo.supabase.co/functions/v1/verify-captcha', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t })
+        });
+        const d = await res.json();
+        if (!d.success) { showToast('验证失败，请重试'); _cloudCaptchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
+      } catch(_) {}
+      if (_captchaResolve) { _captchaResolve(true); _captchaResolve = null; }
+    };
     window.onCloudCaptchaExpired = function() { _cloudCaptchaToken = ''; };
 
     function requireCaptcha(targetFile) {
