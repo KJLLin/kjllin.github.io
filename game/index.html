@@ -458,8 +458,8 @@
 
     window.addEventListener('DOMContentLoaded', updateThemeUI);
     themeBtn.addEventListener('click', toggleTheme);
-    themeBtn.addEventListener('touchstart', handleTouchStart);
-    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    
+    
     $('#searchBox').addEventListener('input', filterGames);
     window.addEventListener('scroll', handleScroll);
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
