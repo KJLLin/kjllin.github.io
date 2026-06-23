@@ -370,6 +370,13 @@
       <div class="loader-text">正在加载...</div>
     </div>
   </div>
+  <script>
+    // 强制关闭loader，不依赖任何CDN脚本
+    setTimeout(function(){
+      var l=document.getElementById('loader');
+      if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
+    },800);
+  </script>
 
   <!-- ==================== 顶部菜单栏 ==================== -->
   <header class="top-menu">
@@ -561,7 +568,6 @@
     // ====================== 初始化 ======================
     window.addEventListener('DOMContentLoaded', () => {
       updateThemeUI();
-      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 500);
     });
 
     themeBtn.addEventListener('click', toggleTheme);
