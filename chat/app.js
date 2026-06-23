@@ -640,7 +640,7 @@ async function init() {
     return;
   }
   sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
-    auth: { autoRefreshToken: true, persistSession: true },
+    auth: { autoRefreshToken: true, persistSession: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } },
   });
 
   // 检查认证状态

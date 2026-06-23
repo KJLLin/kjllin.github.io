@@ -778,11 +778,22 @@
 
       let loadedPosts = [];
 
+      // 防 Safari Tracking Prevention 阻止 localStorage
+      const safeStorage = {
+        getItem: (key) => { try { return localStorage.getItem(key); } catch { return null; } },
+        setItem: (key, value) => { try { localStorage.setItem(key, value); } catch {} },
+        removeItem: (key) => { try { localStorage.removeItem(key); } catch {} },
+      };
+
       try {
-        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: { persistSession: true, storage: safeStorage }
+        });
         console.log('Supabase init OK');
       } catch(e) {
         console.warn('Supabase init failed:', e);
+        // 最终兜底：无存储模式
+        try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } }); } catch(_) {}
       }
 
       // ====================== 工具函数 ======================
