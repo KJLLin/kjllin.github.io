@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 的个人主页 | 站内信 | 游戏中心 | 资源云盘">
   <title>KJLLin · 个人主页</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -179,12 +179,16 @@
     /* 移动端汉堡菜单 */
     .hamburger { display: none; }
     .mobile-menu-dropdown {
-      display: none; position: absolute; top: 100%; left: 16px; right: 16px;
-      margin-top: 8px; padding: 8px; border-radius: var(--radius-md);
+      display: none; position: absolute; top: calc(100% + 8px); left: 16px; right: 16px;
+      padding: 8px; border-radius: var(--radius-md);
       box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px;
       pointer-events: all; z-index: 101;
     }
     .mobile-menu-dropdown.open { display: flex; }
+    .mobile-menu-dropdown .menu-item {
+      display: block; width: 100%; text-align: left;
+      pointer-events: auto;
+    }
 
     /* ====================== 布局 ====================== */
     .container { max-width: 960px; margin: 0 auto; padding: 80px 16px 28px; position: relative; z-index: 1; }
@@ -394,7 +398,7 @@
         <a href="/login/" class="menu-item" id="navLoginBtn" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>
       </span>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
-      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item active" data-nav="home"><i class="fas fa-home"></i> 首页</a>
@@ -467,7 +471,6 @@
     const hamburgerBtn = $('#hamburgerBtn');
     const mobileMenu = $('#mobileMenu');
     let isScrolling = false;
-    let touchStartData = {};
 
 // ====================== 打字机效果 ======================
     (function() {
@@ -502,18 +505,6 @@
       card.appendChild(ripple);
       setTimeout(() => ripple.remove(), 600);
     });
-
-    // ====================== 触摸点击判定 ======================
-    function handleTouchStart(e) {
-      touchStartData = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
-    }
-    function handleTouchEnd(e, callback) {
-      const t = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, time: Date.now() };
-      const dx = Math.abs(t.x - touchStartData.x);
-      const dy = Math.abs(t.y - touchStartData.y);
-      const dt = t.time - touchStartData.time;
-      if (dx < 10 && dy < 10 && dt < 300) { e.preventDefault(); e.stopPropagation(); callback(); }
-    }
 
     // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
     function getSystemDark() {
@@ -571,22 +562,19 @@
     });
 
     themeBtn.addEventListener('click', toggleTheme);
-    themeBtn.addEventListener('touchstart', handleTouchStart);
-    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
-    hamburgerBtn.addEventListener('click', toggleMobileMenu);
-    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
-    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    hamburgerBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      mobileMenu.classList.toggle('open');
+    });
     backTop.addEventListener('click', goToTop);
-    backTop.addEventListener('touchstart', handleTouchStart);
-    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
     window.addEventListener('scroll', handleScroll);
 
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);
     });
 
-    // ====================== 登录状态 + 未读站内信 ======================
-    (function(){
+    // ====================== 登录状态 + 未读站内信（DOM ready后执行） ======================
+    document.addEventListener('DOMContentLoaded', function() {
       const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
       let sb;
@@ -626,7 +614,7 @@
       updateUserUI();
       // 页面重新可见时刷新未读数
       document.addEventListener('visibilitychange', () => { if (!document.hidden) updateUserUI(); });
-    })();
+    });
   </script>
 </body>
 </html>
