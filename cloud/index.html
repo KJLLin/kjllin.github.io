@@ -427,7 +427,7 @@
     let sb = null;
     try {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, detectSessionInUrl: true }
+        auth: { persistSession: true, detectSessionInUrl: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } }
       });
     } catch(e) {
       console.warn('Supabase init failed');
