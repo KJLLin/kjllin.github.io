@@ -11,7 +11,7 @@
   <title>帖子 · KJLLin</title>
 
   <!-- CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css">
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js"></script>
@@ -442,7 +442,7 @@
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
-      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
@@ -613,11 +613,11 @@
 
     // ====================== 事件绑定 ======================
     themeBtn.addEventListener('click', toggleTheme);
-    themeBtn.addEventListener('touchstart', handleTouchStart);
-    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    
+    
     hamburgerBtn.addEventListener('click', toggleMobileMenu);
-    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
-    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    
+    
     backTop.addEventListener('click', goToTop);
     backTop.addEventListener('touchstart', handleTouchStart);
     backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));

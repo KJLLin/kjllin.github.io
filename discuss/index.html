@@ -9,7 +9,7 @@
   <meta name="description" content="KJLLin 讨论版 | 使用 Markdown 自由交流">
   <title>讨论版 · KJLLin</title>
   <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
@@ -539,7 +539,7 @@
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
-      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
@@ -755,11 +755,11 @@
     });
 
     themeBtn.addEventListener('click', toggleTheme);
-    themeBtn.addEventListener('touchstart', handleTouchStart);
-    themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
+    
+    
     hamburgerBtn.addEventListener('click', toggleMobileMenu);
-    hamburgerBtn.addEventListener('touchstart', handleTouchStart);
-    hamburgerBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleMobileMenu));
+    
+    
     backTop.addEventListener('click', goToTop);
     backTop.addEventListener('touchstart', handleTouchStart);
     backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));

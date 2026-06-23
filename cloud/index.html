@@ -9,7 +9,7 @@
   <meta name="description" content="KJLLin 资源云盘 - 云端文件管理">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>资源云盘 · KJLLin</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <style>
     html {
@@ -293,7 +293,7 @@
         <button class="logout-btn" id="logoutMenuBtn">退出</button>
       </div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
-      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
@@ -589,20 +589,21 @@
     }
 
     // 监听认证状态变化
-    if (sb) {
-      sb.auth.onAuthStateChange((event, session) => {
-        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          // 静默刷新，不打断用户
-          if (session?.user) currentUser = session.user;
-          return;
-        }
-        if (event === 'SIGNED_IN' && session?.user) {
-          showDrivePage(session.user);
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-          currentUser = null;
-          showAuthPage();
-        }
-      });
+    document.addEventListener('DOMContentLoaded', () => {
+      if (sb) {
+        sb.auth.onAuthStateChange((event, session) => {
+          if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) currentUser = session.user;
+            return;
+          }
+          if (event === 'SIGNED_IN' && session?.user) {
+            showDrivePage(session.user);
+          } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            currentUser = null;
+            showAuthPage();
+          }
+        });
+      }
     }
 
     // ====================== 文件管理 ======================
@@ -1050,12 +1051,18 @@
 
     // ====================== 初始化 ======================
     updateThemeUI();
-    if (sb) {
-      checkSession();
-    } else {
-      showAuthPage();
-      showToast('云存储服务暂不可用，请检查网络连接');
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      if (sb) {
+        checkSession();
+      } else {
+        try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } } }); } catch(e) {}
+        if (sb) {
+          checkSession();
+        } else {
+          showAuthPage();
+        }
+      }
+    });
   </script>
 </body>
 </html>
