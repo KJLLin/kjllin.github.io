@@ -1,43 +1,43 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
-const HCAPTCHA_SECRET = Deno.env.get("HCAPTCHA_SECRET") || "";
+const HCAPTCHA_SECRET = (() => {
+  try { return Deno.env.get("HCAPTCHA_SECRET") || ""; } catch { return ""; }
+})();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type" }
+    });
   }
 
   try {
     const { token } = await req.json();
     if (!token) {
-      return new Response(JSON.stringify({ success: false, error: "Missing token" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ success: false, error: "Missing token" }), { status: 400 });
     }
 
-    // Verify with hCaptcha
+    if (!HCAPTCHA_SECRET) {
+      return new Response(JSON.stringify({ success: false, error: "Server not configured" }), { status: 500 });
+    }
+
     const formData = new URLSearchParams();
     formData.append("secret", HCAPTCHA_SECRET);
     formData.append("response", token);
+    formData.append("sitekey", "abe0d880-7704-481a-b892-9b982f7c5890");
 
-    const result = await fetch("https://hcaptcha.com/siteverify", {
-      method: "POST",
-      body: formData,
+    const result = await fetch("https://api.hcaptcha.com/siteverify", {
+      method: "POST", body: formData,
     });
-
     const data = await result.json();
 
     return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
     });
   } catch (e) {
     return new Response(JSON.stringify({ success: false, error: e.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
     });
   }
 });
