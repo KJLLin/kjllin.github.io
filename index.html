@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 的个人主页 | 站内信 | 游戏中心 | 资源云盘">
   <title>KJLLin · 个人主页</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -566,8 +566,8 @@
       window.removeEventListener('scroll', handleScroll);
     });
 
-    // ====================== 登录状态 + 未读站内信（DOM ready后执行） ======================
-    document.addEventListener('DOMContentLoaded', function() {
+    // ====================== 登录状态 + 未读站内信 ======================
+    (function(){
       const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
       let sb;
@@ -611,7 +611,7 @@
       if (l) { l.style.opacity = '0'; setTimeout(() => l.remove(), 300); }
       // 页面重新可见时刷新未读数
       document.addEventListener('visibilitychange', () => { if (!document.hidden) updateUserUI(); });
-    });
+    })();
   </script>
 </body>
 </html>
