@@ -515,10 +515,25 @@
   <div id="loader">
     <div class="loader-content">
       <div class="loader-spin"></div>
-      <div class="loader-text">正在加载...</div>
+      <div class="loader-text" id="loaderText">正在加载...</div>
+      <div id="loaderError" style="display:none;margin-top:12px;font-size:12px;color:#e74c3c;max-width:300px;text-align:center;word-break:break-all"></div>
     </div>
   </div>
-  <script>setTimeout(function(){var l=document.getElementById("loader");if(l){l.style.opacity="0";setTimeout(function(){l.remove()},300);}},15000);</script>
+  <script>
+    var _t1=setTimeout(function(){document.getElementById('loaderText').textContent='正在加载... (网络较慢)';},5000);
+    var _t2=setTimeout(function(){document.getElementById('loaderText').textContent='加载时间较长，请检查网络连接';},10000);
+    var _t3=setTimeout(function(){
+      var l=document.getElementById('loader');
+      if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);}
+    },15000);
+    function showError(msg){
+      var el=document.getElementById('loaderError');
+      if(el){el.style.display='';el.textContent=el.textContent+' | '+msg;}
+      var lt=document.getElementById('loaderText');
+      if(lt)lt.textContent='⚠️ 加载出错 - 查看下方详情';
+    }
+    window.onerror=function(msg,url,line){showError('JS错误('+line+'): '+msg);};
+  </script>
 
   <!-- ==================== 顶部菜单栏 ==================== -->
   <header class="top-menu">
