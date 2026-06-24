@@ -913,7 +913,7 @@
 
         if (user) {
           const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-          userInfo.innerHTML = '<span class="nick"><i class='fas fa-user'></i> ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
+          userInfo.innerHTML = '<span class="nick"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
           authBtns.innerHTML =
             '<button class="btn btn-primary btn-sm" id="newPostBtn"><i class="fas fa-pen-to-square"></i> 发帖</button>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
@@ -929,7 +929,7 @@
         } else {
           userInfo.innerHTML = '<span style="color:var(--text-tertiary);font-size:14px;">未登录</span>';
           authBtns.innerHTML =
-            '<a href="/cloud/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
+            '<a href="/login/?redirect=/discuss/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
           loginPrompt.style.display = 'block';
           postFormWrap.style.display = 'none';
           destroyEditor();
