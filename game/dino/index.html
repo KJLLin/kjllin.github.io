@@ -154,7 +154,7 @@
         // 天气系统
         const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } });
         const GAME_NAME = 'dino';
 
         async function saveScore(finalScore) {
