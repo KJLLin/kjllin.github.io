@@ -763,6 +763,13 @@
 
     // ====================== 讨论版核心逻辑 ======================
     (function() {
+      // 终极兜底：15秒后强制关闭loader
+      var _closeLoader = function(){
+        var l = document.getElementById('loader');
+        if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
+      };
+      var _forceTimer = setTimeout(_closeLoader, 15000);
+
       const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
 
@@ -1018,8 +1025,9 @@
           empty.style.display = '';
         }
         // 关闭loader
-        const l = document.getElementById('loader');
-        if (l) { l.style.opacity = '0'; setTimeout(() => l.remove(), 300); }
+        var l = document.getElementById('loader');
+        if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
+        if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
       }
 
       // ====================== 发布帖子 ======================
@@ -1115,6 +1123,10 @@
         updateAuthUI(null);
         loadPosts();
       }
+      // 确保loader已关闭
+      var l = document.getElementById('loader');
+      if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
+      if (_forceTimer) clearTimeout(_forceTimer);
     })();
   </script>
 </body>
