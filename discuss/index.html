@@ -518,13 +518,6 @@
       <div class="loader-text">正在加载...</div>
     </div>
   </div>
-  <script>
-    // 强制关闭loader，不依赖任何CDN脚本
-    setTimeout(function(){
-      var l=document.getElementById('loader');
-      if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
-    },800);
-  </script>
 
   <!-- ==================== 顶部菜单栏 ==================== -->
   <header class="top-menu">
@@ -1024,6 +1017,9 @@
           empty.textContent = '加载讨论失败，请刷新页面重试';
           empty.style.display = '';
         }
+        // 关闭loader
+        const l = document.getElementById('loader');
+        if (l) { l.style.opacity = '0'; setTimeout(() => l.remove(), 300); }
       }
 
       // ====================== 发布帖子 ======================

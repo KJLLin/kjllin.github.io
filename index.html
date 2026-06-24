@@ -374,13 +374,6 @@
       <div class="loader-text">正在加载...</div>
     </div>
   </div>
-  <script>
-    // 强制关闭loader，不依赖任何CDN脚本
-    setTimeout(function(){
-      var l=document.getElementById('loader');
-      if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
-    },800);
-  </script>
 
   <!-- ==================== 顶部菜单栏 ==================== -->
   <header class="top-menu">
@@ -580,6 +573,13 @@
       let sb;
       try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } } }); } catch(e) {}
 
+      // 必须在getSession之前注册监听
+      if (sb) {
+        sb.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI();
+        });
+      }
+
       async function updateUserUI() {
         const area = document.getElementById('navUserArea');
         if (!sb) { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; return; }
@@ -605,13 +605,10 @@
           area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
         }
       }
-
-      if (sb) {
-        sb.auth.onAuthStateChange((event) => {
-          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI();
-        });
-      }
       updateUserUI();
+      // 数据加载完成后关闭loader
+      const l = document.getElementById('loader');
+      if (l) { l.style.opacity = '0'; setTimeout(() => l.remove(), 300); }
       // 页面重新可见时刷新未读数
       document.addEventListener('visibilitychange', () => { if (!document.hidden) updateUserUI(); });
     });
