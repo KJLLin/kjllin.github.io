@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="KJLLin 的个人主页 | 站内信 | 游戏中心 | 资源云盘">
   <title>KJLLin · 个人主页</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -374,6 +373,7 @@
       <div class="loader-text">正在加载...</div>
     </div>
   </div>
+  <script>setTimeout(function(){var l=document.getElementById("loader");if(l){l.style.opacity="0";setTimeout(function(){l.remove()},300);}},15000);</script>
 
   <!-- ==================== 顶部菜单栏 ==================== -->
   <header class="top-menu">
@@ -567,62 +567,48 @@
     });
 
     // ====================== 登录状态 + 未读站内信 ======================
-    (function(){
-      // 终极兜底：15秒后强制关闭loader(防止supabase API无响应)
-      var _closeLoader = function(){
-        var l = document.getElementById('loader');
-        if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
-      };
-      var _forceTimer = setTimeout(_closeLoader, 15000);
-
+    // 使用动态加载supabase，页面先渲染完成
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload = function() {
       try {
-      const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
-      let sb;
-      try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } } }); } catch(e) {}
-
-      // 必须在getSession之前注册监听
-      if (sb) {
-        sb.auth.onAuthStateChange((event) => {
-          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI();
-        });
+      var SUPABASE_URL='https://ayavdkodhdmcxfufnnxo.supabase.co';
+      var SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+      var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } });
+      sb.auth.onAuthStateChange(function(event) { if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI(); });
+      updateUserUI();
+      function updateUserUI() {
+        var area = document.getElementById('navUserArea');
+        if (!area) return;
+        sb.auth.getSession().then(function(r) {
+          try {
+            if (r.data.session && r.data.session.user) {
+              var u = r.data.session.user;
+              var nick = u.user_metadata.nick || u.email.split('@')[0] || '用户';
+              var dot = '';
+              var areaHtml = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
+              // 查未读
+              sb.from('private_messages').select('*', { count: 'exact', head: true }).eq('recipient_id', u.id).eq('read', false).then(function(r2) {
+                var unread = r2.count || 0;
+                if (unread > 0) areaHtml = '<span class="unread-dot"></span><a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信 (' + unread + ')</a>' + areaHtml;
+                area.innerHTML = areaHtml;
+              }).catch(function() { area.innerHTML = areaHtml; });
+            } else {
+              area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
+            }
+          } catch(e) { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; }
+        }).catch(function() { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; });
       }
-
-      async function updateUserUI() {
-        const area = document.getElementById('navUserArea');
-        if (!sb) { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; return; }
-        try {
-          const { data: { session } } = await sb.auth.getSession();
-          if (session?.user) {
-            const nick = session.user.user_metadata?.nick || session.user.email?.split('@')[0] || '用户';
-            // 查询未读私信
-            let unread = 0;
-            try {
-              const { count } = await sb.from('private_messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('recipient_id', session.user.id).eq('read', false);
-              unread = count || 0;
-            } catch(_) {}
-            const dot = unread > 0 ? '<span class="unread-dot"></span>' : '';
-            area.innerHTML = dot + '<a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信' + (unread > 0 ? ' (' + unread + ')' : '') + '</a>' +
-              '<a href="/account/" class="menu-item"><i class='fas fa-user'></i> ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
-          } else {
-            area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
-          }
-        } catch(_) {
-          area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
-        }
-      }
-      console.log('[auth] calling updateUserUI');
-      updateUserUI().catch(function(e){ console.warn('[auth] updateUserUI error:', e); });
-      // 数据加载完成后关闭loader
+      // 关闭loader
       var l = document.getElementById('loader');
       if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
-      if (_forceTimer) clearTimeout(_forceTimer);
-      // 页面重新可见时刷新未读数
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) updateUserUI(); });
-      } catch(e) { console.error('[auth] init error:', e); _closeLoader(); }
-    })();
+      } catch(e) { console.warn(e); var l = document.getElementById('loader'); if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);} }
+    };
+    s.onerror = function() {
+      var l = document.getElementById('loader');
+      if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
+    };
+    document.body.appendChild(s);
   </script>
 </body>
 </html>
