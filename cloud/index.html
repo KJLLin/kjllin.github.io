@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
@@ -24,9 +24,10 @@
     * {
       margin: 0; padding: 0; box-sizing: border-box;
       font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
-      -webkit-tap-highlight-color: transparent; outline: none;
+      -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
+    :focus:not(:focus-visible) { outline: none; }
     pre, code, .mono, .file-name, .preview-content pre, .search-box {
       font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace;
     }
@@ -108,6 +109,7 @@
     [data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
     .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
     .menu-btn:active { transform: scale(0.92); }
+    #themeBtn { border-radius: 50%; }
     .hamburger { display: none; }
     .mobile-menu-dropdown { display: none; position: absolute; top: 100%; left: 16px; right: 16px; margin-top: 8px; padding: 8px; border-radius: var(--radius-md); box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px; pointer-events: all; z-index: 101; }
     .mobile-menu-dropdown.open { display: flex; }
@@ -413,31 +415,14 @@
     </div>
   </div>
 
+  <script src="/common.js"></script>
   <script>
     const $ = s => document.querySelector(s);
-    const root = document.documentElement;
-    const metaTheme = $('meta[name="theme-color"]');
+
 
     // ====================== Supabase 初始化 ======================
-    const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
     const BUCKET_NAME = 'cloud-drive';
-
-    let sb = null;
-    try {
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, detectSessionInUrl: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } }
-      });
-    } catch(e) {
-      console.warn('Supabase init failed');
-    }
-
-    // ====================== HTML 转义 ======================
-    function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[c]));
-    }
+    var sb = KJ.createSupabase();
 
     // ====================== 错误格式化 ======================
     function formatErr(err) {
@@ -451,16 +436,6 @@
       return msg;
     }
 
-    // ====================== Toast ======================
-    function showToast(msg) {
-      const existing = document.querySelector('.toast');
-      if (existing) existing.remove();
-      const t = document.createElement('div');
-      t.className = 'toast';
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2500);
-    }
 
     // ====================== 认证模块 ======================
     let currentUser = null;
@@ -490,7 +465,7 @@
       const userItem = document.createElement('span');
       userItem.className = 'menu-item mobile-menu-user';
       userItem.style.cssText = 'pointer-events:none;font-weight:600;color:var(--accent)';
-      userItem.innerHTML = '<i class="fas fa-user"></i> ' + escapeHtml(nick);
+      userItem.innerHTML = '<i class="fas fa-user"></i> ' + KJ.escapeHtml(nick);
       m.appendChild(userItem);
       const logoutLink = document.createElement('a');
       logoutLink.className = 'menu-item mobile-menu-logout';
@@ -503,14 +478,14 @@
     async function doLogin() {
       const email = $('#loginEmail').value.trim();
       const pwd = $('#loginPwd').value.trim();
-      if (!email || !pwd) { showToast('请填写邮箱和密码'); return; }
+      if (!email || !pwd) { KJ.toast('请填写邮箱和密码'); return; }
       const btn = $('#loginBtn');
       btn.disabled = true; btn.textContent = '登录中...';
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
         if (error) throw error;
       } catch(e) {
-        showToast('登录失败：' + formatErr(e));
+        KJ.toast('登录失败：' + formatErr(e));
       } finally {
         setTimeout(() => { btn.disabled = false; btn.textContent = '登 录'; }, 300);
       }
@@ -521,10 +496,10 @@
       const nick = $('#regNick').value.trim();
       const email = $('#regEmail').value.trim();
       const pwd = $('#regPwd').value.trim();
-      if (!nick || !email || !pwd) { showToast('请填写完整注册信息'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('请输入正确的邮箱格式'); return; }
-      if (pwd.length < 8) { showToast('密码长度不能少于8位'); return; }
-      if (nick.length > 20) { showToast('昵称不能超过20个字符'); return; }
+      if (!nick || !email || !pwd) { KJ.toast('请填写完整注册信息'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { KJ.toast('请输入正确的邮箱格式'); return; }
+      if (pwd.length < 8) { KJ.toast('密码长度不能少于8位'); return; }
+      if (nick.length > 20) { KJ.toast('昵称不能超过20个字符'); return; }
       const btn = $('#regBtn');
       btn.disabled = true; btn.textContent = '注册中...';
       try {
@@ -541,11 +516,11 @@
           status: 'active', created_at: new Date().toISOString()
         }], { onConflict: 'id' });
 
-        showToast('注册成功！请登录');
+        KJ.toast('注册成功！请登录');
         $('#regNick').value = ''; $('#regEmail').value = ''; $('#regPwd').value = '';
         showLoginForm();
       } catch(e) {
-        showToast('注册失败：' + formatErr(e));
+        KJ.toast('注册失败：' + formatErr(e));
       } finally {
         setTimeout(() => { btn.disabled = false; btn.textContent = '完成注册'; }, 300);
       }
@@ -560,7 +535,7 @@
       }
       currentUser = null;
       showAuthPage();
-      showToast('已安全退出');
+      KJ.toast('已安全退出');
     }
 
     function showLoginForm() {
@@ -628,8 +603,8 @@
     }
 
     async function uploadFile(file) {
-      if (!sb) { showToast('云存储不可用'); return false; }
-      if (!currentUser) { showToast('请先登录'); return false; }
+      if (!sb) { KJ.toast('云存储不可用'); return false; }
+      if (!currentUser) { KJ.toast('请先登录'); return false; }
 
       const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const session = (await sb.auth.getSession()).data.session;
@@ -661,18 +636,18 @@
           } else {
             let errMsg = '上传失败';
             try { const r = JSON.parse(xhr.responseText); errMsg = r.message || r.error || errMsg; } catch(_) {}
-            showToast('上传失败: ' + errMsg);
+            KJ.toast('上传失败: ' + errMsg);
             resolve(false);
           }
         });
 
         xhr.addEventListener('error', () => {
           wrap.classList.remove('active');
-          showToast('上传失败：网络错误');
+          KJ.toast('上传失败：网络错误');
           resolve(false);
         });
 
-        xhr.open('POST', SUPABASE_URL + '/storage/v1/object/' + BUCKET_NAME + '/' + path);
+        xhr.open('POST', KJ.SUPABASE_URL + '/storage/v1/object/' + BUCKET_NAME + '/' + path);
         xhr.setRequestHeader('Authorization', 'Bearer ' + session?.access_token);
         xhr.setRequestHeader('Cache-Control', 'max-age=3600');
         xhr.send(file);
@@ -681,14 +656,14 @@
 
     async function deleteCloudFile(name) {
       if (!sb) return false;
-      if (!currentUser) { showToast('请先登录'); return false; }
+      if (!currentUser) { KJ.toast('请先登录'); return false; }
       try {
         const { error } = await sb.storage.from(BUCKET_NAME).remove([name]);
         if (error) throw error;
         return true;
       } catch(e) {
         console.error('Delete failed:', e.message);
-        showToast('删除失败: ' + e.message);
+        KJ.toast('删除失败: ' + e.message);
         return false;
       }
     }
@@ -702,15 +677,15 @@
       if (!sb) return;
       if (!confirm('确定要清空云盘中的所有文件吗？此操作不可恢复。')) return;
       const files = await listFiles();
-      if (files.length === 0) { showToast('没有可删除的文件'); return; }
+      if (files.length === 0) { KJ.toast('没有可删除的文件'); return; }
       const paths = files.map(f => f.name);
       try {
         const { error } = await sb.storage.from(BUCKET_NAME).remove(paths);
         if (error) throw error;
-        showToast('已清空 ' + paths.length + ' 个文件');
+        KJ.toast('已清空 ' + paths.length + ' 个文件');
         await loadAndRender();
       } catch(e) {
-        showToast('清空失败: ' + e.message);
+        KJ.toast('清空失败: ' + e.message);
       }
     }
 
@@ -780,7 +755,7 @@
         empty.style.display = 'none';
         list.innerHTML = filtered.map((f, i) => {
           const url = getPublicUrl(f.name);
-          const displayName = escapeHtml(f.name.replace(/^\d+_/, ''));
+          const displayName = KJ.escapeHtml(f.name.replace(/^\d+_/, ''));
           return `
           <div class="file-item mica" style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both">
             <div class="file-icon">${getFileIcon(f.type, f.name)}</div>
@@ -789,9 +764,9 @@
               <div class="file-meta">${formatSize(f.size)} · ${formatDate(f.updated || f.created)}</div>
             </div>
             <div class="file-actions">
-              <button class="file-btn" data-action="preview" data-url="${escapeHtml(url)}" data-name="${displayName}" data-type="${escapeHtml(f.type)}" title="预览">👁</button>
-              <button class="file-btn" data-action="download" data-url="${escapeHtml(url)}" data-name="${displayName}" title="下载">⬇</button>
-              <button class="file-btn del-btn" data-action="delete" data-name="${escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
+              <button class="file-btn" data-action="preview" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览">👁</button>
+              <button class="file-btn" data-action="download" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" title="下载">⬇</button>
+              <button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
             </div>
           </div>`;
         }).join('');
@@ -826,12 +801,12 @@
       if (files.length === 0) return;
       let success = 0;
       for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) { showToast(`"${file.name}" 超过 10MB 限制`); continue; }
+        if (file.size > 10 * 1024 * 1024) { KJ.toast(`"${file.name}" 超过 10MB 限制`); continue; }
         const ok = await uploadFile(file);
         if (ok) success++;
       }
       if (success > 0) {
-        showToast(`成功上传 ${success} 个文件`);
+        KJ.toast(`成功上传 ${success} 个文件`);
         await loadAndRender();
       }
     }
@@ -841,7 +816,7 @@
       if (!confirm(`确定删除 "${name.replace(/^\d+_/, '')}" 吗？`)) return;
       const ok = await deleteCloudFile(name);
       if (ok) {
-        showToast('已删除');
+        KJ.toast('已删除');
         await loadAndRender();
       }
     }
@@ -947,35 +922,18 @@
 
     // ====================== 主题 ======================
     const themeBtn = $('#themeBtn');
-    function getSystemDark() { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
-    function isActuallyDark() {
-      const mode = localStorage.getItem('theme');
-      return mode === 'dark' || (!mode && getSystemDark());
-    }
     function updateThemeUI() {
-      const mode = localStorage.getItem('theme');
-      const dark = isActuallyDark();
-      root.dataset.theme = dark ? 'dark' : '';
-      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
+      var state = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
     }
-    function toggleTheme() {
-      const mode = localStorage.getItem('theme');
-      if (!mode) localStorage.setItem('theme', 'light');
-      else if (mode === 'light') localStorage.setItem('theme', 'dark');
-      else localStorage.removeItem('theme');
+    themeBtn.addEventListener('click', function() {
+      KJ.toggleTheme();
       updateThemeUI();
-    }
-    themeBtn.addEventListener('click', toggleTheme);
-
-    const hamburgerBtn = $('#hamburgerBtn');
-    const mobileMenu = $('#mobileMenu');
-    hamburgerBtn.addEventListener('click', () => mobileMenu.classList.toggle('open'));
-    document.addEventListener('click', e => {
-      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) mobileMenu.classList.remove('open');
     });
+    KJ.onSystemThemeChange(updateThemeUI);
+    updateThemeUI();
+
+    KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
 
     let isScrolling = false;
     const menuBar = $('#menuBar');
@@ -988,21 +946,18 @@
       });
     });
 
-    window.addEventListener('DOMContentLoaded', updateThemeUI);
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
-
     // ====================== 大文件人机验证（>5MB + 防绕过） ======================
     let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
     window.onCloudCaptcha = async function(t) {
       _cloudCaptchaToken = t;
       try {
-        const res = await fetch('https://vzqspcuxnwpakofwumat.supabase.co/functions/v1/verify-captcha', {
+        const res = await fetch(KJ.SUPABASE_URL + '/functions/v1/verify-captcha', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t })
         });
         const d = await res.json();
-        if (!d.success) { showToast('验证失败，请重试'); _cloudCaptchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
+        if (!d.success) { KJ.toast('验证失败，请重试'); _cloudCaptchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
       } catch(_) {
-        showToast('验证服务不可用，请稍后重试');
+        KJ.toast('验证服务不可用，请稍后重试');
         if (_captchaResolve) { _captchaResolve(false); _captchaResolve = null; }
         return;
       }
@@ -1056,7 +1011,7 @@
       const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024);
       if (largeFiles.length > 0) {
         const ok = await requireCaptcha(largeFiles[0].name);
-        if (!ok) { showToast('验证取消'); return; }
+        if (!ok) { KJ.toast('验证取消'); return; }
         _cloudCaptchaToken = '';
         try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
         $('#captchaModal').classList.add('hidden');
@@ -1065,17 +1020,11 @@
     };
 
     // ====================== 初始化 ======================
-    updateThemeUI();
     document.addEventListener('DOMContentLoaded', () => {
       if (sb) {
         checkSession();
       } else {
-        try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } } }); } catch(e) {}
-        if (sb) {
-          checkSession();
-        } else {
-          showAuthPage();
-        }
+        showAuthPage();
       }
     });
   </script>

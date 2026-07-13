@@ -1,9 +1,3 @@
-// ====================== 配置 ======================
-const CFG = Object.freeze({
-  SUPABASE_URL: "https://vzqspcuxnwpakofwumat.supabase.co",
-  SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg",
-});
-
 // ====================== DOM 引用 ======================
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -26,10 +20,7 @@ const S = {
 
 // ====================== 工具函数 ======================
 const U = {
-  escape(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  },
+  escape(str) { return KJ.escapeHtml(str); },
   time(str) {
     if (!str) return '';
     const d = new Date(str);
@@ -73,37 +64,18 @@ const Toast = {
 // ====================== 主题 ======================
 const Theme = {
   init() {
-    const mode = localStorage.getItem('theme');
-    if (mode === 'dark') {
-      document.documentElement.dataset.theme = 'dark';
-    } else if (mode === 'light') {
-      document.documentElement.dataset.theme = 'light';
-    } else {
-      delete document.documentElement.dataset.theme;
-    }
-    this._updateBtn();
+    const state = KJ.applyTheme('#f3f3f3', '#1e1e2e');
+    this._updateBtn(state.mode);
   },
   toggle() {
-    const mode = localStorage.getItem('theme');
-    if (!mode || mode === 'auto') {
-      localStorage.setItem('theme', 'dark');
-      document.documentElement.dataset.theme = 'dark';
-    } else if (mode === 'dark') {
-      localStorage.setItem('theme', 'light');
-      document.documentElement.dataset.theme = 'light';
-    } else {
-      localStorage.removeItem('theme');
-      delete document.documentElement.dataset.theme;
-    }
-    this._updateBtn();
+    const state = KJ.toggleTheme();
+    KJ.applyTheme('#f3f3f3', '#1e1e2e');
+    this._updateBtn(state.mode);
   },
-  _updateBtn() {
-    const mode = localStorage.getItem('theme');
+  _updateBtn(mode) {
     const btn = $('#themeBtn');
     if (!btn) return;
-    if (mode === 'dark') btn.textContent = '🌙';
-    else if (mode === 'light') btn.textContent = '☀️';
-    else btn.textContent = '🅐';
+    btn.innerHTML = KJ.getThemeIcon(mode);
   },
 };
 
@@ -628,14 +600,11 @@ function bindEvents() {
 async function init() {
   Theme.init();
 
-  // 创建 Supabase 客户端
-  if (!window.supabase) {
-    Toast.error('SDK 加载失败，请刷新页面');
+  sb = KJ.createSupabase();
+  if (!sb) {
+    Toast.error('Supabase 初始化失败，请刷新页面');
     return;
   }
-  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, {
-    auth: { autoRefreshToken: true, persistSession: true, storage: { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k,v) => { try { localStorage.setItem(k,v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } } },
-  });
 
   // 检查认证状态
   const { data: { session } } = await sb.auth.getSession();
@@ -675,4 +644,4 @@ async function init() {
 
 // ====================== 生命周期 ======================
 document.addEventListener('DOMContentLoaded', init);
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => Theme.init());
+KJ.onSystemThemeChange(() => Theme.init());
