@@ -287,11 +287,21 @@
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({token:ct[key]})
         });
-        const data=await res.json();
+        const raw=await res.text();
+        let data;
+        try{data=JSON.parse(raw)}catch(e){data=null}
         if(data&&data.success)return true;
-      }catch(e){}
-      // 服务器验证失败或网络错误 → 拒绝
-      toast('人机验证未通过，请重试');
+        // 诊断：显示后端返回的错误码
+        const codes=data&&data['error-codes']?data['error-codes'].join(','):'';
+        const diag=data&&data.diag?JSON.stringify(data.diag):'';
+        console.error('hCaptcha verify failed:',raw);
+        if(codes)toast('人机验证未通过 ('+codes+')，请重试');
+        else if(diag)toast('后端诊断: '+diag+'，请联系管理员');
+        else toast('人机验证未通过，请重试');
+      }catch(e){
+        console.error('hCaptcha verify error:',e);
+        toast('网络错误，请稍后重试');
+      }
       resetCaptcha(key);
       return false;
     }
