@@ -3,7 +3,12 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 const secret = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ?? ""; } catch { return ""; } })();
 
 serve(async (req) => {
-  const h = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+  const h = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization"
+  };
   if (req.method === "OPTIONS") return new Response(null, { headers: h });
   try {
     const { token } = await req.json();
