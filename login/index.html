@@ -272,18 +272,21 @@
     function clearCaptchaToken(key){ct[key]=''}
 
     /**
-     * 服务器端验证 hCaptcha token
-     * - 网络错误/超时：保留 token，不重置控件，允许重试
-     * - 服务器明确拒绝：重置控件，需要重新完成验证
+     * 服务器端验证 hCaptcha token（含自动重试和渐进式退避）
+     * - 网络错误/超时：保留 token，不重置控件，自动重试
+     * - 服务器明确拒绝：重置控件
      */
     async function verifyCaptcha(key){
       if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return false}
       if(!ct[key]){toast('请完成人机验证');return false}
 
-      // 最多尝试 2 次（首次 + 1 次重试），处理冷启动/网络抖动
-      for(let attempt=0;attempt<2;attempt++){
+      // 最多 3 次尝试（1s / 3s / 6s 递增退避），容忍高延迟网络
+      const delays=[0,1000,3000];
+      for(let attempt=0;attempt<3;attempt++){
+        if(attempt>0)await new Promise(r=>setTimeout(r,delays[attempt]));
+
         const ctrl=new AbortController();
-        const timer=setTimeout(()=>ctrl.abort(),10000);
+        const timer=setTimeout(()=>ctrl.abort(),20000);
 
         try{
           const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
@@ -297,23 +300,19 @@
 
           if(data.success)return true;
 
-          // 服务器明确拒绝 → token 无效，必须重新验证
+          // 服务器明确拒绝 → token 无效
           toast('人机验证未通过，请重新完成验证');
           resetCaptcha(key);
           return false;
         }catch(e){
           clearTimeout(timer);
-          if(attempt===0){
-            // 首次失败，1 秒后自动重试
-            console.warn('验证请求失败，自动重试中...',e.name||e.message);
-            await new Promise(r=>setTimeout(r,1000));
-            continue;
-          }
-          // 重试也失败了
+          // 还有重试次数 → 自动重试
+          if(attempt<2){continue}
+          // 3 次都失败了
           if(e.name==='AbortError'){
-            toast('服务器响应超时，请稍后重试（无需重新验证）');
+            toast('网络延迟较高，请稍后再试');
           }else{
-            toast('网络错误，请稍后重试');
+            toast('网络连接失败，请检查网络后刷新页面');
           }
           return false;
         }
