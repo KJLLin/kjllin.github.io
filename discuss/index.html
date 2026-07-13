@@ -981,7 +981,7 @@
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
-                '<button class="del-btn edit-post-btn" data-id="' + p.id + '" data-title="' + escapeHtml(p.title || '') + '" data-content="' + escapeHtml(p.content || '') + '" title="编辑"><i class="fas fa-pen-to-square"></i></button>' +
+                '<button class="del-btn edit-post-btn" data-id="' + p.id + '" data-title="' + escapeHtml(p.title || '') + '" data-content="' + encodeURIComponent(p.content || '') + '" title="编辑"><i class="fas fa-pen-to-square"></i></button>' +
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
@@ -1016,25 +1016,13 @@
               destroyEditor();
               initEditor();
               if (easyMDE) {
-                easyMDE.value(this.dataset.content);
+                easyMDE.value(decodeURIComponent(this.dataset.content));
                 _editingPostId = this.dataset.id;
                 document.getElementById('submitPostBtn').textContent = '更新讨论';
               }
             });
           });
 
-          // 绑定删除
-          list.querySelectorAll('.del-post-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
-              if (!confirm('确定删除此讨论？')) return;
-              const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
-              if (error) { toast('删除失败：' + error.message); return; }
-              toast('已删除');
-              loadPosts();
-            });
-          });
-
-          // 绑定编辑
         } catch(e) {
           console.warn('Load posts error:', e);
           empty.textContent = '加载讨论失败，请刷新页面重试';
@@ -1055,17 +1043,16 @@
         if (!content) { toast('请输入讨论内容'); return; }
         if (!currentUser) { toast('请先登录'); return; }
         // 服务器端 hCaptcha 验证
-        if (typeof hcaptcha !== 'undefined') {
-          if (!captchaToken) { toast('请完成人机验证'); return; }
-          try {
-            const res = await fetch('https://vzqspcuxnwpakofwumat.supabase.co/functions/v1/verify-captcha', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: captchaToken })
-            });
-            const d = await res.json();
-            if (!d.success) { toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
-          } catch(_) {} // Edge Function挂掉时降级
-        }
+        if (typeof hcaptcha === 'undefined') { toast('人机验证加载失败，请刷新页面后重试'); return; }
+        if (!captchaToken) { toast('请完成人机验证'); return; }
+        try {
+          const res = await fetch('https://vzqspcuxnwpakofwumat.supabase.co/functions/v1/verify-captcha', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: captchaToken })
+          });
+          const d = await res.json();
+          if (!d.success) { toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
+        } catch(_) {} // Edge Function挂掉时降级
 
         const btn = document.getElementById('submitPostBtn');
         btn.disabled = true;

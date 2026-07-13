@@ -380,15 +380,6 @@
     </div>
 
     <div class="upload-progress-wrap mica" id="uploadProgressWrap" style="padding:14px 18px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest)">
-
-    <!-- hCaptcha（大文件上传时显示） -->
-    <div id="captchaModal" class="overlay hidden" style="z-index:250">
-      <div class="preview-card" style="max-width:380px;text-align:center">
-        <h3 style="margin-bottom:12px">文件超过5MB，请完成验证</h3>
-        <div class="h-captcha" id="captchaCloud" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-callback="onCloudCaptcha" data-expired-callback="onCloudCaptchaExpired"></div>
-        <button class="btn btn-outline" id="captchaCancelBtn" style="margin-top:12px">取消</button>
-      </div>
-    </div>
       <div class="upload-progress-text">
         <span id="uploadProgressLabel">正在上传...</span>
         <span id="uploadProgressPercent">0%</span>
@@ -411,6 +402,14 @@
       <button class="preview-close" id="previewClose">✕</button>
       <div class="preview-title" id="previewTitle"></div>
       <div class="preview-content" id="previewContent"></div>
+    </div>
+  </div>
+
+  <div id="captchaModal" class="overlay hidden" style="z-index:250">
+    <div class="preview-card" style="max-width:380px;text-align:center">
+      <h3 style="margin-bottom:12px">文件超过5MB，请完成验证</h3>
+      <div class="h-captcha" id="captchaCloud" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-callback="onCloudCaptcha" data-expired-callback="onCloudCaptchaExpired"></div>
+      <button class="btn btn-outline" id="captchaCancelBtn" style="margin-top:12px">取消</button>
     </div>
   </div>
 
@@ -491,7 +490,7 @@
       const userItem = document.createElement('span');
       userItem.className = 'menu-item mobile-menu-user';
       userItem.style.cssText = 'pointer-events:none;font-weight:600;color:var(--accent)';
-      userItem.textContent = '<i class="fas fa-user"></i> ' + nick;
+      userItem.innerHTML = '<i class="fas fa-user"></i> ' + escapeHtml(nick);
       m.appendChild(userItem);
       const logoutLink = document.createElement('a');
       logoutLink.className = 'menu-item mobile-menu-logout';
@@ -674,7 +673,7 @@
         });
 
         xhr.open('POST', SUPABASE_URL + '/storage/v1/object/' + BUCKET_NAME + '/' + path);
-        xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + session?.access_token);
         xhr.setRequestHeader('Cache-Control', 'max-age=3600');
         xhr.send(file);
       });
@@ -761,7 +760,7 @@
 
     function renderFiles() {
       const query = $('#searchBox').value.toLowerCase().trim();
-      const filtered = query ? cachedFiles.filter(f => f.name.toLowerCase().includes(query)) : cachedFiles;
+      const filtered = query ? cachedFiles.filter(f => f.name.replace(/^\d+_/, '').toLowerCase().includes(query)) : cachedFiles;
       const list = $('#fileList');
       const empty = $('#emptyState');
 
@@ -852,11 +851,23 @@
       $('#previewTitle').textContent = name;
       const content = $('#previewContent');
       if (type.startsWith('image/')) {
-        content.innerHTML = `<img src="${url}" alt="${escapeHtml(name)}">`;
+        content.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = name;
+        content.appendChild(img);
       } else if (type.startsWith('video/')) {
-        content.innerHTML = `<video controls src="${url}"></video>`;
+        content.innerHTML = '';
+        const video = document.createElement('video');
+        video.controls = true;
+        video.src = url;
+        content.appendChild(video);
       } else if (type.startsWith('audio/')) {
-        content.innerHTML = `<audio controls src="${url}"></audio>`;
+        content.innerHTML = '';
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = url;
+        content.appendChild(audio);
       } else if (type.startsWith('text/') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css') || name.endsWith('.md')) {
         fetch(url).then(r => r.ok ? r.text() : Promise.reject()).then(text => {
           const pre = document.createElement('pre');
@@ -990,7 +1001,11 @@
         });
         const d = await res.json();
         if (!d.success) { showToast('验证失败，请重试'); _cloudCaptchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
-      } catch(_) {}
+      } catch(_) {
+        showToast('验证服务不可用，请稍后重试');
+        if (_captchaResolve) { _captchaResolve(false); _captchaResolve = null; }
+        return;
+      }
       if (_captchaResolve) { _captchaResolve(true); _captchaResolve = null; }
     };
     window.onCloudCaptchaExpired = function() { _cloudCaptchaToken = ''; };

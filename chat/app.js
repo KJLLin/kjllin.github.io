@@ -194,7 +194,7 @@ const ConvList = {
   _renderItem(c, isBlocked = false) {
     const p = S.partners[c.partnerId];
     const name = U.escape(p?.nick || p?.email || c.partnerId);
-    const text = U.escape(c.latestText || '').substring(0, 40);
+    const text = U.escape((c.latestText || '').substring(0, 40));
     const time = U.time(c.latestTime);
     const badge = c.unread > 0 ? `<span class="conv-badge">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
     return `
@@ -364,6 +364,9 @@ const ChatView = {
     btn.disabled = true;
     btn.textContent = '发送中...';
 
+    // 保存当前输入内容，失败时恢复
+    const savedText = input.value;
+
     try {
       const { data: inserted } = await U.request(
         sb.from('private_messages').insert([{
@@ -383,7 +386,10 @@ const ChatView = {
       input.style.height = 'auto';
       $('#msgInput').focus();
     } catch {
-      // 错误已在 U.request 中处理
+      // 发送失败，恢复输入内容
+      input.value = savedText;
+      input.style.height = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     } finally {
       btn.disabled = false;
       btn.textContent = '发送';
@@ -414,7 +420,7 @@ const Search = {
     let html = '';
     for (const u of data) {
       html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
-        <span class="search-avatar">${(u.nick || u.email).charAt(0)}</span>
+        <span class="search-avatar">${U.escape((u.nick || u.email || '').charAt(0))}</span>
         <div class="search-info">
           <span class="search-nick">${U.escape(u.nick || '未设置昵称')}</span>
           <span class="search-email">${U.escape(u.email)}</span>
@@ -580,19 +586,7 @@ function bindEvents() {
     else if (action === 'delete') BlockActions.deleteConversation(pid);
   });
 
-  function showConvMenu(partnerId, isBlocked, anchor) {
-    S.convMenuPartner = partnerId;
-    const menu = $('#convMenu');
-    const rect = anchor.getBoundingClientRect();
-    menu.querySelector('[data-action="block"]').style.display = isBlocked ? 'none' : '';
-    menu.querySelector('[data-action="unblock"]').style.display = isBlocked ? '' : 'none';
-    menu.classList.remove('hidden');
-    menu.style.left = Math.min(rect.right - 160, window.innerWidth - 170) + 'px';
-    menu.style.top = rect.bottom + 4 + 'px';
-    e.stopPropagation();
-  }
-
-  // 全局点击关闭菜单（修正：上面已绑定，这里确保showConvMenu中的e是全局的）
+  // 全局点击关闭菜单
   window.showConvMenu = function(partnerId, isBlocked, anchor) {
     S.convMenuPartner = partnerId;
     const menu = $('#convMenu');
