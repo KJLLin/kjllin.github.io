@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#f3f3f3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -16,6 +16,7 @@
       transition: background-color var(--transition-normal);
     }
     * { margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased; }
+    :focus:not(:focus-visible) { outline: none; }
     :root {
       --bg-body:#f3f3f3;--bg-mica:rgba(255,255,255,0.85);--bg-mica-hover:rgba(255,255,255,0.95);
       --border-mica:rgba(0,0,0,0.06);--text-primary:#1a1a1a;--text-secondary:#5e5e5e;--text-tertiary:#8e8e8e;
@@ -40,6 +41,7 @@
     .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
     [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
     .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
+    .theme-btn, #themeBtn { border-radius: 50%; }
     .hamburger{display:none}
     .mobile-menu-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
     .mobile-menu-dropdown.open{display:flex}
@@ -92,7 +94,7 @@
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item active"><i class="fas fa-shield-halved"></i> 账号</a>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn theme-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -152,15 +154,12 @@
     </div>
   </div>
 
+  <script src="/common.js"></script>
   <script>
-    const $=s=>document.querySelector(s),root=document.documentElement,metaTheme=$('meta[name="theme-color"]');
-    const SUPABASE_URL='https://vzqspcuxnwpakofwumat.supabase.co';
-    const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
+    const $=s=>document.querySelector(s);
     let sb,user;
-    try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,storage:{getItem:function(k){try{return localStorage.getItem(k)}catch(e){return null}},setItem:function(k,v){try{localStorage.setItem(k,v)}catch(e){}},removeItem:function(k){try{localStorage.removeItem(k)}catch(e){}}}}})}catch(e){}
+    try{sb=KJ.createSupabase()}catch(e){}
 
-    function toast(m){const e=document.querySelector('.toast');if(e)e.remove();const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
-    function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
     function formatDate(iso){if(!iso)return'--';const d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
     function parseUA(){const u=navigator.userAgent;let b='Unknown';if(u.includes('Edg/'))b='Edge';else if(u.includes('Chrome/'))b='Chrome';else if(u.includes('Firefox/'))b='Firefox';else if(u.includes('Safari/')&&!u.includes('Chrome/'))b='Safari';let os='Unknown';let osVer='';if(u.includes('Windows NT 10')){os='Windows';osVer='10/11'}else if(u.includes('Windows NT 6')){os='Windows';osVer='7/8'}else if(u.includes('Mac OS X')){os='macOS';const m=u.match(/Mac OS X ([0-9_]+)/);if(m)osVer=m[1].replace(/_/g,'.')}else if(u.includes('Linux')&&!u.includes('Android')){os='Linux'}else if(u.includes('Android')){os='Android';const m=u.match(/Android ([0-9.]+)/);if(m)osVer=m[1]}else if(u.includes('iOS')||u.includes('iPhone')||u.includes('iPad')){os='iOS';const m=u.match(/OS ([0-9_]+)/);if(m)osVer=m[1].replace(/_/g,'.')};const screen='屏幕: '+window.screen.width+'×'+window.screen.height+', '+navigator.language;return{browser:b,os:os,osVer:osVer,screen:screen}}
     async function loadIP(){const apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(const url of apis){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);const r=await fetch(url,{signal:c.signal});clearTimeout(t);const d=await r.json();const ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'')}catch(e){}}return'获取失败'}
@@ -192,7 +191,7 @@
         const lines=unique.map(r=>{
           const d=new Date(r.time);
           const ts=d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-          return '<div class="info-row"><span class="label">'+escapeHtml(r.os)+' · '+escapeHtml(r.browser)+'</span><span class="value" style="font-size:11px">'+ts+'<br>'+escapeHtml(r.ip||'--')+'</span></div>';
+          return '<div class="info-row"><span class="label">'+KJ.escapeHtml(r.os)+' · '+KJ.escapeHtml(r.browser)+'</span><span class="value" style="font-size:11px">'+ts+'<br>'+KJ.escapeHtml(r.ip||'--')+'</span></div>';
         });
         el.innerHTML=lines.join('');
       }catch(e){el.innerHTML='加载失败'}
@@ -230,31 +229,31 @@
 
     $('#saveNickBtn').addEventListener('click',async()=>{
       const nick=$('#nickInput').value.trim();
-      if(!nick||nick.length>20){toast('昵称需1-20个字符');return}
+      if(!nick||nick.length>20){KJ.toast('昵称需1-20个字符');return}
       const btn=$('#saveNickBtn');btn.disabled=true;btn.textContent='保存中...';
       try{
         await sb.from('users').update({nick}).eq('id',user.id);
         await sb.auth.updateUser({data:{nick}});
         $('#profileName').textContent=nick;
         $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
-        toast('昵称已更新');
-      }catch(e){toast('更新失败：'+e.message)}finally{btn.disabled=false;btn.textContent='保存'}
+        KJ.toast('昵称已更新');
+      }catch(e){KJ.toast('更新失败：'+e.message)}finally{btn.disabled=false;btn.textContent='保存'}
     });
 
     $('#changePwdBtn').addEventListener('click',async()=>{
       const op=$('#oldPwd').value, np=$('#newPwd').value.trim(), cp=$('#confirmPwd').value.trim();
-      if(!op||!np||!cp){toast('请填写完整密码信息');return}
-      if(np.length<8){toast('新密码至少8位');return}
-      if(np!==cp){toast('两次密码不一致');return}
-      if(np===op){toast('新密码不能与当前密码相同');return}
+      if(!op||!np||!cp){KJ.toast('请填写完整密码信息');return}
+      if(np.length<8){KJ.toast('新密码至少8位');return}
+      if(np!==cp){KJ.toast('两次密码不一致');return}
+      if(np===op){KJ.toast('新密码不能与当前密码相同');return}
       const btn=$('#changePwdBtn');btn.disabled=true;btn.textContent='修改中...';
       try{
         const{error:authErr}=await sb.auth.signInWithPassword({email:user.email,password:op});
-        if(authErr){toast('当前密码错误');btn.disabled=false;btn.textContent='修改密码';return}
+        if(authErr){KJ.toast('当前密码错误');btn.disabled=false;btn.textContent='修改密码';return}
         const{error}=await sb.auth.updateUser({password:np});
         if(error)throw error;
-        toast('密码修改成功');$('#oldPwd').value='';$('#newPwd').value='';$('#confirmPwd').value='';
-      }catch(e){toast('修改失败：'+e.message)}finally{btn.disabled=false;btn.textContent='修改密码'}
+        KJ.toast('密码修改成功');$('#oldPwd').value='';$('#newPwd').value='';$('#confirmPwd').value='';
+      }catch(e){KJ.toast('修改失败：'+e.message)}finally{btn.disabled=false;btn.textContent='修改密码'}
     });
 
     $('#logoutBtn').addEventListener('click',async()=>{
@@ -265,18 +264,17 @@
 
     // Theme
     const themeBtn=$('#themeBtn');
-    function getSystemDark(){return window.matchMedia('(prefers-color-scheme:dark)').matches}
     function updateThemeUI(){
-      const m=localStorage.getItem('theme'),d=m==='dark'||(!m&&getSystemDark());
-      root.dataset.theme=d?'dark':'';metaTheme.content=d?'#0f0f0f':'#f3f3f3';
-      themeBtn.innerHTML=m==='dark'?'<i class="fas fa-sun"></i>':m==='light'?'<i class="fas fa-moon"></i>':'<i class="fas fa-circle-half-stroke"></i>';
+      var state = KJ.applyTheme('#f3f3f3', '#0f0f0f');
+      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
     }
-    themeBtn.addEventListener('click',()=>{
-      const m=localStorage.getItem('theme');
-      if(!m)localStorage.setItem('theme','light');else if(m==='light')localStorage.setItem('theme','dark');else localStorage.removeItem('theme');
-      updateThemeUI();
+    themeBtn.addEventListener('click',function(){
+      var state = KJ.toggleTheme();
+      KJ.applyTheme('#f3f3f3', '#0f0f0f');
+      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
     });
-    updateThemeUI();window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',updateThemeUI);
+    KJ.onSystemThemeChange(updateThemeUI);
+    updateThemeUI();
 
     // 移动端汉堡菜单
     const hamburgerBtn=$('#hamburgerBtn'),mobileMenu=$('#mobileMenu');

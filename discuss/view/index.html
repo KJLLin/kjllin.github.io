@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
@@ -35,7 +35,7 @@
     * {
       margin: 0; padding: 0; box-sizing: border-box;
       font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
-      -webkit-tap-highlight-color: transparent; outline: none;
+      -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
     pre, code, kbd, samp, .mono, .hljs {
@@ -179,7 +179,7 @@
     }
     .menu-divider { width: 1px; height: 20px; background: var(--border-mica); margin: 0 4px; }
     .menu-btn {
-      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+      width: 34px; height: 34px; border-radius: 50%; border: none;
       font-size: 16px; cursor: pointer;
       background: rgba(220,220,220,0.4); color: var(--text-primary);
       display: grid; place-items: center;
@@ -438,10 +438,10 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动">🌙</button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -449,7 +449,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
     </div>
   </header>
@@ -556,38 +556,22 @@
     }
 
     // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
-    function getSystemDark() {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    function isActuallyDark() {
-      const mode = localStorage.getItem('theme');
-      return mode === 'dark' || (!mode && getSystemDark());
-    }
     function updateThemeUI() {
-      const mode = localStorage.getItem('theme');
-      const dark = isActuallyDark();
-      root.dataset.theme = dark ? 'dark' : '';
-      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
+      var state = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
 
       // 切换 highlight.js 主题
       const hlCss = document.querySelector('link[href*="highlight.js"]');
       if (hlCss) {
-        hlCss.href = dark
+        hlCss.href = state.dark
           ? 'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css'
           : 'https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css';
       }
     }
     function toggleTheme() {
-      const mode = localStorage.getItem('theme');
-      if (!mode) localStorage.setItem('theme', 'light');
-      else if (mode === 'light') localStorage.setItem('theme', 'dark');
-      else localStorage.removeItem('theme');
+      KJ.toggleTheme();
       updateThemeUI();
     }
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
 
     // ====================== 滚动 ======================
     function handleScroll() {
@@ -627,11 +611,6 @@
     });
 
     // ====================== Markdown 渲染 + 代码复制 ======================
-    function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[c]));
-    }
 
     function formatDate(iso) {
       if (!iso) return '';
@@ -704,7 +683,7 @@
       try {
         html = marked.parse(raw);
       } catch(e) {
-        html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + escapeHtml(raw) + '</pre>';
+        html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + KJ.escapeHtml(raw) + '</pre>';
       }
       return html;
     }
@@ -722,9 +701,9 @@
       let html = breadcrumb;
       html += '<div class="post-card mica">';
       html += '<div class="post-header">';
-      html += '<h1 class="post-title">' + escapeHtml(post.title || '无标题') + '</h1>';
+      html += '<h1 class="post-title">' + KJ.escapeHtml(post.title || '无标题') + '</h1>';
       html += '<div class="post-meta">';
-      html += '<span class="author">' + escapeHtml(post.nick || '匿名') + '</span>';
+      html += '<span class="author">' + KJ.escapeHtml(post.nick || '匿名') + '</span>';
       html += '<span class="dot"></span>';
       html += '<span>' + formatDate(post.created_at) + '</span>';
       if (post.edited_at) {
@@ -788,16 +767,13 @@
         '<div class="not-found mica">' +
         '<div class="icon">⚠️</div>' +
         '<h2>加载帖子失败</h2>' +
-        '<p>' + escapeHtml(msg || '未知错误') + '</p>' +
+        '<p>' + KJ.escapeHtml(msg || '未知错误') + '</p>' +
         '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
         '</div>';
     }
 
     // ====================== 核心：加载帖子 ======================
     async function loadPost() {
-      const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
-
       // 从 URL 获取 id
       const params = new URLSearchParams(window.location.search);
       const postId = params.get('id');
@@ -807,10 +783,8 @@
         return;
       }
 
-      let sb;
-      try {
-        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } });
-      } catch(e) {
+      const sb = KJ.createSupabase();
+      if (!sb) {
         showError('数据库连接失败，请刷新页面重试');
         return;
       }
@@ -846,9 +820,11 @@
     // ====================== 初始化 ======================
     window.addEventListener('DOMContentLoaded', async () => {
       updateThemeUI();
+      KJ.onSystemThemeChange(updateThemeUI);
       await loadPost();
       setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 400);
     });
   </script>
+  <script src="/common.js"></script>
 </body>
 </html>

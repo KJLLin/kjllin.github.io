@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f3f3f3">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -309,6 +309,7 @@ pre, code, .mono, .tile, .score-val {
   <div class="hint">使用 方向键 或 滑动屏幕 移动方块</div>
 </div>
 
+<script src="/common.js"></script>
 <script>
 (function() {
   'use strict';
@@ -327,16 +328,14 @@ pre, code, .mono, .tile, .score-val {
   const boardWrapper = $('#boardWrapper');
 
   // ==================== Theme ====================
-  const savedTheme = localStorage.getItem('theme') || 'auto';
-  html.setAttribute('data-theme', savedTheme);
-  updateThemeUI(savedTheme);
+  function initTheme() {
+    const state = KJ.applyTheme('#f3f3f3', '#0f0f0f');
+    updateThemeBtnUI(state.mode);
+  }
 
-  function updateThemeUI(t) {
-    const isDark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    html.setAttribute('data-theme', isDark ? 'dark' : '');
-    metaTheme.content = isDark ? '#0f0f0f' : '#f3f3f3';
+  function updateThemeBtnUI(mode) {
     $('#themeToggle').querySelectorAll('.theme-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.theme === t);
+      b.classList.toggle('active', b.dataset.theme === mode);
     });
   }
 
@@ -344,15 +343,12 @@ pre, code, .mono, .tile, .score-val {
     const btn = e.target.closest('.theme-btn');
     if (!btn) return;
     const t = btn.dataset.theme;
-    if (t === 'auto') localStorage.removeItem('theme');
-    else localStorage.setItem('theme', t);
-    updateThemeUI(t);
+    if (t === 'auto') KJ.safeStorage.removeItem('theme');
+    else KJ.safeStorage.setItem('theme', t);
+    initTheme();
   });
 
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
-    const cur = localStorage.getItem('theme') || 'auto';
-    updateThemeUI(cur);
-  });
+  KJ.onSystemThemeChange(initTheme);
 
   // ==================== Game State ====================
   const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
@@ -608,6 +604,7 @@ pre, code, .mono, .tile, .score-val {
   });
 
   // ==================== Start ====================
+  initTheme();
   updateScore();
   initGame();
 })();

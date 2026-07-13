@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
@@ -30,9 +30,10 @@
     * {
       margin: 0; padding: 0; box-sizing: border-box;
       font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
-      -webkit-tap-highlight-color: transparent; outline: none;
+      -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
+    :focus:not(:focus-visible) { outline: none; }
     pre, code, .mono, .CodeMirror, .editor-toolbar button {
       font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace !important;
     }
@@ -177,6 +178,7 @@
     [data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
     .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
     .menu-btn:active { transform: scale(0.92); }
+    #themeBtn { border-radius: 50%; }
 
     /* 移动端汉堡菜单 */
     .hamburger { display: none; }
@@ -544,7 +546,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
       <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
@@ -555,7 +557,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active">💡 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
     </div>
   </header>
@@ -563,7 +565,7 @@
   <div class="container">
     <!-- ==================== 页面标题 ==================== -->
     <section class="page-title">
-      <h1>💡 讨论版</h1>
+      <h1><i class="fas fa-comments"></i> 讨论版</h1>
       <p>使用 Markdown 格式自由交流，分享想法与问题</p>
     </section>
 
@@ -610,18 +612,15 @@
 
   <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
 
+  <script src="/common.js"></script>
   <script>
     // ====================== 工具函数 ======================
     const $ = s => document.querySelector(s);
     const root = document.documentElement;
-    const metaTheme = $('meta[name="theme-color"]');
 
     const themeBtn = $('#themeBtn');
-    const loader = $('#loader');
     const backTop = $('#backTop');
     const menuBar = $('#menuBar');
-    const hamburgerBtn = $('#hamburgerBtn');
-    const mobileMenu = $('#mobileMenu');
     let isScrolling = false;
     let touchStartData = {};
 
@@ -704,37 +703,16 @@
     }
 
     // ====================== 主题（三模式：浅色/深色/跟随系统） ======================
-    function getSystemDark() {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    function isActuallyDark() {
-      const mode = localStorage.getItem('theme');
-      return mode === 'dark' || (!mode && getSystemDark());
-    }
     function updateThemeUI() {
-      const mode = localStorage.getItem('theme');
-      const dark = isActuallyDark();
-      root.dataset.theme = dark ? 'dark' : '';
-      metaTheme.content = dark ? '#0f0f0f' : '#f3f3f3';
-      if (mode === 'dark') themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-      else if (mode === 'light') themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-      else themeBtn.innerHTML = '<i class="fas fa-circle-half-stroke"></i>';
-      // 切换 highlight.js 主题
-      const hljsTheme = document.getElementById('hljsTheme');
-      if (hljsTheme) {
-        hljsTheme.href = dark
-          ? 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css'
-          : 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css';
-      }
+      var state = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
     }
-    function toggleTheme() {
-      const mode = localStorage.getItem('theme');
-      if (!mode) localStorage.setItem('theme', 'light');
-      else if (mode === 'light') localStorage.setItem('theme', 'dark');
-      else localStorage.removeItem('theme');
+    themeBtn.addEventListener('click', function() {
+      KJ.toggleTheme();
       updateThemeUI();
-    }
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeUI);
+    });
+    KJ.onSystemThemeChange(updateThemeUI);
+    updateThemeUI();
 
     // ====================== 滚动 ======================
     function handleScroll() {
@@ -749,26 +727,8 @@
     function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ====================== 移动端菜单 ======================
-    function toggleMobileMenu() {
-      mobileMenu.classList.toggle('open');
-    }
-    document.addEventListener('click', function(e) {
-      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
-        mobileMenu.classList.remove('open');
-      }
-    });
+    KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
 
-    // ====================== 初始化 ======================
-    window.addEventListener('DOMContentLoaded', () => {
-      updateThemeUI();
-    });
-
-    themeBtn.addEventListener('click', toggleTheme);
-    
-    
-    hamburgerBtn.addEventListener('click', toggleMobileMenu);
-    
-    
     backTop.addEventListener('click', goToTop);
     backTop.addEventListener('touchstart', handleTouchStart);
     backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
@@ -786,10 +746,6 @@
       };
       var _forceTimer = setTimeout(_closeLoader, 15000);
 
-      const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
-
-      let sb;
       let currentUser;
       let easyMDE;
       let captchaToken = '';
@@ -799,30 +755,9 @@
 
       let loadedPosts = [];
 
-      // 防 Safari Tracking Prevention 阻止 localStorage
-      const safeStorage = {
-        getItem: (key) => { try { return localStorage.getItem(key); } catch { return null; } },
-        setItem: (key, value) => { try { localStorage.setItem(key, value); } catch {} },
-        removeItem: (key) => { try { localStorage.removeItem(key); } catch {} },
-      };
-
-      try {
-        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-          auth: { persistSession: true, storage: safeStorage }
-        });
-        console.log('Supabase init OK');
-      } catch(e) {
-        console.warn('Supabase init failed:', e);
-        // 最终兜底：无存储模式
-        try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } }); } catch(_) {}
-      }
+      var sb = KJ.createSupabase();
 
       // ====================== 工具函数 ======================
-      function escapeHtml(s) {
-        return String(s ?? '').replace(/[&<>"']/g, c => ({
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]));
-      }
 
       function formatDate(iso) {
         if (!iso) return '';
@@ -835,16 +770,6 @@
         if (diff < 172800000) return '昨天 ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
         return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }) +
           ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      }
-
-      function toast(msg) {
-        const existing = document.querySelector('.toast');
-        if (existing) existing.remove();
-        const t = document.createElement('div');
-        t.className = 'toast';
-        t.textContent = msg;
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 2500);
       }
 
       // ====================== EasyMDE 初始化 ======================
@@ -913,7 +838,7 @@
 
         if (user) {
           const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-          userInfo.innerHTML = '<span class="nick"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
+          userInfo.innerHTML = '<span class="nick"><i class="fas fa-user"></i> ' + KJ.escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
           authBtns.innerHTML =
             '<button class="btn btn-primary btn-sm" id="newPostBtn"><i class="fas fa-pen-to-square"></i> 发帖</button>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
@@ -940,7 +865,7 @@
         try { await sb.auth.signOut(); } catch(e) {}
         currentUser = null;
         updateAuthUI(null);
-        toast('已退出登录');
+        KJ.toast('已退出登录');
         loadPosts();
       }
 
@@ -981,16 +906,16 @@
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
-                '<button class="del-btn edit-post-btn" data-id="' + p.id + '" data-title="' + escapeHtml(p.title || '') + '" data-content="' + encodeURIComponent(p.content || '') + '" title="编辑"><i class="fas fa-pen-to-square"></i></button>' +
+                '<button class="del-btn edit-post-btn" data-id="' + p.id + '" data-title="' + KJ.escapeHtml(p.title || '') + '" data-content="' + encodeURIComponent(p.content || '') + '" title="编辑"><i class="fas fa-pen-to-square"></i></button>' +
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
 
             return '<div class="post-card mica" style="animation-delay:' + (i * 0.03) + 's">' +
               '<div class="post-main">' +
-                '<a href="/discuss/view/?id=' + p.id + '" class="post-title">' + escapeHtml(p.title || '无标题') + '</a>' +
+                '<a href="/discuss/view/?id=' + p.id + '" class="post-title">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 '<div class="post-meta">' +
-                  '<span class="author"><i class="fas fa-user"></i> ' + escapeHtml(p.nick || '匿名') + '</span>' +
+                  '<span class="author"><i class="fas fa-user"></i> ' + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
                   '<span>' + formatDate(p.created_at) + '</span>' +
                 '</div>' +
               '</div>' +
@@ -1003,8 +928,8 @@
             btn.addEventListener('click', async function() {
               if (!confirm('确定删除此讨论？')) return;
               const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
-              if (error) { toast('删除失败'); return; }
-              toast('已删除'); loadPosts();
+              if (error) { KJ.toast('删除失败'); return; }
+              KJ.toast('已删除'); loadPosts();
             });
           });
 
@@ -1039,19 +964,19 @@
         const title = document.getElementById('postTitle').value.trim();
         const content = getEditorContent().trim();
 
-        if (!title) { toast('请输入讨论标题'); return; }
-        if (!content) { toast('请输入讨论内容'); return; }
-        if (!currentUser) { toast('请先登录'); return; }
+        if (!title) { KJ.toast('请输入讨论标题'); return; }
+        if (!content) { KJ.toast('请输入讨论内容'); return; }
+        if (!currentUser) { KJ.toast('请先登录'); return; }
         // 服务器端 hCaptcha 验证
-        if (typeof hcaptcha === 'undefined') { toast('人机验证加载失败，请刷新页面后重试'); return; }
-        if (!captchaToken) { toast('请完成人机验证'); return; }
+        if (typeof hcaptcha === 'undefined') { KJ.toast('人机验证加载失败，请刷新页面后重试'); return; }
+        if (!captchaToken) { KJ.toast('请完成人机验证'); return; }
         try {
-          const res = await fetch('https://vzqspcuxnwpakofwumat.supabase.co/functions/v1/verify-captcha', {
+          const res = await fetch(KJ.SUPABASE_URL + '/functions/v1/verify-captcha', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: captchaToken })
           });
           const d = await res.json();
-          if (!d.success) { toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
+          if (!d.success) { KJ.toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
         } catch(_) {} // Edge Function挂掉时降级
 
         const btn = document.getElementById('submitPostBtn');
@@ -1063,7 +988,7 @@
             // 编辑模式：更新已有帖子
             const { error } = await sb.from('posts').update({ title, content }).eq('id', _editingPostId).eq('user_id', currentUser.id);
             if (error) throw error;
-            toast('讨论已更新！');
+            KJ.toast('讨论已更新！');
             _editingPostId = null;
             document.getElementById('submitPostBtn').textContent = '发布讨论';
           } else {
@@ -1071,7 +996,7 @@
             const nick = currentUser.user_metadata?.nick || currentUser.email?.split('@')[0] || '用户';
             const { error } = await sb.from('posts').insert([{ user_id: currentUser.id, nick, title, content }]);
             if (error) throw error;
-            toast('讨论发布成功！');
+            KJ.toast('讨论发布成功！');
           }
           captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
           clearEditor();
@@ -1079,7 +1004,7 @@
           destroyEditor();
           loadPosts();
         } catch(e) {
-          toast('发布失败：' + (e.message || '未知错误'));
+          KJ.toast('发布失败：' + (e.message || '未知错误'));
           captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
         } finally {
           btn.disabled = false;

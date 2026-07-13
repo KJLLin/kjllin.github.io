@@ -557,3 +557,5 @@ input, textarea, button { font-family: inherit; }
     transition-duration: 0.01ms !important;
   }
 }
+
+#themeBtn { border-radius: 50% !important; }
