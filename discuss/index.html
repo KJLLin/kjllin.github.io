@@ -976,8 +976,8 @@
             body: JSON.stringify({ token: captchaToken })
           });
           const d = await res.json();
-          if (!d.success) { KJ.toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset(); } catch(_) {} return; }
-        } catch(_) {} // Edge Function挂掉时降级
+          if (!d.success) { KJ.toast('人机验证未通过'); captchaToken = ''; try { hcaptcha.reset('captchaDiscuss'); } catch(_) {} return; }
+        } catch(_) { KJ.toast('验证服务不可用，请稍后重试'); return; } // 服务挂掉时拒绝（不降级绕过）
 
         const btn = document.getElementById('submitPostBtn');
         btn.disabled = true;
@@ -998,14 +998,14 @@
             if (error) throw error;
             KJ.toast('讨论发布成功！');
           }
-          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaDiscuss'); } catch(_) {}
           clearEditor();
           document.getElementById('postFormWrap').style.display = 'none';
           destroyEditor();
           loadPosts();
         } catch(e) {
           KJ.toast('发布失败：' + (e.message || '未知错误'));
-          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset(); } catch(_) {}
+          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaDiscuss'); } catch(_) {}
         } finally {
           btn.disabled = false;
           btn.textContent = '发布讨论';
