@@ -276,7 +276,7 @@
 
     /**
      * 服务端验证 hCaptcha token
-     * 注意：只发 Content-Type header，不触发 CORS preflight
+     * 用 text/plain 避免 CORS preflight（Deno req.json 仍可正常解析）
      */
     async function verifyCaptcha(key){
       if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return false}
@@ -284,26 +284,28 @@
       try{
         const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
           method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'text/plain'},
           body:JSON.stringify({token:ct[key]})
         });
         const raw=await res.text();
         let data;
         try{data=JSON.parse(raw)}catch(e){data=null}
         if(data&&data.success)return true;
-        // 诊断：显示后端返回的错误码
+        // 服务器明确拒绝 → 显示错误码 → 重置
         const codes=data&&data['error-codes']?data['error-codes'].join(','):'';
         const diag=data&&data.diag?JSON.stringify(data.diag):'';
         console.error('hCaptcha verify failed:',raw);
         if(codes)toast('人机验证未通过 ('+codes+')，请重试');
         else if(diag)toast('后端诊断: '+diag+'，请联系管理员');
         else toast('人机验证未通过，请重试');
+        resetCaptcha(key);
+        return false;
       }catch(e){
+        // 网络错误 → token 保留 → 用户可直接重试，无需重新验证
         console.error('hCaptcha verify error:',e);
-        toast('网络错误，请稍后重试');
+        toast('网络错误，请稍后重试（无需重新验证）');
+        return false;
       }
-      resetCaptcha(key);
-      return false;
     }
 
     // 登录（带防重复点击锁）

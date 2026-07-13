@@ -952,12 +952,13 @@
       try{
         const res=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{
           method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'text/plain'},
           body:JSON.stringify({token})
         });
         const d=await res.json();
         if(d&&d.success)return true;
       }catch(e){}
+      // 验证失败 → 重置
       KJ.toast('验证失败，请重试');
       _cloudCaptchaToken='';try{hcaptcha.reset('captchaCloud')}catch(_){}
       return false;
