@@ -255,55 +255,120 @@
       $(t.dataset.tab==='login'?'#loginPanel':'#registerPanel').classList.add('active');
     }));
 
-    // hCaptcha
+    // hCaptcha（每个 widget 独立管理 token 和 widgetId）
     let ct={login:'',register:''};
+    const cpId={login:'captchaLogin',register:'captchaRegister'};
     window.onCaptchaLogin=t=>{ct.login=t};
     window.onCaptchaLoginExpired=()=>{ct.login=''};
     window.onCaptchaRegister=t=>{ct.register=t};
     window.onCaptchaRegisterExpired=()=>{ct.register=''};
 
-    function resetCaptcha(key){ct[key]='';try{if(typeof hcaptcha!=='undefined')hcaptcha.reset()}catch(e){}}
+    // 重置指定 widget 的验证码（不误伤另一个）
+    function resetCaptcha(key){
+      ct[key]='';
+      try{if(typeof hcaptcha!=='undefined')hcaptcha.reset(cpId[key])}catch(e){}
+    }
+    // 仅清除 token 不重置 UI（网络错误时保留 token 让用户重试）
+    function clearCaptchaToken(key){ct[key]=''}
 
+    /**
+     * 服务器端验证 hCaptcha token
+     * - 网络错误/超时：保留 token，不重置控件，允许重试
+     * - 服务器明确拒绝：重置控件，需要重新完成验证
+     */
     async function verifyCaptcha(key){
-      // hCaptcha 未加载则拒绝（不绕过）
       if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return false}
       if(!ct[key]){toast('请完成人机验证');return false}
-      try{
-        const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:ct[key]})});
-        const data=await res.json();
-        if(data.success)return true;
-      }catch(e){}
-      // 服务器验证失败则拒绝（不绕过）
-      toast('人机验证未通过，请重试');
-      resetCaptcha(key);
+
+      // 最多尝试 2 次（首次 + 1 次重试），处理冷启动/网络抖动
+      for(let attempt=0;attempt<2;attempt++){
+        const ctrl=new AbortController();
+        const timer=setTimeout(()=>ctrl.abort(),10000);
+
+        try{
+          const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({token:ct[key]}),
+            signal:ctrl.signal
+          });
+          clearTimeout(timer);
+          const data=await res.json();
+
+          if(data.success)return true;
+
+          // 服务器明确拒绝 → token 无效，必须重新验证
+          toast('人机验证未通过，请重新完成验证');
+          resetCaptcha(key);
+          return false;
+        }catch(e){
+          clearTimeout(timer);
+          if(attempt===0){
+            // 首次失败，1 秒后自动重试
+            console.warn('验证请求失败，自动重试中...',e.name||e.message);
+            await new Promise(r=>setTimeout(r,1000));
+            continue;
+          }
+          // 重试也失败了
+          if(e.name==='AbortError'){
+            toast('服务器响应超时，请稍后重试（无需重新验证）');
+          }else{
+            toast('网络错误，请稍后重试');
+          }
+          return false;
+        }
+      }
       return false;
     }
 
-    // 登录
+    // 登录（带防重复点击锁）
+    let loginLocked=false;
     $('#loginBtn').addEventListener('click',async()=>{
+      if(loginLocked)return;
       if(!sb){toast('网络错误，请刷新后重试');return}
       const email=$('#loginEmail').value.trim(),pwd=$('#loginPwd').value;
       if(!email||!pwd){toast('请填写邮箱和密码');return}
-      if(!(await verifyCaptcha('login')))return;
-      const btn=$('#loginBtn');btn.disabled=true;btn.textContent='登录中...';
+
+      loginLocked=true;
+      const btn=$('#loginBtn');
+      btn.disabled=true;btn.textContent='验证中...';
+
+      const captchaOk=await verifyCaptcha('login');
+      if(!captchaOk){loginLocked=false;btn.disabled=false;btn.textContent='登 录';return}
+
+      btn.textContent='登录中...';
       try{
         const{error}=await sb.auth.signInWithPassword({email,password:pwd});
         if(error)throw error;
         window.location.href=redirect;
-      }catch(e){toast('登录失败：'+formatErr(e));btn.disabled=false;btn.textContent='登 录';resetCaptcha('login')}
+      }catch(e){
+        toast('登录失败：'+formatErr(e));
+        loginLocked=false;btn.disabled=false;btn.textContent='登 录';
+        // 登录失败也该重置验证码（防暴力破解重放）
+        resetCaptcha('login');
+      }
     });
     $('#loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginPwd').focus()});
     $('#loginPwd').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginBtn').click()});
 
-    // 注册
+    // 注册（带防重复点击锁）
+    let regLocked=false;
     $('#regBtn').addEventListener('click',async()=>{
+      if(regLocked)return;
       if(!sb){toast('网络错误，请刷新后重试');return}
       const nick=$('#regNick').value.trim(),email=$('#regEmail').value.trim(),pwd=$('#regPwd').value;
       if(!nick||!email||!pwd){toast('请填写完整信息');return}
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('邮箱格式不正确');return}
       if(pwd.length<8){toast('密码至少8位');return}
-      if(!(await verifyCaptcha('register')))return;
-      const btn=$('#regBtn');btn.disabled=true;btn.textContent='创建中...';
+
+      regLocked=true;
+      const btn=$('#regBtn');
+      btn.disabled=true;btn.textContent='验证中...';
+
+      const captchaOk=await verifyCaptcha('register');
+      if(!captchaOk){regLocked=false;btn.disabled=false;btn.textContent='创建账号';return}
+
+      btn.textContent='创建中...';
       try{
         const{data:authData,error:authError}=await sb.auth.signUp({email,password:pwd,options:{data:{nick}}});
         if(authError)throw authError;
@@ -311,7 +376,10 @@
         await sb.from('users').upsert([{id:authData.user.id,nick,email,is_admin:false,status:'active',created_at:new Date().toISOString()}],{onConflict:'id'});
         toast('注册成功！');
         setTimeout(()=>window.location.href=redirect,800);
-      }catch(e){toast('注册失败：'+formatErr(e));btn.disabled=false;btn.textContent='创建账号'}
+      }catch(e){
+        toast('注册失败：'+formatErr(e));
+        regLocked=false;btn.disabled=false;btn.textContent='创建账号';
+      }
     });
     $('#regNick').addEventListener('keydown',e=>{if(e.key==='Enter')$('#regEmail').focus()});
     $('#regEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('#regPwd').focus()});
