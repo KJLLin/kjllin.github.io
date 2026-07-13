@@ -420,8 +420,8 @@
     const metaTheme = $('meta[name="theme-color"]');
 
     // ====================== Supabase 初始化 ======================
-    const SUPABASE_URL = 'https://ayavdkodhdmcxfufnnxo.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc';
+    const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
     const BUCKET_NAME = 'cloud-drive';
 
     let sb = null;
@@ -985,7 +985,7 @@
     window.onCloudCaptcha = async function(t) {
       _cloudCaptchaToken = t;
       try {
-        const res = await fetch('https://ayavdkodhdmcxfufnnxo.supabase.co/functions/v1/verify-captcha', {
+        const res = await fetch('https://vzqspcuxnwpakofwumat.supabase.co/functions/v1/verify-captcha', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t })
         });
         const d = await res.json();
