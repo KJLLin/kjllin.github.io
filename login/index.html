@@ -275,11 +275,10 @@
     function clearCaptchaToken(key){ct[key]=''}
 
     /**
-     * 服务端验证 hCaptcha token（双重策略保证可达性）
-     * 1. 优先用 Supabase 客户端 invoke（带认证头，路由更优）
-     * 2. fallback 到原始 fetch + apikey header
-     * - 服务端明确拒绝：必须重新验证
-     * - 网络不可达：保留 token，提示用户
+     * 服务端验证 hCaptcha token（竞速模式）
+     * 两个策略同时发起 + 8s 全局超时，谁先返回就用谁
+     * - 服务端明确拒绝：重置 widget，要求重新验证
+     * - 全部超时/网络不可达：保留 token，用户可重试
      */
     async function verifyCaptcha(key){
       if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return false}
@@ -287,52 +286,54 @@
 
       const token=ct[key];
       const body=JSON.stringify({token});
+      const GLOBAL_TIMEOUT=8000;
 
-      // 策略1：Supabase 客户端 invoke（自动带 apikey + Authorization）
+      // 创建两个竞速 Promise
+      const promises=[];
+
+      // 策略1：Supabase 客户端 invoke（如果可用）
       if(sb&&sb.functions){
-        try{
+        promises.push((async()=>{
           const{data,error}=await sb.functions.invoke('verify-captcha',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body
+            method:'POST',headers:{'Content-Type':'application/json'},body
           });
-          if(!error&&data&&data.success)return true;
-          if(!error&&data&&!data.success){
-            // 服务端明确拒绝 → token 无效
-            toast('人机验证未通过，请重新完成验证');
-            resetCaptcha(key);
-            return false;
-          }
-          // error 存在 → 可能是网络问题，继续尝试策略2
-        }catch(e){
-          // invoke 失败，继续尝试策略2
-        }
+          if(error)throw new Error('invoke_error');
+          if(!data||!data.success)throw new Error('rejected');
+          return true;
+        })());
       }
 
-      // 策略2：原始 fetch + apikey header（兜底）
-      try{
+      // 策略2：原始 fetch（总是可用，有 AbortController 8s 超时）
+      promises.push((async()=>{
         const ctrl=new AbortController();
-        const timer=setTimeout(()=>ctrl.abort(),12000);
-        const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
-          method:'POST',
-          headers:{
-            'Content-Type':'application/json',
-            'apikey':SUPABASE_KEY,
-            'Authorization':'Bearer '+SUPABASE_KEY
-          },
-          body,
-          signal:ctrl.signal
-        });
-        clearTimeout(timer);
-        const data=await res.json();
-        if(data.success)return true;
-        toast('人机验证未通过，请重新完成验证');
-        resetCaptcha(key);
-        return false;
+        const timer=setTimeout(()=>ctrl.abort(),GLOBAL_TIMEOUT);
+        try{
+          const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+            body,signal:ctrl.signal
+          });
+          clearTimeout(timer);
+          if(!res.ok)throw new Error('fetch_error');
+          const data=await res.json();
+          if(!data||!data.success)throw new Error('rejected');
+          return true;
+        }finally{clearTimeout(timer)}
+      })());
+
+      // 全局超时 Promise（比单个策略超时稍长，给 fetch 的 AbortController 先触发）
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),GLOBAL_TIMEOUT+500));
+
+      try{
+        await Promise.race([...promises,timeout]);
+        return true;
       }catch(e){
-        clearTimeout(timer);
-        toast('验证服务暂时不可达，请稍后再试');
-        // 保留 token，用户可重试
+        if(e.message==='rejected'){
+          toast('人机验证未通过，请重新完成验证');
+          resetCaptcha(key);
+        }else{
+          toast('验证服务暂时不可达，请稍后再试');
+        }
         return false;
       }
     }
