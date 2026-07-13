@@ -950,33 +950,51 @@
     let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
     async function cloudVerifyCaptcha(token){
       const body=JSON.stringify({token});
-      // 策略1：Supabase 客户端 invoke（自动带 apikey + Authorization）
+      const GLOBAL_TIMEOUT=8000;
+      const promises=[];
+
+      // 策略1：Supabase 客户端 invoke（如果可用）
       if(sb&&sb.functions){
-        try{
+        promises.push((async()=>{
           const{data,error}=await sb.functions.invoke('verify-captcha',{
-            method:'POST', headers:{'Content-Type':'application/json'}, body
+            method:'POST',headers:{'Content-Type':'application/json'},body
           });
-          if(!error&&data&&data.success)return true;
-          if(!error&&data&&!data.success){KJ.toast('验证失败，请重试');_cloudCaptchaToken='';try{hcaptcha.reset('captchaCloud')}catch(_){}return false}
-        }catch(e){}
+          if(error)throw new Error('invoke_error');
+          if(!data||!data.success)throw new Error('rejected');
+          return true;
+        })());
       }
-      // 策略2：原始 fetch + apikey + Authorization header（兜底）
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>ctrl.abort(),12000);
+
+      // 策略2：原始 fetch（总是可用）
+      promises.push((async()=>{
+        const ctrl=new AbortController();
+        const timer=setTimeout(()=>ctrl.abort(),GLOBAL_TIMEOUT);
+        try{
+          const res=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':KJ.SUPABASE_KEY,'Authorization':'Bearer '+KJ.SUPABASE_KEY},
+            body,signal:ctrl.signal
+          });
+          clearTimeout(timer);
+          if(!res.ok)throw new Error('fetch_error');
+          const d=await res.json();
+          if(!d||!d.success)throw new Error('rejected');
+          return true;
+        }finally{clearTimeout(timer)}
+      })());
+
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),GLOBAL_TIMEOUT+500));
+
       try{
-        const res=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','apikey':KJ.SUPABASE_KEY,'Authorization':'Bearer '+KJ.SUPABASE_KEY},
-          body,signal:ctrl.signal
-        });
-        clearTimeout(timer);
-        const d=await res.json();
-        if(d.success)return true;
-        KJ.toast('验证失败，请重试');_cloudCaptchaToken='';try{hcaptcha.reset('captchaCloud')}catch(_){}return false;
+        await Promise.race([...promises,timeout]);
+        return true;
       }catch(e){
-        clearTimeout(timer);
-        KJ.toast('验证服务暂时不可达，请稍后再试');
-        if(_captchaResolve){_captchaResolve(false);_captchaResolve=null}
+        if(e.message==='rejected'){
+          KJ.toast('验证失败，请重试');_cloudCaptchaToken='';try{hcaptcha.reset('captchaCloud')}catch(_){}
+        }else{
+          KJ.toast('验证服务暂时不可达，请稍后再试');
+          if(_captchaResolve){_captchaResolve(false);_captchaResolve=null}
+        }
         return false;
       }
     }
