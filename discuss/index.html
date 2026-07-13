@@ -973,7 +973,7 @@
         try {
           const res = await fetch(KJ.SUPABASE_URL + '/functions/v1/verify-captcha', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ token: captchaToken })
           });
           const d = await res.json();
@@ -983,8 +983,7 @@
             return;
           }
         } catch (_) {
-          KJ.toast('人机验证未通过，请重试');
-          captchaToken = ''; try { hcaptcha.reset('captchaDiscuss'); } catch (_) { }
+          KJ.toast('网络错误，请稍后重试（无需重新验证）');
           return;
         }
 
