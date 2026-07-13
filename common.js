@@ -215,31 +215,24 @@
       ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   }
 
-  // ====================== Edge Function 预热 ======================
+  // ====================== 服务预热（仅在需要时调用） ======================
   /**
-   * 后台静默预热 Supabase 服务，减少用户感知的冷启动延迟
-   * - 延迟 2s 后执行，不影响首屏渲染
-   * - 30s 超时，失败不影响任何功能
+   * 后台预热 REST API 和 Auth 服务，减少冷启动延迟。
+   * 注意：不预热 verify-captcha Edge Function，避免发送无效 token 触发 hCaptcha 限流！
    */
   function warmUpServices() {
     setTimeout(function() {
-      // 预热 Edge Function
-      fetch(SUPABASE_URL + '/functions/v1/verify-captcha', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: 'warmup' }),
-        signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
-      }).catch(function() {});
-      // 预热 REST API
+      // 预热 REST API（轻量 HEAD 请求）
       fetch(SUPABASE_URL + '/rest/v1/', {
+        method: 'HEAD',
         headers: { 'apikey': SUPABASE_KEY },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
+        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
       }).catch(function() {});
       // 预热 Auth
       fetch(SUPABASE_URL + '/auth/v1/health', {
-        signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
+        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
       }).catch(function() {});
-    }, 2000);
+    }, 3000);
   }
 
   // ====================== 暴露 API ======================
@@ -267,9 +260,6 @@
 
   // 注入 Toast 样式
   injectToastStyle();
-
-  // 后台预热 Supabase 服务（减少冷启动延迟）
-  warmUpServices();
 
   // 挂载到全局
   global.KJ = KJ;

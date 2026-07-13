@@ -247,6 +247,9 @@
     // 已登录自动跳转
     if(sb){sb.auth.getSession().then(({data:{session}})=>{if(session?.user)window.location.href=redirect})}
 
+    // 预热 Auth 和 REST API（不含 verify-captcha，防止 hCaptcha 限流）
+    if(typeof KJ!=='undefined'&&KJ.warmUpServices)KJ.warmUpServices();
+
     // Tab 切换
     document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
