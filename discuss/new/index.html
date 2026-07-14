@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f3f3f3">
+  <title>发帖 · KJLLin 讨论版</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <style>
+    html{--win-ease:cubic-bezier(0.4,0,0.2,1);--bounce:cubic-bezier(0.34,1.56,0.64,1);--transition-fast:200ms var(--win-ease);--transition-normal:300ms var(--win-ease);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;transition:background-color var(--transition-normal)}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+    :root{--bg-body:#f3f3f3;--bg-mica:rgba(255,255,255,0.85);--bg-mica-hover:rgba(255,255,255,0.95);--border-mica:rgba(0,0,0,0.06);--text-primary:#1a1a1a;--text-secondary:#5e5e5e;--text-tertiary:#8e8e8e;--accent:#0078d4;--accent-light:#0099ff;--accent-glow:rgba(0,120,212,0.1);--danger:#e81123;--shadow-rest:0 2px 8px rgba(0,0,0,0.06);--shadow-hover:0 4px 16px rgba(0,0,0,0.09)}
+    [data-theme="dark"]:root{--bg-body:#0f0f0f;--bg-mica:rgba(20,20,20,0.85);--bg-mica-hover:rgba(26,26,26,0.95);--border-mica:rgba(255,255,255,0.07);--text-primary:#f0f0f0;--text-secondary:#a0a0a0;--text-tertiary:#707070;--accent-glow:rgba(0,120,212,0.15);--shadow-rest:0 2px 8px rgba(0,0,0,0.25);--shadow-hover:0 4px 16px rgba(0,0,0,0.35)}
+    body{background:var(--bg-body);color:var(--text-primary)}
+    .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
+    .mica{background:var(--bg-mica);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--border-mica)}
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest);pointer-events:all}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
+    .menu-divider{width:1px;height:20px;background:var(--border-mica);margin:0 4px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--accent);background:var(--accent-glow)}
+    .menu-btn{width:34px;height:34px;border-radius:50%;border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
+    [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
+    .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
+    .hamburger{display:none}
+    .mobile-menu-dropdown{display:none;position:absolute;top:100%;left:16px;right:16px;margin-top:8px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
+    .mobile-menu-dropdown.open{display:flex}
+
+    .container{max-width:860px;margin:0 auto;padding:80px 16px 40px}
+    .page-header{margin-bottom:24px;animation:fadeUp 0.5s var(--win-ease)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .page-header .back-link{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--text-tertiary);text-decoration:none;font-weight:500;padding:6px 14px;border-radius:var(--radius-sm);transition:all var(--transition-fast)}
+    .page-header .back-link:hover{color:var(--accent);background:var(--accent-glow)}
+    .page-header h1{font-size:24px;font-weight:700;color:var(--text-primary);margin-top:12px}
+
+    .card{padding:24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);animation:fadeUp 0.5s var(--win-ease) 0.1s both}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:4px}
+    .form-group input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:rgba(0,0,0,0.02);color:var(--text-primary);font-size:14px;font-family:inherit}
+    [data-theme="dark"] .form-group input{background:rgba(255,255,255,0.03)}
+    .form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
+    .captcha-row{display:flex;justify-content:center;margin-bottom:16px;min-height:78px}
+    .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+    .btn{font-size:13px;padding:8px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:inherit;font-weight:500;transition:all var(--transition-fast)}
+    .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-light)}
+    .btn-secondary{background:var(--bg-mica);color:var(--text-secondary);border:1px solid var(--border-mica)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+
+    .EasyMDEContainer{margin-bottom:0}
+    .EasyMDEContainer .CodeMirror{border-radius:var(--radius-sm);border:1px solid var(--border-mica)!important;background:var(--bg-mica)!important;color:var(--text-primary)!important;font-size:14px;line-height:1.7}
+    .EasyMDEContainer .CodeMirror-cursor{border-left-color:var(--accent)!important}
+    .EasyMDEContainer .editor-toolbar{border-radius:var(--radius-sm) var(--radius-sm) 0 0;border:1px solid var(--border-mica)!important;border-bottom:none!important;background:var(--bg-mica)!important}
+    .EasyMDEContainer .editor-toolbar button{color:var(--text-secondary)!important}
+    .EasyMDEContainer .editor-toolbar button:hover,.EasyMDEContainer .editor-toolbar button.active{color:var(--accent)!important;background:var(--accent-glow)!important;border-color:var(--accent)!important}
+    .EasyMDEContainer .editor-statusbar{border-radius:0 0 var(--radius-sm) var(--radius-sm);border:1px solid var(--border-mica)!important;border-top:none!important;background:var(--bg-mica)!important;color:var(--text-tertiary)!important}
+
+    .login-prompt{text-align:center;padding:60px 20px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);animation:fadeUp 0.5s var(--win-ease)}
+    .login-prompt .icon{font-size:48px;margin-bottom:12px}
+    .login-prompt .text{font-size:16px;color:var(--text-secondary);margin-bottom:16px}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.3s var(--bounce)}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
+
+    @media(max-width:768px){.card{padding:18px}.container{padding:72px 12px 40px}.menu-item{font-size:12px;padding:6px 10px}}
+    @media(max-width:520px){.menu-bar .menu-item{display:none}.hamburger{display:grid}.menu-divider{display:none}}
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+  </style>
+</head>
+<body>
+  <div class="bg-base"></div>
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+      <div class="menu-divider"></div>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <a href="/discuss/" class="back-link"><i class="fas fa-arrow-left"></i> 返回讨论版</a>
+      <h1><i class="fas fa-pen-to-square"></i> 发布新讨论</h1>
+    </div>
+
+    <div class="card mica" id="postForm">
+      <div class="form-group">
+        <label>讨论标题</label>
+        <input type="text" id="postTitle" placeholder="输入讨论标题..." maxlength="100">
+      </div>
+      <textarea id="postContent" style="display:none;"></textarea>
+      <div id="editorContainer"></div>
+      <div class="captcha-row" id="captchaRow">
+        <div class="h-captcha" id="captchaDiscuss" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaDiscuss" data-expired-callback="onCaptchaDiscussExpired"></div>
+      </div>
+      <div class="btn-row">
+        <a href="/discuss/" class="btn btn-secondary" style="text-decoration:none;line-height:1.4">取消</a>
+        <button class="btn btn-primary" id="submitBtn">发布讨论</button>
+      </div>
+    </div>
+
+    <div class="login-prompt mica" id="loginPrompt" style="display:none">
+      <div class="icon"><i class="fas fa-lock"></i></div>
+      <div class="text">请登录后发布讨论</div>
+      <a href="/login/?redirect=/discuss/new/" class="btn btn-primary" style="text-decoration:none;display:inline-block;line-height:1.4">前往登录</a>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+    const $=s=>document.querySelector(s),root=document.documentElement;
+    const themeBtn=$('#themeBtn');
+    var sb=KJ.createSupabase();
+    let currentUser=null,easyMDE=null,captchaToken='';
+    window.onCaptchaDiscuss=function(t){captchaToken=t};
+    window.onCaptchaDiscussExpired=function(){captchaToken=''};
+
+    function toast(msg){var e=document.querySelector('.toast');if(e)e.remove();var t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove()},2500)}
+
+    // Theme
+    function updateThemeUI(){var s=KJ.applyTheme('#f3f3f3','#000');themeBtn.innerHTML=KJ.getThemeIcon(s.mode)}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI()});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    // Mobile menu
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
+
+    // EasyMDE
+    var _emLoaded=false;
+    function loadEasyMDE(cb){if(_emLoaded){cb();return}if(window.EasyMDE){_emLoaded=true;cb();return}var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js';s.onload=function(){_emLoaded=true;cb()};document.head.appendChild(s)}
+    function initEditor(){if(!window.EasyMDE){loadEasyMDE(initEditor);return}if(easyMDE)return;easyMDE=new EasyMDE({element:document.getElementById('postContent'),placeholder:'支持 Markdown 格式...\n\n# 标题\n**粗体** *斜体*\n- 列表\n> 引用\n\n```\n代码块\n```',spellChecker:false,autoDownloadFontAwesome:false,status:['lines','words','cursor'],toolbar:['bold','italic','heading','|','quote','unordered-list','ordered-list','|','code','link','image','table','|','preview','side-by-side','|','guide'],minHeight:'280px',maxHeight:'500px',renderingConfig:{codeSyntaxHighlighting:true}})}
+
+    // Submit
+    var _submitting=false;
+    $('#submitBtn').addEventListener('click',async function(){
+      if(_submitting)return;
+      if(!currentUser){toast('请先登录');return}
+      var title=$('#postTitle').value.trim(),content=easyMDE?easyMDE.value().trim():'';
+      if(!title){toast('请输入讨论标题');return}
+      if(!content){toast('请输入讨论内容');return}
+      if(typeof hcaptcha==='undefined'){toast('人机验证加载中，请稍后重试');return}
+      if(!captchaToken){toast('请完成人机验证');return}
+      _submitting=true;var btn=$('#submitBtn');btn.disabled=true;btn.textContent='发布中...';
+      try{
+        var cr=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:captchaToken})});
+        var cd=await cr.json();
+        if(!cd||!cd.success){toast('人机验证未通过，请重试');captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='发布讨论';return}
+      }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='发布讨论';return}
+      try{
+        var nick=currentUser.user_metadata?.nick||currentUser.email?.split('@')[0]||'用户';
+        var{error}=await sb.from('posts').insert([{user_id:currentUser.id,nick,title,content}]);
+        if(error)throw error;
+        toast('讨论发布成功！');
+        window.location.href='/discuss/';
+      }catch(e){toast('发布失败：'+(e.message||'未知错误'));captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}}
+      finally{_submitting=false;btn.disabled=false;btn.textContent='发布讨论'}
+    });
+
+    // Auth
+    function updateUI(user){
+      currentUser=user;
+      if(user){$('#postForm').style.display='';$('#loginPrompt').style.display='none';initEditor()}else{$('#postForm').style.display='none';$('#loginPrompt').style.display=''}
+    }
+    if(sb){
+      sb.auth.onAuthStateChange(function(event,session){
+        if(event==='SIGNED_IN'||event==='INITIAL_SESSION'){if(session?.user)updateUI(session.user);else updateUI(null)}
+        else if(event==='SIGNED_OUT')updateUI(null);
+        else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session?.user)currentUser=session.user}
+      });
+      sb.auth.getSession().then(function(r){if(r?.data?.session?.user)updateUI(r.data.session.user);else updateUI(null)});
+    }else updateUI(null);
+  </script>
+</body>
+</html>

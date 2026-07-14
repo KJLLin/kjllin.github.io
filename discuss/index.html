@@ -11,8 +11,6 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -227,28 +225,6 @@
     .login-prompt .text { font-size: 16px; color: var(--text-secondary); margin-bottom: 16px; }
     .login-prompt .hint { font-size: 13px; color: var(--text-tertiary); }
 
-    /* ====================== 发布表单 ====================== */
-    .post-form-wrap { margin-bottom: 28px; }
-    .post-form {
-      padding: 24px; border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-rest);
-      animation: fadeUp 0.5s var(--win-ease) 0.15s both;
-    }
-    .post-form .form-row {
-      display: flex; gap: 12px; align-items: center; margin-bottom: 14px;
-    }
-    .post-form .form-row input {
-      flex: 1; padding: 10px 14px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border-mica); background: var(--bg-mica);
-      color: var(--text-primary); font-size: 14px; font-family: inherit;
-      transition: border-color var(--transition-fast);
-    }
-    .post-form .form-row input:focus {
-      border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-    .post-form .btn-row {
-      display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;
-    }
     .btn {
       font-size: 13px; padding: 8px 20px; border-radius: var(--radius-sm);
       border: none; cursor: pointer; font-family: inherit; font-weight: 500;
@@ -271,80 +247,6 @@
     .btn-danger:hover { border-color: var(--danger); background: rgba(232,17,35,0.06); }
     .btn-sm { font-size: 12px; padding: 6px 14px; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* ====================== EasyMDE 主题覆盖 ====================== */
-    .EasyMDEContainer { margin-bottom: 0; }
-    .EasyMDEContainer .CodeMirror {
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-mica) !important;
-      background: var(--bg-mica) !important;
-      color: var(--text-primary) !important;
-      font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace !important;
-      font-size: 14px; line-height: 1.7;
-    }
-    .EasyMDEContainer .CodeMirror-cursor { border-left-color: var(--accent) !important; }
-    .EasyMDEContainer .CodeMirror-selected { background: var(--accent-glow) !important; }
-    .EasyMDEContainer .editor-toolbar {
-      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-      border: 1px solid var(--border-mica) !important;
-      border-bottom: none !important;
-      background: var(--bg-mica) !important;
-      touch-action: manipulation;
-    }
-    .EasyMDEContainer .editor-toolbar button {
-      color: var(--text-secondary) !important;
-      touch-action: manipulation;
-    }
-    .EasyMDEContainer .editor-toolbar button:hover,
-    .EasyMDEContainer .editor-toolbar button.active {
-      color: var(--accent) !important;
-      background: var(--accent-glow) !important;
-      border-color: var(--accent) !important;
-    }
-    .EasyMDEContainer .editor-preview {
-      background: var(--bg-mica) !important;
-      color: var(--text-primary) !important;
-    }
-    .EasyMDEContainer .editor-preview a { color: var(--accent); }
-    .EasyMDEContainer .editor-preview pre {
-      background: #1e1e2e; color: #cdd6f4;
-      padding: 18px; border-radius: var(--radius-sm);
-      overflow-x: auto; font-size: 13px; line-height: 1.6;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    [data-theme="dark"] .EasyMDEContainer .editor-preview pre {
-      background: #0d1117; color: #c9d1d9; border-color: rgba(255,255,255,0.04);
-    }
-    .EasyMDEContainer .editor-preview .code-block-wrapper pre { margin: 0; border: none; }
-    .EasyMDEContainer .editor-preview blockquote {
-      border-left: 3px solid var(--accent);
-      padding-left: 12px; color: var(--text-tertiary);
-    }
-    .EasyMDEContainer .editor-statusbar {
-      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-      border: 1px solid var(--border-mica) !important;
-      border-top: none !important;
-      background: var(--bg-mica) !important;
-      color: var(--text-tertiary) !important;
-    }
-    /* 移动端工具栏换行 */
-    @media (max-width: 640px) {
-      .EasyMDEContainer .editor-toolbar {
-        display: flex; flex-wrap: wrap; gap: 1px;
-        padding: 6px 4px; justify-content: flex-start;
-        overflow-x: auto; -webkit-overflow-scrolling: touch;
-      }
-      .EasyMDEContainer .editor-toolbar button {
-        width: 36px; height: 36px; margin: 1px; padding: 0;
-        font-size: 13px; flex-shrink: 0;
-      }
-      .EasyMDEContainer .editor-toolbar i.separator { display: inline-block; width: 1px; margin: 0 4px; height: 24px; align-self: center; }
-      .EasyMDEContainer .editor-statusbar { font-size: 11px; }
-      .EasyMDEContainer .CodeMirror { font-size: 13px; }
-    }
-    /* 数学公式 */
-    .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
-    .katex { font-size: 1.1em; }
 
     /* ====================== 帖子列表 ====================== */
     .post-list { display: flex; flex-direction: column; gap: 16px; }
@@ -482,10 +384,8 @@
       .container { padding: 72px 16px 40px; }
       .page-title h1 { font-size: 24px; }
       .post-card { padding: 18px; }
-      .post-form { padding: 18px; }
       .auth-area { padding: 12px 16px; flex-direction: column; align-items: flex-start; }
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
-      .EasyMDEContainer .CodeMirror { font-size: 13px; }
     }
     @media (max-width: 520px) {
       .menu-bar .menu-item { display: none; }
@@ -494,10 +394,6 @@
       .menu-divider { display: none; }
       .post-card .post-header { flex-direction: column; }
       .post-card .post-actions { align-self: flex-end; }
-      .post-form .form-row { flex-direction: column; align-items: stretch; }
-      .EasyMDEContainer .editor-toolbar button {
-        padding: 4px; width: 28px; height: 28px;
-      }
     }
     @media (min-width: 521px) {
       .hamburger { display: none !important; }
@@ -583,24 +479,6 @@
       <div class="icon"><i class="fas fa-lock"></i></div>
       <div class="text">请登录后参与讨论</div>
       <div class="hint"><a href="/login/?redirect=/discuss/" style="color:var(--accent);text-decoration:none;font-weight:600">→ 前往登录</a></div>
-    </div>
-
-    <!-- ==================== 发布表单（登录后显示） ==================== -->
-    <div class="post-form-wrap" id="postFormWrap" style="display:none;">
-      <div class="post-form mica">
-        <div class="form-row">
-          <input type="text" id="postTitle" placeholder="输入讨论标题..." maxlength="100">
-        </div>
-        <textarea id="postContent" style="display:none;"></textarea>
-        <div id="editorContainer"></div>
-        <div class="captcha-line" id="discussCaptchaLine" style="margin-bottom:16px;min-height:78px">
-          <div class="h-captcha" id="captchaDiscuss" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaDiscuss" data-expired-callback="onCaptchaDiscussExpired"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" id="cancelPostBtn">取消</button>
-          <button class="btn btn-primary" id="submitPostBtn">发布讨论</button>
-        </div>
-      </div>
     </div>
 
     <!-- ==================== 帖子列表 ==================== -->
@@ -739,7 +617,6 @@
 
     // ====================== 讨论版核心逻辑 ======================
     (function() {
-      // 终极兜底：15秒后强制关闭loader
       var _closeLoader = function(){
         var l = document.getElementById('loader');
         if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
@@ -747,17 +624,7 @@
       var _forceTimer = setTimeout(_closeLoader, 15000);
 
       let currentUser;
-      let easyMDE;
-      let captchaToken = '';
-      let _editingPostId = null;
-      window.onCaptchaDiscuss = function(token) { captchaToken = token; };
-      window.onCaptchaDiscussExpired = function() { captchaToken = ''; };
-
-      let loadedPosts = [];
-
       var sb = KJ.createSupabase();
-
-      // ====================== 工具函数 ======================
 
       function formatDate(iso) {
         if (!iso) return '';
@@ -772,98 +639,26 @@
           ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
       }
 
-      // ====================== EasyMDE 初始化 ======================
-      let _easymdeLoaded = false;
-
-      function loadEasyMDE(cb) {
-        if (_easymdeLoaded) { cb(); return; }
-        if (window.EasyMDE) { _easymdeLoaded = true; cb(); return; }
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js';
-        s.onload = () => { _easymdeLoaded = true; cb(); };
-        document.head.appendChild(s);
-      }
-
-      function initEditor() {
-        if (!window.EasyMDE) { loadEasyMDE(initEditor); return; }
-        if (easyMDE) return;
-        const textarea = document.getElementById('postContent');
-        easyMDE = new EasyMDE({
-          element: textarea,
-          placeholder: '支持 Markdown 格式...\n\n# 标题\n**粗体** *斜体* `代码`\n- 列表项\n> 引用\n\n```\n代码块\n```',
-          spellChecker: false,
-          autoDownloadFontAwesome: false,
-          status: ['lines', 'words', 'cursor'],
-          toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'code', 'link', 'image', 'table', '|', 'preview', 'side-by-side', '|', 'guide'],
-          minHeight: '240px',
-          maxHeight: '500px',
-          renderingConfig: {
-            codeSyntaxHighlighting: true
-          },
-          previewRender: function(plainText, preview) {
-            // 简单预览: 用marked(如可用)或纯文本
-            if (typeof marked !== 'undefined') {
-              let md = marked.parse(plainText);
-              // 基础 XSS 过滤
-              md = md.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-                     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-                     .replace(/javascript\s*:/gi, '');
-              preview.innerHTML = md;
-            } else {
-              preview.textContent = plainText;
-            }
-            return preview;
-          }
-        });
-      }
-
-      function destroyEditor() {
-        if (easyMDE) {
-          easyMDE.toTextArea();
-          easyMDE = null;
-        }
-      }
-
-      function getEditorContent() {
-        return easyMDE ? easyMDE.value() : '';
-      }
-
-      function clearEditor() {
-        if (easyMDE) easyMDE.value('');
-        document.getElementById('postTitle').value = '';
-      }
-
       // ====================== 认证 UI ======================
       function updateAuthUI(user) {
         currentUser = user;
         const authBtns = document.getElementById('authBtns');
         const userInfo = document.getElementById('userInfo');
         const loginPrompt = document.getElementById('loginPrompt');
-        const postFormWrap = document.getElementById('postFormWrap');
 
         if (user) {
           const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
           userInfo.innerHTML = '<span class="nick"><i class="fas fa-user"></i> ' + KJ.escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
           authBtns.innerHTML =
-            '<button class="btn btn-primary btn-sm" id="newPostBtn"><i class="fas fa-pen-to-square"></i> 发帖</button>' +
+            '<a href="/discuss/new/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4"><i class="fas fa-pen-to-square"></i> 发帖</a>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
           loginPrompt.style.display = 'none';
-
-          document.getElementById('newPostBtn').addEventListener('click', () => {
-            postFormWrap.style.display = 'block';
-            initEditor();
-            postFormWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(() => { if (easyMDE) easyMDE.codemirror.focus(); }, 300);
-          });
           document.getElementById('logoutBtn').addEventListener('click', doLogout);
         } else {
           userInfo.innerHTML = '<span style="color:var(--text-tertiary);font-size:14px;">未登录</span>';
           authBtns.innerHTML =
             '<a href="/login/?redirect=/discuss/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
           loginPrompt.style.display = 'block';
-          postFormWrap.style.display = 'none';
-          destroyEditor();
         }
       }
 
@@ -883,22 +678,17 @@
         if (!sb) {
           empty.textContent = '讨论服务暂不可用';
           empty.style.display = '';
-          console.warn('loadPosts: sb is null');
           return;
         }
 
         try {
-          console.log('loadPosts: fetching from posts table...');
           const { data, error } = await sb
             .from('posts')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(50);
 
-          console.log('loadPosts: result', { count: data?.length, error });
           if (error) throw error;
-
-          loadedPosts = data || [];
 
           if (!data || data.length === 0) {
             list.innerHTML = '';
@@ -912,14 +702,14 @@
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
-                '<button class="del-btn edit-post-btn" data-id="' + p.id + '" data-title="' + KJ.escapeHtml(p.title || '') + '" data-content="' + encodeURIComponent(p.content || '') + '" title="编辑"><i class="fas fa-pen-to-square"></i></button>' +
+                '<a href="/discuss/edit/?id=' + p.id + '" class="del-btn edit-post-btn" title="编辑" style="text-decoration:none;display:flex;align-items:center;justify-content:center"><i class="fas fa-pen-to-square"></i></a>' +
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
 
             return '<div class="post-card mica" style="animation-delay:' + (i * 0.03) + 's">' +
               '<div class="post-main">' +
-                '<a href="/discuss/view/?id=' + p.id + '" class="post-title">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
+                '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 '<div class="post-meta">' +
                   '<span class="author"><i class="fas fa-user"></i> ' + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
                   '<span>' + formatDate(p.created_at) + '</span>' +
@@ -939,101 +729,15 @@
             });
           });
 
-          // 绑定编辑
-          list.querySelectorAll('.edit-post-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-              document.getElementById('postFormWrap').style.display = '';
-              document.getElementById('postTitle').value = this.dataset.title;
-              destroyEditor();
-              initEditor();
-              if (easyMDE) {
-                easyMDE.value(decodeURIComponent(this.dataset.content));
-                _editingPostId = this.dataset.id;
-                document.getElementById('submitPostBtn').textContent = '更新讨论';
-              }
-            });
-          });
-
         } catch(e) {
           console.warn('Load posts error:', e);
           empty.textContent = '加载讨论失败，请刷新页面重试';
           empty.style.display = '';
         }
-        // 关闭loader
         var l = document.getElementById('loader');
         if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
         if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
       }
-
-      // ====================== 发布帖子 ======================
-      async function submitPost() {
-        const title = document.getElementById('postTitle').value.trim();
-        const content = getEditorContent().trim();
-
-        if (!title) { KJ.toast('请输入讨论标题'); return; }
-        if (!content) { KJ.toast('请输入讨论内容'); return; }
-        if (!currentUser) { KJ.toast('请先登录'); return; }
-        // 服务器端 hCaptcha 验证
-        if (typeof hcaptcha === 'undefined') { KJ.toast('人机验证加载失败，请刷新页面后重试'); return; }
-        if (!captchaToken) { KJ.toast('请完成人机验证'); return; }
-        try {
-          const res = await fetch(KJ.SUPABASE_URL + '/functions/v1/verify-captcha', {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ token: captchaToken })
-          });
-          const d = await res.json();
-          if (!d || !d.success) {
-            KJ.toast('人机验证未通过，请重新完成验证');
-            captchaToken = ''; try { hcaptcha.reset('captchaDiscuss'); } catch (_) { }
-            return;
-          }
-        } catch (_) {
-          KJ.toast('网络错误，请稍后重试（无需重新验证）');
-          return;
-        }
-
-        const btn = document.getElementById('submitPostBtn');
-        btn.disabled = true;
-        btn.textContent = _editingPostId ? '更新中...' : '发布中...';
-
-        try {
-          if (_editingPostId) {
-            // 编辑模式：更新已有帖子
-            const { error } = await sb.from('posts').update({ title, content }).eq('id', _editingPostId).eq('user_id', currentUser.id);
-            if (error) throw error;
-            KJ.toast('讨论已更新！');
-            _editingPostId = null;
-            document.getElementById('submitPostBtn').textContent = '发布讨论';
-          } else {
-            // 新建模式
-            const nick = currentUser.user_metadata?.nick || currentUser.email?.split('@')[0] || '用户';
-            const { error } = await sb.from('posts').insert([{ user_id: currentUser.id, nick, title, content }]);
-            if (error) throw error;
-            KJ.toast('讨论发布成功！');
-          }
-          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaDiscuss'); } catch(_) {}
-          clearEditor();
-          document.getElementById('postFormWrap').style.display = 'none';
-          destroyEditor();
-          loadPosts();
-        } catch(e) {
-          KJ.toast('发布失败：' + (e.message || '未知错误'));
-          captchaToken = ''; try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaDiscuss'); } catch(_) {}
-        } finally {
-          btn.disabled = false;
-          btn.textContent = '发布讨论';
-        }
-      }
-
-      document.getElementById('submitPostBtn').addEventListener('click', submitPost);
-      document.getElementById('cancelPostBtn').addEventListener('click', () => {
-        document.getElementById('postFormWrap').style.display = 'none';
-        _editingPostId = null;
-        document.getElementById('submitPostBtn').textContent = '发布讨论';
-        clearEditor();
-        destroyEditor();
-      });
 
       // ====================== 认证监听 ======================
       if (sb) {
@@ -1045,8 +749,6 @@
             }
           } else if (event === 'SIGNED_OUT') {
             updateAuthUI(null);
-            document.getElementById('postFormWrap').style.display = 'none';
-            destroyEditor();
             loadPosts();
           } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
             if (session?.user) currentUser = session.user;
@@ -1065,7 +767,6 @@
         updateAuthUI(null);
         loadPosts();
       }
-      // 确保loader已关闭
       var l = document.getElementById('loader');
       if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
       if (_forceTimer) clearTimeout(_forceTimer);

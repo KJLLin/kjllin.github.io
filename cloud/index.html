@@ -388,6 +388,7 @@
     let currentUser = null;
 
     function showAuthPage() {
+      _initDone = true;
       // 隐藏加载态
       const loader = document.getElementById('authLoading'); if (loader) loader.style.display = 'none';
       // 跳转到统一登录页，登录后返回云盘
@@ -395,6 +396,7 @@
     }
 
     function showDrivePage(user) {
+      _initDone = true;
       // 隐藏加载态
       const loader = document.getElementById('authLoading'); if (loader) loader.style.display = 'none';
       currentUser = user;
@@ -452,6 +454,7 @@
     }
 
     // 监听认证状态变化（先注册，后检查）
+    let _initDone = false;
     document.addEventListener('DOMContentLoaded', () => {
       if (sb) {
         sb.auth.onAuthStateChange((event, session) => {
@@ -460,8 +463,8 @@
             return;
           }
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            if (session?.user) { showDrivePage(session.user); return; }
-            showAuthPage();
+            if (session?.user) { _initDone = true; showDrivePage(session.user); return; }
+            if (!_initDone) { _initDone = true; showAuthPage(); }
           } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
             currentUser = null;
             showAuthPage();
@@ -470,7 +473,18 @@
       }
     });
 
+    // 超时保护：5s 后若仍无响应，强制检查
+    setTimeout(() => {
+      const loader = document.getElementById('authLoading');
+      if (loader && loader.style.display !== 'none' && !_initDone) {
+        console.warn('Cloud init timeout, force-checking session');
+        checkSession();
+      }
+    }, 5000);
+
     // ====================== 文件管理 ======================
+    let _storageOk = true;
+
     async function listFiles() {
       if (!sb) return [];
       try {
@@ -478,6 +492,7 @@
           sortBy: { column: 'created_at', order: 'desc' }
         });
         if (error) throw error;
+        _storageOk = true;
         return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder').map(f => ({
           name: f.name,
           id: f.id || f.name,
@@ -488,6 +503,10 @@
         }));
       } catch(e) {
         console.warn('List files failed:', e.message);
+        if (_storageOk) {
+          _storageOk = false;
+          KJ.toast('云存储读取失败: ' + (e.message || '请检查存储桶配置'), 5000);
+        }
         return [];
       }
     }
@@ -526,6 +545,9 @@
           } else {
             let errMsg = '上传失败';
             try { const r = JSON.parse(xhr.responseText); errMsg = r.message || r.error || errMsg; } catch(_) {}
+            if (xhr.status === 401 || xhr.status === 403) errMsg = '登录已过期，请刷新页面后重新登录';
+            else if (xhr.status === 404) errMsg = '存储桶不存在，请联系管理员';
+            else if (xhr.status === 413) errMsg = '文件过大';
             KJ.toast('上传失败: ' + errMsg);
             resolve(false);
           }
@@ -533,7 +555,7 @@
 
         xhr.addEventListener('error', () => {
           wrap.classList.remove('active');
-          KJ.toast('上传失败：网络错误');
+          KJ.toast('上传失败：网络错误，请检查连接后重试');
           resolve(false);
         });
 

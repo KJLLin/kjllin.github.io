@@ -712,6 +712,10 @@
       html += '<span class="author">' + KJ.escapeHtml(post.nick || '匿名') + '</span>';
       html += '<span class="dot"></span>';
       html += '<span>' + formatDate(post.created_at) + '</span>';
+      if (currentUser && currentUser.id === post.user_id) {
+        html += '<span class="dot"></span>';
+        html += '<a href="/discuss/edit/?id=' + post.id + '" style="color:var(--accent);text-decoration:none;font-size:13px"><i class="fas fa-pen-to-square"></i> 编辑</a>';
+      }
       if (post.edited_at) {
         html += '<span class="dot"></span>';
         html += '<span>已编辑</span>';
@@ -779,8 +783,9 @@
     }
 
     // ====================== 核心：加载帖子 ======================
+    let currentUser = null;
+
     async function loadPost() {
-      // 从 URL 获取 id
       const params = new URLSearchParams(window.location.search);
       const postId = params.get('id');
 
@@ -795,12 +800,13 @@
         return;
       }
 
+      // 同时获取当前用户和帖子
       try {
-        const { data, error } = await sb
-          .from('posts')
-          .select('*')
-          .eq('id', postId)
-          .single();
+        const [{ data: { session } }, { data, error }] = await Promise.all([
+          sb.auth.getSession(),
+          sb.from('posts').select('*').eq('id', postId).single()
+        ]);
+        currentUser = session?.user || null;
 
         if (error) {
           if (error.code === 'PGRST116') {
