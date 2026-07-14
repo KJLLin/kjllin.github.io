@@ -606,6 +606,19 @@ async function init() {
     return;
   }
 
+  // 注册认证状态监听（先注册，再检查初始状态）
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      window.location.href = '/login/?redirect=/chat';
+    } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      if (!session?.user) {
+        window.location.href = '/login/?redirect=/chat';
+      }
+    } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (session?.user) S.user = session.user;
+    }
+  });
+
   // 检查认证状态
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {

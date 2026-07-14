@@ -357,6 +357,12 @@
       </div>
     </div>
 
+    <!-- ========== 认证检查加载 ========== -->
+    <div class="loading-overlay" id="authLoading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px">
+      <div class="loading-spinner"></div>
+      <p style="color:var(--text-tertiary);margin-top:14px;font-size:14px">正在验证身份...</p>
+    </div>
+
     <!-- ========== 云盘内容（登录后显示） ========== -->
     <div class="drive-content hidden" id="driveContent">
     <div class="page-header">
@@ -441,11 +447,15 @@
     let currentUser = null;
 
     function showAuthPage() {
+      // 隐藏加载态
+      const loader = document.getElementById('authLoading'); if (loader) loader.style.display = 'none';
       // 跳转到统一登录页，登录后返回云盘
       window.location.href = '/login/?redirect=/cloud/';
     }
 
     function showDrivePage(user) {
+      // 隐藏加载态
+      const loader = document.getElementById('authLoading'); if (loader) loader.style.display = 'none';
       currentUser = user;
       $('#authPage').classList.add('hidden');
       $('#driveContent').classList.remove('hidden');
@@ -562,7 +572,7 @@
       }
     }
 
-    // 监听认证状态变化
+    // 监听认证状态变化（先注册，后检查）
     document.addEventListener('DOMContentLoaded', () => {
       if (sb) {
         sb.auth.onAuthStateChange((event, session) => {
@@ -570,8 +580,9 @@
             if (session?.user) currentUser = session.user;
             return;
           }
-          if (event === 'SIGNED_IN' && session?.user) {
-            showDrivePage(session.user);
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            if (session?.user) { showDrivePage(session.user); return; }
+            showAuthPage();
           } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
             currentUser = null;
             showAuthPage();
