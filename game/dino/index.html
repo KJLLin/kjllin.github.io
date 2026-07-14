@@ -87,12 +87,9 @@
     <!-- 预加载恐龙精灵图 -->
     <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=">
     <!-- 预加载新图片资源（本地优先，外部CDN为备用） -->
-    <img id="coinImage" src="index_files/coin.png"
-         onload="onImageLoad()" onerror="onImageError(this,'coinImage','index_files/coin.png')">
-    <img id="flyImage" src="index_files/fly.png"
-         onload="onImageLoad()" onerror="onImageError(this,'flyImage','index_files/fly.png')">
-    <img id="xrzImage" src="index_files/xrz.png"
-         onload="onImageLoad()" onerror="onImageError(this,'xrzImage','index_files/xrz.png')">
+    <img id="coinImage" src="index_files/coin.png">
+    <img id="flyImage" src="index_files/fly.png">
+    <img id="xrzImage" src="index_files/xrz.png">
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -180,30 +177,31 @@
         const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
         // 安全初始化 Supabase（CDN 可能不可用）
-        let supabase = null;
-        try { if (window.supabase) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } }); } catch(e) { console.warn('Supabase init failed, score saving disabled'); }
+        // 注意：变量名不能用 supabase，因为 CDN 已在全局声明 var/window.supabase
+        let sb = null;
+        try { if (window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } }); } catch(e) { console.warn('Supabase init failed, score saving disabled'); }
         const GAME_NAME = 'dino';
 
         async function saveScore(finalScore) {
-          if (!supabase) return;
+          if (!sb) return;
           try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await sb.auth.getSession();
           if (!session) return;
           const userId = session.user.id;
           const userEmail = session.user.email || '';
           const nick = userEmail.split('@')[0] || userId.substring(0, 8);
 
-          await supabase.from('game_scores').insert({
+          await sb.from('game_scores').insert({
             user_id: userId,
             nick: nick,
             game: GAME_NAME,
             score: finalScore
           });
 
-          const { data: cloudBest } = await supabase
+          const { data: cloudBest } = await sb
             .from('game_scores').select('score').eq('game', GAME_NAME)
             .order('score', { ascending: false }).limit(1).single();
-          const { data: myBest } = await supabase
+          const { data: myBest } = await sb
             .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
             .order('score', { ascending: false }).limit(1).single();
 
@@ -908,6 +906,30 @@
         }
 
         // 开始游戏
+        // 为图片绑定事件处理器（必须用 JS 而非 HTML onload/onerror 属性，
+        // 因为 HTML 属性可能在 <script> 执行前就触发，导致 onImageLoad 未定义）
+        // 必须在所有 let 变量声明之后调用，避免暂时性死区错误
+        (function setupImageHandlers() {
+            var imgs = [
+                { el: coinImg, id: 'coinImage', fallback: 'index_files/coin.png' },
+                { el: flyImg, id: 'flyImage', fallback: 'index_files/fly.png' },
+                { el: xrzImg, id: 'xrzImage', fallback: 'index_files/xrz.png' }
+            ];
+            imgs.forEach(function(item) {
+                if (item.el.complete) {
+                    if (item.el.naturalWidth > 0) {
+                        onImageLoad();
+                    } else {
+                        onImageError(item.el, item.id, item.fallback);
+                    }
+                } else {
+                    item.el.addEventListener('load', onImageLoad);
+                    item.el.addEventListener('error', function() {
+                        onImageError(item.el, item.id, item.fallback);
+                    });
+                }
+            });
+        })();
         resetGame(); // 使用resetGame来初始化并启动游戏
     </script>
 
