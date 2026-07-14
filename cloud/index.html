@@ -308,54 +308,8 @@
   </header>
 
   <div class="container">
-    <!-- ========== 认证页面（未登录时显示） ========== -->
-    <div class="auth-page hidden" id="authPage">
-      <!-- 登录表单 -->
-      <div class="auth-card mica" id="loginCard">
-        <div class="auth-header">
-          <div class="header-icon"><i class="fas fa-cloud"></i></div>
-          <h2>资源云盘</h2>
-          <p>登录后管理你的云端文件</p>
-        </div>
-        <div class="form-group">
-          <label>邮箱地址</label>
-          <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label>密码</label>
-          <input type="password" id="loginPwd" placeholder="请输入密码" autocomplete="current-password">
-        </div>
-        <div class="form-group" style="text-align:right;margin-bottom:20px">
-          <a class="link" id="showRegister">没有账号？立即注册</a>
-        </div>
-        <button class="btn btn-primary" id="loginBtn">登 录</button>
-      </div>
-
-      <!-- 注册表单（默认隐藏） -->
-      <div class="auth-card mica hidden" id="registerCard">
-        <div class="auth-header">
-          <div class="header-icon"><i class="fas fa-cloud"></i></div>
-          <h2>注册账号</h2>
-          <p>创建账号后即可管理云盘文件</p>
-        </div>
-        <div class="form-group">
-          <label>用户昵称</label>
-          <input type="text" id="regNick" placeholder="请设置你的昵称" autocomplete="nickname">
-        </div>
-        <div class="form-group">
-          <label>邮箱地址</label>
-          <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label>密码</label>
-          <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
-        </div>
-        <div class="form-group" style="text-align:right;margin-bottom:20px">
-          <a class="link" id="showLogin">已有账号？去登录</a>
-        </div>
-        <button class="btn btn-primary" id="regBtn">完成注册</button>
-      </div>
-    </div>
+    <!-- 认证页面（未登录时自动跳转） -->
+    <div class="auth-page hidden" id="authPage"></div>
 
     <!-- ========== 认证检查加载 ========== -->
     <div class="loading-overlay" id="authLoading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px">
@@ -430,19 +384,6 @@
     const BUCKET_NAME = 'cloud-drive';
     var sb = KJ.createSupabase();
 
-    // ====================== 错误格式化 ======================
-    function formatErr(err) {
-      const msg = typeof err === 'string' ? err : (err?.message || err?.toString() || '未知错误');
-      if (msg.includes('429') || msg.includes('rate limit')) return '请求过于频繁，请稍后再试';
-      if (msg.includes('Invalid login credentials')) return '邮箱或密码错误';
-      if (msg.includes('Email not confirmed')) return '邮箱未验证，请先验证邮箱';
-      if (msg.includes('already registered') || msg.includes('already exists')) return '该邮箱已被注册，请直接登录';
-      if (msg.includes('JWT') || msg.includes('token') || msg.includes('expired')) return '登录已过期，请重新登录';
-      if (msg.includes('banned')) return '账号已被封禁';
-      return msg;
-    }
-
-
     // ====================== 认证模块 ======================
     let currentUser = null;
 
@@ -484,58 +425,6 @@
       m.appendChild(logoutLink);
     }
 
-    // 登录
-    async function doLogin() {
-      const email = $('#loginEmail').value.trim();
-      const pwd = $('#loginPwd').value.trim();
-      if (!email || !pwd) { KJ.toast('请填写邮箱和密码'); return; }
-      const btn = $('#loginBtn');
-      btn.disabled = true; btn.textContent = '登录中...';
-      try {
-        const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
-        if (error) throw error;
-      } catch(e) {
-        KJ.toast('登录失败：' + formatErr(e));
-      } finally {
-        setTimeout(() => { btn.disabled = false; btn.textContent = '登 录'; }, 300);
-      }
-    }
-
-    // 注册
-    async function doRegister() {
-      const nick = $('#regNick').value.trim();
-      const email = $('#regEmail').value.trim();
-      const pwd = $('#regPwd').value.trim();
-      if (!nick || !email || !pwd) { KJ.toast('请填写完整注册信息'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { KJ.toast('请输入正确的邮箱格式'); return; }
-      if (pwd.length < 8) { KJ.toast('密码长度不能少于8位'); return; }
-      if (nick.length > 20) { KJ.toast('昵称不能超过20个字符'); return; }
-      const btn = $('#regBtn');
-      btn.disabled = true; btn.textContent = '注册中...';
-      try {
-        const { data: authData, error: authError } = await sb.auth.signUp({
-          email, password: pwd,
-          options: { data: { nick } }
-        });
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('注册失败，未获取到用户信息');
-
-        // 同步写入 users 表
-        await sb.from('users').upsert([{
-          id: authData.user.id, nick, email, is_admin: false,
-          status: 'active', created_at: new Date().toISOString()
-        }], { onConflict: 'id' });
-
-        KJ.toast('注册成功！请登录');
-        $('#regNick').value = ''; $('#regEmail').value = ''; $('#regPwd').value = '';
-        showLoginForm();
-      } catch(e) {
-        KJ.toast('注册失败：' + formatErr(e));
-      } finally {
-        setTimeout(() => { btn.disabled = false; btn.textContent = '完成注册'; }, 300);
-      }
-    }
-
     // 退出
     async function doLogout() {
       try {
@@ -546,16 +435,6 @@
       currentUser = null;
       showAuthPage();
       KJ.toast('已安全退出');
-    }
-
-    function showLoginForm() {
-      $('#loginCard').classList.remove('hidden');
-      $('#registerCard').classList.add('hidden');
-    }
-
-    function showRegisterForm() {
-      $('#loginCard').classList.add('hidden');
-      $('#registerCard').classList.remove('hidden');
     }
 
     // 会话检查
@@ -899,13 +778,6 @@
     });
 
     // ====================== 事件 ======================
-    // 认证事件
-    $('#loginBtn').addEventListener('click', doLogin);
-    $('#loginPwd').addEventListener('keydown', e => e.key === 'Enter' && doLogin());
-    $('#regBtn').addEventListener('click', doRegister);
-    $('#regPwd').addEventListener('keydown', e => e.key === 'Enter' && doRegister());
-    $('#showRegister').addEventListener('click', showRegisterForm);
-    $('#showLogin').addEventListener('click', showLoginForm);
     $('#logoutMenuBtn').addEventListener('click', doLogout);
 
     // 云盘事件
