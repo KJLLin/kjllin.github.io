@@ -129,17 +129,27 @@
             }
         }
         
-        // 图片加载失败时的备用处理：如果本地也失败则标记已加载（使用canvas绘制替代品）
+        // 图片加载失败时的备用处理：直接标记已加载（使用canvas降级绘制）
         function onImageError(img, id, fallbackSrc) {
-            if (img.src === fallbackSrc) {
-                // 本地也失败了，标记已加载（使用canvas降级绘制）
-                console.warn('Image ' + id + ' failed to load, will use fallback drawing');
-                onImageLoad();
-                return;
-            }
-            // 尝试本地备份
-            img.src = fallbackSrc;
+            // 避免重复计数：用 data-loaded 标记防止 onerror 多次触发
+            if (img.dataset.loaded === 'done') return;
+            img.dataset.loaded = 'done';
+            console.warn('Image ' + id + ' failed to load, will use fallback drawing');
+            onImageLoad();
         }
+        
+        // 兜底：5秒超时强制开始游戏（即使图片未加载完成）
+        setTimeout(function() {
+            if (!allImagesLoaded) {
+                console.warn('Image load timeout, forcing game start with fallback drawing');
+                imagesToLoad = 0;
+                allImagesLoaded = true;
+                if (typeof gameLoop === 'function' && !window.gameStarted) {
+                    window.gameStarted = true;
+                    resetGame();
+                }
+            }
+        }, 5000);
 
         // 游戏状态
         let gameSpeed = 5;
