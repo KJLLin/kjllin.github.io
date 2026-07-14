@@ -11,6 +11,9 @@
 </head>
 <body>
 
+<!-- 背景 -->
+<div class="bg-base"></div>
+
 <!-- 全局加载遮罩 -->
 <div id="loadingOverlay" class="loading-overlay">
   <div class="loader-ring"></div>
@@ -20,22 +23,33 @@
 <!-- 全局通知 -->
 <div id="toast" class="toast hidden"></div>
 
+<!-- ================== 全局导航栏 ================== -->
+<header class="top-menu">
+  <nav class="menu-bar mica" id="menuBar">
+    <span class="menu-logo">KJLLin</span>
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item active"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+    <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+    <span id="userTag" class="menu-user-tag"></span>
+    <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+    <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+  </nav>
+  <div class="mobile-menu-dropdown mica" id="mobileMenu">
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item active"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+  </div>
+</header>
+
 <!-- 主布局容器 -->
 <div id="appShell" class="app-shell">
-
-  <!-- 顶部导航栏 -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <span class="topbar-brand">KJLLin</span>
-      <span class="topbar-sep">·</span>
-      <span class="topbar-title">站内信</span>
-    </div>
-    <div class="topbar-right">
-      <button id="themeBtn" class="btn-icon" title="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
-      <span id="userTag" class="user-tag"></span>
-      <button id="logoutBtn" class="btn-text">退出</button>
-    </div>
-  </header>
 
   <!-- 主体：左右分栏 -->
   <div class="main-layout">

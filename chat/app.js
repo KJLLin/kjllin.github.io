@@ -649,6 +649,9 @@ async function init() {
   // 订阅实时消息
   Realtime.subscribe();
 
+  // 移动端菜单初始化
+  KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
+
   // 隐藏加载遮罩
   const overlay = $('#loadingOverlay');
   overlay.style.opacity = '0';
