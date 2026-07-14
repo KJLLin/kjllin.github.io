@@ -930,6 +930,19 @@
     // ============ 启动 ============
     init();
     animateParticles();
+
+    // 兜底：DOM 和 CSS 完全就绪后重算画布
+    window.addEventListener('DOMContentLoaded', function() {
+      calcCanvasSize();
+      initParticles();
+      draw();
+    });
+    // 再加一次：图片/字体等资源加载后
+    window.addEventListener('load', function() {
+      calcCanvasSize();
+      initParticles();
+      draw();
+    });
   </script>
 </body>
 </html>
