@@ -203,29 +203,32 @@
         const{data:{session}}=await sb.auth.getSession();
         if(!session?.user){showLoginPrompt();return}
         user=session.user;
-        $('#loginPrompt').style.display='none';$('#accountContent').style.display='';
-      const nick=user.user_metadata?.nick||user.email?.split('@')[0]||'用户';
-      $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
-      $('#profileName').textContent=nick;
-      $('#profileEmail').textContent=user.email;
-      $('#nickInput').value=nick;
-      $('#infoCreated').textContent=formatDate(user.created_at);
-      try{
-        const{data}=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
-        if(data?.length){$('#infoLastLogin').textContent=formatDate(data[0].last_login_time);$('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核'}
-      }catch(e){}
-      const ua=parseUA();
-      $('#deviceCurrent').textContent=ua.browser;
-      $('#deviceOS').textContent=ua.os+(ua.osVer?' '+ua.osVer:'');
-      $('#deviceScreen').textContent=ua.screen;
-      $('#deviceOnline').innerHTML='🟢 在线';
-      // IP 获取
-      loadIP().then(ip=>{
-        $('#deviceIP').textContent=ip;
-        saveLoginRecord(ip);
+        $('#loginPrompt').style.display='none';$('#accountContent').style.display='block';
+        const nick=user.user_metadata?.nick||user.email?.split('@')[0]||'用户';
+        $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
+        $('#profileName').textContent=nick;
+        $('#profileEmail').textContent=user.email;
+        $('#nickInput').value=nick;
+        $('#infoCreated').textContent=formatDate(user.created_at);
+        try{
+          const{data}=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
+          if(data?.length){$('#infoLastLogin').textContent=formatDate(data[0].last_login_time);$('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核'}
+        }catch(e){}
+        const ua=parseUA();
+        $('#deviceCurrent').textContent=ua.browser;
+        $('#deviceOS').textContent=ua.os+(ua.osVer?' '+ua.osVer:'');
+        $('#deviceScreen').textContent=ua.screen;
+        $('#deviceOnline').innerHTML='🟢 在线';
+        loadIP().then(ip=>{
+          $('#deviceIP').textContent=ip;
+          saveLoginRecord(ip);
+          renderLoginHistory();
+        });
         renderLoginHistory();
-      });
-      renderLoginHistory();
+      }catch(e){
+        console.error('loadUser failed:',e);
+        showLoginPrompt();
+      }
     }
 
     $('#saveNickBtn').addEventListener('click',async()=>{
