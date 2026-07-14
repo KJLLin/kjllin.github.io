@@ -194,16 +194,24 @@ pre, code, .mono, .tile, .score-val {
   position: absolute; border-radius: var(--tile-radius);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
-  transition: transform var(--transition-normal);
+  /* Smooth slide animation — position is driven by JS setting left/top */
+  transition: left 0.12s ease-in-out, top 0.12s ease-in-out;
+  will-change: left, top;
+  z-index: 1;
 }
-.tile.tile-appear { animation: tileAppear 0.2s var(--win-ease); }
-.tile.tile-merge { animation: tileMerge 0.2s var(--win-ease); }
+.tile.tile-new { animation: tileAppear 0.25s var(--bounce); z-index: 2; }
+.tile.tile-merge { animation: tileMerge 0.25s var(--bounce); z-index: 3; }
+.tile.tile-moving { z-index: 2; }
 @keyframes tileAppear {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  0% { transform: scale(0); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 @keyframes tileMerge {
-  0% { transform: scale(1); } 40% { transform: scale(1.2); } 100% { transform: scale(1); }
+  0% { transform: scale(1); }
+  30% { transform: scale(1.28); }
+  60% { transform: scale(0.92); }
+  100% { transform: scale(1); }
 }
 
 /* Tile Colors */
@@ -353,36 +361,55 @@ pre, code, .mono, .tile, .score-val {
   // ==================== Game State ====================
   const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } });
+
+  let supabase = null;
+  try {
+    if (window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+          persistSession: true,
+          storage: {
+            getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+            setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} },
+            removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} }
+          }
+        }
+      });
+    }
+  } catch(e) { console.warn('Supabase init failed, cloud score disabled'); }
+
   const GAME_NAME = 'tfe';
 
   async function saveScore(finalScore) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const userId = session.user.id;
-    const userEmail = session.user.email || '';
-    const nick = userEmail.split('@')[0] || userId.substring(0, 8);
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+      const userEmail = session.user.email || '';
+      const nick = userEmail.split('@')[0] || userId.substring(0, 8);
 
-    await supabase.from('game_scores').insert({
-      user_id: userId,
-      nick: nick,
-      game: GAME_NAME,
-      score: finalScore
-    });
+      await supabase.from('game_scores').insert({
+        user_id: userId, nick: nick, game: GAME_NAME, score: finalScore
+      });
 
-    const { data: cloudBest } = await supabase
-      .from('game_scores').select('score').eq('game', GAME_NAME)
-      .order('score', { ascending: false }).limit(1).single();
-    const { data: myBest } = await supabase
-      .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
-      .order('score', { ascending: false }).limit(1).single();
+      const { data: cloudBest } = await supabase
+        .from('game_scores').select('score').eq('game', GAME_NAME)
+        .order('score', { ascending: false }).limit(1).single();
+      const { data: myBest } = await supabase
+        .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
+        .order('score', { ascending: false }).limit(1).single();
 
-    if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
-    if (myBest) $('#myBest').textContent = myBest.score;
+      if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
+      if (myBest) $('#myBest').textContent = myBest.score;
+    } catch(e) { console.warn('Save score failed:', e); }
   }
 
   const SIZE = 4;
   let grid = new Array(SIZE * SIZE).fill(0);
+  let tileIds = new Array(SIZE * SIZE).fill(0); // unique IDs for animation tracking
+  let tileIdSeq = 0;
+  let tileEls = new Map(); // tid -> DOM element (persistent across re-renders)
   let score = 0;
   let bestScore = parseInt(localStorage.getItem('best2048') || '0', 10);
   let gameOver = false;
@@ -428,25 +455,94 @@ pre, code, .mono, .tile, .score-val {
     return sz * 0.22;
   }
 
-  function renderTiles(mergedSet) {
+  function createTileEl(tid, value, row, col, size, gap) {
+    const tile = document.createElement('div');
+    tile.className = 'tile ' + getTileClass(value);
+    tile.textContent = value;
+    tile.style.width = size + 'px';
+    tile.style.height = size + 'px';
+    tile.style.left = (col * (size + gap)) + 'px';
+    tile.style.top = (row * (size + gap)) + 'px';
+    tile.style.lineHeight = size + 'px';
+    tile.style.fontSize = getTileFont(value, size) + 'px';
+    return tile;
+  }
+
+  function updateTilePos(tile, row, col, size, gap) {
+    tile.style.left = (col * (size + gap)) + 'px';
+    tile.style.top = (row * (size + gap)) + 'px';
+  }
+
+  function renderTilesAnimated(mergedSet) {
+    const { size, gap } = getTileSize();
+    const newEls = new Map(); // new grid tid -> element
+
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      if (grid[i] === 0) continue;
+      const tid = tileIds[i];
+      const row = Math.floor(i / SIZE);
+      const col = i % SIZE;
+      const isMerged = mergedSet && mergedSet.has(i);
+
+      let tile = tileEls.get(tid);
+      if (tile) {
+        // Existing tile — may have moved. CSS transition handles the slide.
+        tile.classList.remove('tile-new', 'tile-merge', 'tile-moving');
+        tile.className = 'tile ' + getTileClass(grid[i]);
+        tile.textContent = grid[i];
+        tile.style.fontSize = getTileFont(grid[i], size) + 'px';
+
+        if (isMerged) {
+          tile.classList.add('tile-merge');
+          // Value update after animation
+          setTimeout(() => {
+            tile.textContent = grid[i];
+            tile.className = 'tile ' + getTileClass(grid[i]);
+          }, 200);
+        }
+
+        updateTilePos(tile, row, col, size, gap);
+        tileEls.delete(tid);
+        newEls.set(tid, tile);
+      } else {
+        // New tile (just spawned or result of merge)
+        tile = createTileEl(tid, grid[i], row, col, size, gap);
+        tile.classList.add(isMerged ? 'tile-merge' : 'tile-new');
+        tileEls.delete(tid);
+        newEls.set(tid, tile);
+      }
+    }
+
+    // Remove stale tile elements that are no longer on the grid
+    for (const [staleTid, staleEl] of tileEls) {
+      staleEl.style.opacity = '0';
+      staleEl.style.transform = 'scale(0.3)';
+      staleEl.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+      setTimeout(() => { if (staleEl.parentNode) staleEl.parentNode.removeChild(staleEl); }, 150);
+    }
+
+    // Add any new tile elements to the DOM
+    for (const [tid, el] of newEls) {
+      if (!el.parentNode) tileContainer.appendChild(el);
+    }
+
+    tileEls = newEls;
+  }
+
+  // Non-animated render for init / resize
+  function renderTiles() {
     tileContainer.innerHTML = '';
+    tileEls.clear();
     const { size, gap } = getTileSize();
 
     for (let i = 0; i < grid.length; i++) {
       if (grid[i] === 0) continue;
       const row = Math.floor(i / SIZE);
       const col = i % SIZE;
-      const tile = document.createElement('div');
-      tile.className = 'tile ' + getTileClass(grid[i]);
-      tile.textContent = grid[i];
-      tile.style.width = size + 'px';
-      tile.style.height = size + 'px';
-      tile.style.left = (col * (size + gap)) + 'px';
-      tile.style.top = (row * (size + gap)) + 'px';
-      tile.style.lineHeight = size + 'px';
-      tile.style.fontSize = getTileFont(grid[i], size) + 'px';
-      tile.classList.add(mergedSet && mergedSet.has(i) ? 'tile-merge' : 'tile-appear');
+      const tile = createTileEl(tileIds[i], grid[i], row, col, size, gap);
+      tile.classList.add('tile-new');
       tileContainer.appendChild(tile);
+      tileEls.set(tileIds[i], tile);
     }
   }
 
@@ -460,48 +556,54 @@ pre, code, .mono, .tile, .score-val {
   function addRandomTile() {
     const empty = emptyCells();
     if (empty.length === 0) return false;
-    grid[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < 0.9 ? 2 : 4;
+    const idx = empty[Math.floor(Math.random() * empty.length)];
+    grid[idx] = Math.random() < 0.9 ? 2 : 4;
+    tileIds[idx] = ++tileIdSeq;
     return true;
   }
 
-  function processLine(line) {
+  function processLine(line, idLine) {
     let arr = line.filter(v => v !== 0);
+    let idArr = idLine.filter(v => v !== 0);
     const merged = [];
+    const scoreGain = [];
     for (let i = 0; i < arr.length - 1; i++) {
       if (arr[i] === arr[i + 1]) {
         arr[i] *= 2;
-        score += arr[i];
+        scoreGain.push(arr[i]);
+        idArr[i] = ++tileIdSeq; // merged tile gets a brand new ID
         merged.push(i);
         arr.splice(i + 1, 1);
+        idArr.splice(i + 1, 1);
       }
     }
-    while (arr.length < SIZE) arr.push(0);
+    while (arr.length < SIZE) { arr.push(0); idArr.push(0); }
     const moved = !line.every((v, i) => v === arr[i]);
-    return { line: arr, moved, merged };
+    return { line: arr, idLine: idArr, moved, merged, scoreGain };
   }
 
   function moveGrid(dir) {
-    // 0=left 1=right 2=up 3=down
     let moved = false;
     const mergedSet = new Set();
 
     for (let r = 0; r < SIZE; r++) {
-      let line = [], indices = [];
+      let line = [], idLine = [], indices = [];
 
       if (dir === 0) {
-        for (let c = 0; c < SIZE; c++) { line.push(grid[r * SIZE + c]); indices.push(r * SIZE + c); }
+        for (let c = 0; c < SIZE; c++) { line.push(grid[r * SIZE + c]); idLine.push(tileIds[r * SIZE + c]); indices.push(r * SIZE + c); }
       } else if (dir === 1) {
-        for (let c = SIZE - 1; c >= 0; c--) { line.push(grid[r * SIZE + c]); indices.push(r * SIZE + c); }
+        for (let c = SIZE - 1; c >= 0; c--) { line.push(grid[r * SIZE + c]); idLine.push(tileIds[r * SIZE + c]); indices.push(r * SIZE + c); }
       } else if (dir === 2) {
-        for (let c = 0; c < SIZE; c++) { line.push(grid[c * SIZE + r]); indices.push(c * SIZE + r); }
+        for (let c = 0; c < SIZE; c++) { line.push(grid[c * SIZE + r]); idLine.push(tileIds[c * SIZE + r]); indices.push(c * SIZE + r); }
       } else {
-        for (let c = SIZE - 1; c >= 0; c--) { line.push(grid[c * SIZE + r]); indices.push(c * SIZE + r); }
+        for (let c = SIZE - 1; c >= 0; c--) { line.push(grid[c * SIZE + r]); idLine.push(tileIds[c * SIZE + r]); indices.push(c * SIZE + r); }
       }
 
-      const result = processLine(line);
+      const result = processLine(line, idLine);
       if (result.moved) moved = true;
+      if (result.scoreGain.length > 0) score += result.scoreGain.reduce((a, b) => a + b, 0);
       for (const m of result.merged) { mergedSet.add(indices[m]); }
-      for (let i = 0; i < SIZE; i++) { grid[indices[i]] = result.line[i]; }
+      for (let i = 0; i < SIZE; i++) { grid[indices[i]] = result.line[i]; tileIds[indices[i]] = result.idLine[i]; }
     }
     return { moved, mergedSet };
   }
@@ -548,14 +650,19 @@ pre, code, .mono, .tile, .score-val {
     if (moved) {
       addRandomTile();
       updateScore();
-      renderTiles(mergedSet);
+      renderTilesAnimated(mergedSet);
       checkOverlay();
     }
   }
 
   // ==================== Init / Restart ====================
   function initGame() {
+    // Remove all old tile elements
+    tileContainer.innerHTML = '';
+    tileEls.clear();
     grid = new Array(SIZE * SIZE).fill(0);
+    tileIds = new Array(SIZE * SIZE).fill(0);
+    tileIdSeq = 0;
     score = 0;
     gameOver = false;
     gameWon = false;
@@ -564,7 +671,7 @@ pre, code, .mono, .tile, .score-val {
     addRandomTile();
     addRandomTile();
     updateScore();
-    renderTiles(null);
+    renderTiles();
   }
 
   // ==================== Keyboard ====================
@@ -600,7 +707,7 @@ pre, code, .mono, .tile, .score-val {
   let resizeTO;
   window.addEventListener('resize', function() {
     clearTimeout(resizeTO);
-    resizeTO = setTimeout(() => renderTiles(null), 100);
+    resizeTO = setTimeout(() => renderTiles(), 100);
   });
 
   // ==================== Start ====================
