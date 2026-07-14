@@ -213,7 +213,7 @@
         else if(event==='SIGNED_OUT'){showError('请先登录')}
         else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session?.user)currentUser=session.user}
       });
-      sb.auth.getSession().then(function(r){if(r?.data?.session?.user)loadPost(r.data.session.user);else showError('请先登录')});
+      sb.auth.getSession().then(function(r){if(r?.data?.session?.user)loadPost(r.data.session.user);else showError('请先登录')}).catch(function(){showError('网络错误，请刷新后重试')});
     }else showError('服务暂不可用');
     })();
   </script>

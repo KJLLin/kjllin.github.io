@@ -265,9 +265,6 @@
     }
     [data-theme="dark"] .cell.wrong { color: #f44336; }
     
-    
-      50%      { box-shadow: 0 0 0 4px var(--accent), 0 0 18px rgba(0, 120, 212, 0.5); }
-    }
     @keyframes cellPop {
       0% { transform: scale(1); }
       50% { transform: scale(1.12); }
@@ -405,7 +402,6 @@
   <script>
     const $ = s => document.querySelector(s);
     const root = document.documentElement;
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
     const themeBtn = document.getElementById('themeBtn');
     const gridEl = document.getElementById('grid');
     const timerEl = document.getElementById('timer');
@@ -489,8 +485,6 @@
       updateTimer();
     }
 
-    function highlightNext() { /* 已移除下一个数字提示 */ }
-
     function renderGrid() {
       totalNumbers = gridSize * gridSize;
       numbers = shuffle(
@@ -516,8 +510,6 @@
         cell.addEventListener('touchend', e => handleTouchEnd(e, () => handleCellClick(cell)));
         gridEl.appendChild(cell);
       }
-
-      highlightNext();
     }
 
     function handleCellClick(cell) {
@@ -550,7 +542,7 @@
           const cells = gridEl.querySelectorAll('.cell');
           cells.forEach(c => c.classList.remove('next-hint'));
         } else {
-          highlightNext();
+          // 下一个数字提示已移除
         }
       } else {
         cell.classList.add('wrong');

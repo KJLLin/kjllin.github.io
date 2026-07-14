@@ -515,8 +515,16 @@
       if (!sb) { KJ.toast('云存储不可用'); return false; }
       if (!currentUser) { KJ.toast('请先登录'); return false; }
 
+      let session;
+      try {
+        session = (await sb.auth.getSession()).data.session;
+      } catch(e) {
+        KJ.toast('获取登录态失败，请刷新页面');
+        return false;
+      }
+      if (!session) { KJ.toast('登录已过期，请重新登录'); return false; }
+
       const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const session = (await sb.auth.getSession()).data.session;
 
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();

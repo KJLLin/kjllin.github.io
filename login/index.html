@@ -9,6 +9,7 @@
   <title>登录 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <script src="/common.js"></script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -211,14 +212,11 @@
   </div>
 
   <script>
-    const $=s=>document.querySelector(s),root=document.documentElement,metaTheme=$('meta[name="theme-color"]');
+    const $=s=>document.querySelector(s);
     const SUPABASE_URL='https://vzqspcuxnwpakofwumat.supabase.co';
     const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
 
-    let sb;
-    try{
-      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,detectSessionInUrl:true,storage:{getItem:k=>{try{return localStorage.getItem(k)}catch{return null}},setItem:(k,v)=>{try{localStorage.setItem(k,v)}catch{}},removeItem:k=>{try{localStorage.removeItem(k)}catch{}}}}});
-    }catch(e){}
+    let sb=KJ.createSupabase();
 
     // 安全校验：防止开放重定向
     function safeRedirect(raw){
@@ -247,8 +245,8 @@
     // 已登录自动跳转
     if(sb){sb.auth.getSession().then(({data:{session}})=>{if(session?.user)window.location.href=redirect})}
 
-    // 预热 Auth 和 REST API（不含 verify-captcha，防止 hCaptcha 限流）
-    if(typeof KJ!=='undefined'&&KJ.warmUpServices)KJ.warmUpServices();
+    // 预热 Auth 和 REST API
+    KJ.warmUpServices();
 
     // Tab 切换
     document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
@@ -395,20 +393,18 @@
     $('#regEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('#regPwd').focus()});
     $('#regPwd').addEventListener('keydown',e=>{if(e.key==='Enter')$('#regBtn').click()});
 
-    // 主题
+    // 主题（使用 KJ 公共方法，自动处理 localStorage 容错）
     const themeBtn=$('#themeBtn');
-    function getSystemDark(){return window.matchMedia('(prefers-color-scheme:dark)').matches}
-    function updateTheme(){
-      const m=localStorage.getItem('theme'),d=m==='dark'||(!m&&getSystemDark());
-      root.dataset.theme=d?'dark':'';metaTheme.content=d?'#000':'#f5f5f7';
-      themeBtn.innerHTML=m==='dark'?'<i class="fas fa-sun"></i>':m==='light'?'<i class="fas fa-moon"></i>':'<i class="fas fa-circle-half-stroke"></i>';
+    function updateThemeUI(){
+      var state=KJ.applyTheme('#f5f5f7','#000');
+      themeBtn.innerHTML=KJ.getThemeIcon(state.mode);
     }
-    themeBtn.addEventListener('click',()=>{
-      const m=localStorage.getItem('theme');
-      if(!m)localStorage.setItem('theme','light');else if(m==='light')localStorage.setItem('theme','dark');else localStorage.removeItem('theme');
-      updateTheme();
+    themeBtn.addEventListener('click',function(){
+      KJ.toggleTheme();
+      updateThemeUI();
     });
-    updateTheme();window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',updateTheme);
+    KJ.onSystemThemeChange(updateThemeUI);
+    updateThemeUI();
   </script>
 </body>
 </html>
