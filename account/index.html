@@ -156,6 +156,7 @@
 
   <script src="/common.js"></script>
   <script>
+    (function(){
     const $=s=>document.querySelector(s);
     let sb,user;
     try{sb=KJ.createSupabase()}catch(e){}
@@ -320,23 +321,24 @@
       $('#loginLink').hidden = true;
     }
 
-    showLoading();
+    // HTML 默认已显示"加载中..."，无需再次调用 showLoading
+    // showLoading() 会覆盖 onAuthStateChange 已设置的 showLoginPrompt 结果
 
     // 兜底1：如果 onAuthStateChange 未在 3s 内触发，手动检查
     setTimeout(() => {
       if (!authReady) loadUser();
     }, 3000);
 
-    // 兜底2：如果以上都超时(8s)，显示超时提示
+    // 兜底2：如果所有机制都超时(8s)，且消息仍为初始"加载中..."，显示超时提示
     setTimeout(() => {
-      const el = $('#loginPrompt');
-      if (el && el.style.display !== 'none' && $('#accountContent').style.display === 'none') {
+      if ($('#loginMsg').textContent === '加载中...') {
         $('#loginMsg').textContent = '加载超时，请检查网络后刷新页面';
         $('#loginLink').hidden = false;
         $('#loginLink').textContent = '→ 刷新页面';
         $('#loginLink').href = 'javascript:location.reload()';
       }
     }, 8000);
+    })();
   </script>
 </body>
 </html>
