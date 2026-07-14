@@ -86,10 +86,13 @@
     <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAABlBMVEX///9TU1NYzE1OAAAAAXRSTlMAQObYZgAAALJJREFUeF7t1EEKAyEMhtEvMNm7sPfJEVyY+1+ltLgYAsrQCtWhbxEhQvgxIJtSZypxa/WGshgzKdbq/UihMFMlt3o/CspEYoihIMaAb6mCvM6C+BTAeyo+wN4yykV/6pVfkdLpVyI1hh7GJ6QunUoLEQlQglNP2nkQkeF8+ei9cLxMue1qxVRfk1Ej0s6AEGWfVOk0QUtnK5Xo0Lac6wpdtnQqB6VxomPaz+dgF1PaqqmeWJlz1jYUaSIAAAAASUVORK5CYII=">
     <!-- 预加载恐龙精灵图 -->
     <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=">
-    <!-- 预加载新图片资源 -->
-    <img id="coinImage" src="https://epcdiy.org/image/coin.png" onload="onImageLoad()">
-    <img id="flyImage" src="https://epcdiy.org/image/fly.png" onload="onImageLoad()">
-    <img id="xrzImage" src="https://epcdiy.org/image/xrz.png" onload="onImageLoad()">
+    <!-- 预加载新图片资源（本地优先，外部CDN为备用） -->
+    <img id="coinImage" src="index_files/coin.png"
+         onload="onImageLoad()" onerror="onImageError(this,'coinImage','index_files/coin.png')">
+    <img id="flyImage" src="index_files/fly.png"
+         onload="onImageLoad()" onerror="onImageError(this,'flyImage','index_files/fly.png')">
+    <img id="xrzImage" src="index_files/xrz.png"
+         onload="onImageLoad()" onerror="onImageError(this,'xrzImage','index_files/xrz.png')">
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -105,25 +108,37 @@
         const flyImg = document.getElementById('flyImage');
         const xrzImg = document.getElementById('xrzImage');
 
-        // --- 添加一个加载计数器，确保所有图片都加载完成后再开始游戏 ---
+        // --- 图片加载计数器（3张外部图片）---
         let imagesToLoad = 3; // coin, fly, xrz
         let allImagesLoaded = false;
-		
-		let fps = 60;
-		let fpsInterval = 1000 / fps;
-		let lastDrawTime = performance.now();
+        
+        let fps = 60;
+        let fpsInterval = 1000 / fps;
+        let lastDrawTime = performance.now();
 
         function onImageLoad() {
             imagesToLoad--;
-            if (imagesToLoad === 0) {
+            if (imagesToLoad <= 0) {
                 allImagesLoaded = true;
+                imagesToLoad = 0;
                 console.log("All images loaded, ready to start game.");
-                // 如果游戏在等待图片加载，可以在这里开始
                 if (typeof gameLoop === 'function' && !window.gameStarted) {
                     window.gameStarted = true;
-                    resetGame(); // 开始游戏
+                    resetGame();
                 }
             }
+        }
+        
+        // 图片加载失败时的备用处理：如果本地也失败则标记已加载（使用canvas绘制替代品）
+        function onImageError(img, id, fallbackSrc) {
+            if (img.src === fallbackSrc) {
+                // 本地也失败了，标记已加载（使用canvas降级绘制）
+                console.warn('Image ' + id + ' failed to load, will use fallback drawing');
+                onImageLoad();
+                return;
+            }
+            // 尝试本地备份
+            img.src = fallbackSrc;
         }
 
         // 游戏状态
@@ -673,13 +688,26 @@
                     pits.push(o); // 收集沟壑用于后续处理
                     // 不在这里绘制沟壑，因为我们要先画其他障碍物，再用沟壑"擦除"地面
                 } else {
-                    // --- 绘制非沟壑障碍物 (使用图片) ---
+                    // --- 绘制非沟壑障碍物 (使用图片或降级绘制) ---
                     if (o.type === 'cactus') {
-                        // --- 绘制仙人掌图片，缩放到判定框的大小 ---
-                        ctx.drawImage(xrzImg, o.x-o.width/2, o.y-o.height, o.width*2, o.height*2);
+                        if (xrzImg && xrzImg.complete && xrzImg.naturalWidth > 0) {
+                            ctx.drawImage(xrzImg, o.x-o.width/2, o.y-o.height, o.width*2, o.height*2);
+                        } else {
+                            // 降级：绘制简单仙人掌
+                            ctx.fillStyle = '#2d8c2d';
+                            ctx.fillRect(o.x, o.y - o.height, o.width, o.height);
+                            ctx.fillRect(o.x - 4, o.y - o.height * 0.7, o.width + 8, o.height * 0.3);
+                        }
                     } else if (o.type === 'ptera') {
-                        // --- 绘制翼龙图片，缩放到判定框的大小 (增加50%) ---
-                        ctx.drawImage(flyImg, o.x-o.width/2, o.y-o.height/2, o.width*2, o.height*2);
+                        if (flyImg && flyImg.complete && flyImg.naturalWidth > 0) {
+                            ctx.drawImage(flyImg, o.x-o.width/2, o.y-o.height/2, o.width*2, o.height*2);
+                        } else {
+                            // 降级：绘制简单翼龙形状
+                            ctx.fillStyle = '#8B4513';
+                            ctx.beginPath();
+                            ctx.ellipse(o.x, o.y, o.width/2, o.height/2, 0, 0, Math.PI*2);
+                            ctx.fill();
+                        }
                     }
 
                     // --- 检测与其他障碍物的碰撞 ---
@@ -726,8 +754,19 @@
                 const c = coins[i];
                 c.x -= gameSpeed;
 
-                // --- 绘制金币图片，缩放到直径为 radius*2 的大小 (增加50%) ---
-                ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
+                // --- 绘制金币图片（或降级绘制）---
+                if (coinImg && coinImg.complete && coinImg.naturalWidth > 0) {
+                    ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
+                } else {
+                    // 降级：绘制金色圆形
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#B8860B';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
 
                 const dx = dino.x + dino.width/2 - c.x;
                 const dy = dino.y + dino.height/2 - c.y;

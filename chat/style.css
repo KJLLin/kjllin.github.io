@@ -84,6 +84,7 @@ html {
   transition: background var(--transition-normal);
 }
 body { min-height: 100vh; overflow: hidden; }
+.bg-base { position: fixed; inset: 0; background: var(--bg-body); z-index: -3; pointer-events: none; }
 .hidden { display: none !important; }
 input, textarea, button { font-family: inherit; }
 
@@ -107,7 +108,7 @@ input, textarea, button { font-family: inherit; }
 
 /* ====================== Toast ====================== */
 .toast {
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
   padding: 10px 24px; border-radius: var(--radius-md);
   font-size: var(--font-size-sm); font-weight: 500;
   z-index: 9998; box-shadow: var(--shadow-hover);
@@ -124,63 +125,77 @@ input, textarea, button { font-family: inherit; }
 /* ====================== 主布局 ====================== */
 .app-shell {
   display: flex; flex-direction: column;
-  height: 100vh; height: 100dvh;
+  height: calc(100vh - 56px); height: calc(100dvh - 56px);
+  margin-top: 56px;
   overflow: hidden;
 }
 
-/* ====================== 顶部导航栏 ====================== */
-.topbar {
-  height: var(--topbar-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+/* ====================== 全局顶部导航栏 ====================== */
+.top-menu {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 8px 16px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.menu-bar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 8px; border-radius: var(--radius-md);
+  box-shadow: var(--shadow-rest);
+  pointer-events: all;
   background: var(--bg-main);
-  border-bottom: 1px solid var(--border-mica);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  z-index: 100;
-  flex-shrink: 0;
+  border: 1px solid var(--border-mica);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
-.topbar-left {
-  display: flex; align-items: baseline; gap: 6px;
+.menu-logo {
+  font-size: 18px; font-weight: 700; color: var(--color-primary);
+  padding: 6px 14px; margin-right: 4px;
 }
-.topbar-brand {
-  font-weight: 600; font-size: var(--font-size-base);
-  color: var(--text-primary);
-}
-.topbar-sep {
-  color: var(--text-tertiary); font-size: var(--font-size-sm);
-}
-.topbar-title {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-.topbar-right {
-  display: flex; align-items: center; gap: 8px;
-}
-.user-tag {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  max-width: 160px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.btn-icon {
-  background: none; border: none; cursor: pointer;
-  font-size: 18px; padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  transition: background var(--transition-fast);
-}
-.btn-icon:hover { background: var(--bg-hover); }
-.btn-text {
-  background: none; border: none; cursor: pointer;
-  font-size: var(--font-size-sm); padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+.menu-item {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  text-decoration: none; white-space: nowrap;
   transition: all var(--transition-fast);
 }
-.btn-text:hover { background: var(--bg-hover); color: var(--color-danger); }
+.menu-item:hover, .menu-item.active { color: var(--color-primary); background: var(--bg-active); }
+.menu-item.active { font-weight: 600; }
+.menu-btn {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+  font-size: 16px; cursor: pointer;
+  background: rgba(220,220,220,0.4); color: var(--text-primary);
+  display: grid; place-items: center;
+  transition: all var(--transition-fast);
+}
+html[data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
+.menu-btn:hover { background: var(--bg-active); color: var(--color-primary); }
+#themeBtn { border-radius: 50%; }
+.menu-user-tag {
+  font-size: 12px; color: var(--text-secondary);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 6px;
+}
+.logout-btn { color: var(--color-danger) !important; }
+.hamburger { display: none; }
+.mobile-menu-dropdown {
+  display: none; position: absolute; top: 100%; left: 16px; right: 16px;
+  margin-top: 8px; padding: 8px; border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px;
+  pointer-events: all; z-index: 101;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mica);
+}
+.mobile-menu-dropdown.open { display: flex; }
+.mobile-menu-dropdown .menu-item { display: block; width: 100%; text-align: left; }
+
+@media (max-width: 520px) {
+  .menu-bar .menu-item { display: none; }
+  .hamburger { display: grid; }
+  .menu-user-tag { display: none; }
+}
+@media (min-width: 521px) {
+  .hamburger { display: none !important; }
+  .mobile-menu-dropdown { display: none !important; }
+}
 
 /* ====================== 主内容区：左右分栏 ====================== */
 .main-layout {
