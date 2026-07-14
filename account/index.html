@@ -262,7 +262,8 @@
 
     $('#logoutBtn').addEventListener('click',async()=>{
       if(!confirm('确定退出登录？'))return;
-      await sb.auth.signOut();
+      if(!sb){window.location.href='/';return}
+      try{await sb.auth.signOut()}catch(e){console.warn('Sign out error:',e)}
       window.location.href='/';
     });
 

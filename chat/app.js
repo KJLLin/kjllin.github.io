@@ -471,7 +471,9 @@ const Realtime = {
 function bindEvents() {
   // 退出登录
   $('#logoutBtn').addEventListener('click', async () => {
-    await sb.auth.signOut();
+    if (sb) {
+      try { await sb.auth.signOut(); } catch(e) { console.warn('Sign out error:', e); }
+    }
     window.location.href = '/login/?redirect=/chat';
   });
 
@@ -603,6 +605,7 @@ async function init() {
   sb = KJ.createSupabase();
   if (!sb) {
     Toast.error('Supabase 初始化失败，请刷新页面');
+    hideLoading();
     return;
   }
 
@@ -619,43 +622,61 @@ async function init() {
     }
   });
 
-  // 检查认证状态
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    window.location.href = '/login/?redirect=/chat';
-    return;
+  try {
+    // 检查认证状态
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = '/login/?redirect=/chat';
+      return;
+    }
+
+    S.user = session.user;
+
+    // 获取用户昵称
+    try {
+      const { data: userData } = await sb.from('users').select('nick, email').eq('id', S.user.id).limit(1);
+      if (userData?.length) {
+        S.user.nick = userData[0].nick;
+        S.user.email = userData[0].email;
+      } else {
+        S.user.nick = S.user.email?.split('@')[0] || '用户';
+      }
+    } catch(e) {
+      S.user.nick = S.user.email?.split('@')[0] || '用户';
+      console.warn('Failed to fetch user profile:', e);
+    }
+
+    // 显示用户信息
+    $('#userTag').textContent = S.user.nick || S.user.email;
+
+    // 绑定事件
+    bindEvents();
+
+    // 加载对话列表
+    try {
+      await ConvList.load();
+    } catch(e) { console.warn('Failed to load conversations:', e); }
+
+    // 订阅实时消息
+    Realtime.subscribe();
+
+  } catch(e) {
+    console.error('Chat init failed:', e);
+    Toast.error('加载失败，请刷新页面');
   }
-
-  S.user = session.user;
-
-  // 获取用户昵称
-  const { data: userData } = await sb.from('users').select('nick, email').eq('id', S.user.id).limit(1);
-  if (userData?.length) {
-    S.user.nick = userData[0].nick;
-    S.user.email = userData[0].email;
-  } else {
-    S.user.nick = S.user.email?.split('@')[0] || '用户';
-  }
-
-  // 显示用户信息
-  $('#userTag').textContent = S.user.nick || S.user.email;
-
-  // 绑定事件
-  bindEvents();
-
-  // 加载对话列表
-  await ConvList.load();
-
-  // 订阅实时消息
-  Realtime.subscribe();
 
   // 移动端菜单初始化
   KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
 
-  // 隐藏加载遮罩
+  hideLoading();
+}
+
+function hideLoading() {
   const overlay = $('#loadingOverlay');
-  overlay.style.opacity = '0';
-  setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+  }
 }
 
 // ====================== 生命周期 ======================

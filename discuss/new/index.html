@@ -188,7 +188,7 @@
         else if(event==='SIGNED_OUT')updateUI(null);
         else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session?.user)currentUser=session.user}
       });
-      sb.auth.getSession().then(function(r){if(r?.data?.session?.user)updateUI(r.data.session.user);else updateUI(null)});
+      sb.auth.getSession().then(function(r){if(r?.data?.session?.user)updateUI(r.data.session.user);else updateUI(null)}).catch(function(){updateUI(null)});
     }else updateUI(null);
   </script>
 </body>

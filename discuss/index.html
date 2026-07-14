@@ -723,9 +723,12 @@
           list.querySelectorAll('.del-post-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
               if (!confirm('确定删除此讨论？')) return;
-              const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
-              if (error) { KJ.toast('删除失败'); return; }
-              KJ.toast('已删除'); loadPosts();
+              if (!sb) { KJ.toast('服务暂不可用'); return; }
+              try {
+                const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
+                if (error) { KJ.toast('删除失败: ' + error.message); return; }
+                KJ.toast('已删除'); loadPosts();
+              } catch(e) { KJ.toast('删除失败，请重试'); }
             });
           });
 
@@ -761,6 +764,9 @@
           } else {
             updateAuthUI(null);
           }
+          loadPosts();
+        }).catch(function() {
+          updateAuthUI(null);
           loadPosts();
         });
       } else {
