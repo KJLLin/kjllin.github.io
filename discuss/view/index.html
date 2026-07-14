@@ -683,6 +683,11 @@
       let html;
       try {
         html = marked.parse(raw);
+        // 基础 XSS 过滤：移除 script/event handlers
+        html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                   .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+                   .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+                   .replace(/javascript\s*:/gi, '');
       } catch(e) {
         html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + KJ.escapeHtml(raw) + '</pre>';
       }

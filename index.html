@@ -579,7 +579,7 @@
         if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
         return;
       }
-      sb.auth.onAuthStateChange(function(event) { if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_DELETED') updateUserUI(); });
+      sb.auth.onAuthStateChange(function(event) { if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION' || event === 'USER_DELETED') updateUserUI(); });
       updateUserUI();
       function updateUserUI() {
         var area = document.getElementById('navUserArea');
@@ -588,8 +588,10 @@
           try {
             if (r.data.session && r.data.session.user) {
               var u = r.data.session.user;
-              var nick = u.user_metadata.nick || u.email.split('@')[0] || '用户';
-              var areaHtml = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + (nick.length > 8 ? nick.slice(0,8)+'..' : nick) + '</a>';
+              var rawNick = u.user_metadata.nick || u.email.split('@')[0] || '用户';
+              var nick = KJ.escapeHtml(rawNick);
+              var displayNick = nick.length > 8 ? nick.slice(0,8)+'..' : nick;
+              var areaHtml = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick + '</a>';
               // 查未读
               sb.from('private_messages').select('*', { count: 'exact', head: true }).eq('recipient_id', u.id).eq('read', false).then(function(r2) {
                 var unread = r2.count || 0;

@@ -803,7 +803,13 @@
           previewRender: function(plainText, preview) {
             // 简单预览: 用marked(如可用)或纯文本
             if (typeof marked !== 'undefined') {
-              preview.innerHTML = marked.parse(plainText);
+              let md = marked.parse(plainText);
+              // 基础 XSS 过滤
+              md = md.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+                     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+                     .replace(/javascript\s*:/gi, '');
+              preview.innerHTML = md;
             } else {
               preview.textContent = plainText;
             }

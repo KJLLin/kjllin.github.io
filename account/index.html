@@ -110,8 +110,8 @@
   <div class="container">
     <div class="page-header"><div class="icon">🔒</div><h1>账号安全</h1></div>
     <div id="loginPrompt" class="card mica" style="text-align:center;padding:40px">
-      <p style="color:var(--text-tertiary);margin-bottom:16px">请登录后管理账号</p>
-      <a href="/login/?redirect=/account/" style="color:var(--accent);font-weight:600;text-decoration:none">→ 前往登录</a>
+      <p style="color:var(--text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
+      <a href="/login/?redirect=/account/" style="color:var(--accent);font-weight:600;text-decoration:none" id="loginLink" hidden>→ 前往登录</a>
     </div>
     <div id="accountContent" style="display:none">
       <div class="card mica">
@@ -199,10 +199,11 @@
 
     async function loadUser(){
       if(!sb)return;
-      const{data:{session}}=await sb.auth.getSession();
-      if(!session?.user){$('#loginPrompt').style.display='';$('#accountContent').style.display='none';return}
-      user=session.user;
-      $('#loginPrompt').style.display='none';$('#accountContent').style.display='';
+      try{
+        const{data:{session}}=await sb.auth.getSession();
+        if(!session?.user){showLoginPrompt();return}
+        user=session.user;
+        $('#loginPrompt').style.display='none';$('#accountContent').style.display='';
       const nick=user.user_metadata?.nick||user.email?.split('@')[0]||'用户';
       $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
       $('#profileName').textContent=nick;
@@ -281,10 +282,46 @@
     hamburgerBtn.addEventListener('click',function(e){e.stopPropagation();mobileMenu.classList.toggle('open')});
     document.addEventListener('click',function(e){if(!hamburgerBtn.contains(e.target)&&!mobileMenu.contains(e.target))mobileMenu.classList.remove('open')});
 
-    if(!sb){return}
-    loadUser();
-    // 跨标签页登录状态同步
-    sb.auth.onAuthStateChange((event,session)=>{loadUser()});
+    if(!sb){
+      $('#loginMsg').textContent='网络错误，请刷新后重试';
+      return;
+    }
+
+    // 先注册监听（处理 INITIAL_SESSION 事件），再获取会话
+    let authReady = false;
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        authReady = true;
+        if (session?.user) { loadUser(); return; }
+        showLoginPrompt();
+      } else if (event === 'SIGNED_OUT') {
+        authReady = true;
+        showLoginPrompt();
+      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) loadUser();
+      }
+    });
+
+    function showLoginPrompt() {
+      $('#loginPrompt').style.display = '';
+      $('#accountContent').style.display = 'none';
+      $('#loginMsg').textContent = '请登录后管理账号';
+      $('#loginLink').hidden = false;
+    }
+
+    function showLoading() {
+      $('#loginPrompt').style.display = '';
+      $('#accountContent').style.display = 'none';
+      $('#loginMsg').textContent = '加载中...';
+      $('#loginLink').hidden = true;
+    }
+
+    showLoading();
+
+    // 兜底：如果 onAuthStateChange 未在 3s 内触发，手动检查
+    setTimeout(() => {
+      if (!authReady) loadUser();
+    }, 3000);
   </script>
 </body>
 </html>
