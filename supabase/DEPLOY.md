@@ -3,7 +3,7 @@
 ## 前置条件
 
 1. Supabase 项目: `vzqspcuxnwpakofwumat`
-2. Supabase CLI 已安装并登录 (`npx supabase login`)
+2. Supabase CLI 已安装并登录 (`supabase login`)
 3. CPOAuth 应用已在 https://www.cpoauth.com 注册，回调地址为 `https://kjllin.github.io/login/callback/`
 
 ## 部署步骤
@@ -27,8 +27,7 @@ supabase db push
 | 变量名 | 值 | 说明 |
 |--------|-----|------|
 | `CPOAUTH_CLIENT_SECRET` | `-trugBgLLH0JWzjp0l7iUINJV62Unp1hNPnfYI8JzYE` | CPOAuth 密钥 |
-| `SUPABASE_JWT_SECRET` | (从 Settings > API > JWT Secret 获取) | 用于签发会话 JWT |
-| `SUPABASE_SERVICE_ROLE_KEY` | (从 Settings > API > service_role key 获取) | 用于绕过 RLS 查询 users 表 |
+| `SUPABASE_SERVICE_ROLE_KEY` | (从 Settings > API > service_role key 获取) | 用于 Admin API 创建会话 + 查询 users 表 |
 
 ### 3. 部署 Edge Function
 
@@ -66,14 +65,15 @@ GitHub Pages 在 push 后自动部署，无需额外操作。
   │                                │─ 查 users 表 (service_role)  │
   │                                │  WHERE cpoauth_sub = ?       │
   │                                │                              │
-  │                                │─ 签发 Supabase JWT           │
-  │<── {session: {access_token}} ─│  (HMAC-SHA256)               │
+  │                                │─ Admin generate_link         │
+  │<── {action_link} ─────────────│  (magiclink, 创建会话)       │
   │                                │                              │
-  │─ sb.auth.setSession()         │                              │
-  │  登录成功                      │                              │
+  │─ redirect → action_link       │                              │
+  │  Supabase 自动创建 session    │                              │
+  │  重定向回首页，已登录 ✓       │                              │
 ```
 
 - client_secret 永不离开 Edge Function
 - 前端仅持有 PKCE code_verifier（用完即弃）
-- Supabase session JWT 由服务端签发
+- Supabase session 由 Admin API 原生创建
 - 未绑定用户无法通过 CPOAuth 登录
