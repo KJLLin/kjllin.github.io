@@ -584,6 +584,28 @@
       function updateUserUI() {
         var area = document.getElementById('navUserArea');
         if (!area) return;
+
+        // 同步读 localStorage 立即显示登录态，避免"已登录却显示登录"的闪烁
+        function getStoredUser() {
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var key = localStorage.key(i);
+              if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
+                var val = JSON.parse(localStorage.getItem(key));
+                if (val && val.user) return val.user;
+              }
+            }
+          } catch(e) {}
+          return null;
+        }
+        var storedUser = getStoredUser();
+        if (storedUser) {
+          var rawNick2 = storedUser.user_metadata && storedUser.user_metadata.nick || storedUser.email && storedUser.email.split('@')[0] || '用户';
+          var nick2 = KJ.escapeHtml(rawNick2);
+          var displayNick2 = nick2.length > 8 ? nick2.slice(0,8)+'..' : nick2;
+          area.innerHTML = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick2 + '</a>';
+        }
+
         sb.auth.getSession().then(function(r) {
           try {
             if (r.data.session && r.data.session.user) {

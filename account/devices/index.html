@@ -42,7 +42,7 @@
     .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
     .theme-btn,#themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:58px;top:calc(58px + env(safe-area-inset-top, 0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;z-index:101;max-height:calc(100vh - 80px - env(safe-area-inset-top, 0px));overflow-y:auto}
+    .mobile-menu-dropdown{display:none;position:fixed;top:58px;top:calc(58px + env(safe-area-inset-top, 0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101;max-height:calc(100vh - 80px - env(safe-area-inset-top, 0px));overflow-y:auto}
     .mobile-menu-dropdown.open{display:flex}
     .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 
@@ -165,7 +165,6 @@
     let sb,user;
     try{sb=KJ.createSupabase()}catch(e){}
 
-    function parseUA(){const u=navigator.userAgent;let b='Unknown';if(u.includes('Edg/'))b='Edge';else if(u.includes('Chrome/'))b='Chrome';else if(u.includes('Firefox/'))b='Firefox';else if(u.includes('Safari/')&&!u.includes('Chrome/'))b='Safari';let os='Unknown';let osVer='';if(u.includes('Windows NT 10')){os='Windows';osVer='10/11'}else if(u.includes('Windows NT 6')){os='Windows';osVer='7/8'}else if(u.includes('Mac OS X')){os='macOS';const m=u.match(/Mac OS X ([0-9_]+)/);if(m)osVer=m[1].replace(/_/g,'.')}else if(u.includes('Linux')&&!u.includes('Android')){os='Linux'}else if(u.includes('Android')){os='Android';const m=u.match(/Android ([0-9.]+)/);if(m)osVer=m[1]}else if(u.includes('iOS')||u.includes('iPhone')||u.includes('iPad')){os='iOS';const m=u.match(/OS ([0-9_]+)/);if(m)osVer=m[1].replace(/_/g,'.')};const screen='屏幕: '+window.screen.width+'×'+window.screen.height+', '+navigator.language;return{browser:b,os:os,osVer:osVer,screen:screen}}
     
     function deviceIcon(os){
       if(/android/i.test(os))return'<i class="fab fa-android"></i>';
@@ -177,10 +176,10 @@
     }
     function deviceType(os){return/android|ios|iphone|ipad/i.test(os)?'mobile':'desktop'}
 
-    function loadDevices(){
+    async function loadDevices(){
       const currentEl=$('#currentDevice');
       const listEl=$('#deviceList');
-      const ua=parseUA();
+      const ua=KJ.parseUA();
       const currentKey=ua.browser+'|'+ua.os;
 
       // 渲染当前设备
@@ -190,66 +189,93 @@
         '<div class="device-detail">'+KJ.escapeHtml(ua.screen)+'</div></div>'+
         '<div class="device-time"><span style="color:var(--success);font-weight:500">🟢 在线</span></div></div>';
 
-      // 加载历史记录
+      // 合并 Supabase + localStorage 数据
+      let allRecords = [];
+      const oneYearAgo=Date.now()-365*24*60*60*1000;
+
+      // 1. 从 Supabase 读取
+      if(sb && user){
+        try{
+          const {data:supaRecords,error}=await sb.from('login_devices')
+            .select('*').eq('user_id',user.id)
+            .order('logged_in_at',{ascending:false}).limit(50);
+          if(!error && supaRecords){
+            allRecords = supaRecords.map(r=>({
+              browser: r.browser, os: r.os, ip: r.ip,
+              time: r.logged_in_at || r.created_at,
+              source: 'cloud'
+            }));
+          }
+        }catch(e){console.warn('Supabase device read failed:',e)}
+      }
+
+      // 2. 从 localStorage 补充（去重）
       try{
         let history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
-        const oneYearAgo=Date.now()-365*24*60*60*1000;
-
-        // 过滤1年内 + 去重(同browser+os保留最新)
-        const seen={};const unique=[];
+        const seen=new Set(allRecords.map(r=>r.browser+'|'+r.os+'|'+r.time));
         for(let i=history.length-1;i>=0;i--){
           const r=history[i];
           const t=new Date(r.time).getTime();
           if(t<oneYearAgo)continue;
-          const k=(r.browser||'')+'|'+(r.os||'');
-          if(!seen[k]){seen[k]=true;unique.push(r)}
+          const k=r.browser+'|'+r.os+'|'+r.time;
+          if(!seen.has(k)){seen.add(k);allRecords.push({...r,source:'local'})}
         }
+      }catch(e){}
 
-        // 去掉当前设备
-        const historical=unique.filter(r=>{
-          const k=(r.browser||'')+'|'+(r.os||'');
-          return k!==currentKey;
-        });
-
-        // 统计
-        const osSet=new Set();const browserSet=new Set();const ipSet=new Set();
-        unique.forEach(r=>{
-          browserSet.add(r.browser||'');
-          osSet.add(r.os||'');
-          if(r.ip)ipSet.add(r.ip);
-        });
-        $('#statTotal').textContent=unique.length;
-        $('#statBrowser').textContent=browserSet.size;
-        $('#statOS').textContent=osSet.size;
-        $('#statIP').textContent=ipSet.size;
-
-        if(historical.length===0){
-          listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无其他设备登录记录<br><span style="font-size:12px">使用更多设备登录后将在此显示</span></p></div>';
-          return;
-        }
-
-        const lines=historical.map(r=>{
-          const d=new Date(r.time);
-          const ts=d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-          const daysAgo=Math.floor((Date.now()-d.getTime())/86400000);
-          let timeAgo;
-          if(daysAgo<1)timeAgo='今天';
-          else if(daysAgo<2)timeAgo='昨天';
-          else if(daysAgo<7)timeAgo=daysAgo+'天前';
-          else if(daysAgo<30)timeAgo=Math.floor(daysAgo/7)+'周前';
-          else if(daysAgo<365)timeAgo=Math.floor(daysAgo/30)+'个月前';
-          else timeAgo='1年前';
-          
-          return '<div class="device-item">'+
-            '<div class="device-icon '+deviceType(r.os||'')+'">'+deviceIcon(r.os||'')+'</div>'+
-            '<div class="device-info"><div class="device-name">'+KJ.escapeHtml(r.browser||'--')+'</div>'+
-            '<div class="device-detail">'+KJ.escapeHtml(r.os||'--')+' <span class="sep"></span> '+timeAgo+'</div></div>'+
-            '<div class="device-time"><div>'+ts+'</div><div class="ip">'+KJ.escapeHtml(r.ip||'--')+'</div></div></div>';
-        });
-        listEl.innerHTML=lines.join('');
-      }catch(e){
-        listEl.innerHTML='<div class="empty-state"><div class="icon">⚠️</div><p>加载失败</p></div>';
+      // 3. 去重(browser+os 保留最新) + 过滤1年外
+      const seen={};const unique=[];
+      for(let i=0;i<allRecords.length;i++){
+        const r=allRecords[i];
+        const t=new Date(r.time).getTime();
+        if(t<oneYearAgo)continue;
+        const k=(r.browser||'')+'|'+(r.os||'');
+        if(!seen[k]||new Date(r.time)>new Date(seen[k].time)) seen[k]=r;
       }
+      for(var k in seen) unique.push(seen[k]);
+      unique.sort((a,b)=>new Date(b.time)-new Date(a.time));
+
+      // 4. 去掉当前设备
+      const historical=unique.filter(r=>{
+        const k=(r.browser||'')+'|'+(r.os||'');
+        return k!==currentKey;
+      });
+
+      // 统计
+      const osSet=new Set();const browserSet=new Set();const ipSet=new Set();
+      unique.forEach(r=>{
+        browserSet.add(r.browser||'');
+        osSet.add(r.os||'');
+        if(r.ip)ipSet.add(r.ip);
+      });
+      $('#statTotal').textContent=unique.length;
+      $('#statBrowser').textContent=browserSet.size;
+      $('#statOS').textContent=osSet.size;
+      $('#statIP').textContent=ipSet.size;
+
+      if(historical.length===0){
+        listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无其他设备登录记录<br><span style="font-size:12px">使用更多设备登录后将在此显示</span></p></div>';
+        return;
+      }
+
+      const lines=historical.map(r=>{
+        const d=new Date(r.time);
+        const ts=d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+        const daysAgo=Math.floor((Date.now()-d.getTime())/86400000);
+        let timeAgo;
+        if(daysAgo<1)timeAgo='今天';
+        else if(daysAgo<2)timeAgo='昨天';
+        else if(daysAgo<7)timeAgo=daysAgo+'天前';
+        else if(daysAgo<30)timeAgo=Math.floor(daysAgo/7)+'周前';
+        else if(daysAgo<365)timeAgo=Math.floor(daysAgo/30)+'个月前';
+        else timeAgo='1年前';
+        
+        return '<div class="device-item">'+
+          '<div class="device-icon '+deviceType(r.os||'')+'">'+deviceIcon(r.os||'')+'</div>'+
+          '<div class="device-info"><div class="device-name">'+KJ.escapeHtml(r.browser||'--')+'</div>'+
+          '<div class="device-detail">'+KJ.escapeHtml(r.os||'--')+' <span class="sep"></span> '+timeAgo+(r.source==='cloud'?' ☁️':'')+'</div></div>'+
+          '<div class="device-time"><div>'+ts+'</div><div class="ip">'+KJ.escapeHtml(r.ip||'--')+'</div></div></div>';
+      });
+      listEl.innerHTML=lines.join('');
     }
 
     async function loadUser(){

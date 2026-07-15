@@ -758,6 +758,22 @@
           }
         });
 
+        // 同步读 localStorage 立即显示登录态，避免闪烁
+        function getStoredUser() {
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var key = localStorage.key(i);
+              if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
+                var val = JSON.parse(localStorage.getItem(key));
+                if (val && val.user) return val.user;
+              }
+            }
+          } catch(e) {}
+          return null;
+        }
+        var storedUser = getStoredUser();
+        if (storedUser) updateAuthUI(storedUser);
+
         sb.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
             updateAuthUI(session.user);

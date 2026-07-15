@@ -24,7 +24,7 @@
   function createSupabase() {
     try {
       if (!global.supabase) return null;
-      return global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      var client = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: {
           persistSession: true,
           detectSessionInUrl: true,
@@ -35,6 +35,16 @@
           }
         }
       });
+      // 自动记录登录设备（SIGNED_IN 时触发一次）
+      var _recorded = false;
+      client.auth.onAuthStateChange(function(event) {
+        if (event === 'SIGNED_IN' && !_recorded) {
+          _recorded = true;
+          recordLoginDevice(client);
+        }
+        if (event === 'SIGNED_OUT') _recorded = false;
+      });
+      return client;
     } catch(e) {
       console.warn('Supabase init failed:', e);
       return null;
@@ -235,6 +245,71 @@
     }, 3000);
   }
 
+  // ====================== 设备记录 ======================
+  /**
+   * 记录登录设备到 Supabase + localStorage
+   * @param {object} sb - Supabase 客户端实例
+   */
+  async function recordLoginDevice(sb) {
+    if (!sb) return;
+    try {
+      var ua = parseUA();
+      var ip = '获取中...';
+      try {
+        var apis = ['https://api.ipify.org?format=json', 'https://api.ip.sb/ip', 'https://httpbin.org/ip'];
+        for (var ai = 0; ai < apis.length; ai++) {
+          try {
+            var ctrl = new AbortController();
+            var timer = setTimeout(function() { ctrl.abort(); }, 4000);
+            var resp = await fetch(apis[ai], { signal: ctrl.signal });
+            clearTimeout(timer);
+            var data = await resp.json();
+            ip = data.ip || data.origin || '';
+            if (ip && !ip.includes('<')) { ip = ip.replace(/^https?:\/\//, ''); break; }
+          } catch(e) {}
+        }
+      } catch(e) {}
+
+      // 写入 Supabase
+      var { error } = await sb.from('login_devices').insert({
+        browser: ua.browser + (ua.osVer ? ' ' + ua.osVer : ''),
+        os: ua.os,
+        os_ver: ua.osVer || '',
+        screen: ua.screen,
+        ip: ip
+      });
+      if (error) console.warn('Device record insert error:', error);
+
+      // 同时保留 localStorage 记录（离线回退）
+      try {
+        var history = JSON.parse(localStorage.getItem('kjllin_login_history') || '[]');
+        history.push({ browser: ua.browser + (ua.osVer ? ' ' + ua.osVer : ''), os: ua.os, time: new Date().toISOString(), ip: ip });
+        if (history.length > 20) history = history.slice(-20);
+        localStorage.setItem('kjllin_login_history', JSON.stringify(history));
+      } catch(e) {}
+    } catch(e) {
+      console.warn('recordLoginDevice failed:', e);
+    }
+  }
+
+  function parseUA() {
+    var u = navigator.userAgent;
+    var b = 'Unknown';
+    if (u.includes('Edg/')) b = 'Edge';
+    else if (u.includes('Chrome/')) b = 'Chrome';
+    else if (u.includes('Firefox/')) b = 'Firefox';
+    else if (u.includes('Safari/') && !u.includes('Chrome/')) b = 'Safari';
+    var os = 'Unknown', osVer = '';
+    if (u.includes('Windows NT 10')) { os = 'Windows'; osVer = '10/11'; }
+    else if (u.includes('Windows NT 6')) { os = 'Windows'; osVer = '7/8'; }
+    else if (u.includes('Mac OS X')) { os = 'macOS'; var m1 = u.match(/Mac OS X ([0-9_]+)/); if (m1) osVer = m1[1].replace(/_/g, '.'); }
+    else if (u.includes('Linux') && !u.includes('Android')) { os = 'Linux'; }
+    else if (u.includes('Android')) { os = 'Android'; var m2 = u.match(/Android ([0-9.]+)/); if (m2) osVer = m2[1]; }
+    else if (u.includes('iOS') || u.includes('iPhone') || u.includes('iPad')) { os = 'iOS'; var m3 = u.match(/OS ([0-9_]+)/); if (m3) osVer = m3[1].replace(/_/g, '.'); }
+    var screen = '屏幕: ' + window.screen.width + '\u00d7' + window.screen.height + ', ' + navigator.language;
+    return { browser: b, os: os, osVer: osVer, screen: screen };
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -255,7 +330,9 @@
     safeRedirect: safeRedirect,
     formatSupabaseError: formatSupabaseError,
     formatDate: formatDate,
-    warmUpServices: warmUpServices
+    warmUpServices: warmUpServices,
+    recordLoginDevice: recordLoginDevice,
+    parseUA: parseUA
   };
 
   // 注入 Toast 样式
