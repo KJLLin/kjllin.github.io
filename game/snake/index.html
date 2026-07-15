@@ -456,23 +456,44 @@
 
     // ============ Supabase 云存储 ============
     let sb = KJ.createSupabase();
-    if (sb) {
-      sb.auth.onAuthStateChange((event, session) => {
-        updateAuthUI(session?.user || null);
-      });
-      sb.auth.getSession().then(({ data: { session } }) => {
-        updateAuthUI(session?.user || null);
-      }).catch(() => updateAuthUI(null));
+
+    // 同步检查 localStorage 中的 session（无网络延迟，立即响应）
+    function getStoredUser() {
+      try {
+        for (var i2 = 0; i2 < localStorage.length; i2++) {
+          var key2 = localStorage.key(i2);
+          if (key2 && key2.indexOf('sb-') === 0 && key2.indexOf('auth-token') !== -1) {
+            var val2 = JSON.parse(localStorage.getItem(key2));
+            if (val2 && val2.user) return val2.user;
+          }
+        }
+      } catch(e) {}
+      return null;
     }
+
     function updateAuthUI(user) {
-      const hint = $('#authHint');
+      var hint = $('#authHint');
       if (!hint) return;
       if (user) {
-        const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+        var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
         hint.innerHTML = '<span style="color:var(--success)">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
       } else {
         hint.innerHTML = '<a href="/login/?redirect=/game/snake/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端';
       }
+    }
+
+    // 先用 localStorage 立即显示状态（无闪烁）
+    updateAuthUI(getStoredUser());
+
+    if (sb) {
+      sb.auth.onAuthStateChange(function(event, session) {
+        updateAuthUI(session?.user || null);
+      });
+      sb.auth.getSession().then(function(r) {
+        updateAuthUI(r?.data?.session?.user || null);
+      }).catch(function() {
+        // 网络请求失败时，保持 localStorage 的检测结果不变
+      });
     }
     const GAME_NAME = 'snake';
 
