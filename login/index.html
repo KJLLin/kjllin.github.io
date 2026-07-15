@@ -494,6 +494,7 @@
           const{data:u}=await sb.from('users').select('id').eq('id',data.session.user.id).maybeSingle();
           if(!u)await sb.from('users').insert({id:data.session.user.id,nick:data.session.user.user_metadata?.nick||email.split('@')[0],email,is_admin:false,status:'active',created_at:new Date().toISOString()});
         }catch(e){console.warn('Users table sync skipped:',e)}
+        KJ.recordLoginDevice(sb); // 记录登录设备（非阻塞）
         window.location.href=redirect;
       }catch(e){
         console.error('Login error:',e);
