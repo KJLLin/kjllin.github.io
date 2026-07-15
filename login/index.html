@@ -396,7 +396,9 @@
         code_challenge_method:'S256'
       });
 
-      window.location.href=CPOAUTH_AUTHORIZE+'?'+params.toString();
+      // URLSearchParams 把空格编码为 +，但部分 OAuth 服务端只认 %20
+      const url=CPOAUTH_AUTHORIZE+'?'+params.toString().replace(/\+/g,'%20');
+      window.location.href=url;
     }
 
     $('#cpoauthLoginBtn').addEventListener('click',()=>cpoauthLogin());
