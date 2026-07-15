@@ -198,8 +198,14 @@
         if(!cd||!cd.success){toast('人机验证未通过，请重试');captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
       }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
       try{
-        var{error}=await sb.from('posts').update({title,content}).eq('id',postId).eq('user_id',currentUser.id);
-        if(error)throw error;
+        var{error}=await sb.from('posts').update({title,content,updated_at:new Date().toISOString()}).eq('id',postId).eq('user_id',currentUser.id);
+        if(error){
+          // 如果 updated_at 列不存在，回退到仅更新 title/content
+          if(error.code==='42703'){
+            var{error:err2}=await sb.from('posts').update({title,content}).eq('id',postId).eq('user_id',currentUser.id);
+            if(err2)throw err2;
+          }else{throw error}
+        }
         toast('讨论已更新！');
         window.location.href='/discuss/view/?id='+postId;
       }catch(e){toast('更新失败：'+(e.message||'未知错误'));captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}}

@@ -70,7 +70,7 @@
     }
 
     html, body {
-      width: 100%; min-height: 100vh; overflow-x: hidden;
+      width: 100%; min-height: 100vh; overflow-x: clip;
       position: relative; touch-action: pan-y;
     }
     body { background: var(--bg-body); color: var(--text-primary); }
@@ -309,7 +309,10 @@
         <button class="back-btn" onclick="goHome()" aria-label="返回主页">←</button>
         <span class="logo">游戏中心</span>
       </div>
-      <button id="themeBtn" class="theme-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <a href="/login/?redirect=/game/" id="authLink" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:500">登录</a>
+        <button id="themeBtn" class="theme-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      </div>
     </nav>
 
     <!-- 页头 -->
@@ -448,6 +451,33 @@
     themeBtn.addEventListener('click', toggleTheme);
     KJ.onSystemThemeChange(updateThemeUI);
     
+    // 登录状态检查
+    (function() {
+      const sb = KJ.createSupabase();
+      const authLink = $('#authLink');
+      if (sb) {
+        sb.auth.onAuthStateChange((event, session) => {
+          updateAuthLink(session?.user || null);
+        });
+        sb.auth.getSession().then(({ data: { session } }) => {
+          updateAuthLink(session?.user || null);
+        }).catch(() => {});
+      }
+      function updateAuthLink(user) {
+        if (!authLink) return;
+        if (user) {
+          const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+          authLink.textContent = KJ.escapeHtml(nick);
+          authLink.href = '/account/';
+          authLink.title = '账号安全中心';
+        } else {
+          authLink.textContent = '登录';
+          authLink.href = '/login/?redirect=/game/';
+          authLink.title = '';
+        }
+      }
+    })();
+
     $('#searchBox').addEventListener('input', filterGames);
     window.addEventListener('scroll', handleScroll);
   </script>

@@ -75,7 +75,7 @@
       --shadow-scroll: 0 4px 12px rgba(0,0,0,0.3);
       --scroll-bar: #4a4a4a;
     }
-    html, body { width: 100%; min-height: 100vh; overflow-x: hidden; position: relative; touch-action: pan-y; }
+    html, body { width: 100%; min-height: 100vh; overflow-x: clip; position: relative; touch-action: pan-y; }
     body { background: var(--bg-body); color: var(--text-primary); }
 
     /* ====================== 粒子背景 ====================== */
@@ -253,7 +253,7 @@
     .post-card {
       padding: 24px; border-radius: var(--radius-lg);
       box-shadow: var(--shadow-rest); position: relative;
-      opacity: 0; animation: fadeUp 0.5s var(--win-ease) forwards;
+      animation: fadeUp 0.4s var(--win-ease) both;
       transition: box-shadow var(--transition-normal), transform var(--transition-normal);
     }
     .post-card:hover {
@@ -483,7 +483,7 @@
 
     <!-- ==================== 帖子列表 ==================== -->
     <div class="post-list" id="postList">
-      <div class="post-empty" id="postEmpty"><i class="fas fa-inbox"></i> 暂无讨论</div>
+      <div class="post-empty" id="postEmpty" style="display:none"><i class="fas fa-inbox"></i> 暂无讨论</div>
     </div>
 
     <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
@@ -707,7 +707,7 @@
                 '</span>'
               : '';
 
-            return '<div class="post-card mica" style="animation-delay:' + (i * 0.03) + 's">' +
+            return '<div class="post-card mica">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 '<div class="post-meta">' +

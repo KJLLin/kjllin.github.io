@@ -87,7 +87,7 @@
       --code-border: rgba(255,255,255,0.06);
       --hljs-bg: #0d1117;
     }
-    html, body { width: 100%; min-height: 100vh; overflow-x: hidden; position: relative; touch-action: pan-y; }
+    html, body { width: 100%; min-height: 100vh; overflow-x: clip; position: relative; touch-action: pan-y; }
     body { background: var(--bg-body); color: var(--text-primary); }
 
     /* ====================== 粒子背景 ====================== */
@@ -716,9 +716,9 @@
         html += '<span class="dot"></span>';
         html += '<a href="/discuss/edit/?id=' + post.id + '" style="color:var(--accent);text-decoration:none;font-size:13px"><i class="fas fa-pen-to-square"></i> 编辑</a>';
       }
-      if (post.edited_at) {
+      if (post.updated_at) {
         html += '<span class="dot"></span>';
-        html += '<span>已编辑</span>';
+        html += '<span title="最后编辑于 ' + formatDate(post.updated_at) + '">已编辑</span>';
       }
       html += '</div>';
       html += '</div>';
