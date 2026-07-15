@@ -383,7 +383,7 @@
       const CPOAUTH_AUTHORIZE='https://www.cpoauth.com/oauth/authorize';
       const CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
       const REDIRECT='https://kjllin.github.io/login/callback/';
-      const SCOPE='openid profile email linked_accounts cp_summary';
+      const SCOPE='openid profile email';
 
       function genVerifier(){const a=new Uint8Array(96);crypto.getRandomValues(a);return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
       function genState(){const a=new Uint8Array(16);crypto.getRandomValues(a);return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
