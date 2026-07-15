@@ -245,16 +245,12 @@
             return;
           }
 
-          // action=login → 注入 Supabase 会话
-          if(!sb){
-            showError('初始化失败','Supabase 客户端未加载，请刷新后重试');
+          // action=login → 跳转到 Supabase 生成的一次性登录链接
+          // (cpoauth-gate 已通过 Admin API 为绑定用户生成了 magiclink session)
+          if(!data.action_link){
+            showError('登录失败','服务端未返回有效的会话链接');
             return;
           }
-
-          await sb.auth.setSession({
-            access_token:data.session.access_token,
-            refresh_token:data.session.refresh_token
-          });
 
           // 保存 CPOAuth 信息到 localStorage
           try{
@@ -268,8 +264,10 @@
           }catch(e){}
 
           setStatus('<i class="fas fa-check-circle"></i>','success',
-            '登录成功','正在跳转...',false);
-          setTimeout(()=>{window.location.href='/'},600);
+            '验证通过','正在创建会话...',false);
+
+          // 跳转到 Supabase 生成的 action_link（自动创建会话+跳转首页）
+          setTimeout(()=>{window.location.href=data.action_link},600);
 
         }catch(e){
           console.error('CPOAuth callback error:',e);
