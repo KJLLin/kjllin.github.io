@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f3f3f3">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <title>CPOAuth 授权 · KJLLin</title>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#f5f5f7;--card-bg:rgba(255,255,255,0.72);
+      --border:rgba(0,0,0,0.06);--text:#1d1d1f;--text-secondary:#6e6e73;--text-tertiary:#86868b;
+      --accent:#0071e3;--accent-ring:rgba(0,113,227,0.15);
+      --shadow:0 4px 24px rgba(0,0,0,0.06);--radius:14px;--radius-btn:24px;
+      font-family:"SF Pro Display","PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+    [data-theme="dark"]{
+      --bg:#000;--card-bg:rgba(28,28,30,0.78);
+      --border:rgba(255,255,255,0.08);--text:#f5f5f7;--text-secondary:#a1a1a6;--text-tertiary:#6e6e73;
+      --accent:#2997ff;--accent-ring:rgba(41,151,255,0.18);
+      --shadow:0 4px 24px rgba(0,0,0,0.3);
+    }
+    html,body{width:100%;min-height:100vh}
+    body{
+      background:var(--bg);color:var(--text);
+      display:flex;align-items:center;justify-content:center;padding:24px;
+      transition:background .4s ease;
+    }
+    .container{z-index:1;width:100%;max-width:420px;text-align:center}
+    .card{
+      background:var(--card-bg);-webkit-backdrop-filter:blur(40px) saturate(180%);
+      backdrop-filter:blur(40px) saturate(180%);
+      border:1px solid var(--border);border-radius:var(--radius);
+      padding:44px 36px 36px;box-shadow:var(--shadow);
+      animation:slideUp .6s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+    .spinner{
+      width:48px;height:48px;margin:0 auto 24px;border-radius:50%;
+      border:3px solid var(--border);border-top-color:var(--accent);
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status-icon{font-size:48px;margin-bottom:16px}
+    .status-icon.success{color:#34c759}
+    .status-icon.error{color:#ff3b30}
+    h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.2px}
+    p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px}
+    .btn{
+      display:inline-block;padding:12px 32px;border-radius:var(--radius-btn);border:none;
+      font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;
+      background:var(--accent);color:#fff;transition:all .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-ring)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" id="card">
+      <div class="spinner" id="spinner"></div>
+      <h2 id="statusTitle">正在验证授权...</h2>
+      <p id="statusMsg">请稍候，正在通过 CPOAuth 完成登录</p>
+      <div id="actionArea"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const $=s=>document.querySelector(s);
+      const CPOAUTH_BASE='https://www.cpoauth.com';
+      const CLIENT_ID='6d47ad1b-7fd1-4cd5-9214-884180b76c24';
+      const REDIRECT_URI='https://kjllin.github.io/login/callback/';
+      const STORAGE_KEY='kjllin_cpoauth';
+      const VERIFIER_KEY='cpoauth_code_verifier';
+      const STATE_KEY='cpoauth_oauth_state';
+      const ACTION_KEY='cpoauth_action';
+
+      function setStatus(icon, iconClass, title, msg, showSpinner){
+        $('#spinner').style.display=showSpinner?'block':'none';
+        const si=$('#statusTitle').insertBefore(document.createElement('div'),$('#statusTitle').firstChild);
+        si.className='status-icon '+iconClass;si.innerHTML=icon;
+        $('#statusTitle').textContent=title;
+        $('#statusMsg').textContent=msg;
+      }
+
+      function showError(title, msg){
+        setStatus('<i class="fas fa-times-circle"></i>','error',title,msg,false);
+        $('#actionArea').innerHTML='<a href="/login/" class="btn">返回登录</a>';
+      }
+
+      async function exchangeCodeForToken(code, codeVerifier){
+        const res=await fetch(CPOAUTH_BASE+'/api/oauth/token',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            grant_type:'authorization_code',
+            code:code,
+            redirect_uri:REDIRECT_URI,
+            client_id:CLIENT_ID,
+            code_verifier:codeVerifier
+          })
+        });
+        if(!res.ok){
+          let detail='';
+          try{const d=await res.json();detail=d.error||d.error_description||JSON.stringify(d)}catch(e){detail=res.statusText}
+          throw new Error('Token exchange failed: '+detail);
+        }
+        return res.json();
+      }
+
+      async function fetchUserInfo(accessToken){
+        const res=await fetch(CPOAUTH_BASE+'/api/oauth/userinfo',{
+          headers:{'Authorization':'Bearer '+accessToken}
+        });
+        if(!res.ok){
+          throw new Error('Failed to fetch user info (HTTP '+res.status+')');
+        }
+        return res.json();
+      }
+
+      async function handleCallback(){
+        const params=new URLSearchParams(window.location.search);
+        const error=params.get('error');
+        const errorDesc=params.get('error_description');
+        const code=params.get('code');
+        const state=params.get('state');
+
+        // 用户拒绝授权
+        if(error){
+          showError('授权已取消',errorDesc||'你取消了 CPOAuth 授权');
+          return;
+        }
+
+        if(!code){
+          showError('授权失败','未收到授权码，请返回登录页重试');
+          return;
+        }
+
+        // 验证 state
+        const savedState=sessionStorage.getItem(STATE_KEY);
+        if(!savedState||savedState!==state){
+          showError('安全校验失败','请求状态不匹配，可能是 CSRF 攻击，请重试');
+          return;
+        }
+        sessionStorage.removeItem(STATE_KEY);
+
+        // 获取 code_verifier
+        const codeVerifier=sessionStorage.getItem(VERIFIER_KEY);
+        if(!codeVerifier){
+          showError('会话已过期','PKCE 验证信息丢失，请返回登录页重新开始');
+          return;
+        }
+        sessionStorage.removeItem(VERIFIER_KEY);
+
+        // 获取 action
+        const action=sessionStorage.getItem(ACTION_KEY)||'login';
+        sessionStorage.removeItem(ACTION_KEY);
+
+        try{
+          // 1. 用 code 换 token
+          const tokenData=await exchangeCodeForToken(code,codeVerifier);
+
+          // 2. 获取用户信息
+          const userInfo=await fetchUserInfo(tokenData.access_token);
+
+          // 3. 存储 CPOAuth 会话
+          const session={
+            provider:'cpoauth',
+            access_token:tokenData.access_token,
+            refresh_token:tokenData.refresh_token,
+            expires_at:Math.floor(Date.now()/1000)+(tokenData.expires_in||3600),
+            scope:tokenData.scope,
+            user:userInfo,
+            linked_at:new Date().toISOString()
+          };
+          try{
+            localStorage.setItem(STORAGE_KEY,JSON.stringify(session));
+          }catch(e){
+            console.warn('localStorage quota exceeded, clearing old data');
+          }
+
+          // 4. 显示成功并跳转
+          setStatus('<i class="fas fa-check-circle"></i>','success',
+            '授权成功','正在跳转...',false);
+          const redirectTo=action==='link'?'/account/':'/';
+          setTimeout(()=>{window.location.href=redirectTo},800);
+
+        }catch(e){
+          console.error('CPOAuth callback error:',e);
+          showError('登录失败',e.message||'无法完成 CPOAuth 授权，请稍后重试');
+        }
+      }
+
+      handleCallback();
+    })();
+  </script>
+</body>
+</html>
