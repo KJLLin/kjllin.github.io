@@ -398,7 +398,7 @@
       crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(digest=>{
         const challenge=btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
         const params=new URLSearchParams({response_type:'code',client_id:CLIENT_ID,redirect_uri:REDIRECT,scope:SCOPE,state:state,code_challenge:challenge,code_challenge_method:'S256'});
-        window.location.href=CPOAUTH_AUTHORIZE+'?'+params.toString();
+        window.location.href=CPOAUTH_AUTHORIZE+'?'+params.toString().replace(/\+/g,'%20');
       });
     }
     async function cpoauthUnbind(){
