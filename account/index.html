@@ -20,7 +20,8 @@
     :root {
       --bg-body:#f3f3f3;--bg-mica:rgba(255,255,255,0.85);--bg-mica-hover:rgba(255,255,255,0.95);
       --border-mica:rgba(0,0,0,0.06);--text-primary:#1a1a1a;--text-secondary:#5e5e5e;--text-tertiary:#8e8e8e;
-      --accent:#0078d4;--accent-light:#0099ff;--accent-glow:rgba(0,120,212,0.1);--danger:#e74c3c;--success:#34c88a;
+      --accent:#0078d4;--accent-light:#0099ff;--accent-glow:rgba(0,120,212,0.1);--danger:#e74c3c;
+      --success:#34c88a;--warning:#f0ad4e;
       --shadow-rest:0 2px 8px rgba(0,0,0,0.06);--shadow-hover:0 4px 16px rgba(0,0,0,0.09);
     }
     [data-theme="dark"]:root {
@@ -33,6 +34,7 @@
     .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
     .mica{background:var(--bg-mica);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--border-mica)}
 
+    /* 导航栏 */
     .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
     .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest);pointer-events:all}
     .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
@@ -41,46 +43,88 @@
     .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
     [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
     .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
-    .theme-btn, #themeBtn { border-radius: 50%; }
+    .theme-btn,#themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
+    .mobile-menu-dropdown{display:none;position:absolute;top:calc(100%+8px);left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
     .mobile-menu-dropdown.open{display:flex}
-    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left;pointer-events:auto}
+    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 
     .container{max-width:720px;margin:0 auto;padding:80px 16px 40px}
-    .page-header{text-align:center;margin-bottom:32px;animation:fadeUp 0.5s var(--win-ease)}
+
+    /* 页面标题 */
+    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.5s var(--win-ease)}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    .page-header .icon{font-size:48px;margin-bottom:8px}
-    .page-header h1{font-size:26px;font-weight:700;color:var(--accent)}
+    .page-header .icon{font-size:44px;margin-bottom:6px}
+    .page-header h1{font-size:24px;font-weight:700;color:var(--accent)}
 
-    .card{padding:24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);margin-bottom:20px;animation:fadeUp 0.5s var(--win-ease) 0.1s both}
-    .card:nth-child(2){animation-delay:0.2s}.card:nth-child(3){animation-delay:0.3s}
-    .card h2{font-size:18px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;gap:8px}
-    .form-group{margin-bottom:14px}
-    .form-group label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:4px}
-    .form-group input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:rgba(0,0,0,0.02);color:var(--text-primary);font-size:14px;font-family:inherit}
-    [data-theme="dark"] .form-group input{background:rgba(255,255,255,0.03)}
-    .form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
-    .form-row{display:flex;gap:8px;align-items:flex-end}
-    .form-row .form-group{flex:1}
-    .btn{padding:10px 20px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--transition-fast)}
-    .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-light)}
-    .btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}.btn-danger:hover{background:rgba(231,76,60,0.08)}
-    .btn:disabled{opacity:0.5;pointer-events:none}
+    /* 通用卡片 */
+    .card{padding:22px 24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);margin-bottom:16px;transition:box-shadow var(--transition-fast)}
+    .card:hover{box-shadow:var(--shadow-hover)}
+    .card:nth-child(1){animation:fadeUp 0.5s var(--win-ease) 0.05s both}
+    .card:nth-child(2){animation:fadeUp 0.5s var(--win-ease) 0.1s both}
+    .card:nth-child(3){animation:fadeUp 0.5s var(--win-ease) 0.15s both}
+    .card:nth-child(4){animation:fadeUp 0.5s var(--win-ease) 0.2s both}
+    .card:nth-child(5){animation:fadeUp 0.5s var(--win-ease) 0.25s both}
+    .card:nth-child(6){animation:fadeUp 0.5s var(--win-ease) 0.3s both}
+    .card h2{font-size:17px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .card h2 .card-action{font-size:13px;font-weight:500;color:var(--accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px}
+    .card h2 .card-action:hover{color:var(--accent-light)}
 
-    .profile-info{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-    .avatar{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:700;flex-shrink:0}
-    .profile-text .name{font-size:18px;font-weight:600}.profile-text .email{font-size:13px;color:var(--text-tertiary);font-family:"Consolas","Cascadia Code",monospace}
-
-    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-mica);font-size:14px}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-mica);font-size:14px}
     .info-row:last-child{border-bottom:none}
-    .info-row .label{color:var(--text-secondary)}.info-row .value{font-family:"Consolas","Cascadia Code",monospace;font-size:13px}
+    .info-row .label{color:var(--text-secondary)}
+    .info-row .value{font-family:"Consolas","Cascadia Code",monospace;font-size:13px;color:var(--text-primary)}
 
-    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.3s var(--bounce)}
-    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
+    /* 安全状态指示器 */
+    .security-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;margin-bottom:8px}
+    .security-status.good{background:rgba(52,200,138,0.08);color:var(--success)}
+    .security-status.warn{background:rgba(240,173,78,0.08);color:var(--warning)}
+    .security-status.danger{background:rgba(231,76,60,0.08);color:var(--danger)}
+    .security-status .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .security-status.good .dot{background:var(--success)}
+    .security-status.warn .dot{background:var(--warning)}
+    .security-status.danger .dot{background:var(--danger)}
 
-    @media(max-width:520px){.menu-item{display:none}.hamburger{display:grid}.card{padding:18px 16px}.form-row{flex-direction:column}}
-    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+    /* 按钮 */
+    .btn{padding:10px 20px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--transition-fast);display:inline-flex;align-items:center;gap:6px}
+    .btn-primary{background:var(--accent);color:#fff;text-decoration:none}.btn-primary:hover{background:var(--accent-light)}
+    .btn-outline{background:transparent;border:1px solid var(--border-mica);color:var(--text-secondary);text-decoration:none}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+    .btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}.btn-danger:hover{background:rgba(231,76,60,0.08)}
+    .btn-sm{padding:6px 14px;font-size:13px;border-radius:var(--radius-sm)}
+
+    /* 个人资料头部 */
+    .profile-header{display:flex;align-items:center;gap:16px}
+    .avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;display:grid;place-items:center;font-size:26px;font-weight:700;flex-shrink:0}
+    .profile-text{flex:1}
+    .profile-text .name{font-size:20px;font-weight:600}
+    .profile-text .email{font-size:13px;color:var(--text-tertiary);font-family:"Consolas","Cascadia Code",monospace;margin-top:2px}
+
+    /* 双列安全网格 */
+    .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .security-item{text-align:center;padding:14px 12px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.02)}
+    [data-theme="dark"] .security-item{background:rgba(255,255,255,0.03)}
+    .security-item .si-icon{font-size:24px;margin-bottom:6px}
+    .security-item .si-label{font-size:12px;color:var(--text-tertiary);margin-bottom:2px}
+    .security-item .si-value{font-size:14px;font-weight:600;color:var(--text-primary)}
+
+    /* 危险区域 */
+    .danger-zone{border:1px dashed rgba(231,76,60,0.3);border-radius:var(--radius-lg);padding:20px 24px;text-align:center}
+    .danger-zone h3{font-size:15px;color:var(--danger);margin-bottom:6px}
+    .danger-zone p{font-size:12px;color:var(--text-tertiary);margin-bottom:12px}
+
+    /* Toast */
+    .kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .3s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
+
+    @media(max-width:520px){
+      .menu-item{display:none}.hamburger{display:grid}
+      .card{padding:16px}.profile-header{flex-direction:column;text-align:center}
+      .security-grid{grid-template-columns:1fr 1fr;gap:8px}
+    }
+    @media(min-width:521px){
+      .hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}
+    }
   </style>
 </head>
 <body>
@@ -94,7 +138,7 @@
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item active"><i class="fas fa-shield-halved"></i> 账号</a>
-      <button id="themeBtn" class="menu-btn theme-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn theme-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -108,49 +152,92 @@
   </header>
 
   <div class="container">
-    <div class="page-header"><div class="icon">🔒</div><h1>账号安全</h1></div>
+    <div class="page-header"><div class="icon">🔒</div><h1>账号安全中心</h1></div>
+
+    <!-- 登录提示 -->
     <div id="loginPrompt" class="card mica" style="text-align:center;padding:40px">
       <p style="color:var(--text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
       <a href="/login/?redirect=/account/" style="color:var(--accent);font-weight:600;text-decoration:none" id="loginLink" hidden>→ 前往登录</a>
     </div>
+
+    <!-- 主内容区 -->
     <div id="accountContent" style="display:none">
+
+      <!-- 个人资料卡片 -->
       <div class="card mica">
-        <h2>👤 个人资料</h2>
-        <div class="profile-info">
+        <h2>👤 个人资料
+          <a href="/account/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a>
+        </h2>
+        <div class="profile-header">
           <div class="avatar" id="profileAvatar">U</div>
-          <div class="profile-text"><div class="name" id="profileName">--</div><div class="email" id="profileEmail">--</div></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>修改昵称</label><input type="text" id="nickInput" placeholder="新昵称" maxlength="20"></div>
-          <button class="btn btn-primary" id="saveNickBtn" style="align-self:flex-end">保存</button>
+          <div class="profile-text">
+            <div class="name" id="profileName">--</div>
+            <div class="email" id="profileEmail">--</div>
+          </div>
         </div>
       </div>
+
+      <!-- 安全概览卡片 -->
       <div class="card mica">
-        <h2>🔑 修改密码</h2>
-        <div class="form-group"><label>当前密码</label><input type="password" id="oldPwd" placeholder="请输入当前密码" autocomplete="current-password"></div>
-        <div class="form-group"><label>新密码</label><input type="password" id="newPwd" placeholder="至少8位" autocomplete="new-password"></div>
-        <div class="form-group"><label>确认密码</label><input type="password" id="confirmPwd" placeholder="再次输入新密码" autocomplete="new-password"></div>
-        <button class="btn btn-primary" id="changePwdBtn">修改密码</button>
+        <h2>🛡️ 安全概览
+          <a href="/account/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a>
+        </h2>
+        <div class="security-grid">
+          <div class="security-item">
+            <div class="si-icon">🔑</div>
+            <div class="si-label">密码强度</div>
+            <div class="si-value" id="pwdStrength">检测中</div>
+          </div>
+          <div class="security-item">
+            <div class="si-icon">📧</div>
+            <div class="si-label">绑定邮箱</div>
+            <div class="si-value" id="emailStatus">已验证</div>
+          </div>
+          <div class="security-item">
+            <div class="si-icon">🔐</div>
+            <div class="si-label">两步验证</div>
+            <div class="si-value" style="color:var(--text-tertiary)">未开启</div>
+          </div>
+          <div class="security-item">
+            <div class="si-icon">📱</div>
+            <div class="si-label">绑定设备</div>
+            <div class="si-value" id="deviceCount">--</div>
+          </div>
+        </div>
       </div>
+
+      <!-- 登录信息卡片 -->
       <div class="card mica">
-        <h2>📊 登录信息</h2>
+        <h2>📊 账号信息</h2>
+        <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
         <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
         <div class="info-row"><span class="label">最近登录</span><span class="value" id="infoLastLogin">--</span></div>
         <div class="info-row"><span class="label">账号状态</span><span class="value" id="infoStatus" style="color:var(--success)">正常</span></div>
       </div>
+
+      <!-- 设备信息卡片 -->
       <div class="card mica">
-        <h2>📱 设备与登录</h2>
-        <div class="info-row"><span class="label">当前设备</span><span class="value" id="deviceCurrent">检测中...</span></div>
+        <h2>💻 当前设备</h2>
+        <div class="info-row"><span class="label">浏览器</span><span class="value" id="deviceCurrent">检测中...</span></div>
         <div class="info-row"><span class="label">操作系统</span><span class="value" id="deviceOS">--</span></div>
         <div class="info-row"><span class="label">屏幕 / 语言</span><span class="value" id="deviceScreen">--</span></div>
         <div class="info-row"><span class="label">IP 地址</span><span class="value" id="deviceIP">获取中...</span></div>
-        <div class="info-row"><span class="label">当前在线</span><span class="value" id="deviceOnline" style="color:var(--success)">🟢 在线</span></div>
+        <div class="info-row"><span class="label">连接状态</span><span class="value" id="deviceOnline" style="color:var(--success)">🟢 在线</span></div>
       </div>
+
+      <!-- 最近登录记录 -->
       <div class="card mica">
-        <h2>🕐 最近登录记录</h2>
+        <h2>🕐 最近登录</h2>
         <div id="loginHistory" style="color:var(--text-tertiary);font-size:13px">加载中...</div>
       </div>
-      <button class="btn btn-danger" id="logoutBtn" style="width:100%;margin-top:8px">退出登录</button>
+
+      <!-- 危险区域 -->
+      <div class="danger-zone">
+        <h3><i class="fas fa-exclamation-triangle"></i> 危险区域</h3>
+        <p>退出登录后需要重新输入密码才能访问账号相关功能</p>
+        <button class="btn btn-danger" id="logoutBtn">退出登录</button>
+      </div>
+
     </div>
   </div>
 
@@ -181,8 +268,7 @@
       const el=$('#loginHistory');if(!el)return;
       try{
         let history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
-        if(!history.length){el.innerHTML='暂无记录';return}
-        // 去重：同一 browser+os 只保留最新一条
+        if(!history.length){el.innerHTML='<div class="info-row"><span class="label">暂无记录</span></div>';return}
         const seen={};const unique=[];
         for(let i=history.length-1;i>=0;i--){
           const r=history[i];const k=deviceKey({browser:r.browser,os:r.os});
@@ -195,6 +281,9 @@
           return '<div class="info-row"><span class="label">'+KJ.escapeHtml(r.os)+' · '+KJ.escapeHtml(r.browser)+'</span><span class="value" style="font-size:11px">'+ts+'<br>'+KJ.escapeHtml(r.ip||'--')+'</span></div>';
         });
         el.innerHTML=lines.join('');
+        // 更新设备数量
+        const countEl=$('#deviceCount');
+        if(countEl)countEl.textContent=unique.length+' 台';
       }catch(e){el.innerHTML='加载失败'}
     }
 
@@ -209,57 +298,37 @@
         $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
         $('#profileName').textContent=nick;
         $('#profileEmail').textContent=user.email;
-        $('#nickInput').value=nick;
+        $('#emailStatus').textContent=user.email_confirmed_at?'已验证':'待验证';
+        if(!user.email_confirmed_at) $('#emailStatus').style.color='var(--warning)';
+        $('#infoUserId').textContent=user.id.substring(0,12)+'...';
         $('#infoCreated').textContent=formatDate(user.created_at);
         try{
           const{data}=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
-          if(data?.length){$('#infoLastLogin').textContent=formatDate(data[0].last_login_time);$('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核'}
+          if(data?.length){
+            $('#infoLastLogin').textContent=formatDate(data[0].last_login_time);
+            $('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核';
+          }
         }catch(e){}
         const ua=parseUA();
         $('#deviceCurrent').textContent=ua.browser;
         $('#deviceOS').textContent=ua.os+(ua.osVer?' '+ua.osVer:'');
         $('#deviceScreen').textContent=ua.screen;
-        $('#deviceOnline').innerHTML='🟢 在线';
         loadIP().then(ip=>{
           $('#deviceIP').textContent=ip;
           saveLoginRecord(ip);
           renderLoginHistory();
         });
         renderLoginHistory();
+        // 密码强度检测（基于注册时间推算）
+        const daysSinceCreated=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
+        const el=$('#pwdStrength');
+        if(daysSinceCreated>90){el.textContent='建议修改';el.style.color='var(--warning)'}
+        else{el.textContent='正常';el.style.color='var(--success)'}
       }catch(e){
         console.error('loadUser failed:',e);
         showLoginPrompt();
       }
     }
-
-    $('#saveNickBtn').addEventListener('click',async()=>{
-      const nick=$('#nickInput').value.trim();
-      if(!nick||nick.length>20){KJ.toast('昵称需1-20个字符');return}
-      const btn=$('#saveNickBtn');btn.disabled=true;btn.textContent='保存中...';
-      try{
-        await sb.from('users').update({nick}).eq('id',user.id);
-        await sb.auth.updateUser({data:{nick}});
-        $('#profileName').textContent=nick;
-        $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
-        KJ.toast('昵称已更新');
-      }catch(e){KJ.toast('更新失败：'+e.message)}finally{btn.disabled=false;btn.textContent='保存'}
-    });
-
-    $('#changePwdBtn').addEventListener('click',async()=>{
-      const op=$('#oldPwd').value, np=$('#newPwd').value.trim(), cp=$('#confirmPwd').value.trim();
-      if(!op||!np||!cp){KJ.toast('请填写完整密码信息');return}
-      if(np.length<8){KJ.toast('新密码至少8位');return}
-      if(np!==cp){KJ.toast('两次密码不一致');return}
-      if(np===op){KJ.toast('新密码不能与当前密码相同');return}
-      const btn=$('#changePwdBtn');btn.disabled=true;btn.textContent='修改中...';
-      try{
-        const{error:authErr}=await sb.auth.signInWithPassword({email:user.email,password:op});
-        if(authErr){KJ.toast('当前密码错误');btn.disabled=false;btn.textContent='修改密码';return}
-        const{error}=await sb.auth.updateUser({password:np});
-        if(error)throw error;
-        KJ.toast('密码修改成功');$('#oldPwd').value='';$('#newPwd').value='';$('#confirmPwd').value='';
-      }catch(e){KJ.toast('修改失败：'+e.message)}finally{btn.disabled=false;btn.textContent='修改密码'}
-    });
 
     $('#logoutBtn').addEventListener('click',async()=>{
       if(!confirm('确定退出登录？'))return;
@@ -292,7 +361,6 @@
       return;
     }
 
-    // 先注册监听（处理 INITIAL_SESSION 事件），再获取会话
     let authReady = false;
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
@@ -314,22 +382,7 @@
       $('#loginLink').hidden = false;
     }
 
-    function showLoading() {
-      $('#loginPrompt').style.display = '';
-      $('#accountContent').style.display = 'none';
-      $('#loginMsg').textContent = '加载中...';
-      $('#loginLink').hidden = true;
-    }
-
-    // HTML 默认已显示"加载中..."，无需再次调用 showLoading
-    // showLoading() 会覆盖 onAuthStateChange 已设置的 showLoginPrompt 结果
-
-    // 兜底1：如果 onAuthStateChange 未在 3s 内触发，手动检查
-    setTimeout(() => {
-      if (!authReady) loadUser();
-    }, 3000);
-
-    // 兜底2：如果所有机制都超时(8s)，且消息仍为初始"加载中..."，显示超时提示
+    setTimeout(() => { if (!authReady) loadUser(); }, 3000);
     setTimeout(() => {
       if ($('#loginMsg').textContent === '加载中...') {
         $('#loginMsg').textContent = '加载超时，请检查网络后刷新页面';
