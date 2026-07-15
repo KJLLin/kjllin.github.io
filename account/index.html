@@ -369,8 +369,8 @@
     function renderCpoauthBinding(){
       const statusEl=$('#cpoauthStatus');if(!statusEl)return;
       const session=getCpoauthSession();
-      if(session&&session.user){
-        const name=session.user.display_name||session.user.username||session.user.email||'CPOAuth 用户';
+      if(session&&(session.sub||session.user)){
+        const name=session.username||(session.user&&(session.user.display_name||session.user.username))||session.email||(session.user&&session.user.email)||'CPOAuth 用户';
         statusEl.innerHTML='<span style="color:var(--success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';
       }else{
         statusEl.innerHTML='<span style="color:var(--text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
@@ -381,7 +381,7 @@
     }
     function cpoauthBind(){
       const CPOAUTH_AUTHORIZE='https://www.cpoauth.com/oauth/authorize';
-      const CLIENT_ID='6d47ad1b-7fd1-4cd5-9214-884180b76c24';
+      const CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
       const REDIRECT='https://kjllin.github.io/login/callback/';
       const SCOPE='openid profile email linked_accounts cp_summary';
 
@@ -392,6 +392,7 @@
       const state=genState();
       sessionStorage.setItem('cpoauth_code_verifier',verifier);
       sessionStorage.setItem('cpoauth_oauth_state',state);
+      sessionStorage.setItem('cpoauth_redirect_uri',REDIRECT);
       sessionStorage.setItem('cpoauth_action','link');
 
       crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(digest=>{
@@ -400,8 +401,20 @@
         window.location.href=CPOAUTH_AUTHORIZE+'?'+params.toString();
       });
     }
-    function cpoauthUnbind(){
-      if(!confirm('确定解绑 CPOAuth 账号？'))return;
+    async function cpoauthUnbind(){
+      if(!confirm('确定解绑 CPOAuth 账号？解绑后将无法使用 CPOAuth 登录。'))return;
+      if(!sb){KJ.toast('网络错误');return}
+      try{
+        // 清除服务端绑定（通过 service_role 边端函数或直接 PATCH）
+        const{data:{session}}=await sb.auth.getSession();
+        if(session){
+          await sb.from('users').update({
+            cpoauth_sub:null,
+            cpoauth_linked_at:null,
+            cpoauth_username:null
+          }).eq('id',session.user.id);
+        }
+      }catch(e){console.warn('CPOAuth unbind server error:',e)}
       localStorage.removeItem('kjllin_cpoauth');
       KJ.toast('已解绑 CPOAuth');
       renderCpoauthBinding();

@@ -7,12 +7,14 @@
   <meta name="theme-color" content="#f3f3f3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <title>CPOAuth 授权 · KJLLin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/common.js"></script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
       --bg:#f5f5f7;--card-bg:rgba(255,255,255,0.72);
       --border:rgba(0,0,0,0.06);--text:#1d1d1f;--text-secondary:#6e6e73;--text-tertiary:#86868b;
-      --accent:#0071e3;--accent-ring:rgba(0,113,227,0.15);
+      --accent:#0071e3;--accent-ring:rgba(0,113,227,0.15);--success:#34c759;--danger:#ff3b30;
       --shadow:0 4px 24px rgba(0,0,0,0.06);--radius:14px;--radius-btn:24px;
       font-family:"SF Pro Display","PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
@@ -45,16 +47,34 @@
     }
     @keyframes spin{to{transform:rotate(360deg)}}
     .status-icon{font-size:48px;margin-bottom:16px}
-    .status-icon.success{color:#34c759}
-    .status-icon.error{color:#ff3b30}
+    .status-icon.success{color:var(--success)}
+    .status-icon.error{color:var(--danger)}
+    .status-icon.warning{color:#ff9500}
     h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.2px}
-    p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px}
+    p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px}
     .btn{
       display:inline-block;padding:12px 32px;border-radius:var(--radius-btn);border:none;
       font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;
-      background:var(--accent);color:#fff;transition:all .2s ease;
+      background:var(--accent);color:#fff;transition:all .2s ease;margin:4px 8px;
     }
     .btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-ring)}
+    .btn-outline{
+      background:transparent;color:var(--text);border:1.5px solid var(--border);
+    }
+    .btn-outline:hover{color:var(--accent);border-color:var(--accent)}
+    .cpoauth-user-preview{
+      display:flex;align-items:center;gap:10px;padding:12px 16px;margin:12px 0;
+      background:var(--bg);border-radius:var(--radius);
+      border:1px solid var(--border);text-align:left;
+    }
+    .cpoauth-user-preview .avatar{
+      width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      display:grid;place-items:center;color:#fff;font-size:18px;flex-shrink:0;
+    }
+    .cpoauth-user-preview .info{font-size:13px}
+    .cpoauth-user-preview .info .name{font-weight:600;color:var(--text)}
+    .cpoauth-user-preview .info .detail{color:var(--text-tertiary);font-size:12px}
   </style>
 </head>
 <body>
@@ -62,7 +82,8 @@
     <div class="card" id="card">
       <div class="spinner" id="spinner"></div>
       <h2 id="statusTitle">正在验证授权...</h2>
-      <p id="statusMsg">请稍候，正在通过 CPOAuth 完成登录</p>
+      <p id="statusMsg">请稍候，正在通过 CPOAuth 安全网关完成验证</p>
+      <div id="extraContent"></div>
       <div id="actionArea"></div>
     </div>
   </div>
@@ -70,55 +91,45 @@
   <script>
     (function(){
       const $=s=>document.querySelector(s);
-      const CPOAUTH_BASE='https://www.cpoauth.com';
-      const CLIENT_ID='6d47ad1b-7fd1-4cd5-9214-884180b76c24';
-      const REDIRECT_URI='https://kjllin.github.io/login/callback/';
+      const SUPABASE_URL='https://vzqspcuxnwpakofwumat.supabase.co';
+      const EDGE_FN=SUPABASE_URL+'/functions/v1/cpoauth-gate';
+      const CPOAUTH_CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
       const STORAGE_KEY='kjllin_cpoauth';
       const VERIFIER_KEY='cpoauth_code_verifier';
       const STATE_KEY='cpoauth_oauth_state';
       const ACTION_KEY='cpoauth_action';
 
+      let sb;
+      try{sb=KJ.createSupabase()}catch(e){}
+
       function setStatus(icon, iconClass, title, msg, showSpinner){
         $('#spinner').style.display=showSpinner?'block':'none';
-        const si=$('#statusTitle').insertBefore(document.createElement('div'),$('#statusTitle').firstChild);
-        si.className='status-icon '+iconClass;si.innerHTML=icon;
+        if(!$('#statusTitle').querySelector('.status-icon')){
+          const si=document.createElement('div');
+          si.className='status-icon '+iconClass;si.innerHTML=icon;
+          $('#statusTitle').parentNode.insertBefore(si,$('#statusTitle'));
+        }
         $('#statusTitle').textContent=title;
         $('#statusMsg').textContent=msg;
       }
 
-      function showError(title, msg){
+      function showError(title, msg, backLink){
         setStatus('<i class="fas fa-times-circle"></i>','error',title,msg,false);
-        $('#actionArea').innerHTML='<a href="/login/" class="btn">返回登录</a>';
+        const link=backLink||'/login/';
+        const label=backLink?'返回':'返回登录';
+        $('#actionArea').innerHTML='<a href="'+link+'" class="btn">'+label+'</a>';
       }
 
-      async function exchangeCodeForToken(code, codeVerifier){
-        const res=await fetch(CPOAUTH_BASE+'/api/oauth/token',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            grant_type:'authorization_code',
-            code:code,
-            redirect_uri:REDIRECT_URI,
-            client_id:CLIENT_ID,
-            code_verifier:codeVerifier
-          })
-        });
-        if(!res.ok){
-          let detail='';
-          try{const d=await res.json();detail=d.error||d.error_description||JSON.stringify(d)}catch(e){detail=res.statusText}
-          throw new Error('Token exchange failed: '+detail);
-        }
-        return res.json();
-      }
-
-      async function fetchUserInfo(accessToken){
-        const res=await fetch(CPOAUTH_BASE+'/api/oauth/userinfo',{
-          headers:{'Authorization':'Bearer '+accessToken}
-        });
-        if(!res.ok){
-          throw new Error('Failed to fetch user info (HTTP '+res.status+')');
-        }
-        return res.json();
+      function showCpoauthUserPreview(userInfo){
+        const name=userInfo.username||userInfo.display_name||userInfo.email||'CPOAuth 用户';
+        const detail=userInfo.email||'';
+        const initial=(name||'?').charAt(0).toUpperCase();
+        $('#extraContent').innerHTML=
+          '<div class="cpoauth-user-preview">'+
+          '<div class="avatar">'+initial+'</div>'+
+          '<div class="info"><div class="name">'+KJ.escapeHtml(name)+'</div>'+
+          (detail?'<div class="detail">'+KJ.escapeHtml(detail)+'</div>':'')+
+          '</div></div>';
       }
 
       async function handleCallback(){
@@ -139,58 +150,130 @@
           return;
         }
 
-        // 验证 state
+        // 验证 state（防 CSRF）
         const savedState=sessionStorage.getItem(STATE_KEY);
         if(!savedState||savedState!==state){
           showError('安全校验失败','请求状态不匹配，可能是 CSRF 攻击，请重试');
+          sessionStorage.removeItem(STATE_KEY);
           return;
         }
         sessionStorage.removeItem(STATE_KEY);
 
-        // 获取 code_verifier
+        // 获取 PKCE code_verifier
         const codeVerifier=sessionStorage.getItem(VERIFIER_KEY);
         if(!codeVerifier){
-          showError('会话已过期','PKCE 验证信息丢失，请返回登录页重新开始');
+          showError('会话已过期','PKCE 验证信息丢失，请返回重新开始');
           return;
         }
         sessionStorage.removeItem(VERIFIER_KEY);
 
-        // 获取 action
+        // 获取 action（login 或 link）
         const action=sessionStorage.getItem(ACTION_KEY)||'login';
         sessionStorage.removeItem(ACTION_KEY);
 
         try{
-          // 1. 用 code 换 token
-          const tokenData=await exchangeCodeForToken(code,codeVerifier);
+          // 构建请求体
+          // redirect_uri 必须与授权请求中的一致
+          const redirectUri=sessionStorage.getItem('cpoauth_redirect_uri')||
+            (window.location.origin+'/login/callback/');
+          sessionStorage.removeItem('cpoauth_redirect_uri');
 
-          // 2. 获取用户信息
-          const userInfo=await fetchUserInfo(tokenData.access_token);
-
-          // 3. 存储 CPOAuth 会话
-          const session={
-            provider:'cpoauth',
-            access_token:tokenData.access_token,
-            refresh_token:tokenData.refresh_token,
-            expires_at:Math.floor(Date.now()/1000)+(tokenData.expires_in||3600),
-            scope:tokenData.scope,
-            user:userInfo,
-            linked_at:new Date().toISOString()
+          const requestBody={
+            code:code,
+            code_verifier:codeVerifier,
+            redirect_uri:redirectUri,
+            action:action
           };
-          try{
-            localStorage.setItem(STORAGE_KEY,JSON.stringify(session));
-          }catch(e){
-            console.warn('localStorage quota exceeded, clearing old data');
+
+          // action=link 时附带 Supabase 会话 token
+          if(action==='link'&&sb){
+            try{
+              const{data:{session}}=await sb.auth.getSession();
+              if(session?.access_token){
+                requestBody.supabase_token=session.access_token;
+              }
+            }catch(e){}
           }
 
-          // 4. 显示成功并跳转
+          // ── 调用 cpoauth-gate Edge Function（服务端验证） ──
+          const res=await fetch(EDGE_FN,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(requestBody)
+          });
+          const data=await res.json();
+
+          if(!data.success){
+            // 未绑定错误 → 特殊处理
+            if(data.error==='cpoauth_not_bound'){
+              setStatus('<i class="fas fa-exclamation-triangle"></i>','warning',
+                '账号未绑定','该 CPOAuth 账号尚未关联本站账号，请先用邮箱密码登录后在账号安全中心绑定',false);
+              if(data.cpoauth_user){
+                showCpoauthUserPreview(data.cpoauth_user);
+              }
+              $('#actionArea').innerHTML=
+                '<a href="/account/" class="btn">前往账号安全中心</a>'+
+                '<a href="/login/" class="btn btn-outline">返回登录</a>';
+              return;
+            }
+
+            showError('授权失败',data.message||data.error||'服务端验证失败');
+            return;
+          }
+
+          // ── 成功处理 ──
+          if(action==='link'){
+            // 绑定成功
+            setStatus('<i class="fas fa-check-circle"></i>','success',
+              '绑定成功','CPOAuth 账号已关联到你的账号',false);
+            if(data.cpoauth_user){
+              showCpoauthUserPreview(data.cpoauth_user);
+            }
+
+            // 同时保存到 localStorage
+            try{
+              localStorage.setItem(STORAGE_KEY,JSON.stringify({
+                provider:'cpoauth',
+                sub:data.cpoauth_user.sub,
+                username:data.cpoauth_user.username,
+                email:data.cpoauth_user.email,
+                linked_at:new Date().toISOString()
+              }));
+            }catch(e){}
+
+            setTimeout(()=>{window.location.href='/account/'},1200);
+            return;
+          }
+
+          // action=login → 注入 Supabase 会话
+          if(!sb){
+            showError('初始化失败','Supabase 客户端未加载，请刷新后重试');
+            return;
+          }
+
+          await sb.auth.setSession({
+            access_token:data.session.access_token,
+            refresh_token:data.session.refresh_token
+          });
+
+          // 保存 CPOAuth 信息到 localStorage
+          try{
+            localStorage.setItem(STORAGE_KEY,JSON.stringify({
+              provider:'cpoauth',
+              sub:data.cpoauth_user.sub,
+              username:data.cpoauth_user.username,
+              email:data.cpoauth_user.email,
+              linked_at:new Date().toISOString()
+            }));
+          }catch(e){}
+
           setStatus('<i class="fas fa-check-circle"></i>','success',
-            '授权成功','正在跳转...',false);
-          const redirectTo=action==='link'?'/account/':'/';
-          setTimeout(()=>{window.location.href=redirectTo},800);
+            '登录成功','正在跳转...',false);
+          setTimeout(()=>{window.location.href='/'},600);
 
         }catch(e){
           console.error('CPOAuth callback error:',e);
-          showError('登录失败',e.message||'无法完成 CPOAuth 授权，请稍后重试');
+          showError('验证失败',e.message||'无法连接安全网关，请稍后重试');
         }
       }
 

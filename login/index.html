@@ -350,7 +350,7 @@
 
     // CPOAuth PKCE 登录
     const CPOAUTH_AUTHORIZE='https://www.cpoauth.com/oauth/authorize';
-    const CPOAUTH_CLIENT_ID='6d47ad1b-7fd1-4cd5-9214-884180b76c24';
+    const CPOAUTH_CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
     const CPOAUTH_REDIRECT='https://kjllin.github.io/login/callback/';
     const CPOAUTH_SCOPE='openid profile email linked_accounts cp_summary';
 
@@ -383,6 +383,7 @@
 
       sessionStorage.setItem('cpoauth_code_verifier',codeVerifier);
       sessionStorage.setItem('cpoauth_oauth_state',state);
+      sessionStorage.setItem('cpoauth_redirect_uri',CPOAUTH_REDIRECT);
       if(action)sessionStorage.setItem('cpoauth_action',action);
 
       const params=new URLSearchParams({
