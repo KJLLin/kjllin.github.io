@@ -130,6 +130,35 @@
     .back:hover{color:var(--accent)}
     .back i{font-size:12px;margin-right:4px}
 
+    /* 更多登录方式按钮 */
+    .more-wrapper{text-align:center;margin-top:20px}
+    .more-btn{
+      width:44px;height:44px;border-radius:50%;
+      border:1.5px solid var(--border);
+      background:var(--card-bg);
+      color:var(--text-secondary);
+      cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+      transition:all .2s ease;padding:0;
+      -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    }
+    .more-btn:hover{color:var(--accent);border-color:var(--accent);transform:translateY(-1px)}
+    .more-btn:active{transform:scale(.95)}
+    .more-btn .dot-row{display:flex;gap:5px}
+    .more-btn .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+    /* 更多登录方式面板 */
+    .more-panel-content{text-align:center;padding:16px 0}
+    .more-panel-content h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.2px}
+    .more-coming{font-size:15px;color:var(--text-tertiary);margin-bottom:28px;line-height:1.6}
+    .btn-back{
+      width:auto;padding:10px 28px;font-size:14px;font-weight:500;
+      background:var(--card-bg);color:var(--text);border:1.5px solid var(--border);
+      border-radius:var(--radius-btn);cursor:pointer;font-family:inherit;
+      transition:all .2s ease;display:inline-block;
+    }
+    .btn-back:hover{background:var(--card-hover);color:var(--accent)}
+    .btn-back:active{transform:scale(.98)}
+
     /* Toast */
     .toast{
       position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
@@ -207,6 +236,26 @@
         </div>
         <button class="btn" id="regBtn">创建账号</button>
       </div>
+
+      <!-- 更多登录方式面板 -->
+      <div class="panel" id="moreLoginPanel">
+        <div class="more-panel-content">
+          <h2>更多登录方式</h2>
+          <p class="more-coming">更多登录方式正在开发中，敬请期待...</p>
+          <button class="btn-back" id="moreBackBtn"><i class="fas fa-arrow-left"></i> 返回登录</button>
+        </div>
+      </div>
+
+      <!-- 圆形三点按钮 —— 更多登录方式入口 -->
+      <div class="more-wrapper" id="moreWrapper">
+        <button class="more-btn" id="moreBtn" aria-label="更多登录方式">
+          <span class="dot-row">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </span>
+        </button>
+      </div>
     </div>
     <a href="/" class="back"><i class="fas fa-arrow-left"></i>返回首页</a>
   </div>
@@ -255,6 +304,25 @@
       t.classList.add('active');
       $(t.dataset.tab==='login'?'#loginPanel':'#registerPanel').classList.add('active');
     }));
+
+    // 更多登录方式
+    let activeTabBeforeMore='login';
+    $('#moreBtn').addEventListener('click',()=>{
+      activeTabBeforeMore=document.querySelector('.tab.active')?.dataset?.tab||'login';
+      document.querySelector('.tabs').style.display='none';
+      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      $('#moreWrapper').style.display='none';
+      $('#moreLoginPanel').classList.add('active');
+    });
+    $('#moreBackBtn').addEventListener('click',()=>{
+      document.querySelector('.tabs').style.display='';
+      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      $('#moreWrapper').style.display='';
+      const targetTab=document.querySelector('.tab[data-tab="'+activeTabBeforeMore+'"]');
+      if(targetTab)targetTab.classList.add('active');
+      else document.querySelector('.tab[data-tab="login"]').classList.add('active');
+      $(activeTabBeforeMore==='register'?'#registerPanel':'#loginPanel').classList.add('active');
+    });
 
     // hCaptcha（每个 widget 独立管理 token 和 widgetId）
     let ct={login:'',register:''};

@@ -227,15 +227,42 @@
 
       <!-- 最近登录记录 -->
       <div class="card mica">
-        <h2>🕐 最近登录</h2>
+        <h2>🕐 最近登录
+          <a href="/account/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a>
+        </h2>
         <div id="loginHistory" style="color:var(--text-tertiary);font-size:13px">加载中...</div>
+      </div>
+
+      <!-- 第三方账号绑定 -->
+      <div class="card mica">
+        <h2>🔗 第三方账号绑定</h2>
+        <div style="display:flex;flex-direction:column;gap:10px" id="thirdPartyBindings">
+          <div class="info-row">
+            <span class="label"><i class="fab fa-google" style="margin-right:8px;color:#4285f4"></i>Google</span>
+            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
+          </div>
+          <div class="info-row">
+            <span class="label"><i class="fab fa-github" style="margin-right:8px"></i>GitHub</span>
+            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
+          </div>
+          <div class="info-row">
+            <span class="label"><i class="fab fa-weixin" style="margin-right:8px;color:#07c160"></i>微信</span>
+            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-top:12px;text-align:center">
+          <i class="fas fa-info-circle"></i> 绑定第三方账号可快速登录，功能即将上线
+        </div>
       </div>
 
       <!-- 危险区域 -->
       <div class="danger-zone">
         <h3><i class="fas fa-exclamation-triangle"></i> 危险区域</h3>
         <p>退出登录后需要重新输入密码才能访问账号相关功能</p>
-        <button class="btn btn-danger" id="logoutBtn">退出登录</button>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-danger" id="logoutAllBtn">登出所有设备</button>
+          <button class="btn btn-danger" id="logoutBtn">退出登录</button>
+        </div>
       </div>
 
     </div>
@@ -335,6 +362,24 @@
       if(!sb){window.location.href='/';return}
       try{await sb.auth.signOut()}catch(e){console.warn('Sign out error:',e)}
       window.location.href='/';
+    });
+
+    $('#logoutAllBtn').addEventListener('click',async()=>{
+      if(!confirm('确定登出所有设备？这会使你所有已登录的设备全部退出，需要重新登录。'))return;
+      if(!sb){KJ.toast('网络错误');return}
+      const btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';
+      try{
+        // signOut with scope 'others' signs out all other sessions
+        await sb.auth.signOut({scope:'others'});
+        // then sign out current session
+        await sb.auth.signOut();
+        KJ.toast('已登出所有设备');
+        setTimeout(()=>window.location.href='/',800);
+      }catch(e){
+        console.error('Sign out all error:',e);
+        KJ.toast('操作失败，请重试');
+        btn.disabled=false;btn.textContent='登出所有设备';
+      }
     });
 
     // Theme
