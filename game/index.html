@@ -453,20 +453,27 @@
     
     // 登录状态检查
     (function() {
-      const sb = KJ.createSupabase();
-      const authLink = $('#authLink');
-      if (sb) {
-        sb.auth.onAuthStateChange((event, session) => {
-          updateAuthLink(session?.user || null);
-        });
-        sb.auth.getSession().then(({ data: { session } }) => {
-          updateAuthLink(session?.user || null);
-        }).catch(() => {});
+      var sb = KJ.createSupabase();
+      var authLink = $('#authLink');
+
+      // 同步检查 localStorage 中的 session（无网络延迟，立即响应）
+      function getStoredUser() {
+        try {
+          for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
+              var val = JSON.parse(localStorage.getItem(key));
+              if (val && val.user) return val.user;
+            }
+          }
+        } catch(e) {}
+        return null;
       }
+
       function updateAuthLink(user) {
         if (!authLink) return;
         if (user) {
-          const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+          var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
           authLink.textContent = KJ.escapeHtml(nick);
           authLink.href = '/account/';
           authLink.title = '账号安全中心';
@@ -475,6 +482,18 @@
           authLink.href = '/login/?redirect=/game/';
           authLink.title = '';
         }
+      }
+
+      // 先用 localStorage 立即显示状态（无闪烁）
+      updateAuthLink(getStoredUser());
+
+      if (sb) {
+        sb.auth.onAuthStateChange(function(event, session) {
+          updateAuthLink(session?.user || null);
+        });
+        sb.auth.getSession().then(function(r) {
+          updateAuthLink(r?.data?.session?.user || null);
+        }).catch(function() {});
       }
     })();
 
