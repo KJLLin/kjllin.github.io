@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS posts (
   nick TEXT,
   title TEXT NOT NULL,
   content TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ
 );
 
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;

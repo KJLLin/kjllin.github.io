@@ -29,13 +29,13 @@
       --border-mica:rgba(255,255,255,0.07);--text-primary:#f0f0f0;--text-secondary:#a0a0a0;--text-tertiary:#707070;
       --accent-glow:rgba(0,120,212,0.15);--shadow-rest:0 2px 8px rgba(0,0,0,0.25);--shadow-hover:0 4px 16px rgba(0,0,0,0.35);
     }
-    html,body{width:100%;min-height:100vh;overflow-x:hidden}
+    html,body{width:100%;min-height:100vh;overflow-x:clip}
     body{background:var(--bg-body);color:var(--text-primary)}
     .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
     .mica{background:var(--bg-mica);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--border-mica)}
 
     /* 导航栏 */
-    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:center;pointer-events:none}
     .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest);pointer-events:all}
     .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
     .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
@@ -45,7 +45,7 @@
     .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
     .theme-btn,#themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:absolute;top:calc(100%+8px);left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
+    .mobile-menu-dropdown{display:none;position:absolute;top:calc(100%+8px);left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101;max-height:calc(100vh - 120px);overflow-y:auto}
     .mobile-menu-dropdown.open{display:flex}
     .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 

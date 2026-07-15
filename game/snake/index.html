@@ -337,6 +337,9 @@
         <div class="score-value best" id="myBest">-</div>
       </div>
     </div>
+    <div id="authHint" style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-tertiary)">
+      <a href="/login/?redirect=/game/snake/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端
+    </div>
 
     <!-- 游戏画布 -->
     <div class="canvas-wrap">
@@ -452,39 +455,50 @@
     const ctx = gameCanvas.getContext('2d');
 
     // ============ Supabase 云存储 ============
-    const SUPABASE_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
-    // 安全初始化 Supabase（CDN 可能不可用）
-    // 注意：变量名不能用 supabase，因为 CDN 已在全局声明 var/window.supabase
-    let sb = null;
-    try { if (window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } }); } catch(e) { console.warn('Supabase init failed, score saving disabled'); }
+    let sb = KJ.createSupabase();
+    if (sb) {
+      sb.auth.onAuthStateChange((event, session) => {
+        updateAuthUI(session?.user || null);
+      });
+      sb.auth.getSession().then(({ data: { session } }) => {
+        updateAuthUI(session?.user || null);
+      }).catch(() => updateAuthUI(null));
+    }
+    function updateAuthUI(user) {
+      const hint = $('#authHint');
+      if (!hint) return;
+      if (user) {
+        const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
+        hint.innerHTML = '<span style="color:var(--success)">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
+      } else {
+        hint.innerHTML = '<a href="/login/?redirect=/game/snake/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端';
+      }
+    }
     const GAME_NAME = 'snake';
 
     async function saveScore(finalScore) {
       if (!sb) return;
       try {
         const { data: { session } } = await sb.auth.getSession();
-      if (!session) return;
-      const userId = session.user.id;
-      const userEmail = session.user.email || '';
-      const nick = userEmail.split('@')[0] || userId.substring(0, 8);
+        if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
+        const userId = session.user.id;
+        const userEmail = session.user.email || '';
+        const nick = userEmail.split('@')[0] || userId.substring(0, 8);
 
-      await sb.from('game_scores').insert({
-        user_id: userId,
-        nick: nick,
-        game: GAME_NAME,
-        score: finalScore
-      });
+        const { error: insErr } = await sb.from('game_scores').insert({
+          user_id: userId, nick: nick, game: GAME_NAME, score: finalScore
+        });
+        if (insErr) { console.warn('Save score insert error:', insErr); return; }
 
-      const { data: cloudBest } = await sb
-        .from('game_scores').select('score').eq('game', GAME_NAME)
-        .order('score', { ascending: false }).limit(1).single();
-      const { data: myBest } = await sb
-        .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
-        .order('score', { ascending: false }).limit(1).single();
+        const { data: cloudBest } = await sb
+          .from('game_scores').select('score').eq('game', GAME_NAME)
+          .order('score', { ascending: false }).limit(1).maybeSingle();
+        const { data: myBest } = await sb
+          .from('game_scores').select('score').eq('user_id', userId).eq('game', GAME_NAME)
+          .order('score', { ascending: false }).limit(1).maybeSingle();
 
-      if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
-      if (myBest) $('#myBest').textContent = myBest.score;
+        if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
+        if (myBest) $('#myBest').textContent = myBest.score;
       } catch(e) { console.warn('Save score failed:', e); }
     }
 
