@@ -426,7 +426,6 @@
     <!-- ==================== 个人信息 ==================== -->
     <section class="profile">
       <h1 class="name" id="typeName"><span class="cursor"></span></h1>
-      <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
     </section>
 
     <!-- ==================== 作品展示 ==================== -->
@@ -497,14 +496,14 @@
         }
       } catch(e) {}
       const text = userName ? '欢迎回来，' + userName : '欢迎回来';
-      let i = 0;
+      let pos = 0;
       el.textContent = '';
       el.appendChild(cursor);
       function type() {
-        if (i < text.length) {
-          el.textContent = text.substring(0, i + 1);
+        if (pos < text.length) {
+          el.textContent = text.substring(0, pos + 1);
           el.appendChild(cursor);
-          i++;
+          pos++;
           setTimeout(type, 100 + Math.random() * 60);
         } else {
           el.dataset.typed = '1';
