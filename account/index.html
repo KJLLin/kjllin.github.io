@@ -361,13 +361,33 @@
       }
     }
 
-    // CPOAuth 第三方绑定管理
+    // CPOAuth 第三方绑定管理（支持跨设备同步）
     function getCpoauthSession(){
       try{return JSON.parse(localStorage.getItem('kjllin_cpoauth')||'null')}catch(e){return null}
     }
-    function renderCpoauthBinding(){
+    async function renderCpoauthBinding(){
       const statusEl=$('#cpoauthStatus');if(!statusEl)return;
-      const session=getCpoauthSession();
+      let session=getCpoauthSession();
+
+      // 如果 localStorage 没有绑定信息，从 Supabase 读取（跨设备同步）
+      if(!session&&sb&&user){
+        try{
+          const{data,error}=await sb.from('users')
+            .select('cpoauth_sub,cpoauth_username,cpoauth_linked_at')
+            .eq('id',user.id).single();
+          if(!error&&data&&data.cpoauth_sub){
+            session={
+              provider:'cpoauth',
+              sub:data.cpoauth_sub,
+              username:data.cpoauth_username||'CPOAuth 用户',
+              linked_at:data.cpoauth_linked_at
+            };
+            // 恢复 localStorage 缓存，加速下次访问
+            try{localStorage.setItem('kjllin_cpoauth',JSON.stringify(session))}catch(e){}
+          }
+        }catch(e){console.warn('CPOAuth sync check failed:',e)}
+      }
+
       if(session&&(session.sub||session.user)){
         const name=session.username||(session.user&&(session.user.display_name||session.user.username))||session.email||(session.user&&session.user.email)||'CPOAuth 用户';
         statusEl.innerHTML='<span style="color:var(--success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';

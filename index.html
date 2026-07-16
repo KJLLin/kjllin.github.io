@@ -579,11 +579,22 @@
     });
 
     // ====================== 登录状态 + 未读站内信 ======================
-    // 使用动态加载supabase，页面先渲染完成
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    s.onload = function() {
-      try {
+    // 使用动态加载 supabase SDK，带 CDN 故障切换
+    (function loadSupabaseSDK(retryIdx) {
+      var CDNS = [
+        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+        'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+      ];
+      if (retryIdx >= CDNS.length) {
+        showError('Supabase SDK 加载失败(CDN不可达)');
+        var l2 = document.getElementById('loader');
+        if (l2) { l2.style.opacity = '0'; setTimeout(function(){ l2.remove(); }, 300); }
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = CDNS[retryIdx];
+      s.onload = function() {
+        try {
       var sb = KJ.createSupabase();
       if (!sb) {
         var l = document.getElementById('loader');
@@ -660,13 +671,12 @@
       var l = document.getElementById('loader');
       if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
       } catch(e) { showError('Supabase: '+e.message); var l=document.getElementById('loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);} }
-    };
-    s.onerror = function() {
-      showError('Supabase SDK 加载失败(CDN不可达)');
-      var l = document.getElementById('loader');
-      if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
-    };
-    document.body.appendChild(s);
+      };
+      s.onerror = function() {
+        loadSupabaseSDK(retryIdx + 1); // 故障切换到下一个 CDN
+      };
+      document.body.appendChild(s);
+    })(0);
   </script>
 </body>
 </html>
