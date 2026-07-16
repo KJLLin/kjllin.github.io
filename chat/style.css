@@ -561,7 +561,14 @@ html[data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
   font-size: 16px; cursor: pointer; display: none; align-items: center; justify-content: center;
   transition: all var(--transition-fast);
 }
-.conv-item:hover .conv-menu-trigger { display: flex; }
+/* 桌面端：hover 才显示 */
+@media (hover: hover) {
+  .conv-item:hover .conv-menu-trigger { display: flex; }
+}
+/* 移动端：始终显示，方便触屏操作 */
+@media (hover: none) {
+  .conv-menu-trigger { display: flex; }
+}
 .conv-menu-trigger:hover { background: var(--color-bg-input); color: var(--color-text-primary); }
 
 /* ====================== 无障碍 ====================== */
