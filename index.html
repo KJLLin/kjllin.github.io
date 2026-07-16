@@ -425,14 +425,8 @@
   <div class="container">
     <!-- ==================== 个人信息 ==================== -->
     <section class="profile">
-      <div class="avatar-box"><div class="avatar">K</div></div>
-      <h1 class="name" id="typeName">KJLLin<span class="cursor"></span></h1>
+      <h1 class="name" id="typeName"><span class="cursor"></span></h1>
       <p class="desc">独立前端开发者 | 创意创作者<br>专注开发简洁、稳定、流畅的 Web 应用</p>
-      <div class="status-row">
-        <span class="status-badge"><span class="status-dot"></span> 在线</span>
-        <span class="status-badge">🛠️ 前端开发</span>
-        <span class="status-badge">📍 中国</span>
-      </div>
     </section>
 
     <!-- ==================== 作品展示 ==================== -->
@@ -486,8 +480,23 @@
 // ====================== 打字机效果 ======================
     (function() {
       const el = document.getElementById('typeName');
-      const text = 'KJLLin';
       const cursor = el.querySelector('.cursor');
+      // 同步读 localStorage 获取当前用户名
+      var userName = '';
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var key = localStorage.key(i);
+          if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
+            var val = JSON.parse(localStorage.getItem(key));
+            if (val && val.user) {
+              var u = val.user;
+              userName = (u.user_metadata && u.user_metadata.nick) || (u.email && u.email.split('@')[0]) || '';
+              break;
+            }
+          }
+        }
+      } catch(e) {}
+      const text = userName ? '欢迎回来，' + userName : '欢迎回来';
       let i = 0;
       el.textContent = '';
       el.appendChild(cursor);
@@ -496,10 +505,12 @@
           el.textContent = text.substring(0, i + 1);
           el.appendChild(cursor);
           i++;
-          setTimeout(type, 120 + Math.random() * 80);
+          setTimeout(type, 100 + Math.random() * 60);
+        } else {
+          el.dataset.typed = '1';
         }
       }
-      setTimeout(type, 400);
+      setTimeout(type, 300);
     })();
 
     // ====================== 涟漪效果 ======================
@@ -604,6 +615,25 @@
           var nick2 = KJ.escapeHtml(rawNick2);
           var displayNick2 = nick2.length > 8 ? nick2.slice(0,8)+'..' : nick2;
           area.innerHTML = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick2 + '</a>';
+          // 同步更新打字机欢迎语
+          var typeEl = document.getElementById('typeName');
+          if (typeEl && !typeEl.dataset.typed) {
+            typeEl.dataset.typed = '1';
+            var cursor = typeEl.querySelector('.cursor');
+            var greeting = '欢迎回来，' + rawNick2;
+            var j = 0;
+            typeEl.textContent = '';
+            if (cursor) typeEl.appendChild(cursor);
+            function retype() {
+              if (j < greeting.length) {
+                typeEl.textContent = greeting.substring(0, j + 1);
+                if (cursor) typeEl.appendChild(cursor);
+                j++;
+                setTimeout(retype, 80 + Math.random() * 40);
+              }
+            }
+            setTimeout(retype, 200);
+          }
         }
 
         sb.auth.getSession().then(function(r) {
