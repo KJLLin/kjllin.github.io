@@ -477,40 +477,26 @@
     let isScrolling = false;
 
 // ====================== 打字机效果 ======================
-    (function() {
-      const el = document.getElementById('typeName');
-      const cursor = el.querySelector('.cursor');
-      // 同步读 localStorage 获取当前用户名
-      var userName = '';
-      try {
-        for (var i = 0; i < localStorage.length; i++) {
-          var key = localStorage.key(i);
-          if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
-            var val = JSON.parse(localStorage.getItem(key));
-            if (val && val.user) {
-              var u = val.user;
-              userName = (u.user_metadata && u.user_metadata.nick) || (u.email && u.email.split('@')[0]) || '';
-              break;
-            }
-          }
-        }
-      } catch(e) {}
-      const text = userName ? '欢迎回来，' + userName : '欢迎回来';
-      let pos = 0;
-      el.textContent = '';
-      el.appendChild(cursor);
+    // 打字函数（由 updateUserUI 在确认用户后调用）
+    function typeGreeting(userName) {
+      var typeEl = document.getElementById('typeName');
+      if (!typeEl || typeEl.dataset.typed) return;
+      typeEl.dataset.typed = '1';
+      var cursor = typeEl.querySelector('.cursor');
+      var greeting = userName ? '欢迎回来，' + userName : '欢迎回来';
+      var pos = 0;
+      typeEl.textContent = '';
+      if (cursor) typeEl.appendChild(cursor);
       function type() {
-        if (pos < text.length) {
-          el.textContent = text.substring(0, pos + 1);
-          el.appendChild(cursor);
+        if (pos < greeting.length) {
+          typeEl.textContent = greeting.substring(0, pos + 1);
+          if (cursor) typeEl.appendChild(cursor);
           pos++;
           setTimeout(type, 100 + Math.random() * 60);
-        } else {
-          el.dataset.typed = '1';
         }
       }
       setTimeout(type, 300);
-    })();
+    }
 
     // ====================== 涟漪效果 ======================
     document.addEventListener('click', function(e) {
@@ -625,25 +611,8 @@
           var nick2 = KJ.escapeHtml(rawNick2);
           var displayNick2 = nick2.length > 8 ? nick2.slice(0,8)+'..' : nick2;
           area.innerHTML = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick2 + '</a>';
-          // 同步更新打字机欢迎语
-          var typeEl = document.getElementById('typeName');
-          if (typeEl && !typeEl.dataset.typed) {
-            typeEl.dataset.typed = '1';
-            var cursor = typeEl.querySelector('.cursor');
-            var greeting = '欢迎回来，' + rawNick2;
-            var j = 0;
-            typeEl.textContent = '';
-            if (cursor) typeEl.appendChild(cursor);
-            function retype() {
-              if (j < greeting.length) {
-                typeEl.textContent = greeting.substring(0, j + 1);
-                if (cursor) typeEl.appendChild(cursor);
-                j++;
-                setTimeout(retype, 80 + Math.random() * 40);
-              }
-            }
-            setTimeout(retype, 200);
-          }
+          // 触发打字机欢迎语（仅首次）
+          typeGreeting(rawNick2);
         }
 
         sb.auth.getSession().then(function(r) {
@@ -651,6 +620,8 @@
             if (r.data.session && r.data.session.user) {
               var u = r.data.session.user;
               var rawNick = u.user_metadata.nick || u.email.split('@')[0] || '用户';
+              // 触发打字机欢迎语（仅首次，dataset.typed 防重复）
+              typeGreeting(rawNick);
               var nick = KJ.escapeHtml(rawNick);
               var displayNick = nick.length > 8 ? nick.slice(0,8)+'..' : nick;
               var areaHtml = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick + '</a>';
@@ -666,7 +637,8 @@
           } catch(e) { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; }
         }).catch(function() { area.innerHTML = '<a href="/login/" class="menu-item" style="color:var(--accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>'; });
       }
-      // 关闭loader
+      // 关闭loader，兜底打字（未登录时显示「欢迎回来」）
+      setTimeout(function() { typeGreeting(''); }, 500);
       var l = document.getElementById('loader');
       if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
       } catch(e) { showError('Supabase: '+e.message); var l=document.getElementById('loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);} }
