@@ -187,11 +187,15 @@
         // 同步检查 localStorage 中的 session（无网络延迟，立即响应）
         function getStoredUser() {
           try {
+            var now3 = Date.now();
             for (var i3 = 0; i3 < localStorage.length; i3++) {
               var key3 = localStorage.key(i3);
               if (key3 && key3.indexOf('sb-') === 0 && key3.indexOf('auth-token') !== -1) {
                 var val3 = JSON.parse(localStorage.getItem(key3));
-                if (val3 && val3.user) return val3.user;
+                if (val3 && val3.user && val3.expires_at) {
+                  if (val3.expires_at * 1000 > now3) return val3.user;
+                  try { localStorage.removeItem(key3); } catch(e) {}
+                }
               }
             }
           } catch(e) {}

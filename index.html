@@ -595,11 +595,17 @@
         // 同步读 localStorage 立即显示登录态，避免"已登录却显示登录"的闪烁
         function getStoredUser() {
           try {
+            var now = Date.now();
             for (var i = 0; i < localStorage.length; i++) {
               var key = localStorage.key(i);
               if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
                 var val = JSON.parse(localStorage.getItem(key));
-                if (val && val.user) return val.user;
+                // 必须同时满足：有用户数据 且 token 未过期
+                if (val && val.user && val.expires_at) {
+                  if (val.expires_at * 1000 > now) return val.user;
+                  // token 已过期，清理残留
+                  try { localStorage.removeItem(key); } catch(e) {}
+                }
               }
             }
           } catch(e) {}
