@@ -400,3 +400,23 @@ img, svg, video, canvas { display: block; max-width: 100%; }
     color-scheme: dark;
   }
 }
+
+/* ====================== Font Awesome 图标渲染保护 ====================== */
+/* 防止全局样式覆盖导致的图标不显示问题：
+   1. 保护 font-weight（FA6 Solid 需要 900，Regular/Brands 需要 400）
+   2. 保护 line-height 和字体平滑属性
+   3. 不干预 font-family 和 content — 由 FA 自己的 CSS 控制 */
+i.fas, i.fa-solid { font-weight: 900 !important; }
+i.far, i.fa-regular { font-weight: 400 !important; }
+i.fab, i.fa-brands { font-weight: 400 !important; }
+
+i[class*="fa-"], i[class^="fa-"],
+i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+}
