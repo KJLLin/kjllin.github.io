@@ -47,7 +47,7 @@
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html[data-theme="dark"] {
+[data-theme="dark"] {
   --bg-body: #1e1e2e;
   --bg-sidebar: rgba(30, 30, 46, 0.94);
   --bg-main: rgba(36, 36, 54, 0.85);
@@ -166,7 +166,7 @@ input, textarea, button { font-family: inherit; }
   display: grid; place-items: center;
   transition: all var(--transition-fast);
 }
-html[data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
+[data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
 .menu-btn:hover { background: var(--bg-active); color: var(--color-primary); }
 #themeBtn { border-radius: 50%; }
 .menu-user-tag {

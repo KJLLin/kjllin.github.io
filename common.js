@@ -86,7 +86,8 @@
     if (document.getElementById('kj-common-style')) return;
     var style = document.createElement('style');
     style.id = 'kj-common-style';
-    style.textContent = '.kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:9999;background:var(--text-primary,#1a1a1a);color:var(--bg-body,#f3f3f3);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .3s cubic-bezier(.34,1.56,.64,1)}@keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}';
+    // 仅注入定位和动画，颜色由 theme.css 或页面自身变量控制
+    style.textContent = '.kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .3s cubic-bezier(.34,1.56,.64,1);background:var(--color-bg-glass-solid,var(--text-primary,#1d1d1f));color:var(--color-text-primary,var(--bg-body,#f5f5f7));border:1px solid var(--color-border,rgba(0,0,0,0.06))}@keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}';
     document.head.appendChild(style);
   }
 
