@@ -96,9 +96,25 @@
 
     @media(max-width:520px){
       .menu-item{display:none}.hamburger{display:grid}
+      .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
+      .page-header h1{font-size:22px}
+      .page-header .icon{font-size:40px}
       .security-grid{grid-template-columns:1fr 1fr;gap:8px}
-      .profile-header{flex-direction:column;text-align:center}
-      .info-row .value{max-width:50%}
+      .security-item{padding:12px 8px}
+      .security-item .si-icon{font-size:20px}
+      .security-item .si-value{font-size:13px}
+      .profile-header{flex-direction:column;text-align:center;gap:12px}
+      .avatar{width:52px;height:52px;font-size:22px}
+      .profile-text .name{font-size:18px}
+      .card-header{font-size:15px;flex-wrap:wrap;gap:6px}
+      .card-action{font-size:12px}
+      .info-row .value{max-width:55%;font-size:12px}
+      .binding-row{flex-wrap:wrap;gap:8px}
+      .binding-row .b-status{font-size:12px;white-space:normal;text-align:right}
+      .danger-zone{padding:20px 16px}
+      .danger-zone .btn-row{gap:8px}
+      .danger-zone .btn-row .btn-danger-outline{font-size:12px;padding:8px 14px}
+      .card-glass{padding:18px 16px !important}
     }
     @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
