@@ -11,6 +11,7 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
 
   <style>
     /* ====================== Win11 全局规范 ====================== */
@@ -291,12 +292,12 @@
       font-family: "Consolas","Cascadia Code","SF Mono",monospace; font-size: 0.9em;
     }
     .post-card .post-content pre {
-      background: #1e1e2e; padding: 18px; border-radius: var(--radius-sm);
+      background: var(--code-bg, #1a1a2e); padding: 18px; border-radius: var(--radius-sm);
       overflow-x: auto; font-size: 13px; line-height: 1.6;
-      color: #cdd6f4; border: 1px solid rgba(255,255,255,0.06);
+      color: var(--code-color, #cdd6f4); border: 1px solid var(--border-mica);
     }
     [data-theme="dark"] .post-card .post-content pre {
-      background: #0d1117; color: #c9d1d9; border-color: rgba(255,255,255,0.04);
+      --code-bg: #0d1117; --code-color: #c9d1d9;
     }
     .post-card .post-content pre code { background: none; padding: 0; color: inherit; }
     /* 代码块包装器 + 复制按钮 */
@@ -320,7 +321,7 @@
       border-color: rgba(255,255,255,0.2);
     }
     .code-block-wrapper:hover .copy-btn { opacity: 1; }
-    .copy-btn.copied { color: #4caf50; border-color: rgba(76,175,80,0.3); }
+    .copy-btn.copied { color: var(--color-success); border-color: var(--color-success-bg); }
     .post-card .post-content ul,
     .post-card .post-content ol { padding-left: 20px; margin: 6px 0; }
     .post-card .post-content a { color: var(--accent); }
