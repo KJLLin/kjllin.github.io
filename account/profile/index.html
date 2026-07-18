@@ -4,106 +4,72 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#f3f3f3">
+  <meta name="theme-color" content="#f5f5f7">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
   <title>编辑资料 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    html {
-      --win-ease: cubic-bezier(0.4,0,0.2,1); --bounce: cubic-bezier(0.34,1.56,0.64,1);
-      --transition-fast: 200ms var(--win-ease); --transition-normal: 300ms var(--win-ease);
-      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
-      transition: background-color var(--transition-normal);
-    }
-    * { margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased; }
-    :root {
-      --bg-body:#f3f3f3;--bg-mica:rgba(255,255,255,0.85);--bg-mica-hover:rgba(255,255,255,0.95);
-      --border-mica:rgba(0,0,0,0.06);--text-primary:#1a1a1a;--text-secondary:#5e5e5e;--text-tertiary:#8e8e8e;
-      --accent:#0078d4;--accent-light:#0099ff;--accent-glow:rgba(0,120,212,0.1);--danger:#e74c3c;--success:#34c88a;
-      --shadow-rest:0 2px 8px rgba(0,0,0,0.06);--shadow-hover:0 4px 16px rgba(0,0,0,0.09);
-    }
-    [data-theme="dark"]:root {
-      --bg-body:#0f0f0f;--bg-mica:rgba(20,20,20,0.85);--bg-mica-hover:rgba(26,26,26,0.95);
-      --border-mica:rgba(255,255,255,0.07);--text-primary:#f0f0f0;--text-secondary:#a0a0a0;--text-tertiary:#707070;
-      --accent-glow:rgba(0,120,212,0.15);--shadow-rest:0 2px 8px rgba(0,0,0,0.25);--shadow-hover:0 4px 16px rgba(0,0,0,0.35);
-    }
-    html,body{width:100%;min-height:100vh;overflow-x:clip}
-    body{background:var(--bg-body);color:var(--text-primary)}
-    .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
-    .mica{background:var(--bg-mica);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--border-mica)}
-
     .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest);pointer-events:all}
-    .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
-    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
-    .menu-item:hover,.menu-item.active{color:var(--accent);background:var(--accent-glow)}
-    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
-    [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
-    .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
-    .theme-btn,#themeBtn{border-radius:50%}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-sm);pointer-events:all;background:var(--color-bg-glass);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg)}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}.menu-item.active{font-weight:600}
+    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
+    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}#themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:58px;top:calc(58px + env(safe-area-inset-top, 0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101;max-height:calc(100vh - 80px - env(safe-area-inset-top, 0px));overflow-y:auto}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
     .mobile-menu-dropdown.open{display:flex}
     .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 
-    .container{max-width:540px;margin:0 auto;padding:80px 16px 40px}
-    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.5s var(--win-ease)}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    .page-header .icon{font-size:44px;margin-bottom:6px}
-    .page-header h1{font-size:24px;font-weight:700;color:var(--accent)}
+    .container{max-width:520px;margin:0 auto;padding:80px 16px 40px}
+    .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--color-text-tertiary);text-decoration:none;font-size:13px;margin-bottom:24px;transition:color var(--transition-fast)}
+    .back-link:hover{color:var(--color-accent)}
+    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.6s var(--ease-out) forwards}
+    .page-header .icon{font-size:44px;margin-bottom:8px;display:block}
+    .page-header h1{font-size:24px;font-weight:700;color:var(--color-text-primary)}
 
-    .card{padding:28px 24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);margin-bottom:16px;animation:fadeUp 0.5s var(--win-ease) 0.1s both}
-    .card h2{font-size:17px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+    .card-glass-form{padding:32px 28px;border-radius:var(--radius-lg);border:1px solid var(--color-border);background:var(--color-bg-glass);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg);box-shadow:var(--shadow-sm);animation:fadeUp 0.6s var(--ease-out) 0.08s both;margin-bottom:16px}
+    .card-glass-form h2{font-size:17px;font-weight:600;color:var(--color-text-primary);margin-bottom:24px;display:flex;align-items:center;gap:8px}
 
-    .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--text-tertiary);text-decoration:none;font-size:13px;margin-bottom:20px;transition:color var(--transition-fast)}
-    .back-link:hover{color:var(--accent)}
-
-    /* 头像区域 */
     .avatar-section{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
-    .avatar-large{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;display:grid;place-items:center;font-size:34px;font-weight:700;margin-bottom:10px}
-    .avatar-hint{font-size:12px;color:var(--text-tertiary)}
+    .avatar-large{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:34px;font-weight:700;margin-bottom:8px;box-shadow:0 6px 20px var(--color-accent-glow)}
+    .avatar-hint{font-size:12px;color:var(--color-text-tertiary)}
 
     .form-group{margin-bottom:16px}
-    .form-group label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:5px}
-    .form-group input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-mica);background:rgba(0,0,0,0.02);color:var(--text-primary);font-size:14px;font-family:inherit}
-    [data-theme="dark"] .form-group input{background:rgba(255,255,255,0.03)}
-    .form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
+    .form-group label{display:block;font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px}
+    .form-group input{width:100%;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-bg-input);color:var(--color-text-primary);font-size:14px;font-family:var(--font-sans);outline:none;transition:all var(--transition-fast)}
+    .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-accent-glow)}
     .form-group input:disabled{opacity:0.6;cursor:not-allowed}
-    .form-hint{font-size:12px;color:var(--text-tertiary);margin-top:4px}
+    .form-hint{font-size:12px;color:var(--color-text-tertiary);margin-top:5px}
 
-    .btn{padding:11px 24px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--transition-fast);display:inline-flex;align-items:center;gap:6px;justify-content:center}
-    .btn-primary{background:var(--accent);color:#fff;width:100%}.btn-primary:hover{background:var(--accent-light)}
-    .btn:disabled{opacity:0.5;pointer-events:none}
-
-    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-mica);font-size:14px}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-border);font-size:14px}
     .info-row:last-child{border-bottom:none}
-    .info-row .label{color:var(--text-secondary)}
-    .info-row .value{font-family:"Consolas","Cascadia Code",monospace;font-size:13px;color:var(--text-primary)}
+    .info-row .label{color:var(--color-text-secondary)}
+    .info-row .value{font-family:var(--font-mono);font-size:13px;color:var(--color-text-primary)}
 
-    @media(max-width:520px){
-      .menu-item{display:none}.hamburger{display:grid}.card{padding:20px 16px}
-    }
-    @media(min-width:521px){
-      .hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}
-    }
+    .btn-save{width:100%;padding:11px 24px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+    .btn-save:hover:not(:disabled){background:var(--color-accent-hover)}
+    .btn-save:disabled{opacity:0.5;cursor:not-allowed}
+
+    @media(max-width:520px){.menu-item{display:none}.hamburger{display:grid}.card-glass-form{padding:24px 20px}}
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
 </head>
 <body>
-  <div class="bg-base"></div>
+  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
   <header class="top-menu">
-    <nav class="menu-bar mica" id="menuBar">
-      <span class="menu-logo">KJLLin</span>
+    <nav class="menu-bar"><span class="menu-logo">KJLLin</span>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item active"><i class="fas fa-shield-halved"></i> 账号</a>
-      <button id="themeBtn" class="menu-btn theme-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+    <div class="mobile-menu-dropdown" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -115,38 +81,23 @@
 
   <div class="container">
     <a href="/account/" class="back-link"><i class="fas fa-arrow-left"></i> 返回账号安全中心</a>
-    <div class="page-header"><div class="icon">👤</div><h1>编辑个人资料</h1></div>
+    <div class="page-header"><span class="icon">👤</span><h1>编辑个人资料</h1></div>
 
-    <div id="loginPrompt" class="card mica" style="text-align:center;padding:40px">
-      <p style="color:var(--text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
-      <a href="/login/?redirect=/account/profile/" style="color:var(--accent);font-weight:600;text-decoration:none" id="loginLink" hidden>→ 前往登录</a>
+    <div id="loginPrompt" class="card-glass-form" style="text-align:center;padding:48px 24px">
+      <p style="color:var(--color-text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
+      <a href="/login/?redirect=/account/profile/" class="btn-save" style="text-decoration:none;width:auto;display:inline-flex" id="loginLink" hidden>前往登录</a>
     </div>
 
     <div id="profileContent" style="display:none">
-      <div class="card mica">
+      <div class="card-glass-form">
         <h2><i class="fas fa-user-edit"></i> 个人资料</h2>
-        
-        <div class="avatar-section">
-          <div class="avatar-large" id="profileAvatarLarge">U</div>
-          <div class="avatar-hint">头像取自昵称首字母</div>
-        </div>
-
-        <div class="form-group">
-          <label>昵称</label>
-          <input type="text" id="nickInput" placeholder="设置你的昵称" maxlength="20">
-          <div class="form-hint">1-20 个字符，支持中英文和数字</div>
-        </div>
-
-        <div class="form-group">
-          <label>邮箱</label>
-          <input type="email" id="emailShow" disabled>
-          <div class="form-hint">邮箱不可修改，如需更换请联系管理员</div>
-        </div>
-
-        <button class="btn btn-primary" id="saveBtn"><i class="fas fa-save"></i> 保存修改</button>
+        <div class="avatar-section"><div class="avatar-large" id="profileAvatarLarge">U</div><div class="avatar-hint">头像取自昵称首字母</div></div>
+        <div class="form-group"><label>昵称</label><input type="text" id="nickInput" placeholder="设置你的昵称" maxlength="20"><div class="form-hint">1-20 个字符，支持中英文和数字</div></div>
+        <div class="form-group"><label>邮箱</label><input type="email" id="emailShow" disabled><div class="form-hint">邮箱不可修改，如需更换请联系管理员</div></div>
+        <button class="btn-save" id="saveBtn"><i class="fas fa-save"></i> 保存修改</button>
       </div>
 
-      <div class="card mica">
+      <div class="card-glass-form">
         <h2>📋 账号信息</h2>
         <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
         <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
@@ -158,103 +109,64 @@
   <script src="/common.js"></script>
   <script>
     (function(){
-    const $=s=>document.querySelector(s);
-    let sb,user;
-    try{sb=KJ.createSupabase()}catch(e){}
+    var $=function(s){return document.querySelector(s);};
+    var sb,user;
+    try{sb=KJ.createSupabase();}catch(e){}
 
-    function formatDate(iso){if(!iso)return'--';const d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
+    function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
 
     async function loadUser(){
       if(!sb)return;
       try{
-        const{data:{session}}=await sb.auth.getSession();
-        if(!session?.user){showLoginPrompt();return}
-        user=session.user;
+        var r=await sb.auth.getSession();
+        if(!r.data.session||!r.data.session.user){showLoginPrompt();return}
+        user=r.data.session.user;
         $('#loginPrompt').style.display='none';$('#profileContent').style.display='block';
-        
-        const nick=user.user_metadata?.nick||user.email?.split('@')[0]||'用户';
+        var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
         $('#profileAvatarLarge').textContent=nick.charAt(0).toUpperCase();
         $('#nickInput').value=nick;
         $('#emailShow').value=user.email||'';
         $('#infoUserId').textContent=user.id.substring(0,12)+'...';
-        $('#infoCreated').textContent=formatDate(user.created_at);
-        if(user.email_confirmed_at){
-          $('#infoVerified').textContent='已验证 ✅';
-          $('#infoVerified').style.color='var(--success)';
-        }else{
-          $('#infoVerified').textContent='未验证';
-          $('#infoVerified').style.color='var(--warning)';
-        }
-      }catch(e){
-        console.error('loadUser failed:',e);
-        showLoginPrompt();
-      }
+        $('#infoCreated').textContent=fmtDate(user.created_at);
+        if(user.email_confirmed_at){$('#infoVerified').textContent='已验证 ✅';$('#infoVerified').style.color='var(--color-success)';}
+        else{$('#infoVerified').textContent='未验证';$('#infoVerified').style.color='var(--color-warning)';}
+      }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 
-    $('#saveBtn').addEventListener('click',async()=>{
-      const nick=$('#nickInput').value.trim();
+    $('#saveBtn').addEventListener('click',async function(){
+      var nick=$('#nickInput').value.trim();
       if(!nick||nick.length>20){KJ.toast('昵称需1-20个字符');return}
-      const btn=$('#saveBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 保存中...';
+      var btn=$('#saveBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 保存中...';
       try{
-        await sb.from('users').update({nick}).eq('id',user.id);
-        await sb.auth.updateUser({data:{nick}});
+        await sb.from('users').update({nick:nick}).eq('id',user.id);
+        await sb.auth.updateUser({data:{nick:nick}});
         $('#profileAvatarLarge').textContent=nick.charAt(0).toUpperCase();
-        KJ.toast('✅ 资料已更新');
-      }catch(e){KJ.toast('更新失败：'+e.message)}finally{
-        btn.disabled=false;btn.innerHTML='<i class="fas fa-save"></i> 保存修改';
-      }
+        KJ.toast('资料已更新');
+      }catch(e){KJ.toast('更新失败：'+e.message)}
+      btn.disabled=false;btn.innerHTML='<i class="fas fa-save"></i> 保存修改';
     });
 
-    // Theme
-    const themeBtn=$('#themeBtn');
-    function updateThemeUI(){
-      var state = KJ.applyTheme('#f3f3f3', '#0f0f0f');
-      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
-    }
-    themeBtn.addEventListener('click',function(){
-      var state = KJ.toggleTheme();
-      KJ.applyTheme('#f3f3f3', '#0f0f0f');
-      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
-    });
-    KJ.onSystemThemeChange(updateThemeUI);
-    updateThemeUI();
+    function showLoginPrompt(){$('#loginPrompt').style.display='';$('#profileContent').style.display='none';$('#loginMsg').textContent='请登录后管理账号';$('#loginLink').hidden=false;}
 
-    // 汉堡菜单
-    const hamburgerBtn=$('#hamburgerBtn'),mobileMenu=$('#mobileMenu');
-    hamburgerBtn.addEventListener('click',function(e){e.stopPropagation();mobileMenu.classList.toggle('open')});
-    document.addEventListener('click',function(e){if(!hamburgerBtn.contains(e.target)&&!mobileMenu.contains(e.target))mobileMenu.classList.remove('open')});
+    var themeBtn=$('#themeBtn');
+    function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
+    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
 
     if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
 
-    let authReady = false;
-    sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        authReady = true;
-        if (session?.user) { loadUser(); return; }
-        showLoginPrompt();
-      } else if (event === 'SIGNED_OUT') {
-        authReady = true; showLoginPrompt();
-      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (session?.user) loadUser();
-      }
+    var authReady=false;
+    sb.auth.onAuthStateChange(function(event,session){
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(session&&session.user){loadUser();return}showLoginPrompt();}
+      else if(event==='SIGNED_OUT'){authReady=true;showLoginPrompt();}
+      else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session&&session.user)loadUser();}
     });
-
-    function showLoginPrompt() {
-      $('#loginPrompt').style.display = '';
-      $('#profileContent').style.display = 'none';
-      $('#loginMsg').textContent = '请登录后管理账号';
-      $('#loginLink').hidden = false;
-    }
-
-    setTimeout(() => { if (!authReady) loadUser(); }, 3000);
-    setTimeout(() => {
-      if ($('#loginMsg').textContent === '加载中...') {
-        $('#loginMsg').textContent = '加载超时，请检查网络后刷新页面';
-        $('#loginLink').hidden = false;
-        $('#loginLink').textContent = '→ 刷新页面';
-        $('#loginLink').href = 'javascript:location.reload()';
-      }
-    }, 8000);
+    setTimeout(function(){if(!authReady)loadUser();},3000);
+    setTimeout(function(){if($('#loginMsg').textContent==='加载中...'){$('#loginMsg').textContent='加载超时，请检查网络';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);
     })();
   </script>
 </body>
