@@ -183,18 +183,45 @@ html {
 
 /* ====================== Global Styles ====================== */
 html, body {
-  width: 100%; min-height: 100vh; overflow-x: clip;
+  width: 100%; min-height: 100vh; min-height: 100dvh;
+  overflow-x: clip;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--line-height-normal);
   color: var(--color-text-primary);
   background: var(--color-bg);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 a { color: var(--color-accent); text-decoration: none; }
 a:hover { color: var(--color-accent-hover); }
 
 img, svg, video, canvas { display: block; max-width: 100%; }
+
+/* ====================== Mobile Optimizations ====================== */
+/* 消除 iOS 300ms 点击延迟 + 防止双击缩放 */
+a, button, .btn, .menu-item, .card, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* 防止 iOS Safari 在 input font-size < 16px 时自动缩放 */
+@media screen and (max-width: 520px) {
+  input, textarea, select, button, .input, .field input {
+    font-size: max(16px, var(--text-base)) !important;
+  }
+}
+
+/* 安全区域适配 — 确保内容不被 iPhone 底部横条遮挡 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* 固定定位元素安全区域 */
+  .kj-toast {
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
 
 /* ====================== Focus Ring ====================== */
 :focus-visible {
@@ -270,6 +297,7 @@ img, svg, video, canvas { display: block; max-width: 100%; }
   background: var(--color-bg-raised);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+  padding: 20px;
   transition: all var(--transition-base);
 }
 .card:hover {
@@ -316,12 +344,14 @@ img, svg, video, canvas { display: block; max-width: 100%; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   padding: var(--space-2) var(--space-5);
+  min-height: 44px; min-width: 44px;
   font-family: var(--font-sans); font-size: var(--text-sm); font-weight: var(--font-weight-medium);
   border-radius: var(--radius-full);
   border: none; cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
   user-select: none;
+  touch-action: manipulation;
 }
 .btn:active { transform: scale(0.97); }
 .btn-primary {

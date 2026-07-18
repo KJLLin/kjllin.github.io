@@ -117,7 +117,7 @@
     .mobile-menu-dropdown { display: none; position: absolute; top: 100%; left: 16px; right: 16px; margin-top: 8px; padding: 8px; border-radius: var(--radius-md); box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px; pointer-events: all; z-index: 101; }
     .mobile-menu-dropdown.open { display: flex; }
 
-    .container { max-width: 960px; margin: 0 auto; padding: 80px 16px 40px; position: relative; z-index: 1; }
+    .container { max-width: 960px; margin: 0 auto; padding: 80px 16px calc(40px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1; }
 
     .page-header { text-align: center; margin-bottom: 36px; animation: fadeUp 0.7s var(--win-ease) forwards; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -245,7 +245,7 @@
       .menu-item { padding: 6px 10px; font-size: 12px; }
       .menu-logo { font-size: 16px; padding: 6px 10px; }
       .menu-divider { display: none; }
-      .container { padding: 72px 16px 40px; }
+      .container { padding: 72px 16px calc(40px + env(safe-area-inset-bottom, 0px)); }
       .toolbar { padding: 12px 14px; }
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }

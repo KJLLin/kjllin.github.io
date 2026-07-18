@@ -203,7 +203,7 @@
     .mobile-menu-dropdown.open { display: flex; }
 
     /* ====================== 布局 ====================== */
-    .container { max-width: 860px; margin: 0 auto; padding: 80px 16px 40px; position: relative; z-index: 1; }
+    .container { max-width: 860px; margin: 0 auto; padding: 80px 16px calc(40px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1; }
 
     /* ====================== 面包屑返回 ====================== */
     .back-link-wrap { margin-bottom: 20px; animation: fadeUp 0.5s var(--win-ease) forwards; }
@@ -387,13 +387,13 @@
       .menu-item { padding: 6px 10px; font-size: 12px; }
       .menu-logo { font-size: 16px; padding: 6px 10px; }
       .menu-divider { display: none; }
-      .container { padding: 72px 12px 40px; }
+      .container { padding: 72px 12px calc(40px + env(safe-area-inset-bottom, 0px)); }
       .post-card { padding: 20px 16px; }
       .post-card .post-title { font-size: 22px; }
       .markdown-body { font-size: 14px; }
       .markdown-body h1 { font-size: 20px; }
       .markdown-body h2 { font-size: 18px; }
-      .code-block-wrapper pre { padding: 14px; font-size: 12px; }
+      .code-block-wrapper pre { padding: 14px; font-size: calc(12px + env(safe-area-inset-bottom, 0px)); }
       .not-found { padding: 60px 16px; }
       .not-found .icon { font-size: 48px; }
       .code-block-wrapper .copy-btn { opacity: 1; }

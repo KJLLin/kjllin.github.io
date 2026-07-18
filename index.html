@@ -139,7 +139,7 @@
     }
 
     /* ── 布局容器 ── */
-    .container { max-width: 960px; margin: 0 auto; padding: 0 16px 28px; position: relative; z-index: 1; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 16px 28px; position: relative; z-index: 1; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
 
     /* ── Hero 区域 — Apple 风格大留白 + 渐变标题 ── */
     .hero {
@@ -279,7 +279,7 @@
 
     /* ── 返回顶部 ── */
     #backTop {
-      position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
+      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
       border-radius: var(--radius-sm); border: 1px solid var(--color-border);
       font-size: 17px; cursor: pointer;
       background: var(--color-bg-glass);

@@ -192,7 +192,7 @@
     .mobile-menu-dropdown.open { display: flex; }
 
     /* ====================== 布局 ====================== */
-    .container { max-width: 860px; margin: 0 auto; padding: 80px 16px 40px; position: relative; z-index: 1; }
+    .container { max-width: 860px; margin: 0 auto; padding: 80px 16px calc(40px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1; }
 
     /* ====================== 页面标题 ====================== */
     .page-title {
@@ -384,7 +384,7 @@
       .menu-item { padding: 6px 10px; font-size: 12px; }
       .menu-logo { font-size: 16px; padding: 6px 10px; }
       .menu-divider { display: none; }
-      .container { padding: 72px 16px 40px; }
+      .container { padding: 72px 16px calc(40px + env(safe-area-inset-bottom, 0px)); }
       .page-title h1 { font-size: 24px; }
       .post-card { padding: 18px; }
       .auth-area { padding: 12px 16px; flex-direction: column; align-items: flex-start; }

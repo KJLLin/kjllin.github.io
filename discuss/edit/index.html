@@ -33,7 +33,7 @@
     .mobile-menu-dropdown{display:none;position:absolute;top:100%;left:16px;right:16px;margin-top:8px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
     .mobile-menu-dropdown.open{display:flex}
 
-    .container{max-width:860px;margin:0 auto;padding:80px 16px 40px}
+    .container{max-width:860px;margin:0 auto;padding:80px 16px calc(40px + env(safe-area-inset-bottom, 0px))}
     .page-header{margin-bottom:24px;animation:fadeUp 0.5s var(--win-ease)}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     .page-header .back-link{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--text-tertiary);text-decoration:none;font-weight:500;padding:6px 14px;border-radius:var(--radius-sm);transition:all var(--transition-fast)}
@@ -72,7 +72,7 @@
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.3s var(--bounce)}
     @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
 
-    @media(max-width:768px){.card{padding:18px}.container{padding:72px 12px 40px}.menu-item{font-size:12px;padding:6px 10px}}
+    @media(max-width:768px){.card{padding:18px}.container{padding:72px 12px calc(40px + env(safe-area-inset-bottom, 0px))}.menu-item{font-size:12px;padding:6px 10px}}
     @media(max-width:520px){.menu-bar .menu-item{display:none}.hamburger{display:grid}.menu-divider{display:none}}
     @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
