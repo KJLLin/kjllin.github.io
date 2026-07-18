@@ -350,6 +350,33 @@
   // 注入 Toast 样式
   injectToastStyle();
 
+  // ====================== Font Awesome CDN 回退 ======================
+  /**
+   * 检测 Font Awesome 是否成功加载，失败时自动切换到备用 CDN
+   * 解决 cdnjs.cloudflare.com 在某些地区不可达的问题
+   */
+  (function() {
+    setTimeout(function() {
+      try {
+        var test = document.createElement('i');
+        test.className = 'fas fa-check';
+        test.style.cssText = 'position:absolute;visibility:hidden;width:auto;height:auto;font-size:16px;line-height:1';
+        document.body.appendChild(test);
+        var w = test.offsetWidth;
+        test.remove();
+        // FA 图标宽度为 0 说明字体未加载成功
+        if (w === 0) {
+          var fallback = document.createElement('link');
+          fallback.rel = 'stylesheet';
+          fallback.href = 'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+          fallback.crossOrigin = 'anonymous';
+          document.head.appendChild(fallback);
+          console.warn('Font Awesome CDN fallback activated (primary CDN unreachable)');
+        }
+      } catch(e) {}
+    }, 2500);
+  })();
+
   // 挂载到全局
   global.KJ = KJ;
 
