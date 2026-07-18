@@ -4,134 +4,109 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#f3f3f3">
+  <meta name="theme-color" content="#f5f5f7">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
   <title>账号安全 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    html {
-      --win-ease: cubic-bezier(0.4,0,0.2,1); --bounce: cubic-bezier(0.34,1.56,0.64,1);
-      --transition-fast: 200ms var(--win-ease); --transition-normal: 300ms var(--win-ease);
-      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
-      transition: background-color var(--transition-normal);
-    }
-    * { margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased; }
-    :focus:not(:focus-visible) { outline: none; }
-    :root {
-      --bg-body:#f3f3f3;--bg-mica:rgba(255,255,255,0.85);--bg-mica-hover:rgba(255,255,255,0.95);
-      --border-mica:rgba(0,0,0,0.06);--text-primary:#1a1a1a;--text-secondary:#5e5e5e;--text-tertiary:#8e8e8e;
-      --accent:#0078d4;--accent-light:#0099ff;--accent-glow:rgba(0,120,212,0.1);--danger:#e74c3c;
-      --success:#34c88a;--warning:#f0ad4e;
-      --shadow-rest:0 2px 8px rgba(0,0,0,0.06);--shadow-hover:0 4px 16px rgba(0,0,0,0.09);
-    }
-    [data-theme="dark"]:root {
-      --bg-body:#0f0f0f;--bg-mica:rgba(20,20,20,0.85);--bg-mica-hover:rgba(26,26,26,0.95);
-      --border-mica:rgba(255,255,255,0.07);--text-primary:#f0f0f0;--text-secondary:#a0a0a0;--text-tertiary:#707070;
-      --accent-glow:rgba(0,120,212,0.15);--shadow-rest:0 2px 8px rgba(0,0,0,0.25);--shadow-hover:0 4px 16px rgba(0,0,0,0.35);
-    }
-    html,body{width:100%;min-height:100vh;overflow-x:clip}
-    body{background:var(--bg-body);color:var(--text-primary)}
-    .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
-    .mica{background:var(--bg-mica);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--border-mica)}
-
-    /* 导航栏 */
-    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-md);box-shadow:var(--shadow-rest);pointer-events:all}
-    .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
-    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
-    .menu-item:hover,.menu-item.active{color:var(--accent);background:var(--accent-glow)}
-    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
-    [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
-    .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
-    .theme-btn,#themeBtn{border-radius:50%}
+    /* ── 导航栏（theme.css 令牌） ── */
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-sm);pointer-events:all;background:var(--color-bg-glass);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg)}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}
+    .menu-item.active{font-weight:600}
+    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
+    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}
+    #themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:58px;top:calc(58px + env(safe-area-inset-top, 0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101;max-height:calc(100vh - 80px - env(safe-area-inset-top, 0px));overflow-y:auto}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
     .mobile-menu-dropdown.open{display:flex}
     .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 
-    .container{max-width:720px;margin:0 auto;padding:80px 16px 40px}
+    /* ── 布局 ── */
+    .container{max-width:740px;margin:0 auto;padding:80px 16px 40px;position:relative;z-index:1}
 
-    /* 页面标题 */
-    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.5s var(--win-ease)}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    .page-header .icon{font-size:44px;margin-bottom:6px}
-    .page-header h1{font-size:24px;font-weight:700;color:var(--accent)}
+    /* ── 页面标题 ── */
+    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.6s var(--ease-out) forwards}
+    .page-header .icon{font-size:48px;margin-bottom:8px;display:block}
+    .page-header h1{font-size:28px;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.3px}
 
-    /* 通用卡片 */
-    .card{padding:22px 24px;border-radius:var(--radius-lg);box-shadow:var(--shadow-rest);margin-bottom:16px;transition:box-shadow var(--transition-fast)}
-    .card:hover{box-shadow:var(--shadow-hover)}
-    .card:nth-child(1){animation:fadeUp 0.5s var(--win-ease) 0.05s both}
-    .card:nth-child(2){animation:fadeUp 0.5s var(--win-ease) 0.1s both}
-    .card:nth-child(3){animation:fadeUp 0.5s var(--win-ease) 0.15s both}
-    .card:nth-child(4){animation:fadeUp 0.5s var(--win-ease) 0.2s both}
-    .card:nth-child(5){animation:fadeUp 0.5s var(--win-ease) 0.25s both}
-    .card:nth-child(6){animation:fadeUp 0.5s var(--win-ease) 0.3s both}
-    .card h2{font-size:17px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-    .card h2 .card-action{font-size:13px;font-weight:500;color:var(--accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px}
-    .card h2 .card-action:hover{color:var(--accent-light)}
+    /* ── 卡片动画 ── */
+    .card-anim{animation:fadeUp 0.6s var(--ease-out) both}
+    .card-anim:nth-child(1){animation-delay:0.05s}
+    .card-anim:nth-child(2){animation-delay:0.12s}
+    .card-anim:nth-child(3){animation-delay:0.18s}
+    .card-anim:nth-child(4){animation-delay:0.24s}
+    .card-anim:nth-child(5){animation-delay:0.30s}
+    .card-anim:nth-child(6){animation-delay:0.36s}
 
-    .info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-mica);font-size:14px}
-    .info-row:last-child{border-bottom:none}
-    .info-row .label{color:var(--text-secondary)}
-    .info-row .value{font-family:"Consolas","Cascadia Code",monospace;font-size:13px;color:var(--text-primary)}
+    /* ── 卡片标题 + 操作链接 ── */
+    .card-header{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--color-text-primary);margin-bottom:16px}
+    .card-action{font-size:13px;font-weight:500;color:var(--color-accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px;transition:color var(--transition-fast)}
+    .card-action:hover{color:var(--color-accent-hover)}
 
-    /* 安全状态指示器 */
-    .security-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;margin-bottom:8px}
-    .security-status.good{background:rgba(52,200,138,0.08);color:var(--success)}
-    .security-status.warn{background:rgba(240,173,78,0.08);color:var(--warning)}
-    .security-status.danger{background:rgba(231,76,60,0.08);color:var(--danger)}
-    .security-status .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-    .security-status.good .dot{background:var(--success)}
-    .security-status.warn .dot{background:var(--warning)}
-    .security-status.danger .dot{background:var(--danger)}
-
-    /* 按钮 */
-    .btn{padding:10px 20px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--transition-fast);display:inline-flex;align-items:center;gap:6px}
-    .btn-primary{background:var(--accent);color:#fff;text-decoration:none}.btn-primary:hover{background:var(--accent-light)}
-    .btn-outline{background:transparent;border:1px solid var(--border-mica);color:var(--text-secondary);text-decoration:none}
-    .btn-outline:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
-    .btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}.btn-danger:hover{background:rgba(231,76,60,0.08)}
-    .btn-sm{padding:6px 14px;font-size:13px;border-radius:var(--radius-sm)}
-
-    /* 个人资料头部 */
+    /* ── 个人资料头部 ── */
     .profile-header{display:flex;align-items:center;gap:16px}
-    .avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;display:grid;place-items:center;font-size:26px;font-weight:700;flex-shrink:0}
-    .profile-text{flex:1}
-    .profile-text .name{font-size:20px;font-weight:600}
-    .profile-text .email{font-size:13px;color:var(--text-tertiary);font-family:"Consolas","Cascadia Code",monospace;margin-top:2px}
+    .avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:26px;font-weight:700;flex-shrink:0;box-shadow:0 4px 16px var(--color-accent-glow)}
+    .profile-text{flex:1;min-width:0}
+    .profile-text .name{font-size:20px;font-weight:600;color:var(--color-text-primary)}
+    .profile-text .email{font-size:13px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin-top:3px;word-break:break-all}
 
-    /* 双列安全网格 */
-    .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .security-item{text-align:center;padding:14px 12px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.02)}
-    [data-theme="dark"] .security-item{background:rgba(255,255,255,0.03)}
-    .security-item .si-icon{font-size:24px;margin-bottom:6px}
-    .security-item .si-label{font-size:12px;color:var(--text-tertiary);margin-bottom:2px}
-    .security-item .si-value{font-size:14px;font-weight:600;color:var(--text-primary)}
+    /* ── 安全概览网格 ── */
+    .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .security-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition:all var(--transition-fast)}
+    .security-item:hover{background:var(--color-bg-active)}
+    .security-item .si-icon{font-size:22px;margin-bottom:6px}
+    .security-item .si-label{font-size:11px;color:var(--color-text-tertiary);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px}
+    .security-item .si-value{font-size:14px;font-weight:600;color:var(--color-text-primary)}
 
-    /* 危险区域 */
-    .danger-zone{border:1px dashed rgba(231,76,60,0.3);border-radius:var(--radius-lg);padding:20px 24px;text-align:center}
-    .danger-zone h3{font-size:15px;color:var(--danger);margin-bottom:6px}
-    .danger-zone p{font-size:12px;color:var(--text-tertiary);margin-bottom:12px}
+    /* ── 信息行 ── */
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-border);font-size:14px}
+    .info-row:last-child{border-bottom:none}
+    .info-row .label{color:var(--color-text-secondary)}
+    .info-row .value{font-family:var(--font-mono);font-size:13px;color:var(--color-text-primary);text-align:right;word-break:break-all;max-width:60%}
 
-    /* Toast */
-    .kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .3s cubic-bezier(.34,1.56,.64,1)}
-    @keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
+    /* ── 安全状态标记 ── */
+    .security-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;margin-bottom:6px}
+    .security-status .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .security-status.good{background:var(--color-success-bg);color:var(--color-success)}.security-status.good .dot{background:var(--color-success)}
+    .security-status.warn{background:var(--color-warning-bg);color:var(--color-warning)}.security-status.warn .dot{background:var(--color-warning)}
+    .security-status.danger{background:var(--color-danger-bg);color:var(--color-danger)}.security-status.danger .dot{background:var(--color-danger)}
+
+    /* ── 按钮 ── */
+    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-outline:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-glow)}
+    .btn-danger-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-danger);border-radius:var(--radius-full);background:transparent;color:var(--color-danger);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition-fast)}
+    .btn-danger-outline:hover{background:var(--color-danger-bg)}
+
+    /* ── 危险区域 ── */
+    .danger-zone{border:1px dashed rgba(255,59,48,0.3);border-radius:var(--radius-xl);padding:24px;text-align:center;animation:fadeUp 0.6s var(--ease-out) 0.42s both}
+    .danger-zone h3{font-size:15px;color:var(--color-danger);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px}
+    .danger-zone p{font-size:12px;color:var(--color-text-tertiary);margin-bottom:14px}
+    .danger-zone .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+    /* ── 第三方绑定 ── */
+    .binding-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-border);gap:12px}
+    .binding-row:last-child{border-bottom:none}
+    .binding-row .b-icon{font-size:18px;width:28px;text-align:center;flex-shrink:0}
+    .binding-row .b-label{font-size:14px;color:var(--color-text-primary);font-weight:500}
+    .binding-row .b-status{font-size:13px;display:flex;align-items:center;gap:6px;margin-left:auto}
 
     @media(max-width:520px){
       .menu-item{display:none}.hamburger{display:grid}
-      .card{padding:16px}.profile-header{flex-direction:column;text-align:center}
       .security-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .profile-header{flex-direction:column;text-align:center}
+      .info-row .value{max-width:50%}
     }
-    @media(min-width:521px){
-      .hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}
-    }
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
 </head>
 <body>
-  <div class="bg-base"></div>
+  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
   <header class="top-menu">
-    <nav class="menu-bar mica" id="menuBar">
+    <nav class="menu-bar" id="menuBar">
       <span class="menu-logo">KJLLin</span>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
@@ -139,10 +114,10 @@
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/account/" class="menu-item active"><i class="fas fa-shield-halved"></i> 账号</a>
-      <button id="themeBtn" class="menu-btn theme-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+    <div class="mobile-menu-dropdown" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -153,373 +128,230 @@
   </header>
 
   <div class="container">
-    <div class="page-header"><div class="icon">🔒</div><h1>账号安全中心</h1></div>
+    <div class="page-header"><span class="icon">🔒</span><h1>账号安全中心</h1></div>
 
-    <!-- 登录提示 -->
-    <div id="loginPrompt" class="card mica" style="text-align:center;padding:40px">
-      <p style="color:var(--text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
-      <a href="/login/?redirect=/account/" style="color:var(--accent);font-weight:600;text-decoration:none" id="loginLink" hidden>→ 前往登录</a>
+    <div id="loginPrompt" class="card card-glass" style="text-align:center;padding:48px 24px">
+      <p style="color:var(--color-text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
+      <a href="/login/?redirect=/account/" class="btn btn-primary" style="text-decoration:none" id="loginLink" hidden>前往登录</a>
     </div>
 
-    <!-- 主内容区 -->
     <div id="accountContent" style="display:none">
-
-      <!-- 个人资料卡片 -->
-      <div class="card mica">
-        <h2>👤 个人资料
-          <a href="/account/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a>
-        </h2>
+      <!-- 个人资料 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">👤 个人资料<a href="/account/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a></div>
         <div class="profile-header">
           <div class="avatar" id="profileAvatar">U</div>
-          <div class="profile-text">
-            <div class="name" id="profileName">--</div>
-            <div class="email" id="profileEmail">--</div>
-          </div>
+          <div class="profile-text"><div class="name" id="profileName">--</div><div class="email" id="profileEmail">--</div></div>
         </div>
       </div>
 
-      <!-- 安全概览卡片 -->
-      <div class="card mica">
-        <h2>🛡️ 安全概览
-          <a href="/account/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a>
-        </h2>
+      <!-- 安全概览 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🛡️ 安全概览<a href="/account/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
         <div class="security-grid">
-          <div class="security-item">
-            <div class="si-icon">🔑</div>
-            <div class="si-label">密码强度</div>
-            <div class="si-value" id="pwdStrength">检测中</div>
-          </div>
-          <div class="security-item">
-            <div class="si-icon">📧</div>
-            <div class="si-label">绑定邮箱</div>
-            <div class="si-value" id="emailStatus">已验证</div>
-          </div>
-          <div class="security-item">
-            <div class="si-icon">🔐</div>
-            <div class="si-label">两步验证</div>
-            <div class="si-value" style="color:var(--text-tertiary)">未开启</div>
-          </div>
-          <div class="security-item">
-            <div class="si-icon">📱</div>
-            <div class="si-label">绑定设备</div>
-            <div class="si-value" id="deviceCount">--</div>
-          </div>
+          <div class="security-item"><div class="si-icon">🔑</div><div class="si-label">密码强度</div><div class="si-value" id="pwdStrength">检测中</div></div>
+          <div class="security-item"><div class="si-icon">📧</div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
+          <div class="security-item"><div class="si-icon">🔐</div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
+          <div class="security-item"><div class="si-icon">📱</div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
         </div>
       </div>
 
-      <!-- 登录信息卡片 -->
-      <div class="card mica">
-        <h2>📊 账号信息</h2>
+      <!-- 账号信息 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">📊 账号信息</div>
         <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
         <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
         <div class="info-row"><span class="label">最近登录</span><span class="value" id="infoLastLogin">--</span></div>
-        <div class="info-row"><span class="label">账号状态</span><span class="value" id="infoStatus" style="color:var(--success)">正常</span></div>
+        <div class="info-row"><span class="label">账号状态</span><span class="value" id="infoStatus" style="color:var(--color-success)">正常</span></div>
       </div>
 
-      <!-- 设备信息卡片 -->
-      <div class="card mica">
-        <h2>💻 当前设备</h2>
-        <div class="info-row"><span class="label">浏览器</span><span class="value" id="deviceCurrent">检测中...</span></div>
+      <!-- 当前设备 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">💻 当前设备</div>
+        <div class="info-row"><span class="label">浏览器</span><span class="value" id="deviceBrowser">检测中...</span></div>
         <div class="info-row"><span class="label">操作系统</span><span class="value" id="deviceOS">--</span></div>
         <div class="info-row"><span class="label">屏幕 / 语言</span><span class="value" id="deviceScreen">--</span></div>
         <div class="info-row"><span class="label">IP 地址</span><span class="value" id="deviceIP">获取中...</span></div>
-        <div class="info-row"><span class="label">连接状态</span><span class="value" id="deviceOnline" style="color:var(--success)">🟢 在线</span></div>
+        <div class="info-row"><span class="label">连接状态</span><span class="value" style="color:var(--color-success)">🟢 在线</span></div>
       </div>
 
-      <!-- 最近登录记录 -->
-      <div class="card mica">
-        <h2>🕐 最近登录
-          <a href="/account/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a>
-        </h2>
-        <div id="loginHistory" style="color:var(--text-tertiary);font-size:13px">加载中...</div>
+      <!-- 最近登录（从 Supabase 读取） -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🕐 最近登录<a href="/account/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a></div>
+        <div id="loginHistory" style="color:var(--color-text-tertiary);font-size:13px;min-height:32px">加载中...</div>
       </div>
 
-      <!-- 第三方账号绑定 -->
-      <div class="card mica">
-        <h2>🔗 第三方账号绑定</h2>
-        <div style="display:flex;flex-direction:column;gap:10px" id="thirdPartyBindings">
-          <div class="info-row">
-            <span class="label"><i class="fab fa-google" style="margin-right:8px;color:#4285f4"></i>Google</span>
-            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
-          </div>
-          <div class="info-row">
-            <span class="label"><i class="fab fa-github" style="margin-right:8px"></i>GitHub</span>
-            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
-          </div>
-          <div class="info-row">
-            <span class="label"><i class="fab fa-weixin" style="margin-right:8px;color:#07c160"></i>微信</span>
-            <span class="value" style="color:var(--text-tertiary)">未绑定</span>
-          </div>
-          <div class="info-row" id="cpoauthBindingRow">
-            <span class="label"><i class="fas fa-code" style="margin-right:8px;color:#667eea"></i>CPOAuth</span>
-            <span class="value" id="cpoauthStatus" style="color:var(--text-tertiary)">检查中...</span>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--text-tertiary);margin-top:12px;text-align:center">
-          <i class="fas fa-info-circle"></i> CPOAuth 已支持绑定，更多第三方登录即将上线
-        </div>
+      <!-- 第三方绑定 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🔗 第三方账号绑定</div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-google" style="color:#4285f4"></i></span><span class="b-label">Google</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-weixin" style="color:#07c160"></i></span><span class="b-label">微信</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row" id="cpoauthBindingRow"><span class="b-icon"><i class="fas fa-code" style="color:#667eea"></i></span><span class="b-label">CPOAuth</span><span class="b-status" id="cpoauthStatus">检查中...</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:12px;text-align:center"><i class="fas fa-info-circle"></i> 更多第三方登录即将上线</div>
       </div>
 
       <!-- 危险区域 -->
       <div class="danger-zone">
         <h3><i class="fas fa-exclamation-triangle"></i> 危险区域</h3>
         <p>退出登录后需要重新输入密码才能访问账号相关功能</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-danger" id="logoutAllBtn">登出所有设备</button>
-          <button class="btn btn-danger" id="logoutBtn">退出登录</button>
+        <div class="btn-row">
+          <button class="btn-danger-outline" id="logoutAllBtn">登出所有设备</button>
+          <button class="btn-danger-outline" id="logoutBtn">退出登录</button>
         </div>
       </div>
-
     </div>
   </div>
 
   <script src="/common.js"></script>
   <script>
     (function(){
-    const $=s=>document.querySelector(s);
-    let sb,user;
-    try{sb=KJ.createSupabase()}catch(e){}
+    var $=function(s){return document.querySelector(s);};
+    var sb,user;
+    try{sb=KJ.createSupabase();}catch(e){}
 
-    function formatDate(iso){if(!iso)return'--';const d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
-    async function loadIP(){const apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(const url of apis){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),4000);const r=await fetch(url,{signal:c.signal});clearTimeout(t);const d=await r.json();const ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'')}catch(e){}}return'获取失败'}
-    function deviceKey(ua){return ua.browser+'|'+ua.os}
+    function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
+    async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var d=await r.json();var ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
+
+    // 从 Supabase login_devices 读取最近登录历史
+    async function renderLoginHistory(){
+      var el=$('#loginHistory');if(!el)return;
+      var records=[];
+
+      // 1. 从 Supabase 读取
+      if(sb&&user){
+        try{
+          var r=await sb.from('login_devices').select('*').eq('user_id',user.id).order('logged_in_at',{ascending:false}).limit(10);
+          if(!r.error&&r.data)records=r.data;
+        }catch(e){console.warn('Login history read:',e)}
+      }
+
+      // 2. 补充 localStorage
+      try{
+        var history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
+        var seen={};for(var i=0;i<records.length;i++){seen[(records[i].browser||'')+'|'+(records[i].os||'')+'|'+(records[i].logged_in_at||records[i].created_at)]=true;}
+        for(var j=history.length-1;j>=0;j--){var hr=history[j];var hk=(hr.browser||'')+'|'+(hr.os||'')+'|'+hr.time;if(!seen[hk]){seen[hk]=true;records.push({browser:hr.browser,os:hr.os,ip:hr.ip,logged_in_at:hr.time,source:'local'});}}
+      }catch(e){}
+
+      // 去重 + 限 3 条
+      var dedup={};var unique=[];
+      for(var k=0;k<records.length;k++){var rd=records[k];var rk=(rd.browser||'')+'|'+(rd.os||'');if(!dedup[rk]){dedup[rk]=rd;unique.push(rd);}}
+      if(unique.length>3)unique.length=3;
+
+      // 更新设备数量
+      var countEl=$('#deviceCount');if(countEl)countEl.textContent=Object.keys(dedup).length+' 台';
+
+      if(!unique.length){el.innerHTML='<div class="info-row"><span class="label" style="color:var(--color-text-tertiary)">暂无登录记录</span></div>';return}
+
+      var lines=[];
+      for(var m=0;m<unique.length;m++){
+        var u=unique[m];
+        var t=u.logged_in_at||u.created_at||u.time||'';
+        var ts=t?fmtDate(t):'--';
+        var dt=u.source==='cloud'?' ☁️':'';
+        lines.push('<div class="info-row"><span class="label">'+KJ.escapeHtml(u.os||'--')+' · '+KJ.escapeHtml(u.browser||'--')+'</span><span class="value" style="font-size:12px">'+ts+dt+'<br><span style="font-size:11px;color:var(--color-text-tertiary)">'+KJ.escapeHtml(u.ip||'--')+'</span></span></div>');
+      }
+      el.innerHTML=lines.join('');
+    }
 
     function saveLoginRecord(ip){
-      const ua=KJ.parseUA();
-      const record={browser:ua.browser+' '+(ua.osVer||''),os:ua.os,time:new Date().toISOString(),ip:ip};
+      var ua=KJ.parseUA();
       try{
-        let history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
-        history.push(record);
+        var history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
+        history.push({browser:ua.browser+' '+(ua.osVer||''),os:ua.os,time:new Date().toISOString(),ip:ip});
         if(history.length>10)history=history.slice(-10);
         localStorage.setItem('kjllin_login_history',JSON.stringify(history));
       }catch(e){}
     }
 
-    function renderLoginHistory(){
-      const el=$('#loginHistory');if(!el)return;
-      try{
-        let history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
-        if(!history.length){el.innerHTML='<div class="info-row"><span class="label">暂无记录</span></div>';return}
-        const seen={};const unique=[];
-        for(let i=history.length-1;i>=0;i--){
-          const r=history[i];const k=deviceKey({browser:r.browser,os:r.os});
-          if(!seen[k]){seen[k]=true;unique.push(r)}
-        }
-        if(unique.length>3)unique.length=3;
-        const lines=unique.map(r=>{
-          const d=new Date(r.time);
-          const ts=d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-          return '<div class="info-row"><span class="label">'+KJ.escapeHtml(r.os)+' · '+KJ.escapeHtml(r.browser)+'</span><span class="value" style="font-size:11px">'+ts+'<br>'+KJ.escapeHtml(r.ip||'--')+'</span></div>';
-        });
-        el.innerHTML=lines.join('');
-        // 更新设备数量
-        const countEl=$('#deviceCount');
-        if(countEl)countEl.textContent=unique.length+' 台';
-      }catch(e){el.innerHTML='加载失败'}
-    }
-
     async function loadUser(){
       if(!sb)return;
       try{
-        const{data:{session}}=await sb.auth.getSession();
-        if(!session?.user){showLoginPrompt();return}
-        user=session.user;
+        var r=await sb.auth.getSession();
+        if(!r.data.session||!r.data.session.user){showLoginPrompt();return}
+        user=r.data.session.user;
         $('#loginPrompt').style.display='none';$('#accountContent').style.display='block';
-        const nick=user.user_metadata?.nick||user.email?.split('@')[0]||'用户';
+
+        var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
         $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
         $('#profileName').textContent=nick;
         $('#profileEmail').textContent=user.email;
         $('#emailStatus').textContent=user.email_confirmed_at?'已验证':'待验证';
-        if(!user.email_confirmed_at) $('#emailStatus').style.color='var(--warning)';
+        if(!user.email_confirmed_at)$('#emailStatus').style.color='var(--color-warning)';
         $('#infoUserId').textContent=user.id.substring(0,12)+'...';
-        $('#infoCreated').textContent=formatDate(user.created_at);
+        $('#infoCreated').textContent=fmtDate(user.created_at);
+
         try{
-          const{data}=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
-          if(data?.length){
-            $('#infoLastLogin').textContent=formatDate(data[0].last_login_time);
-            $('#infoStatus').textContent=data[0].status==='active'?'正常':'待审核';
-          }
+          var r2=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
+          if(r2.data&&r2.data.length){$('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);$('#infoStatus').textContent=r2.data[0].status==='active'?'正常':'待审核';}
         }catch(e){}
-        const ua=KJ.parseUA();
-        $('#deviceCurrent').textContent=ua.browser;
+
+        var ua=KJ.parseUA();
+        $('#deviceBrowser').textContent=ua.browser;
         $('#deviceOS').textContent=ua.os+(ua.osVer?' '+ua.osVer:'');
         $('#deviceScreen').textContent=ua.screen;
-        loadIP().then(ip=>{
-          $('#deviceIP').textContent=ip;
-          saveLoginRecord(ip);
-          renderLoginHistory();
-        });
+
+        loadIP().then(function(ip){$('#deviceIP').textContent=ip;saveLoginRecord(ip);renderLoginHistory();});
         renderLoginHistory();
         renderCpoauthBinding();
-        // 密码强度检测（基于注册时间推算）
-        const daysSinceCreated=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
-        const el=$('#pwdStrength');
-        if(daysSinceCreated>90){el.textContent='建议修改';el.style.color='var(--warning)'}
-        else{el.textContent='正常';el.style.color='var(--success)'}
-      }catch(e){
-        console.error('loadUser failed:',e);
-        showLoginPrompt();
-      }
+
+        var days=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
+        var el=$('#pwdStrength');el.textContent=days>90?'建议修改':'正常';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
+      }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 
-    // CPOAuth 第三方绑定管理（支持跨设备同步）
-    function getCpoauthSession(){
-      try{return JSON.parse(localStorage.getItem('kjllin_cpoauth')||'null')}catch(e){return null}
-    }
+    // CPOAuth
+    function getCpoauthSession(){try{return JSON.parse(localStorage.getItem('kjllin_cpoauth')||'null');}catch(e){return null;}}
     async function renderCpoauthBinding(){
-      const statusEl=$('#cpoauthStatus');if(!statusEl)return;
-      let session=getCpoauthSession();
-
-      // 如果 localStorage 没有绑定信息，从 Supabase 读取（跨设备同步）
+      var statusEl=$('#cpoauthStatus');if(!statusEl)return;
+      var session=getCpoauthSession();
       if(!session&&sb&&user){
-        try{
-          const{data,error}=await sb.from('users')
-            .select('cpoauth_sub,cpoauth_username,cpoauth_linked_at')
-            .eq('id',user.id).single();
-          if(!error&&data&&data.cpoauth_sub){
-            session={
-              provider:'cpoauth',
-              sub:data.cpoauth_sub,
-              username:data.cpoauth_username||'CPOAuth 用户',
-              linked_at:data.cpoauth_linked_at
-            };
-            // 恢复 localStorage 缓存，加速下次访问
-            try{localStorage.setItem('kjllin_cpoauth',JSON.stringify(session))}catch(e){}
-          }
-        }catch(e){console.warn('CPOAuth sync check failed:',e)}
+        try{var r=await sb.from('users').select('cpoauth_sub,cpoauth_username,cpoauth_linked_at').eq('id',user.id).single();if(!r.error&&r.data&&r.data.cpoauth_sub){session={provider:'cpoauth',sub:r.data.cpoauth_sub,username:r.data.cpoauth_username||'CPOAuth 用户',linked_at:r.data.cpoauth_linked_at};try{localStorage.setItem('kjllin_cpoauth',JSON.stringify(session));}catch(e){}}}catch(e){console.warn('CPOAuth sync:',e)}
       }
-
       if(session&&(session.sub||session.user)){
-        const name=session.username||(session.user&&(session.user.display_name||session.user.username))||session.email||(session.user&&session.user.email)||'CPOAuth 用户';
-        statusEl.innerHTML='<span style="color:var(--success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';
+        var name=session.username||(session.user&&(session.user.display_name||session.user.username))||'CPOAuth 用户';
+        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';
       }else{
-        statusEl.innerHTML='<span style="color:var(--text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
-        setTimeout(()=>{
-          const btn=$('#cpoauthBindBtn');if(btn)btn.addEventListener('click',cpoauthBind);
-        },0);
+        statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
+        setTimeout(function(){var btn=$('#cpoauthBindBtn');if(btn)btn.addEventListener('click',cpoauthBind);},0);
       }
     }
     function cpoauthBind(){
-      const CPOAUTH_AUTHORIZE='https://www.cpoauth.com/oauth/authorize';
-      const CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
-      const REDIRECT='https://kjllin.github.io/login/callback/';
-      const SCOPE='openid profile email';
-
-      function genVerifier(){const a=new Uint8Array(96);crypto.getRandomValues(a);return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-      function genState(){const a=new Uint8Array(16);crypto.getRandomValues(a);return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-
-      const verifier=genVerifier();
-      const state=genState();
-      sessionStorage.setItem('cpoauth_code_verifier',verifier);
-      sessionStorage.setItem('cpoauth_oauth_state',state);
-      sessionStorage.setItem('cpoauth_redirect_uri',REDIRECT);
-      sessionStorage.setItem('cpoauth_action','link');
-
-      crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(digest=>{
-        const challenge=btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-        const params=new URLSearchParams({response_type:'code',client_id:CLIENT_ID,redirect_uri:REDIRECT,scope:SCOPE,state:state,code_challenge:challenge,code_challenge_method:'S256'});
-        window.location.href=CPOAUTH_AUTHORIZE+'?'+params.toString().replace(/\+/g,'%20');
-      });
+      var AUTHORIZE='https://www.cpoauth.com/oauth/authorize',CID='2bbbe6cf-b13c-4181-8958-61184a2c799e',REDIRECT='https://kjllin.github.io/login/callback/',SCOPE='openid profile email';
+      function gen(len){var a=new Uint8Array(len);crypto.getRandomValues(a);return btoa(String.fromCharCode.apply(null,[].slice.call(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+      var verifier=gen(96),state=gen(16);
+      sessionStorage.setItem('cpoauth_code_verifier',verifier);sessionStorage.setItem('cpoauth_oauth_state',state);sessionStorage.setItem('cpoauth_redirect_uri',REDIRECT);sessionStorage.setItem('cpoauth_action','link');
+      crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(function(digest){var challenge=btoa(String.fromCharCode.apply(null,new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');window.location.href=AUTHORIZE+'?'+new URLSearchParams({response_type:'code',client_id:CID,redirect_uri:REDIRECT,scope:SCOPE,state:state,code_challenge:challenge,code_challenge_method:'S256'}).toString().replace(/\+/g,'%20');});
     }
-    async function cpoauthUnbind(){
-      if(!confirm('确定解绑 CPOAuth 账号？解绑后将无法使用 CPOAuth 登录。'))return;
-      if(!sb){KJ.toast('网络错误');return}
-      try{
-        // 清除服务端绑定（通过 service_role 边端函数或直接 PATCH）
-        const{data:{session}}=await sb.auth.getSession();
-        if(session){
-          await sb.from('users').update({
-            cpoauth_sub:null,
-            cpoauth_linked_at:null,
-            cpoauth_username:null
-          }).eq('id',session.user.id);
-        }
-      }catch(e){console.warn('CPOAuth unbind server error:',e)}
-      localStorage.removeItem('kjllin_cpoauth');
-      KJ.toast('已解绑 CPOAuth');
-      renderCpoauthBinding();
-    }
+    async function cpoauthUnbind(){if(!confirm('确定解绑 CPOAuth？'))return;if(!sb){KJ.toast('网络错误');return}try{var r=await sb.auth.getSession();if(r.data.session)await sb.from('users').update({cpoauth_sub:null,cpoauth_linked_at:null,cpoauth_username:null}).eq('id',r.data.session.user.id);}catch(e){console.warn('CPOAuth unbind:',e)}localStorage.removeItem('kjllin_cpoauth');KJ.toast('已解绑 CPOAuth');renderCpoauthBinding();}
     window.cpoauthUnbind=cpoauthUnbind;
 
-    $('#logoutBtn').addEventListener('click',async()=>{
-      if(!confirm('确定退出登录？'))return;
-      if(!sb){window.location.href='/';return}
-      try{await sb.auth.signOut()}catch(e){console.warn('Sign out error:',e)}
-      window.location.href='/';
-    });
-
-    $('#logoutAllBtn').addEventListener('click',async()=>{
-      if(!confirm('确定登出所有设备？这会使你所有已登录的设备全部退出，需要重新登录。'))return;
-      if(!sb){KJ.toast('网络错误');return}
-      const btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';
-      try{
-        // signOut with scope 'others' signs out all other sessions
-        await sb.auth.signOut({scope:'others'});
-        // then sign out current session
-        await sb.auth.signOut();
-        KJ.toast('已登出所有设备');
-        setTimeout(()=>window.location.href='/',800);
-      }catch(e){
-        console.error('Sign out all error:',e);
-        KJ.toast('操作失败，请重试');
-        btn.disabled=false;btn.textContent='登出所有设备';
-      }
-    });
+    $('#logoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
+    $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
 
     // Theme
-    const themeBtn=$('#themeBtn');
-    function updateThemeUI(){
-      var state = KJ.applyTheme('#f3f3f3', '#0f0f0f');
-      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
-    }
-    themeBtn.addEventListener('click',function(){
-      var state = KJ.toggleTheme();
-      KJ.applyTheme('#f3f3f3', '#0f0f0f');
-      themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
+    var themeBtn=$('#themeBtn');
+    function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    // 移动端
+    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
+    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+
+    if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
+
+    function showLoginPrompt(){$('#loginPrompt').style.display='';$('#accountContent').style.display='none';$('#loginMsg').textContent='请登录后管理账号';$('#loginLink').hidden=false;}
+
+    var authReady=false;
+    sb.auth.onAuthStateChange(function(event,session){
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(session&&session.user){loadUser();return}showLoginPrompt();}
+      else if(event==='SIGNED_OUT'){authReady=true;showLoginPrompt();}
+      else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session&&session.user)loadUser();}
     });
-    KJ.onSystemThemeChange(updateThemeUI);
-    updateThemeUI();
-
-    // 移动端汉堡菜单
-    const hamburgerBtn=$('#hamburgerBtn'),mobileMenu=$('#mobileMenu');
-    hamburgerBtn.addEventListener('click',function(e){e.stopPropagation();mobileMenu.classList.toggle('open')});
-    document.addEventListener('click',function(e){if(!hamburgerBtn.contains(e.target)&&!mobileMenu.contains(e.target))mobileMenu.classList.remove('open')});
-
-    if(!sb){
-      $('#loginMsg').textContent='网络错误，请刷新后重试';
-      return;
-    }
-
-    let authReady = false;
-    sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        authReady = true;
-        if (session?.user) { loadUser(); return; }
-        showLoginPrompt();
-      } else if (event === 'SIGNED_OUT') {
-        authReady = true;
-        showLoginPrompt();
-      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (session?.user) loadUser();
-      }
-    });
-
-    function showLoginPrompt() {
-      $('#loginPrompt').style.display = '';
-      $('#accountContent').style.display = 'none';
-      $('#loginMsg').textContent = '请登录后管理账号';
-      $('#loginLink').hidden = false;
-    }
-
-    setTimeout(() => { if (!authReady) loadUser(); }, 3000);
-    setTimeout(() => {
-      if ($('#loginMsg').textContent === '加载中...') {
-        $('#loginMsg').textContent = '加载超时，请检查网络后刷新页面';
-        $('#loginLink').hidden = false;
-        $('#loginLink').textContent = '→ 刷新页面';
-        $('#loginLink').href = 'javascript:location.reload()';
-      }
-    }, 8000);
+    setTimeout(function(){if(!authReady)loadUser();},3000);
+    setTimeout(function(){if($('#loginMsg').textContent==='加载中...'){$('#loginMsg').textContent='加载超时，请检查网络后刷新页面';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);
     })();
   </script>
 </body>

@@ -254,6 +254,14 @@
   async function recordLoginDevice(sb) {
     if (!sb) return;
     try {
+      // 获取当前用户 ID
+      var userId = null;
+      try {
+        var { data: { session } } = await sb.auth.getSession();
+        if (session && session.user) userId = session.user.id;
+      } catch(e) {}
+      if (!userId) return; // 无用户则跳过（未登录状态）
+
       var ua = parseUA();
       var ip = '获取中...';
       try {
@@ -271,13 +279,16 @@
         }
       } catch(e) {}
 
-      // 写入 Supabase
+      // 写入 Supabase（包含 user_id 和 logged_in_at）
+      var now = new Date().toISOString();
       var { error } = await sb.from('login_devices').insert({
+        user_id: userId,
         browser: ua.browser + (ua.osVer ? ' ' + ua.osVer : ''),
         os: ua.os,
         os_ver: ua.osVer || '',
         screen: ua.screen,
-        ip: ip
+        ip: ip,
+        logged_in_at: now
       });
       if (error) console.warn('Device record insert error:', error);
 
