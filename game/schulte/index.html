@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#f3f3f3">
   <meta name="description" content="舒尔特方格注意力训练 - KJLLin">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
   <title>舒尔特方格 · KJLLin</title>
   <style>
     html {
@@ -253,17 +254,15 @@
     }
     .cell.correct {
       background: var(--cell-correct);
-      color: #28a745;
+      color: var(--color-success);
       pointer-events: none;
       animation: cellPop 0.3s ease;
     }
-    [data-theme="dark"] .cell.correct { color: #4caf50; }
     .cell.wrong {
       background: var(--cell-wrong);
-      color: #dc3545;
+      color: var(--color-danger);
       animation: cellShake 0.4s ease;
     }
-    [data-theme="dark"] .cell.wrong { color: #f44336; }
     
     @keyframes cellPop {
       0% { transform: scale(1); }
