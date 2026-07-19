@@ -20,17 +20,17 @@ html {
 }
 
 :root {
-  --bg-body: #f3f3f3;
-  --bg-mica: rgba(255,255,255,0.85);
-  --bg-mica-hover: rgba(255,255,255,0.92);
-  --border-mica: rgba(0,0,0,0.06);
-  --text-primary: #1a1a1a;
-  --text-secondary: #5e5e5e;
-  --text-tertiary: #8e8e8e;
-  --accent: #0078d4;
-  --accent-light: #0099ff;
-  --accent-glow: rgba(0,120,212,0.1);
-  --shadow-rest: 0 2px 12px rgba(0,0,0,0.08);
+  --bg-body: var(--color-bg);
+  --bg-mica: var(--color-bg-glass);
+  --bg-mica-hover: var(--color-bg-glass-hover);
+  --border-mica: var(--color-border);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --accent: var(--color-accent);
+  --accent-light: var(--color-accent-light);
+  --accent-glow: var(--color-accent-glow);
+  --shadow-rest: var(--shadow-sm);
   --board-bg: rgba(0,0,0,0.03);
   --cell-bg: rgba(0,0,0,0.05);
   --score-bg: rgba(0,0,0,0.03);
@@ -38,15 +38,15 @@ html {
   --btn-bg: rgba(0,0,0,0.45);
 }
 [data-theme="dark"] {
-  --bg-body: #0f0f0f;
-  --bg-mica: rgba(22,22,22,0.88);
-  --bg-mica-hover: rgba(28,28,28,0.94);
-  --border-mica: rgba(255,255,255,0.07);
-  --text-primary: #f0f0f0;
-  --text-secondary: #a0a0a0;
-  --text-tertiary: #707070;
-  --accent-glow: rgba(0,120,212,0.15);
-  --shadow-rest: 0 2px 12px rgba(0,0,0,0.3);
+  --bg-body: var(--color-bg);
+  --bg-mica: var(--color-bg-glass);
+  --bg-mica-hover: var(--color-bg-glass-hover);
+  --border-mica: var(--color-border);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --accent-glow: var(--color-accent-glow);
+  --shadow-rest: var(--shadow-sm);
   --board-bg: rgba(255,255,255,0.02);
   --cell-bg: rgba(255,255,255,0.04);
   --score-bg: rgba(255,255,255,0.03);
@@ -91,9 +91,10 @@ pre, code, .mono, .tile, .score-val {
 .container {
   position: relative; z-index: 1;
   background: var(--bg-mica);
+  background-image: var(--iridescent);
   backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-mica);
-  border-radius: 20px; box-shadow: var(--shadow-rest);
+  border-radius: 20px; box-shadow: var(--shadow-rest), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   padding: 28px 24px 24px;
   width: min(440px, 94vw);
   display: flex; flex-direction: column; gap: 14px;
