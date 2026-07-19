@@ -14,23 +14,24 @@
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
-      --bg:#f5f5f7;--card-bg:rgba(255,255,255,0.72);--card-hover:rgba(255,255,255,0.88);
-      --border:rgba(0,0,0,0.06);--border-focus:rgba(0,0,0,0.15);
-      --text:#1d1d1f;--text-secondary:#6e6e73;--text-tertiary:#86868b;
-      --accent:#0071e3;--accent-hover:#0077ed;--accent-ring:rgba(0,113,227,0.15);
-      --input-bg:rgba(0,0,0,0.02);--danger:#ff3b30;
-      --shadow:0 4px 24px rgba(0,0,0,0.06);--shadow-hover:0 8px 32px rgba(0,0,0,0.1);
-      --radius:14px;--radius-sm:10px;--radius-btn:24px;
-      font-family:"SF Pro Display","PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+      --bg:var(--color-bg);--card-bg:var(--color-bg-glass);--card-hover:var(--color-bg-glass-hover);
+      --border:var(--color-border);--border-focus:var(--color-border-hover);
+      --text:var(--color-text-primary);--text-secondary:var(--color-text-secondary);--text-tertiary:var(--color-text-tertiary);
+      --accent:var(--color-accent);--accent-hover:var(--color-accent-hover);--accent-ring:var(--color-accent-glow);
+      --input-bg:var(--color-bg-input);--danger:var(--color-danger);
+      --shadow:var(--shadow-lg);--shadow-hover:var(--shadow-xl);
+      --radius:18px;--radius-sm:10px;--radius-btn:24px;
+      font-family:var(--font-sans);
       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
     }
     [data-theme="dark"]{
-      --bg:#000;--card-bg:rgba(28,28,30,0.78);--card-hover:rgba(44,44,46,0.88);
-      --border:rgba(255,255,255,0.08);--border-focus:rgba(255,255,255,0.2);
-      --text:#f5f5f7;--text-secondary:#a1a1a6;--text-tertiary:#6e6e73;
-      --accent:#2997ff;--accent-hover:#40a9ff;--accent-ring:rgba(41,151,255,0.18);
-      --input-bg:rgba(255,255,255,0.04);--danger:#ff453a;
-      --shadow:0 4px 24px rgba(0,0,0,0.3);--shadow-hover:0 8px 32px rgba(0,0,0,0.5);
+      --bg:var(--color-bg);--card-bg:var(--color-bg-glass);--card-hover:var(--color-bg-glass-hover);
+      --border:var(--color-border);--border-focus:var(--color-border-hover);
+      --text:var(--color-text-primary);--text-secondary:var(--color-text-secondary);--text-tertiary:var(--color-text-tertiary);
+      --accent:var(--color-accent);--accent-hover:var(--color-accent-hover);--accent-ring:var(--color-accent-glow);
+      --input-bg:var(--color-bg-input);--danger:var(--color-danger);
+      --shadow:var(--shadow-lg);--shadow-hover:var(--shadow-xl);
+      --radius:18px;--radius-sm:10px;--radius-btn:24px;
     }
     html,body{width:100%;min-height:100vh}
     body{
@@ -56,10 +57,13 @@
     /* 卡片容器 */
     .container{z-index:1;width:100%;max-width:420px}
     .card{
-      background:var(--card-bg);-webkit-backdrop-filter:blur(40px) saturate(180%);
+      background:var(--card-bg);
+      background-image:var(--iridescent);
+      -webkit-backdrop-filter:blur(40px) saturate(180%);
       backdrop-filter:blur(40px) saturate(180%);
-      border:1px solid var(--border);border-radius:var(--radius);
-      padding:44px 36px 36px;box-shadow:var(--shadow);
+      border:1px solid var(--border);border-top:1px solid var(--color-border-glass);
+      border-radius:var(--radius);
+      padding:44px 36px 36px;box-shadow:var(--glass-shadow);
       animation:slideUp .6s cubic-bezier(.16,1,.3,1);
     }
     @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}

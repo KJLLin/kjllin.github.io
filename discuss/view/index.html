@@ -45,47 +45,47 @@
       font-family: "Consolas", "Cascadia Code", "SF Mono", "Fira Code", monospace !important;
     }
     :root {
-      --bg-body: #f3f3f3;
-      --bg-mica: rgba(255, 255, 255, 0.85);
-      --bg-mica-scroll: rgba(255, 255, 255, 0.92);
-      --bg-mica-hover: rgba(255, 255, 255, 0.9);
-      --border-mica: rgba(0, 0, 0, 0.06);
-      --border-mica-hover: rgba(0, 120, 212, 0.12);
-      --text-primary: #1a1a1a;
-      --text-secondary: #5e5e5e;
-      --text-tertiary: #8e8e8e;
-      --accent: #0078d4;
-      --accent-light: #0099ff;
-      --accent-glow: rgba(0, 120, 212, 0.1);
-      --accent-glow-weak: rgba(0, 120, 212, 0.05);
-      --danger: #e81123;
-      --shadow-rest: 0 2px 8px rgba(0,0,0,0.06);
-      --shadow-hover: 0 4px 16px rgba(0,0,0,0.09);
-      --shadow-scroll: 0 4px 12px rgba(0,0,0,0.08);
-      --scroll-bar: #c4c4c4;
+      --bg-body: var(--color-bg);
+      --bg-mica: var(--color-bg-glass);
+      --bg-mica-scroll: var(--color-bg-glass-solid);
+      --bg-mica-hover: var(--color-bg-glass-hover);
+      --border-mica: var(--color-border);
+      --border-mica-hover: var(--color-border-hover);
+      --text-primary: var(--color-text-primary);
+      --text-secondary: var(--color-text-secondary);
+      --text-tertiary: var(--color-text-tertiary);
+      --accent: var(--color-accent);
+      --accent-light: var(--color-accent-light);
+      --accent-glow: var(--color-accent-glow);
+      --accent-glow-weak: rgba(0,113,227,0.05);
+      --danger: var(--color-danger);
+      --shadow-rest: var(--shadow-sm);
+      --shadow-hover: var(--shadow-lg);
+      --shadow-scroll: var(--shadow-md);
+      --scroll-bar: var(--scrollbar-thumb);
       --code-bg: #f6f8fa;
       --code-border: rgba(0,0,0,0.08);
       --hljs-bg: #f6f8fa;
     }
     [data-theme="dark"]:root {
-      --bg-body: #0f0f0f;
-      --bg-mica: rgba(20,20,20,0.85);
-      --bg-mica-scroll: rgba(20,20,20,0.92);
-      --bg-mica-hover: rgba(26,26,26,0.9);
-      --border-mica: rgba(255,255,255,0.07);
-      --border-mica-hover: rgba(0,120,212,0.2);
-      --text-primary: #f0f0f0;
-      --text-secondary: #a0a0a0;
-      --text-tertiary: #707070;
-      --accent: #0078d4;
-      --accent-light: #0099ff;
-      --accent-glow: rgba(0,120,212,0.15);
-      --accent-glow-weak: rgba(0,120,212,0.07);
-      --danger: #ff6b6b;
-      --shadow-rest: 0 2px 8px rgba(0,0,0,0.25);
-      --shadow-hover: 0 4px 16px rgba(0,0,0,0.35);
-      --shadow-scroll: 0 4px 12px rgba(0,0,0,0.3);
-      --scroll-bar: #4a4a4a;
+      --bg-body: var(--color-bg);
+      --bg-mica: var(--color-bg-glass);
+      --bg-mica-scroll: var(--color-bg-glass-solid);
+      --bg-mica-hover: var(--color-bg-glass-hover);
+      --border-mica: var(--color-border);
+      --border-mica-hover: var(--color-border-hover);
+      --text-primary: var(--color-text-primary);
+      --text-secondary: var(--color-text-secondary);
+      --text-tertiary: var(--color-text-tertiary);
+      --accent: var(--color-accent);
+      --accent-light: var(--color-accent-light);
+      --accent-glow: var(--color-accent-glow);
+      --accent-glow-weak: rgba(10,132,255,0.07);
+      --danger: var(--color-danger);
+      --shadow-rest: var(--shadow-sm);
+      --shadow-hover: var(--shadow-lg);
+      --shadow-scroll: var(--shadow-md);
+      --scroll-bar: var(--scrollbar-thumb);
       --code-bg: #0d1117;
       --code-border: rgba(255,255,255,0.06);
       --hljs-bg: #0d1117;
@@ -137,8 +137,12 @@
     /* ====================== 云母组件 ====================== */
     .mica {
       background: var(--bg-mica);
-      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+      background-image: var(--iridescent);
+      backdrop-filter: var(--blur-lg);
+      -webkit-backdrop-filter: var(--blur-lg);
       border: 1px solid var(--border-mica);
+      border-top: 1px solid var(--color-border-glass);
+      box-shadow: var(--glass-shadow);
     }
 
     /* ====================== 顶部菜单栏 ====================== */
@@ -150,14 +154,14 @@
     }
     .menu-bar {
       display: flex; align-items: center; gap: 4px;
-      padding: 6px 8px; border-radius: var(--radius-md);
-      box-shadow: var(--shadow-rest);
+      padding: 6px 8px; border-radius: var(--radius-lg);
+      box-shadow: var(--glass-shadow);
       pointer-events: all;
-      transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+      transition: transform var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal);
     }
     .menu-bar.scrolled {
       background: var(--bg-mica-scroll);
-      box-shadow: var(--shadow-scroll);
+      box-shadow: var(--shadow-lg);
       transform: translateY(-2px);
     }
     .menu-logo {

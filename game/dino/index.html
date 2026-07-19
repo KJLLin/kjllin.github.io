@@ -8,6 +8,25 @@
     <link rel="stylesheet" href="/theme.css">
   <title>恐龙快跑升级版-KJLLin</title>
     <style>
+        :root {
+          --bg-body: var(--color-bg);
+          --bg-mica: var(--color-bg-glass);
+          --border-mica: var(--color-border);
+          --text-primary: var(--color-text-primary);
+          --text-secondary: var(--color-text-secondary);
+          --accent: var(--color-accent);
+          --accent-glow: var(--color-accent-glow);
+          --accent-glow-weak: rgba(0,113,227,0.05);
+          --shadow-rest: var(--shadow-sm);
+        }
+        .mica {
+          background: var(--bg-mica);
+          background-image: var(--iridescent);
+          -webkit-backdrop-filter: blur(24px);
+          backdrop-filter: blur(24px);
+          border: 1px solid var(--border-mica);
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        }
         body {
             margin: 0;
             padding: 20px;
@@ -16,7 +35,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background-color: #f0f0f0;
+            background-color: var(--bg-body);
             font-family: Arial, sans-serif;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
