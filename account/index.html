@@ -12,7 +12,7 @@
   <style>
     /* ── 导航栏（theme.css 令牌） ── */
     .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg)}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
     .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
     .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
     .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}
@@ -21,7 +21,7 @@
     .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}
     #themeBtn{border-radius:50%}
     .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
     .mobile-menu-dropdown.open{display:flex}
     .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
 

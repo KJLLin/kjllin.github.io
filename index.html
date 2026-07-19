@@ -35,6 +35,14 @@
       0%, 100% { transform: translate(0, 0) scale(1); }
       50% { transform: translate(4%, 4%) scale(1.05); }
     }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* ── 加载遮罩 ── */
     #loader {
@@ -71,8 +79,8 @@
       box-shadow: var(--shadow-sm);
       pointer-events: all;
       background: var(--color-bg-glass);
-      backdrop-filter: var(--blur-lg);
-      -webkit-backdrop-filter: var(--blur-lg);
+      backdrop-filter: var(--blur-nav);
+      -webkit-backdrop-filter: var(--blur-nav);
       transition: all var(--transition-base);
     }
     .menu-bar.scrolled {
@@ -128,8 +136,8 @@
       border: 1px solid var(--color-border);
       box-shadow: var(--shadow-lg);
       background: var(--color-bg-glass-solid);
-      backdrop-filter: var(--blur-lg);
-      -webkit-backdrop-filter: var(--blur-lg);
+      backdrop-filter: var(--blur-surface);
+      -webkit-backdrop-filter: var(--blur-surface);
       flex-direction: column; gap: 2px;
       pointer-events: all; z-index: 101;
     }
@@ -231,8 +239,8 @@
       border-color: var(--color-border-hover);
       box-shadow: var(--shadow-lg);
       background: var(--color-bg-glass);
-      backdrop-filter: var(--blur-md);
-      -webkit-backdrop-filter: var(--blur-md);
+      backdrop-filter: var(--blur-card);
+      -webkit-backdrop-filter: var(--blur-card);
     }
     .project-card:hover .card-shine { left: 100%; }
 
@@ -253,7 +261,7 @@
     .card-desc {
       font-size: 14px; color: var(--color-text-tertiary); line-height: 1.65;
       position: relative; z-index: 2; pointer-events: none;
-      font-family: var(--font-mono);
+      font-family: var(--font-sans);
     }
     .card-tags {
       display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;
@@ -283,8 +291,8 @@
       border-radius: var(--radius-sm); border: 1px solid var(--color-border);
       font-size: 17px; cursor: pointer;
       background: var(--color-bg-glass);
-      backdrop-filter: var(--blur-lg);
-      -webkit-backdrop-filter: var(--blur-lg);
+      backdrop-filter: var(--blur-button);
+      -webkit-backdrop-filter: var(--blur-button);
       color: var(--color-text-primary);
       opacity: 0; pointer-events: none; z-index: 80;
       box-shadow: var(--shadow-sm);

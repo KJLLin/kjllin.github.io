@@ -55,7 +55,7 @@ input, textarea, button { font-family: inherit; }
 .toast.hidden { opacity: 0; transform: translateX(-50%) translateY(-12px); }
 .toast.info {
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg); -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface); -webkit-backdrop-filter: var(--blur-surface);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
 }
@@ -85,8 +85,8 @@ input, textarea, button { font-family: inherit; }
   pointer-events: all;
   background: var(--color-bg-glass-solid);
   background-image: var(--iridescent);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-nav);
+  -webkit-backdrop-filter: var(--blur-nav);
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
@@ -129,8 +129,8 @@ input, textarea, button { font-family: inherit; }
   flex-direction: column; gap: 2px;
   pointer-events: all; z-index: 101;
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-lg);
 }
@@ -158,8 +158,8 @@ input, textarea, button { font-family: inherit; }
   display: flex; flex-direction: column;
   background: var(--color-bg-glass);
   background-image: var(--iridescent);
-  backdrop-filter: var(--blur-md);
-  -webkit-backdrop-filter: var(--blur-md);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
   border-right: 1px solid var(--color-border);
   z-index: 10;
 }
@@ -193,8 +193,8 @@ input, textarea, button { font-family: inherit; }
 .search-results {
   position: absolute; top: 56px; left: 12px; right: 12px;
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -340,8 +340,8 @@ input, textarea, button { font-family: inherit; }
   flex-shrink: 0;
   background: var(--color-bg-glass-solid);
   background-image: var(--iridescent);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-nav);
+  -webkit-backdrop-filter: var(--blur-nav);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -387,8 +387,8 @@ input, textarea, button { font-family: inherit; }
 }
 .msg-them .msg-bubble {
   background: var(--color-bg-glass);
-  backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
+  backdrop-filter: var(--blur-button);
+  -webkit-backdrop-filter: var(--blur-button);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-bottom-left-radius: 6px;
@@ -407,8 +407,8 @@ input, textarea, button { font-family: inherit; }
   padding: 12px 18px 16px;
   background: var(--color-bg-glass-solid);
   background-image: var(--iridescent);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -459,8 +459,8 @@ input, textarea, button { font-family: inherit; }
 .conv-menu {
   position: fixed;
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
