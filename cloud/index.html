@@ -14,8 +14,8 @@
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <style>
     html {
-      --win-ease: cubic-bezier(0.4, 0, 0.2, 1);
-      --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --win-ease: var(--spring-default);
+      --bounce: var(--spring-bounce);
       --transition-fast: 200ms var(--win-ease);
       --transition-normal: 300ms var(--win-ease);
       --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50%;

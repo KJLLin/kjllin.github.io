@@ -64,7 +64,7 @@
       border:1px solid var(--border);border-top:1px solid var(--color-border-glass);
       border-radius:var(--radius);
       padding:44px 36px 36px;box-shadow:var(--glass-shadow);
-      animation:slideUp .6s cubic-bezier(.16,1,.3,1);
+      animation:slideUp .6s var(--spring-default);
     }
     @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
 
@@ -95,7 +95,7 @@
 
     /* 表单 */
     .panel{display:none}
-    .panel.active{display:block;animation:slideUp .3s cubic-bezier(.16,1,.3,1)}
+    .panel.active{display:block;animation:slideUp .3s var(--spring-default)}
 
     .field{margin-bottom:20px}
     .field label{
@@ -190,7 +190,7 @@
       padding:12px 28px;border-radius:24px;font-size:14px;z-index:999;
       background:var(--text);color:var(--bg);
       box-shadow:0 8px 32px rgba(0,0,0,0.15);
-      animation:toastIn .35s cubic-bezier(.16,1,.3,1);
+      animation:toastIn .35s var(--spring-default);
     }
     @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}}
 

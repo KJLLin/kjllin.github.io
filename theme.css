@@ -1,7 +1,7 @@
 /* ================================================================
-   KJLLin Design System — Apple Liquid Glass 设计语言
-   基于 visionOS / iOS 18+ 液态玻璃美学
-   全站共享主题文件，统一所有设计令牌
+   KJLLin Design System — Apple Design Language
+   基于 Apple HIG · Designing Fluid Interfaces (WWDC 2018)
+   全站共享主题文件 · 弹簧物理 · 材质深度 · 排版光学
    ================================================================ */
 
 /* ====================== CSS Reset & Base ====================== */
@@ -19,7 +19,7 @@ html {
 /* ====================== Design Tokens ====================== */
 :root {
   /* ── Typography ── */
-  --font-sans: "SF Pro Display", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-sans: "SF Pro Display", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "SF Mono", "Cascadia Code", "Consolas", "Fira Code", "JetBrains Mono", monospace;
 
   --text-xs: 0.75rem;      --text-sm: 0.875rem;     --text-base: 1rem;
@@ -29,7 +29,14 @@ html {
   --font-weight-normal: 400;   --font-weight-medium: 500;
   --font-weight-semibold: 600; --font-weight-bold: 700;
 
-  --line-height-tight: 1.15;   --line-height-normal: 1.5;    --line-height-relaxed: 1.7;
+  /* 排版光学 (Apple typography): 大字收紧，小字放松 */
+  --tracking-tight: -0.022em;    /* 大标题 */
+  --tracking-normal: -0.01em;    /* 正文 */
+  --tracking-loose: 0;           /* 小字/caption */
+
+  --line-height-tight: 1.12;     /* 大标题（越大约紧） */
+  --line-height-normal: 1.47;    /* 正文 */
+  --line-height-relaxed: 1.65;   /* 长文 */
 
   /* ── Spacing (8px grid) ── */
   --space-1: 0.25rem;   --space-2: 0.5rem;    --space-3: 0.75rem;
@@ -37,19 +44,19 @@ html {
   --space-8: 2rem;      --space-10: 2.5rem;   --space-12: 3rem;
   --space-16: 4rem;     --space-20: 5rem;     --space-24: 6rem;
 
-  /* ── Border Radius (organic, liquid-soft) ── */
+  /* ── Border Radius — organic, liquid-soft ── */
   --radius-xs: 6px;     --radius-sm: 10px;     --radius-md: 14px;
   --radius-lg: 20px;    --radius-xl: 26px;     --radius-2xl: 36px;
   --radius-full: 9999px;
 
-  /* ══════════ Liquid Glass Color System (Light) ══════════ */
+  /* ══════════ Colors (Light — Apple palette) ══════════ */
   --color-accent: #0071e3;
   --color-accent-hover: #0077ed;
   --color-accent-light: #40a9ff;
   --color-accent-glow: rgba(0, 113, 227, 0.12);
   --color-accent-ring: rgba(0, 113, 227, 0.28);
 
-  /* Background — warm, luminous */
+  /* Background */
   --color-bg: #f2f2f7;
   --color-bg-raised: #ffffff;
   --color-bg-glass: rgba(255, 255, 255, 0.62);
@@ -60,26 +67,54 @@ html {
   --color-bg-active: rgba(0, 0, 0, 0.07);
   --color-bg-overlay: rgba(0, 0, 0, 0.28);
 
-  /* Text — high contrast, warm tone */
+  /* Text */
   --color-text-primary: #1d1d1f;
   --color-text-secondary: #6e6e73;
   --color-text-tertiary: #aeaeb2;
   --color-text-inverse: #ffffff;
   --color-text-on-accent: #ffffff;
 
-  /* Border — glass edge */
+  /* Border */
   --color-border: rgba(0, 0, 0, 0.06);
   --color-border-hover: rgba(0, 0, 0, 0.10);
   --color-border-focus: var(--color-accent-ring);
   --color-border-glass: rgba(255, 255, 255, 0.5);
 
-  /* Semantic colors */
+  /* Semantic */
   --color-success: #30d158;       --color-success-bg: rgba(48, 209, 88, 0.12);
   --color-warning: #ff9f0a;       --color-warning-bg: rgba(255, 159, 10, 0.12);
   --color-danger: #ff3b30;        --color-danger-bg: rgba(255, 59, 48, 0.10);
   --color-info: #0071e3;          --color-info-bg: rgba(0, 113, 227, 0.10);
 
-  /* ── Liquid Glass Depth ── */
+  /* ══════════ Apple Spring Curves ══════════ */
+  /* 临界阻尼 (damping 1.0, response 0.3s) — 默认 UI 动效，无 overshoot */
+  --spring-default: cubic-bezier(0.23, 0.01, 0.0, 1.0);
+  /* 欠阻尼 (damping 0.8, response 0.35s) — 动量驱动交互，轻微 bounce */
+  --spring-bounce: cubic-bezier(0.25, 1.1, 0.35, 1.15);
+  /* Material arrival — 材质到达/离开 */
+  --spring-material: cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  /* Decelerate (scroll-like) — 减速停止 */
+  --spring-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  /* 传统 ease-out (兼容保留) */
+  --ease-out: var(--spring-default);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: var(--spring-bounce);
+
+  /* Transition durations (Apple: 100-400ms) */
+  --duration-instant: 80ms;    /* 按钮按下反馈 — 快到感知不到 */
+  --duration-fast: 150ms;      /* hover 过渡 */
+  --duration-normal: 250ms;    /* 标准 UI */
+  --duration-slow: 350ms;      /* 大面积动效 */
+  --duration-material: 400ms;  /* 材质进入/离开 */
+
+  --transition-instant: var(--duration-instant) var(--spring-default);
+  --transition-fast: var(--duration-fast) var(--spring-default);
+  --transition-base: var(--duration-normal) var(--spring-default);
+  --transition-slow: var(--duration-slow) var(--spring-default);
+  --transition-spring: 420ms var(--spring-bounce);
+  --transition-material: var(--duration-material) var(--spring-material);
+
+  /* ══════════ Material Depth (Apple: 材质越大，模糊越深) ══════════ */
   --shadow-xs: 0 0.5px 1px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.06);
@@ -87,33 +122,27 @@ html {
   --shadow-xl: 0 16px 48px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
   --shadow-2xl: 0 24px 64px rgba(0,0,0,0.10), 0 8px 24px rgba(0,0,0,0.08);
 
-  /* Glass-specific: subtle inner highlight + depth shadow */
+  /* Glass-specific: 内高光 + 深度阴影 */
   --glass-shadow: 0 4px 16px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6);
   --glass-shadow-hover: 0 8px 28px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.7);
 
-  /* ── Liquid Glass Blur Layers ── */
-  --blur-xs: blur(6px) saturate(160%);
-  --blur-sm: blur(12px) saturate(170%);
-  --blur-md: blur(20px) saturate(180%);
-  --blur-lg: blur(30px) saturate(190%);
-  --blur-xl: blur(48px) saturate(200%);
+  /* ══════════ Blur Layers (Apple: 大表面 → 深模糊) ══════════ */
+  --blur-button: blur(6px) saturate(150%);     /* 小按钮/标签 */
+  --blur-card: blur(12px) saturate(165%);      /* 卡片 */
+  --blur-surface: blur(20px) saturate(180%);   /* 中等面板 */
+  --blur-sheet: blur(30px) saturate(190%);     /* 大面板/Sheet */
+  --blur-nav: blur(24px) saturate(185%);       /* 导航栏 */
 
-  /* Glass border: top/left brighter (light source), bottom/right darker */
+  /* Material edge — 顶部高光模拟光照 */
   --glass-edge: 0 1px rgba(255,255,255,0.55);
 
-  /* ── Iridescent Accent ── */
+  /* Iridescent accent overlay */
   --iridescent: linear-gradient(135deg, rgba(0,113,227,0.06) 0%, rgba(94,92,230,0.05) 25%, rgba(191,90,242,0.04) 50%, rgba(0,113,227,0.05) 100%);
   --iridescent-strong: linear-gradient(135deg, rgba(0,113,227,0.12) 0%, rgba(94,92,230,0.10) 25%, rgba(191,90,242,0.08) 50%, rgba(0,113,227,0.10) 100%);
 
-  /* ── Transitions ── */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-liquid: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --transition-fast: 180ms var(--ease-out);
-  --transition-base: 280ms var(--ease-out);
-  --transition-slow: 420ms var(--ease-out);
-  --transition-spring: 520ms var(--ease-spring);
+  /* Scroll edge mask — 滚动边缘渐变遮罩（替代硬分割线） */
+  --scroll-edge-top: linear-gradient(to bottom, var(--color-bg) 0%, transparent 100%);
+  --scroll-edge-bottom: linear-gradient(to top, var(--color-bg) 0%, transparent 100%);
 
   /* ── Layout ── */
   --container-max: 1200px;
@@ -126,7 +155,7 @@ html {
   --scrollbar-thumb-hover: rgba(0,0,0,0.22);
 }
 
-/* ====================== Dark Mode — Deep Liquid Glass ====================== */
+/* ====================== Dark Mode ====================== */
 [data-theme="dark"]:root {
   --color-bg: #0a0a0c;
   --color-bg-raised: #1c1c1e;
@@ -174,6 +203,9 @@ html {
   --iridescent: linear-gradient(135deg, rgba(10,132,255,0.08) 0%, rgba(94,92,230,0.06) 25%, rgba(191,90,242,0.05) 50%, rgba(10,132,255,0.07) 100%);
   --iridescent-strong: linear-gradient(135deg, rgba(10,132,255,0.14) 0%, rgba(94,92,230,0.10) 25%, rgba(191,90,242,0.08) 50%, rgba(10,132,255,0.12) 100%);
 
+  --scroll-edge-top: linear-gradient(to bottom, var(--color-bg) 0%, transparent 100%);
+  --scroll-edge-bottom: linear-gradient(to top, var(--color-bg) 0%, transparent 100%);
+
   --scrollbar-thumb: rgba(255,255,255,0.12);
   --scrollbar-thumb-hover: rgba(255,255,255,0.22);
 }
@@ -185,11 +217,22 @@ html, body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--line-height-normal);
+  letter-spacing: var(--tracking-normal);
   color: var(--color-text-primary);
   background: var(--color-bg);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* 大标题：负 tracking + 紧行高 */
+h1, h2, h3, h4 {
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-height-tight);
+  font-optical-sizing: auto;
+}
+h1 { font-size: var(--text-3xl); font-weight: var(--font-weight-bold); }
+h2 { font-size: var(--text-2xl); font-weight: var(--font-weight-semibold); }
+h3 { font-size: var(--text-xl); font-weight: var(--font-weight-semibold); }
 
 a { color: var(--color-accent); text-decoration: none; transition: color var(--transition-fast); }
 a:hover { color: var(--color-accent-hover); }
@@ -212,7 +255,7 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   .kj-toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
-/* ====================== Focus Ring ====================== */
+/* ====================== Focus Ring — Apple style ====================== */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -226,161 +269,136 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-/* ====================== Animations ====================== */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
+/* ====================== Apple Spring Animations ====================== */
+@keyframes appleFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes appleFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes fadeDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.94); }
+@keyframes appleScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(32px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes slideRight {
-  from { opacity: 0; transform: translateX(-12px); }
+@keyframes appleSlideRight {
+  from { opacity: 0; transform: translateX(-8px); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.15; }
-  50% { transform: scale(1.03); opacity: 0.08; }
-}
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-@keyframes toastIn {
+@keyframes appleToastIn {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes toastOut {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(-8px) scale(0.96); }
-}
-@keyframes liquidShine {
-  0% { background-position: -200% 50%; }
-  100% { background-position: 300% 50%; }
-}
-@keyframes floatIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+@keyframes appleMaterialIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ====================== Utility: Liquid Glass ====================== */
+/* Stagger 延迟工具类 */
+.anim-1{animation-delay:0.04s} .anim-2{animation-delay:0.08s} .anim-3{animation-delay:0.12s}
+.anim-4{animation-delay:0.16s} .anim-5{animation-delay:0.20s} .anim-6{animation-delay:0.24s}
+.anim-7{animation-delay:0.28s} .anim-8{animation-delay:0.32s} .anim-9{animation-delay:0.36s}
+.anim-10{animation-delay:0.40s}
 
-/* ── Base Glass — frosted, luminous, iridescent ── */
+/* ══════════ Material Depth System (Apple: 越大越深) ══════════ */
+
+/* ── 小表面：按钮、标签、chip — 轻模糊 ── */
+.glass-sm {
+  background: var(--color-bg-glass);
+  backdrop-filter: var(--blur-button);
+  -webkit-backdrop-filter: var(--blur-button);
+  border: 1px solid var(--color-border);
+}
+
+/* ── 中等表面：卡片、面板 — 标准模糊 ── */
 .glass {
   background: var(--color-bg-glass);
-  backdrop-filter: var(--blur-md);
-  -webkit-backdrop-filter: var(--blur-md);
+  background-image: var(--iridescent);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
   border: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
 }
+
+/* ── 大表面：Sheet、侧栏 — 深模糊 ── */
 .glass-strong {
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--glass-shadow);
-}
-
-/* ── Liquid Glass — enhanced with iridescence and inner light ── */
-.liquid-glass {
-  background: var(--color-bg-glass);
-  background-image: var(--iridescent);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
-  border: 1px solid var(--color-border);
-  border-top: 1px solid var(--color-border-glass);
-  box-shadow: var(--glass-shadow);
-  transition: all var(--transition-base);
-}
-.liquid-glass:hover {
-  background: var(--color-bg-glass-hover);
-  box-shadow: var(--glass-shadow-hover);
-}
-.liquid-glass-strong {
-  background: var(--color-bg-glass-solid);
   background-image: var(--iridescent-strong);
-  backdrop-filter: var(--blur-xl);
-  -webkit-backdrop-filter: var(--blur-xl);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
 }
 
-/* ====================== Card System ====================== */
+/* ── 导航栏：专属模糊层 ── */
+.glass-nav {
+  background: var(--color-bg-glass-solid);
+  background-image: var(--iridescent);
+  backdrop-filter: var(--blur-nav);
+  -webkit-backdrop-filter: var(--blur-nav);
+  border: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-glass);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── 兼容别名（保留旧类名） ── */
+/* .liquid-glass = .glass, .liquid-glass-strong = .glass-strong */
+
+/* ══════════ Card System ══════════ */
 .card {
   background: var(--color-bg-raised);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   padding: 20px;
-  transition: all var(--transition-base);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 .card:hover {
   border-color: var(--color-border-hover);
   box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-/* Glass card — the signature liquid glass surface */
+/* Glass card — 中等表面材质 */
 .card-glass {
   background: var(--color-bg-glass);
   background-image: var(--iridescent);
-  backdrop-filter: var(--blur-md);
-  -webkit-backdrop-filter: var(--blur-md);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
-  transition: all var(--transition-base);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 .card-glass:hover {
   background: var(--color-bg-glass-hover);
   border-color: var(--color-border-hover);
   box-shadow: var(--glass-shadow-hover);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-/* Strong glass card — less transparent, more iridescent */
 .card-glass-strong {
   background: var(--color-bg-glass-solid);
   background-image: var(--iridescent-strong);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
-  transition: all var(--transition-base);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 .card-glass-strong:hover {
   box-shadow: var(--glass-shadow-hover);
   transform: translateY(-1px);
 }
 
-/* ====================== Utility Animation Classes ====================== */
-.animate-fadeUp { animation: fadeUp 0.6s var(--ease-out) both; }
-.animate-scaleIn { animation: scaleIn 0.5s var(--ease-spring) both; }
-.animate-slideUp { animation: slideUp 0.7s var(--ease-out) both; }
-.animate-floatIn { animation: floatIn 0.55s var(--ease-liquid) both; }
-
-/* ── Stagger 延迟（卡片列表逐帧入场） ── */
-.stagger-1{animation-delay:0.05s} .stagger-2{animation-delay:0.10s}
-.stagger-3{animation-delay:0.15s} .stagger-4{animation-delay:0.20s}
-.stagger-5{animation-delay:0.25s} .stagger-6{animation-delay:0.30s}
-.stagger-7{animation-delay:0.35s} .stagger-8{animation-delay:0.40s}
-.stagger-9{animation-delay:0.45s} .stagger-10{animation-delay:0.50s}
-
-/* ====================== Button System ====================== */
+/* ══════════ Button System (Apple: 反馈在 pointerdown，非 release) ══════════ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   padding: var(--space-2) var(--space-5);
@@ -388,18 +406,23 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   font-family: var(--font-sans); font-size: var(--text-sm); font-weight: var(--font-weight-medium);
   border-radius: var(--radius-full);
   border: none; cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: transform var(--transition-instant), background var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
   white-space: nowrap;
   user-select: none;
   touch-action: manipulation;
 }
-.btn:active { transform: scale(0.97); }
+/* Apple: 按钮反馈在按下瞬间 — scale 0.97 + 80ms 过渡 */
+.btn:active {
+  transform: scale(0.97);
+  transition: transform var(--duration-instant) var(--spring-default);
+}
 
 .btn-primary {
   background: var(--color-accent); color: var(--color-text-on-accent);
   box-shadow: 0 2px 8px var(--color-accent-glow);
 }
 .btn-primary:hover { background: var(--color-accent-hover); box-shadow: 0 4px 14px var(--color-accent-glow); }
+.btn-primary:active { background: var(--color-accent-hover); }
 
 .btn-secondary {
   background: var(--color-bg-active); color: var(--color-text-primary);
@@ -416,11 +439,10 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 }
 .btn-danger:hover { opacity: 0.9; }
 
-/* Liquid glass button — translucent with iridescent hover */
 .btn-glass {
   background: var(--color-bg-glass);
-  backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
+  backdrop-filter: var(--blur-button);
+  -webkit-backdrop-filter: var(--blur-button);
   border: 1px solid var(--color-border);
   color: var(--color-text-primary);
   box-shadow: var(--shadow-xs);
@@ -434,7 +456,7 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 .btn-sm { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); min-height: 36px; min-width: 36px; }
 .btn-lg { padding: var(--space-3) var(--space-6); font-size: var(--text-base); }
 
-/* ====================== Input System (Liquid Glass) ====================== */
+/* ══════════ Input System ══════════ */
 .input {
   width: 100%; padding: var(--space-3) var(--space-4);
   background: var(--color-bg-input); color: var(--color-text-primary);
@@ -450,11 +472,10 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 }
 .input::placeholder { color: var(--color-text-tertiary); }
 
-/* Glass input — translucent field with blur */
 .input-glass {
   background: var(--color-bg-glass);
-  backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
+  backdrop-filter: var(--blur-button);
+  -webkit-backdrop-filter: var(--blur-button);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -469,11 +490,11 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   background: var(--color-bg-glass-solid);
 }
 
-/* ====================== Badge / Tag ====================== */
+/* ══════════ Badge / Tag ══════════ */
 .badge {
   display: inline-flex; align-items: center; gap: var(--space-1);
   padding: 2px 10px; font-size: var(--text-xs); font-weight: var(--font-weight-medium);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full); letter-spacing: var(--tracking-loose);
   background: var(--color-bg-hover); color: var(--color-text-secondary);
 }
 .badge-success { background: var(--color-success-bg); color: var(--color-success); }
@@ -481,37 +502,81 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 .badge-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .badge-accent { background: var(--color-accent-glow); color: var(--color-accent); }
 
-/* ====================== Toast (Liquid Glass) ====================== */
+/* ══════════ Toast (Apple spring entry) ══════════ */
 .kj-toast {
   position: fixed; bottom: var(--space-6); left: 50%; transform: translateX(-50%);
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-full);
   font-size: var(--text-sm); font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-normal);
   z-index: 9999;
   background: var(--color-bg-glass-solid);
-  backdrop-filter: var(--blur-lg);
-  -webkit-backdrop-filter: var(--blur-lg);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--shadow-lg);
-  animation: toastIn 0.38s var(--ease-spring);
+  animation: appleToastIn 0.35s var(--spring-bounce);
 }
 
-/* ====================== Accessibility ====================== */
+/* ══════════ Scroll Edge Mask (替代硬分割线) ══════════ */
+.scroll-mask-top,
+.scroll-mask-bottom {
+  position: sticky; left: 0; right: 0; height: 20px; pointer-events: none; z-index: 2;
+}
+.scroll-mask-top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--color-bg) 0%, transparent 100%);
+}
+.scroll-mask-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--color-bg) 0%, transparent 100%);
+}
+
+/* ══════════ Reduced Motion (Apple HIG) ══════════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  /* 保留 opacity 过渡以提供视觉连续性 */
+  .card, .card-glass, .card-glass-strong, .btn, .menu-item {
+    transition: opacity 200ms ease !important;
+  }
 }
 
+/* 减少透明材质：让玻璃表面更实 */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-strong, .glass-nav, .glass-sm,
+  .card-glass, .card-glass-strong, .liquid-glass, .liquid-glass-strong,
+  .btn-glass {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .glass, .card-glass { background: var(--color-bg-raised); }
+  .glass-strong, .card-glass-strong { background: var(--color-bg-raised); }
+  .glass-nav { background: var(--color-bg-raised); }
+}
+
+/* 高对比度 */
+@media (prefers-contrast: more) {
+  .card, .card-glass, .card-glass-strong {
+    border-width: 1.5px;
+    border-color: var(--color-text-primary);
+  }
+  .btn {
+    border: 1.5px solid currentColor;
+  }
+}
+
+/* ====================== Auto Dark Mode (system preference) ====================== */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) { color-scheme: dark; }
 }
 
-/* ====================== Font Awesome 图标渲染保护 ====================== */
+/* ====================== Font Awesome Protection ====================== */
 i.fas, i.fa-solid { font-weight: 900 !important; }
 i.far, i.fa-regular { font-weight: 400 !important; }
 i.fab, i.fa-brands { font-weight: 400 !important; }

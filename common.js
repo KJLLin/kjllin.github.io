@@ -1,6 +1,6 @@
 /**
  * KJLLin 共享工具模块 — common.js
- * 所有页面统一引用，消除重复代码
+ * Apple Design Language · 弹簧物理 · 材质深度 · 交互反馈
  * 依赖：Font Awesome 6.5.1、Supabase JS SDK（页面自行加载）
  */
 (function(global) {
@@ -86,9 +86,76 @@
     if (document.getElementById('kj-common-style')) return;
     var style = document.createElement('style');
     style.id = 'kj-common-style';
-    // 仅注入定位和动画，颜色由 theme.css 或页面自身变量控制
-    style.textContent = '.kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .3s cubic-bezier(.34,1.56,.64,1);background:var(--color-bg-glass-solid,var(--text-primary,#1d1d1f));color:var(--color-text-primary,var(--bg-body,#f5f5f7));border:1px solid var(--color-border,rgba(0,0,0,0.06))}@keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}';
+    // Apple spring entry animation — 使用 spring-bounce 曲线
+    style.textContent = '.kj-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:kjToastIn .35s cubic-bezier(.25,1.1,.35,1.15);background:var(--color-bg-glass-solid,var(--text-primary,#1d1d1f));color:var(--color-text-primary,var(--bg-body,#f5f5f7));border:1px solid var(--color-border,rgba(0,0,0,0.06))}@keyframes kjToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px) scale(0.96)}}';
     document.head.appendChild(style);
+  }
+
+  // ====================== Apple Smooth Scroll ======================
+  /**
+   * 使用 Apple 风格减速平滑滚动到目标元素
+   * 模拟 UIScrollView deceleration: behavior: 'smooth' + 弹簧补充
+   * @param {string|Element} target - 目标选择器或元素
+   * @param {object} [opts]
+   * @param {number} [opts.offset=0] - 偏移量（如固定 header 高度）
+   * @param {string} [opts.behavior='smooth'] - 滚动行为
+   */
+  function smoothScrollTo(target, opts) {
+    opts = opts || {};
+    var el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return;
+    var top = el.getBoundingClientRect().top + window.pageYOffset - (opts.offset || 56);
+    try {
+      window.scrollTo({ top: top, behavior: opts.behavior || 'smooth' });
+    } catch(e) {
+      window.scrollTo(0, top);
+    }
+  }
+
+  // ====================== 全局交互反馈（Apple: pointerdown 即时响应） ======================
+  /**
+   * 为所有交互元素注入 :active 即时反馈
+   * CSS 已处理 scale(0.97)，此处添加 pointer 捕获确保拖拽时不丢失反馈
+   */
+  function initGlobalFeedback() {
+    // 防止移动端长按弹出菜单干扰交互
+    document.addEventListener('contextmenu', function(e) {
+      if (e.target.closest('.btn, .card, .menu-item, [role="button"], .conv-item, .game-card')) {
+        // 仅在移动端预防长按菜单
+        if ('ontouchstart' in window) e.preventDefault();
+      }
+    }, { passive: false });
+
+    // 全局 pointerdown 添加即时高亮（配合 :active）
+    document.addEventListener('pointerdown', function(e) {
+      var el = e.target.closest('.btn, .menu-item, .card, .game-card, .conv-item, [role="button"]');
+      if (el) {
+        el.style.transition = 'transform 80ms cubic-bezier(0.23,0.01,0,1)';
+      }
+    }, { passive: true });
+  }
+
+  // ====================== 滚动边缘渐变遮罩 ======================
+  /**
+   * 为滚动容器自动添加顶部/底部渐变遮罩（Apple 风格：替代硬分割线）
+   * @param {string|Element} container - 滚动容器选择器或元素
+   */
+  function applyScrollEdgeMask(container) {
+    if (typeof container === 'string') container = document.querySelector(container);
+    if (!container) return;
+
+    function update() {
+      var hasTop = container.scrollTop > 4;
+      var hasBottom = container.scrollTop + container.clientHeight < container.scrollHeight - 4;
+      container.style.maskImage = [
+        hasTop ? 'linear-gradient(to bottom, transparent 0%, black 20px)' : 'none',
+        hasBottom ? 'linear-gradient(to top, transparent 0%, black 20px)' : 'none'
+      ].filter(Boolean).join(', ') || 'none';
+      container.style.webkitMaskImage = container.style.maskImage;
+    }
+
+    container.addEventListener('scroll', update, { passive: true });
+    update();
   }
 
   // ====================== 主题系统（三模式：自动/浅色/深色） ======================
@@ -331,6 +398,9 @@
     escapeHtml: escapeHtml,
     toast: toast,
     injectToastStyle: injectToastStyle,
+    smoothScrollTo: smoothScrollTo,
+    initGlobalFeedback: initGlobalFeedback,
+    applyScrollEdgeMask: applyScrollEdgeMask,
     getSystemDark: getSystemDark,
     isActuallyDark: isActuallyDark,
     getThemeState: getThemeState,
@@ -349,6 +419,9 @@
 
   // 注入 Toast 样式
   injectToastStyle();
+
+  // 注入全局交互反馈
+  initGlobalFeedback();
 
   // ====================== Font Awesome CDN 回退 ======================
   /**

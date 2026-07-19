@@ -306,7 +306,7 @@ input, textarea, button { font-family: inherit; }
 }
 .conv-item:hover .conv-menu-trigger,
 .conv-menu-trigger:hover { opacity: 1; background: var(--color-bg-hover); color: var(--color-text-primary); }
-.conv-menu-trigger:active { transform: translateY(-50%) scale(0.9); }
+.conv-menu-trigger:active { transform: translateY(-50%) scale(0.9); transition: transform 80ms var(--spring-default); }
 
 /* ====================== 右侧聊天主区域 ====================== */
 .chat-main {
@@ -452,7 +452,7 @@ input, textarea, button { font-family: inherit; }
   transform: translateY(-1px);
   box-shadow: 0 4px 14px var(--color-accent-glow);
 }
-.btn-send:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.btn-send:active:not(:disabled) { transform: scale(0.97); transition: transform 80ms var(--spring-default); }
 .btn-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ====================== 对话菜单 (右键/⋮) ====================== */
