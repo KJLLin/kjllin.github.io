@@ -297,6 +297,16 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* 兼容别名：全站页面使用的 fadeUp / slideUp */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Stagger 延迟工具类 */
 .anim-1{animation-delay:0.04s} .anim-2{animation-delay:0.08s} .anim-3{animation-delay:0.12s}
 .anim-4{animation-delay:0.16s} .anim-5{animation-delay:0.20s} .anim-6{animation-delay:0.24s}

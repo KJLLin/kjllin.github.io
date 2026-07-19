@@ -14,12 +14,12 @@
   <style>
     html{--win-ease:var(--spring-default);--bounce:var(--spring-bounce);--transition-fast:200ms var(--win-ease);--transition-normal:300ms var(--win-ease);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;transition:background-color var(--transition-normal)}
     *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
-    body{font-family:"Segoe UI","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif}
+    body{background:var(--bg-body);color:var(--text-primary)}
     :root{--bg-body:var(--color-bg);--bg-mica:var(--color-bg-glass);--bg-mica-hover:var(--color-bg-glass-hover);--border-mica:var(--color-border);--text-primary:var(--color-text-primary);--text-secondary:var(--color-text-secondary);--text-tertiary:var(--color-text-tertiary);--accent:var(--color-accent);--accent-light:var(--color-accent-light);--accent-glow:var(--color-accent-glow);--danger:var(--color-danger);--shadow-rest:var(--shadow-sm);--shadow-hover:var(--shadow-lg)}
     [data-theme="dark"]:root{--bg-body:var(--color-bg);--bg-mica:var(--color-bg-glass);--bg-mica-hover:var(--color-bg-glass-hover);--border-mica:var(--color-border);--text-primary:var(--color-text-primary);--text-secondary:var(--color-text-secondary);--text-tertiary:var(--color-text-tertiary);--accent-glow:var(--color-accent-glow);--shadow-rest:var(--shadow-sm);--shadow-hover:var(--shadow-lg)}
     body{background:var(--bg-body);color:var(--text-primary)}
     .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
-    .mica{background:var(--bg-mica);background-image:var(--iridescent);backdrop-filter:var(--blur-lg);-webkit-backdrop-filter:var(--blur-lg);border:1px solid var(--border-mica);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow)}
+    .mica{background:var(--bg-mica);background-image:var(--iridescent);backdrop-filter:var(--blur-card);-webkit-backdrop-filter:var(--blur-card);border:1px solid var(--border-mica);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow)}
     .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
     .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-lg);box-shadow:var(--glass-shadow);pointer-events:all;border-top:1px solid var(--color-border-glass)}
     .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
