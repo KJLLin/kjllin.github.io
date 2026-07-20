@@ -486,6 +486,44 @@
       setTimeout(type, 300);
     }
 
+    // ====================== 新用户引导弹窗 ======================
+    function showOnboarding(nick) {
+      // 防止重复弹出
+      var existing = document.getElementById('onboardingOverlay');
+      if (existing) return;
+
+      var overlay = document.createElement('div');
+      overlay.id = 'onboardingOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:20px;animation:appleFadeIn 0.3s var(--spring-default);';
+      overlay.innerHTML = 
+        '<div class="card-glass" style="max-width:420px;width:100%;padding:32px 28px;border-radius:var(--radius-lg);text-align:center;animation:appleScaleIn 0.4s var(--spring-bounce)">' +
+          '<div style="font-size:52px;margin-bottom:12px">🎉</div>' +
+          '<h2 style="font-size:20px;font-weight:700;color:var(--color-text-primary);margin-bottom:6px">欢迎加入，' + KJ.escapeHtml(nick) + '！</h2>' +
+          '<p style="font-size:13px;color:var(--color-text-tertiary);margin-bottom:20px">以下是你可以探索的功能：</p>' +
+          '<div style="text-align:left;margin-bottom:20px">' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">🏠</span> <strong>个人主页</strong> — 你的动态中心</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">✉️</span> <strong>站内信</strong> — 实时私信聊天</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">🎮</span> <strong>游戏中心</strong> — 休闲小游戏</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">☁️</span> <strong>资源云盘</strong> — 云端文件管理</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">💬</span> <strong>讨论版</strong> — 社区交流</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--color-text-secondary)"><span style="font-size:20px">⚙️</span> <strong>设置</strong> — 管理账号与主题</div>' +
+          '</div>' +
+          '<button style="width:100%;padding:12px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition-fast)" id="onboardingOkBtn">开始探索</button>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeOnboarding();
+      });
+      document.getElementById('onboardingOkBtn').addEventListener('click', closeOnboarding);
+
+      function closeOnboarding() {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.2s ease';
+        setTimeout(function() { overlay.remove(); }, 250);
+      }
+    }
+
     // ====================== 涟漪效果 ======================
     document.addEventListener('click', function(e) {
       const card = e.target.closest('.project-card');
@@ -608,6 +646,18 @@
               var u = r.data.session.user;
               var rawNick = u.user_metadata.nick || u.email.split('@')[0] || '用户';
               typeGreeting(rawNick);
+
+              // ── 新用户引导（注册5分钟内显示） ──
+              try {
+                if (u.created_at && !sessionStorage.getItem('kj_onboarding_shown')) {
+                  var createdTime = new Date(u.created_at).getTime();
+                  var nowTime = Date.now();
+                  if (nowTime - createdTime < 5 * 60 * 1000) {
+                    sessionStorage.setItem('kj_onboarding_shown', '1');
+                    setTimeout(function() { showOnboarding(rawNick); }, 800);
+                  }
+                }
+              } catch(e) {}
               var nick = KJ.escapeHtml(rawNick);
               var displayNick = nick.length > 8 ? nick.slice(0,8)+'..' : nick;
               var areaHtml = '<a href="/settings/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick + '</a>';

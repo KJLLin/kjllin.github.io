@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f5f5f7">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <title>关于 · 设置 · KJLLin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}.menu-item.active{font-weight:600}
+    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
+    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}#themeBtn{border-radius:50%}
+    .hamburger{display:none}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
+    .mobile-menu-dropdown.open{display:flex}
+    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
+
+    .container{max-width:580px;margin:0 auto;padding:80px 16px calc(40px + env(safe-area-inset-bottom, 0px))}
+    .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--color-text-tertiary);text-decoration:none;font-size:13px;margin-bottom:24px;transition:color var(--transition-fast)}
+    .back-link:hover{color:var(--color-accent)}
+    .page-header{text-align:center;margin-bottom:28px;animation:appleFadeUp 0.6s var(--spring-default) forwards}
+    .page-header .icon{font-size:44px;margin-bottom:8px;display:block;color:var(--color-accent)}
+    .page-header h1{font-size:24px;font-weight:700;color:var(--color-text-primary)}
+
+    .card{background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-card);-webkit-backdrop-filter:var(--blur-card);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);border-radius:var(--radius-lg);box-shadow:var(--glass-shadow);padding:28px;margin-bottom:16px;animation:appleFadeUp 0.6s var(--spring-default) 0.08s both}
+    .card h2{font-size:17px;font-weight:600;color:var(--color-text-primary);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    .card p{font-size:14px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:12px}
+    .card p:last-child{margin-bottom:0}
+
+    .about-logo{text-align:center;margin-bottom:20px}
+    .about-logo-text{font-size:48px;font-weight:800;color:var(--color-accent);letter-spacing:-1px}
+    .about-version{font-size:13px;color:var(--color-text-tertiary);margin-top:4px}
+
+    .link-list{list-style:none;padding:0;margin:0}
+    .link-list li{margin-bottom:8px}
+    .link-list li:last-child{margin-bottom:0}
+    .link-list a{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);color:var(--color-accent);text-decoration:none;font-size:14px;transition:all var(--transition-fast)}
+    .link-list a:hover{background:var(--color-accent-glow)}
+    .link-list a i{width:20px;text-align:center}
+
+    @media(max-width:520px){
+      .menu-item{display:none}.hamburger{display:grid}
+      .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
+      .page-header h1{font-size:20px}.page-header .icon{font-size:36px}
+      .card{padding:20px 16px}
+      .about-logo-text{font-size:36px}
+    }
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+  </style>
+</head>
+<body>
+  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
+  <header class="top-menu">
+    <nav class="menu-bar"><span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <nav aria-label="breadcrumb" style="margin-bottom:12px">
+      <a href="/settings/" style="color:var(--color-accent);text-decoration:none;font-size:13px;font-weight:500"><i class="fas fa-arrow-left"></i> 返回设置</a>
+      <span style="color:var(--color-text-tertiary);font-size:13px;margin:0 6px">›</span>
+      <span style="color:var(--color-text-secondary);font-size:13px">关于</span>
+    </nav>
+
+    <div class="page-header">
+      <span class="icon"><i class="fas fa-circle-info"></i></span>
+      <h1>关于</h1>
+    </div>
+
+    <div class="card">
+      <div class="about-logo">
+        <div class="about-logo-text">KJLLin</div>
+        <div class="about-version">版本 1.0 · Build 2026</div>
+      </div>
+      <p>KJLLin 是一个现代化的个人网站平台，融合了社交互动、云端存储、休闲游戏等功能。本站采用 <strong>Apple Design Language</strong> 设计语言，致力于提供优雅、流畅的用户体验。</p>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-cubes"></i> 功能模块</h2>
+      <p><strong>🏠 首页</strong> — 个人主页，展示动态与问候</p>
+      <p><strong>✉️ 站内信</strong> — 实时私信系统，支持对话管理</p>
+      <p><strong>🎮 游戏中心</strong> — 贪吃蛇、2048、舒尔特方格、小恐龙跑酷</p>
+      <p><strong>☁️ 资源云盘</strong> — 云端文件存储，支持上传/下载/预览</p>
+      <p><strong>💬 讨论版</strong> — Markdown 社区讨论，基于话题的交流</p>
+      <p><strong>⚙️ 设置</strong> — 账号安全、个人资料、设备管理、主题外观</p>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-shield-halved"></i> 安全保障</h2>
+      <p>本站实施了多层级安全防护措施，包括：</p>
+      <p>• 客户端输入净化与 XSS 防护</p>
+      <p>• 内容安全策略 (CSP) 头部限制</p>
+      <p>• 人机验证 (hCaptcha) 防滥用</p>
+      <p>• 操作频率限制机制</p>
+      <p>• Supabase RLS 数据库级权限控制</p>
+      <p>• 安全重定向校验防开放重定向攻击</p>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-link"></i> 相关链接</h2>
+      <ul class="link-list">
+        <li><a href="https://github.com/kjllin/kjllin.github.io" target="_blank" rel="noopener"><i class="fab fa-github"></i> GitHub 仓库</a></li>
+        <li><a href="/settings/"><i class="fas fa-gear"></i> 设置中心</a></li>
+        <li><a href="/"><i class="fas fa-home"></i> 返回首页</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+    (function(){
+    var $=function(s){return document.querySelector(s);};
+
+    var themeBtn=$('#themeBtn');
+    function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
+    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+    })();
+  </script>
+</body>
+</html>

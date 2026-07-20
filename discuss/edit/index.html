@@ -190,11 +190,13 @@
     var _submitting=false;
     $('#submitBtn').addEventListener('click',async function(){
       if(_submitting)return;
+      if(!KJ.rateLimit('discuss_edit', 5000, 1, '编辑过于频繁，请稍后再试')) return;
       if(!currentUser){toast('请先登录');return}
       if(!postData){toast('帖子数据未加载');return}
       var title=$('#postTitle').value.trim(),content=easyMDE?easyMDE.value().trim():'';
       if(!title){toast('请输入讨论标题');return}
       if(!content){toast('请输入讨论内容');return}
+      if(content.length > 50000){toast('讨论内容过长，请限制在50000字以内');return}
       if(typeof hcaptcha==='undefined'){toast('人机验证加载中，请稍后重试');return}
       if(!captchaToken){toast('请完成人机验证');return}
       _submitting=true;var btn=$('#submitBtn');btn.disabled=true;btn.textContent='更新中...';

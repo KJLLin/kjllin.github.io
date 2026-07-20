@@ -777,10 +777,13 @@
           // 绑定删除
           list.querySelectorAll('.del-post-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
+              if (!KJ.rateLimit('discuss_delete', 3000, 1, '删除过于频繁，请稍后再试')) return;
               if (!confirm('确定删除此讨论？')) return;
               if (!sb) { KJ.toast('服务暂不可用'); return; }
               try {
-                const { error } = await sb.from('posts').delete().eq('id', this.dataset.id);
+                var uid = currentUser?.id;
+                if (!uid) { KJ.toast('请先登录'); return; }
+                const { error } = await sb.from('posts').delete().eq('id', this.dataset.id).eq('user_id', uid);
                 if (error) { KJ.toast('删除失败: ' + error.message); return; }
                 KJ.toast('已删除'); loadPosts();
               } catch(e) { KJ.toast('删除失败，请重试'); }

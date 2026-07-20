@@ -695,7 +695,7 @@
         // 使用 DOMPurify 净化（防 XSS）
         if (typeof DOMPurify !== 'undefined') {
           html = DOMPurify.sanitize(html, {
-            ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','hr','strong','em','b','i','u','s','del','a','ul','ol','li','blockquote','pre','code','img','table','thead','tbody','tr','th','td','span','div','sub','sup','details','summary','input'],
+            ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','hr','strong','em','b','i','u','s','del','a','ul','ol','li','blockquote','pre','code','img','table','thead','tbody','tr','th','td','span','div','sub','sup','details','summary'],
             ALLOWED_ATTR: ['href','title','target','rel','src','alt','width','height','class','id','type','checked','disabled'],
             ALLOW_DATA_ATTR: false
           });

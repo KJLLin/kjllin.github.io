@@ -731,12 +731,41 @@
     }
 
     // ====================== 上传 ======================
+    // 允许上传的文件类型白名单
+    var ALLOWED_TYPES = [
+      'image/', 'video/', 'audio/',
+      'text/plain', 'text/markdown', 'text/csv',
+      'application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/zip', 'application/x-zip-compressed',
+      'application/x-rar-compressed', 'application/x-7z-compressed',
+      'application/gzip', 'application/x-tar',
+      'application/json', 'application/xml'
+    ];
+    var BLOCKED_EXTS = ['.exe','.dll','.bat','.cmd','.sh','.msi','.vbs','.ps1','.js','.vba','.scr','.com','.pif'];
+
     async function handleFiles(fileList) {
+      if (!KJ.rateLimit('cloud_upload', 2000, 1, '上传过于频繁，请稍后再试')) return;
       const files = Array.from(fileList);
       if (files.length === 0) return;
       let success = 0;
       for (const file of files) {
         if (file.size > 10 * 1024 * 1024) { KJ.toast(`"${file.name}" 超过 10MB 限制`); continue; }
+        // 类型白名单检查
+        var typeAllowed = false;
+        for (var i = 0; i < ALLOWED_TYPES.length; i++) {
+          if (file.type && file.type.indexOf(ALLOWED_TYPES[i]) === 0) { typeAllowed = true; break; }
+        }
+        // 扩展名黑名单
+        var ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+        if (BLOCKED_EXTS.indexOf(ext) !== -1) { KJ.toast(`"${file.name}" 文件类型不允许上传`); continue; }
+        // 纯文本文件允许（即使 MIME 不匹配）
+        if (!typeAllowed && !file.type) { typeAllowed = true; }
+        if (!typeAllowed) { KJ.toast(`"${file.name}" 文件类型不允许上传（${file.type || '未知'}）`); continue; }
         const ok = await uploadFile(file);
         if (ok) success++;
       }
