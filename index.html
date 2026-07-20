@@ -387,7 +387,7 @@
       <a href="/game/" class="menu-item" data-nav="game"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item" data-nav="cloud"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
       <div class="menu-divider"></div>
       <span id="navUserArea" class="nav-user-area">
         <a href="/login/" class="menu-item" id="navLoginBtn" style="color:var(--color-accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>
@@ -401,7 +401,7 @@
       <a href="/game/" class="menu-item" data-nav="game"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item" data-nav="cloud"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/account/" class="menu-item"><i class="fas fa-shield-halved"></i> 账号</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
     </div>
   </header>
 
@@ -596,7 +596,7 @@
           var rawNick2 = storedUser.user_metadata && storedUser.user_metadata.nick || storedUser.email && storedUser.email.split('@')[0] || '用户';
           var nick2 = KJ.escapeHtml(rawNick2);
           var displayNick2 = nick2.length > 8 ? nick2.slice(0,8)+'..' : nick2;
-          area.innerHTML = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick2 + '</a>';
+          area.innerHTML = '<a href="/settings/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick2 + '</a>';
           typeGreeting(rawNick2);
         }
 
@@ -608,7 +608,7 @@
               typeGreeting(rawNick);
               var nick = KJ.escapeHtml(rawNick);
               var displayNick = nick.length > 8 ? nick.slice(0,8)+'..' : nick;
-              var areaHtml = '<a href="/account/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick + '</a>';
+              var areaHtml = '<a href="/settings/" class="menu-item"><i class="fas fa-user"></i> ' + displayNick + '</a>';
               sb.from('private_messages').select('*', { count: 'exact', head: true }).eq('recipient_id', u.id).eq('read', false).then(function(r2) {
                 var unread = r2.count || 0;
                 if (unread > 0) areaHtml = '<span class="unread-dot"></span><a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信 (' + unread + ')</a>' + areaHtml;

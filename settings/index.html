@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="KJLLin · 设置中心">
+  <title>设置 · KJLLin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ── 导航栏 ── */
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px;letter-spacing:-0.2px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}.menu-item.active{font-weight:600}
+    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
+    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}#themeBtn{border-radius:50%}
+    .hamburger{display:none}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
+    .mobile-menu-dropdown.open{display:flex}
+    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
+
+    /* ── 布局 ── */
+    .container{max-width:680px;margin:0 auto;padding:86px 16px 40px;position:relative;z-index:1;padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+
+    /* ── 页面标题 ── */
+    .page-header{text-align:center;margin-bottom:36px;animation:appleFadeUp 0.6s var(--spring-default) forwards}
+    .page-header .icon{font-size:42px;margin-bottom:10px;display:block;color:var(--color-accent)}
+    .page-header h1{font-size:28px;font-weight:700;color:var(--color-text-primary);letter-spacing:var(--tracking-tight)}
+
+    /* ── 用户概览头 ── */
+    .user-summary{display:flex;align-items:center;gap:16px;padding:20px;border-radius:var(--radius-lg);margin-bottom:28px;animation:appleFadeUp 0.5s var(--spring-default) 0.08s both}
+    .user-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:24px;font-weight:700;flex-shrink:0;box-shadow:0 4px 16px var(--color-accent-glow)}
+    .user-info{flex:1;min-width:0}
+    .user-info .name{font-size:18px;font-weight:600;color:var(--color-text-primary)}
+    .user-info .email{font-size:13px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+    .user-info .status{font-size:12px;color:var(--color-success);margin-top:4px;display:flex;align-items:center;gap:4px}
+    .user-info .status .dot{width:6px;height:6px;border-radius:50%;background:var(--color-success)}
+
+    /* ── 登录提示 ── */
+    .login-prompt{text-align:center;padding:48px 24px;border-radius:var(--radius-lg);animation:appleFadeUp 0.5s var(--spring-default) 0.08s both}
+    .login-prompt p{color:var(--color-text-tertiary);margin-bottom:16px}
+    .login-prompt a{display:inline-flex;align-items:center;gap:6px;padding:10px 28px;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;text-decoration:none;transition:all var(--transition-fast)}
+    .login-prompt a:hover{background:var(--color-accent-hover);transform:translateY(-1px);box-shadow:0 4px 14px var(--color-accent-glow)}
+
+    /* ── 设置分组 ── */
+    .settings-group{margin-bottom:24px}
+    .group-label{font-size:12px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;padding:0 4px;margin-bottom:8px}
+    .settings-item{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:var(--radius-md);text-decoration:none;color:var(--color-text-primary);cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden}
+    .settings-item:hover{background:var(--color-bg-hover)}
+    .settings-item:active{transform:scale(0.985);transition:transform var(--duration-instant) var(--spring-default)}
+    .settings-item + .settings-item{margin-top:2px}
+    .settings-item .s-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:grid;place-items:center;font-size:17px;flex-shrink:0}
+    .settings-item .s-body{flex:1;min-width:0}
+    .settings-item .s-title{font-size:15px;font-weight:500;line-height:1.3}
+    .settings-item .s-desc{font-size:12px;color:var(--color-text-tertiary);margin-top:1px;line-height:1.4}
+    .settings-item .s-chevron{color:var(--color-text-tertiary);font-size:13px;flex-shrink:0;transition:transform var(--transition-fast)}
+    .settings-item:hover .s-chevron{transform:translateX(2px);color:var(--color-accent)}
+
+    /* ── 图标颜色 ── */
+    .s-icon-profile{background:rgba(0,113,227,0.12);color:var(--color-accent)}
+    .s-icon-security{background:rgba(255,159,10,0.12);color:var(--color-warning)}
+    .s-icon-device{background:rgba(48,209,88,0.12);color:var(--color-success)}
+    .s-icon-password{background:rgba(94,92,230,0.12);color:#5e5ce6}
+    .s-icon-appearance{background:rgba(175,82,222,0.12);color:#af52de}
+    .s-icon-logout{background:rgba(255,59,48,0.10);color:var(--color-danger)}
+
+    /* ── 内联开关 ── */
+    .theme-toggle-row{display:flex;align-items:center;gap:10px}
+    .theme-chip{padding:4px 12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);font-size:12px;font-weight:500;cursor:pointer;transition:all var(--transition-fast);font-family:var(--font-sans)}
+    .theme-chip:hover{border-color:var(--color-accent);color:var(--color-accent)}
+    .theme-chip.active{background:var(--color-accent);color:var(--color-text-on-accent);border-color:var(--color-accent)}
+
+    /* ── 退出按钮 ── */
+    .logout-item{color:var(--color-danger)!important}
+    .logout-item:hover{background:var(--color-danger-bg)!important}
+
+    /* ── 动画 ── */
+    .anim-1{animation:appleFadeUp 0.5s var(--spring-default) 0.10s both}
+    .anim-2{animation:appleFadeUp 0.5s var(--spring-default) 0.14s both}
+    .anim-3{animation:appleFadeUp 0.5s var(--spring-default) 0.18s both}
+    .anim-4{animation:appleFadeUp 0.5s var(--spring-default) 0.22s both}
+    .anim-5{animation:appleFadeUp 0.5s var(--spring-default) 0.26s both}
+    .anim-6{animation:appleFadeUp 0.5s var(--spring-default) 0.30s both}
+
+    /* ── 响应式 ── */
+    @media(max-width:520px){
+      .menu-item{display:none}.hamburger{display:grid}
+      .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom,0px))}
+      .page-header h1{font-size:22px}.page-header .icon{font-size:34px}
+      .user-summary{padding:16px;gap:12px}
+      .user-avatar{width:48px;height:48px;font-size:20px}
+      .user-info .name{font-size:16px}
+      .settings-item{padding:12px 14px;gap:10px}
+      .settings-item .s-icon{width:32px;height:32px;font-size:15px}
+      .settings-item .s-title{font-size:14px}
+      .settings-item .s-desc{font-size:11px}
+    }
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+  </style>
+</head>
+<body>
+  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
+
+  <header class="top-menu">
+    <nav class="menu-bar" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <span class="icon"><i class="fas fa-gear"></i></span>
+      <h1>设置</h1>
+    </div>
+
+    <!-- 用户概览 / 登录提示 -->
+    <div id="loginPrompt" class="login-prompt card-glass">
+      <p id="loginMsg">加载中...</p>
+      <a href="/login/?redirect=/settings/" id="loginLink" hidden>前往登录</a>
+    </div>
+
+    <div id="settingsContent" style="display:none">
+      <!-- 用户概览 -->
+      <div class="user-summary card-glass anim-1" id="userSummary">
+        <div class="user-avatar" id="avatarEl">U</div>
+        <div class="user-info">
+          <div class="name" id="nameEl">--</div>
+          <div class="email" id="emailEl">--</div>
+          <div class="status"><span class="dot"></span> 已登录</div>
+        </div>
+      </div>
+
+      <!-- 账号相关 -->
+      <div class="settings-group anim-2">
+        <div class="group-label">账号</div>
+        <a href="/settings/" class="settings-item card-glass">
+          <span class="s-icon s-icon-security"><i class="fas fa-shield-halved"></i></span>
+          <span class="s-body"><span class="s-title">账号安全中心</span><span class="s-desc">安全概览、登录记录、设备管理、第三方绑定</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <a href="/account/profile/" class="settings-item card-glass">
+          <span class="s-icon s-icon-profile"><i class="fas fa-user-pen"></i></span>
+          <span class="s-body"><span class="s-title">个人资料</span><span class="s-desc">昵称、邮箱、个人信息</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <a href="/account/password/" class="settings-item card-glass">
+          <span class="s-icon s-icon-password"><i class="fas fa-key"></i></span>
+          <span class="s-body"><span class="s-title">修改密码</span><span class="s-desc">更新登录密码</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <a href="/account/devices/" class="settings-item card-glass">
+          <span class="s-icon s-icon-device"><i class="fas fa-mobile-screen"></i></span>
+          <span class="s-body"><span class="s-title">设备管理</span><span class="s-desc">已登录设备、登录历史</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
+      </div>
+
+      <!-- 外观 -->
+      <div class="settings-group anim-3">
+        <div class="group-label">外观</div>
+        <div class="settings-item card-glass" id="themeRow">
+          <span class="s-icon s-icon-appearance"><i class="fas fa-circle-half-stroke"></i></span>
+          <span class="s-body"><span class="s-title">主题</span><span class="s-desc">浅色、深色或跟随系统</span></span>
+          <span class="theme-toggle-row">
+            <button class="theme-chip" data-theme="light" id="chipLight">☀️ 浅色</button>
+            <button class="theme-chip" data-theme="dark" id="chipDark">🌙 深色</button>
+            <button class="theme-chip" data-theme="auto" id="chipAuto">🔄 自动</button>
+          </span>
+        </div>
+      </div>
+
+      <!-- 退出 -->
+      <div class="settings-group anim-5">
+        <div class="group-label">会话</div>
+        <button class="settings-item card-glass logout-item" id="logoutAllBtn" style="width:100%;text-align:left;font-family:var(--font-sans);border:none">
+          <span class="s-icon s-icon-logout"><i class="fas fa-arrow-right-from-bracket"></i></span>
+          <span class="s-body"><span class="s-title">退出登录</span><span class="s-desc">登出当前账号</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+  (function(){
+    var $=function(s){return document.querySelector(s);};
+    var sb,user;
+
+    try{sb=KJ.createSupabase();}catch(e){}
+
+    function showLoginPrompt(){
+      $('#loginPrompt').style.display='';$('#settingsContent').style.display='none';
+      $('#loginMsg').textContent='请登录后管理设置';$('#loginLink').hidden=false;
+    }
+
+    function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
+
+    async function loadUser(){
+      if(!sb)return;
+      try{
+        var r=await sb.auth.getSession();
+        if(!r.data.session||!r.data.session.user){showLoginPrompt();return}
+        user=r.data.session.user;
+        $('#loginPrompt').style.display='none';$('#settingsContent').style.display='block';
+
+        var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
+        $('#avatarEl').textContent=nick.charAt(0).toUpperCase();
+        $('#nameEl').textContent=nick;
+        $('#emailEl').textContent=user.email||'';
+      }catch(e){console.error('loadUser:',e);showLoginPrompt();}
+    }
+
+    // 主题切换芯片
+    function updateThemeChips(){
+      var mode=KJ.appTheme||localStorage.getItem('kjllin_theme')||'auto';
+      document.querySelectorAll('.theme-chip').forEach(function(c){
+        c.classList.toggle('active',c.dataset.theme===mode);
+      });
+    }
+    document.querySelectorAll('.theme-chip').forEach(function(c){
+      c.addEventListener('click',function(){
+        var t=c.dataset.theme;
+        localStorage.setItem('kjllin_theme',t);
+        KJ.appTheme=t;KJ.applyTheme('#f5f5f7','#0a0a0a');
+        updateThemeChips();
+      });
+    });
+
+    // 退出登录
+    $('#logoutAllBtn').addEventListener('click',async function(){
+      if(!confirm('确定退出登录？'))return;
+      if(!sb){window.location.href='/';return}
+      var btn=$('#logoutAllBtn');btn.style.opacity='0.5';btn.style.pointerEvents='none';
+      try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e);}
+      window.location.href='/';
+    });
+
+    // 主题
+    function initTheme(){updateThemeChips();KJ.applyTheme('#f5f5f7','#0a0a0a');var tb=$('#themeBtn');if(tb)tb.innerHTML=KJ.getThemeIcon(KJ.appTheme||'auto');}
+    $('#themeBtn').addEventListener('click',function(){
+      var modes=['auto','light','dark'],cur=KJ.appTheme||localStorage.getItem('kjllin_theme')||'auto';
+      var next=modes[(modes.indexOf(cur)+1)%3];
+      localStorage.setItem('kjllin_theme',next);KJ.appTheme=next;
+      KJ.applyTheme('#f5f5f7','#0a0a0a');
+      updateThemeChips();
+      var tb=$('#themeBtn');if(tb)tb.innerHTML=KJ.getThemeIcon(next);
+    });
+    KJ.onSystemThemeChange(function(){if((KJ.appTheme||localStorage.getItem('kjllin_theme')||'auto')==='auto')KJ.applyTheme('#f5f5f7','#0a0a0a');});
+    initTheme();
+
+    // 移动端菜单
+    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
+    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+
+    if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
+
+    var authReady=false;
+    sb.auth.onAuthStateChange(function(event,session){
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(session&&session.user){loadUser();return}showLoginPrompt();}
+      else if(event==='SIGNED_OUT'){authReady=true;showLoginPrompt();}
+      else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session&&session.user)loadUser();}
+    });
+    setTimeout(function(){if(!authReady)loadUser();},3000);
+    setTimeout(function(){if($('#loginMsg').textContent==='加载中...'){$('#loginMsg').textContent='加载超时，请检查网络后刷新页面';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);
+  })();
+  </script>
+</body>
+</html>

@@ -208,12 +208,12 @@
             // 未绑定错误 → 特殊处理
             if(data.error==='cpoauth_not_bound'){
               setStatus('<i class="fas fa-exclamation-triangle"></i>','warning',
-                '账号未绑定','该 CPOAuth 账号尚未关联本站账号，请先用邮箱密码登录后在账号安全中心绑定',false);
+                '账号未绑定','该 CPOAuth 账号尚未关联本站账号，请先用邮箱密码登录后在设置中绑定',false);
               if(data.cpoauth_user){
                 showCpoauthUserPreview(data.cpoauth_user);
               }
               $('#actionArea').innerHTML=
-                '<a href="/account/" class="btn">前往账号安全中心</a>'+
+                '<a href="/settings/" class="btn">前往设置</a>'+
                 '<a href="/login/" class="btn btn-outline">返回登录</a>';
               return;
             }
@@ -242,7 +242,7 @@
               }));
             }catch(e){}
 
-            setTimeout(()=>{window.location.href='/account/'},1200);
+            setTimeout(()=>{window.location.href='/settings/'},1200);
             return;
           }
 
