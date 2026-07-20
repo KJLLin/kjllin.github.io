@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f5f5f7">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <title>账号安全中心 · 设置 · KJLLin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ── 导航栏（theme.css 令牌） ── */
+    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
+    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
+    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
+    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}
+    .menu-item.active{font-weight:600}
+    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
+    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}
+    #themeBtn{border-radius:50%}
+    .hamburger{display:none}
+    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
+    .mobile-menu-dropdown.open{display:flex}
+    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
+
+    /* ── 布局 ── */
+    .container{max-width:740px;margin:0 auto;padding:80px 16px 40px;position:relative;z-index:1}
+
+    /* ── 页面标题 ── */
+    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.6s var(--ease-out) forwards}
+    .page-header .icon{font-size:48px;margin-bottom:8px;display:block}
+    .page-header h1{font-size:28px;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.3px}
+
+    /* ── 卡片动画 ── */
+    .card-anim{animation:fadeUp 0.6s var(--ease-out) both}
+    .card-anim:nth-child(1){animation-delay:0.05s}
+    .card-anim:nth-child(2){animation-delay:0.12s}
+    .card-anim:nth-child(3){animation-delay:0.18s}
+    .card-anim:nth-child(4){animation-delay:0.24s}
+    .card-anim:nth-child(5){animation-delay:0.30s}
+    .card-anim:nth-child(6){animation-delay:0.36s}
+
+    /* ── 卡片标题 + 操作链接 ── */
+    .card-header{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--color-text-primary);margin-bottom:16px}
+    .card-action{font-size:13px;font-weight:500;color:var(--color-accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px;transition:color var(--transition-fast)}
+    .card-action:hover{color:var(--color-accent-hover)}
+
+    /* ── 个人资料头部 ── */
+    .profile-header{display:flex;align-items:center;gap:16px}
+    .avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:26px;font-weight:700;flex-shrink:0;box-shadow:0 4px 16px var(--color-accent-glow)}
+    .profile-text{flex:1;min-width:0}
+    .profile-text .name{font-size:20px;font-weight:600;color:var(--color-text-primary)}
+    .profile-text .email{font-size:13px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin-top:3px;word-break:break-all}
+
+    /* ── 安全概览网格 ── */
+    .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .security-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition:all var(--transition-fast)}
+    .security-item:hover{background:var(--color-bg-active)}
+    .security-item .si-icon{font-size:22px;margin-bottom:6px}
+    .security-item .si-label{font-size:11px;color:var(--color-text-tertiary);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px}
+    .security-item .si-value{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+
+    /* ── 信息行 ── */
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-border);font-size:14px}
+    .info-row:last-child{border-bottom:none}
+    .info-row .label{color:var(--color-text-secondary)}
+    .info-row .value{font-family:var(--font-mono);font-size:13px;color:var(--color-text-primary);text-align:right;word-break:break-all;max-width:60%}
+
+    /* ── 安全状态标记 ── */
+    .security-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;margin-bottom:6px}
+    .security-status .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .security-status.good{background:var(--color-success-bg);color:var(--color-success)}.security-status.good .dot{background:var(--color-success)}
+    .security-status.warn{background:var(--color-warning-bg);color:var(--color-warning)}.security-status.warn .dot{background:var(--color-warning)}
+    .security-status.danger{background:var(--color-danger-bg);color:var(--color-danger)}.security-status.danger .dot{background:var(--color-danger)}
+
+    /* ── 按钮 ── */
+    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-outline:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-glow)}
+    .btn-danger-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-danger);border-radius:var(--radius-full);background:transparent;color:var(--color-danger);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition-fast)}
+    .btn-danger-outline:hover{background:var(--color-danger-bg)}
+
+    /* ── 危险区域 ── */
+    .danger-zone{border:1px dashed rgba(255,59,48,0.3);border-radius:var(--radius-xl);padding:24px;text-align:center;animation:fadeUp 0.6s var(--ease-out) 0.42s both}
+    .danger-zone h3{font-size:15px;color:var(--color-danger);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px}
+    .danger-zone p{font-size:12px;color:var(--color-text-tertiary);margin-bottom:14px}
+    .danger-zone .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+    /* ── 第三方绑定 ── */
+    .binding-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-border);gap:12px}
+    .binding-row:last-child{border-bottom:none}
+    .binding-row .b-icon{font-size:18px;width:28px;text-align:center;flex-shrink:0}
+    .binding-row .b-label{font-size:14px;color:var(--color-text-primary);font-weight:500}
+    .binding-row .b-status{font-size:13px;display:flex;align-items:center;gap:6px;margin-left:auto}
+
+    @media(max-width:520px){
+      .menu-item{display:none}.hamburger{display:grid}
+      .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
+      .page-header h1{font-size:22px}
+      .page-header .icon{font-size:40px}
+      .security-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .security-item{padding:12px 8px}
+      .security-item .si-icon{font-size:20px}
+      .security-item .si-value{font-size:13px}
+      .profile-header{flex-direction:column;text-align:center;gap:12px}
+      .avatar{width:52px;height:52px;font-size:22px}
+      .profile-text .name{font-size:18px}
+      .card-header{font-size:15px;flex-wrap:wrap;gap:6px}
+      .card-action{font-size:12px}
+      .info-row .value{max-width:55%;font-size:12px}
+      .binding-row{flex-wrap:wrap;gap:8px}
+      .binding-row .b-status{font-size:12px;white-space:normal;text-align:right}
+      .danger-zone{padding:20px 16px}
+      .danger-zone .btn-row{gap:8px}
+      .danger-zone .btn-row .btn-danger-outline{font-size:12px;padding:8px 14px}
+      .card-glass{padding:18px 16px !important}
+    }
+    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+  </style>
+</head>
+<body>
+  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
+  <header class="top-menu">
+    <nav class="menu-bar" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header"><span class="icon">🔒</span><h1>账号安全中心</h1><p style="font-size:13px;color:var(--color-text-tertiary);margin-top:4px">设置 › 账号安全</p></div>
+
+    <div id="loginPrompt" class="card card-glass" style="text-align:center;padding:48px 24px">
+      <p style="color:var(--color-text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
+      <a href="/login/?redirect=/settings/" class="btn btn-primary" style="text-decoration:none" id="loginLink" hidden>前往登录</a>
+    </div>
+
+    <div id="accountContent" style="display:none">
+      <!-- 个人资料 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">👤 个人资料<a href="/settings/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a></div>
+        <div class="profile-header">
+          <div class="avatar" id="profileAvatar">U</div>
+          <div class="profile-text"><div class="name" id="profileName">--</div><div class="email" id="profileEmail">--</div></div>
+        </div>
+      </div>
+
+      <!-- 安全概览 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🛡️ 安全概览<a href="/settings/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
+        <div class="security-grid">
+          <div class="security-item"><div class="si-icon">🔑</div><div class="si-label">密码强度</div><div class="si-value" id="pwdStrength">检测中</div></div>
+          <div class="security-item"><div class="si-icon">📧</div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
+          <div class="security-item"><div class="si-icon">🔐</div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
+          <div class="security-item"><div class="si-icon">📱</div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
+        </div>
+      </div>
+
+      <!-- 账号信息 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">📊 账号信息</div>
+        <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
+        <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
+        <div class="info-row"><span class="label">最近登录</span><span class="value" id="infoLastLogin">--</span></div>
+        <div class="info-row"><span class="label">账号状态</span><span class="value" id="infoStatus" style="color:var(--color-success)">正常</span></div>
+      </div>
+
+      <!-- 当前设备 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">💻 当前设备</div>
+        <div class="info-row"><span class="label">浏览器</span><span class="value" id="deviceBrowser">检测中...</span></div>
+        <div class="info-row"><span class="label">操作系统</span><span class="value" id="deviceOS">--</span></div>
+        <div class="info-row"><span class="label">屏幕 / 语言</span><span class="value" id="deviceScreen">--</span></div>
+        <div class="info-row"><span class="label">IP 地址</span><span class="value" id="deviceIP">获取中...</span></div>
+        <div class="info-row"><span class="label">连接状态</span><span class="value" style="color:var(--color-success)">🟢 在线</span></div>
+      </div>
+
+      <!-- 最近登录（从 Supabase 读取） -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🕐 最近登录<a href="/settings/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a></div>
+        <div id="loginHistory" style="color:var(--color-text-tertiary);font-size:13px;min-height:32px">加载中...</div>
+      </div>
+
+      <!-- 第三方绑定 -->
+      <div class="card card-glass card-anim">
+        <div class="card-header">🔗 第三方账号绑定</div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-google" style="color:#4285f4"></i></span><span class="b-label">Google</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row"><span class="b-icon"><i class="fab fa-weixin" style="color:#07c160"></i></span><span class="b-label">微信</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row" id="cpoauthBindingRow"><span class="b-icon"><i class="fas fa-code" style="color:#667eea"></i></span><span class="b-label">CPOAuth</span><span class="b-status" id="cpoauthStatus">检查中...</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:12px;text-align:center"><i class="fas fa-info-circle"></i> 更多第三方登录即将上线</div>
+      </div>
+
+      <!-- 危险区域 -->
+      <div class="danger-zone">
+        <h3><i class="fas fa-exclamation-triangle"></i> 危险区域</h3>
+        <p>退出登录后需要重新输入密码才能访问账号相关功能</p>
+        <div class="btn-row">
+          <button class="btn-danger-outline" id="logoutAllBtn">登出所有设备</button>
+          <button class="btn-danger-outline" id="logoutBtn">退出登录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+    (function(){
+    var $=function(s){return document.querySelector(s);};
+    var sb,user;
+    try{sb=KJ.createSupabase();}catch(e){}
+
+    function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
+    async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var d=await r.json();var ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
+
+    // 从 Supabase login_devices 读取最近登录历史
+    async function renderLoginHistory(){
+      var el=$('#loginHistory');if(!el)return;
+      var records=[];
+
+      // 1. 从 Supabase 读取
+      if(sb&&user){
+        try{
+          var r=await sb.from('login_devices').select('*').eq('user_id',user.id).order('logged_in_at',{ascending:false}).limit(10);
+          if(!r.error&&r.data)records=r.data;
+        }catch(e){console.warn('Login history read:',e)}
+      }
+
+      // 2. 补充 localStorage
+      try{
+        var history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
+        var seen={};for(var i=0;i<records.length;i++){seen[(records[i].browser||'')+'|'+(records[i].os||'')+'|'+(records[i].logged_in_at||records[i].created_at)]=true;}
+        for(var j=history.length-1;j>=0;j--){var hr=history[j];var hk=(hr.browser||'')+'|'+(hr.os||'')+'|'+hr.time;if(!seen[hk]){seen[hk]=true;records.push({browser:hr.browser,os:hr.os,ip:hr.ip,logged_in_at:hr.time,source:'local'});}}
+      }catch(e){}
+
+      // 去重 + 限 3 条
+      var dedup={};var unique=[];
+      for(var k=0;k<records.length;k++){var rd=records[k];var rk=(rd.browser||'')+'|'+(rd.os||'');if(!dedup[rk]){dedup[rk]=rd;unique.push(rd);}}
+      if(unique.length>3)unique.length=3;
+
+      // 更新设备数量
+      var countEl=$('#deviceCount');if(countEl)countEl.textContent=Object.keys(dedup).length+' 台';
+
+      if(!unique.length){el.innerHTML='<div class="info-row"><span class="label" style="color:var(--color-text-tertiary)">暂无登录记录</span></div>';return}
+
+      var lines=[];
+      for(var m=0;m<unique.length;m++){
+        var u=unique[m];
+        var t=u.logged_in_at||u.created_at||u.time||'';
+        var ts=t?fmtDate(t):'--';
+        var dt=u.source==='cloud'?' ☁️':'';
+        lines.push('<div class="info-row"><span class="label">'+KJ.escapeHtml(u.os||'--')+' · '+KJ.escapeHtml(u.browser||'--')+'</span><span class="value" style="font-size:12px">'+ts+dt+'<br><span style="font-size:11px;color:var(--color-text-tertiary)">'+KJ.escapeHtml(u.ip||'--')+'</span></span></div>');
+      }
+      el.innerHTML=lines.join('');
+    }
+
+    function saveLoginRecord(ip){
+      var ua=KJ.parseUA();
+      try{
+        var history=JSON.parse(localStorage.getItem('kjllin_login_history')||'[]');
+        history.push({browser:ua.browser+' '+(ua.osVer||''),os:ua.os,time:new Date().toISOString(),ip:ip});
+        if(history.length>10)history=history.slice(-10);
+        localStorage.setItem('kjllin_login_history',JSON.stringify(history));
+      }catch(e){}
+    }
+
+    async function loadUser(){
+      if(!sb)return;
+      try{
+        var r=await sb.auth.getSession();
+        if(!r.data.session||!r.data.session.user){showLoginPrompt();return}
+        user=r.data.session.user;
+        $('#loginPrompt').style.display='none';$('#accountContent').style.display='block';
+
+        var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
+        $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
+        $('#profileName').textContent=nick;
+        $('#profileEmail').textContent=user.email;
+        $('#emailStatus').textContent=user.email_confirmed_at?'已验证':'待验证';
+        if(!user.email_confirmed_at)$('#emailStatus').style.color='var(--color-warning)';
+        $('#infoUserId').textContent=user.id.substring(0,12)+'...';
+        $('#infoCreated').textContent=fmtDate(user.created_at);
+
+        try{
+          var r2=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
+          if(r2.data&&r2.data.length){$('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);$('#infoStatus').textContent=r2.data[0].status==='active'?'正常':'待审核';}
+        }catch(e){}
+
+        var ua=KJ.parseUA();
+        $('#deviceBrowser').textContent=ua.browser;
+        $('#deviceOS').textContent=ua.os+(ua.osVer?' '+ua.osVer:'');
+        $('#deviceScreen').textContent=ua.screen;
+
+        loadIP().then(function(ip){$('#deviceIP').textContent=ip;saveLoginRecord(ip);renderLoginHistory();});
+        renderLoginHistory();
+        renderCpoauthBinding();
+
+        var days=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
+        var el=$('#pwdStrength');el.textContent=days>90?'建议修改':'正常';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
+      }catch(e){console.error('loadUser:',e);showLoginPrompt();}
+    }
+
+    // CPOAuth
+    function getCpoauthSession(){try{return JSON.parse(localStorage.getItem('kjllin_cpoauth')||'null');}catch(e){return null;}}
+    async function renderCpoauthBinding(){
+      var statusEl=$('#cpoauthStatus');if(!statusEl)return;
+      var session=getCpoauthSession();
+      if(!session&&sb&&user){
+        try{var r=await sb.from('users').select('cpoauth_sub,cpoauth_username,cpoauth_linked_at').eq('id',user.id).single();if(!r.error&&r.data&&r.data.cpoauth_sub){session={provider:'cpoauth',sub:r.data.cpoauth_sub,username:r.data.cpoauth_username||'CPOAuth 用户',linked_at:r.data.cpoauth_linked_at};try{localStorage.setItem('kjllin_cpoauth',JSON.stringify(session));}catch(e){}}}catch(e){console.warn('CPOAuth sync:',e)}
+      }
+      if(session&&(session.sub||session.user)){
+        var name=session.username||(session.user&&(session.user.display_name||session.user.username))||'CPOAuth 用户';
+        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';
+      }else{
+        statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
+        setTimeout(function(){var btn=$('#cpoauthBindBtn');if(btn)btn.addEventListener('click',cpoauthBind);},0);
+      }
+    }
+    function cpoauthBind(){
+      var AUTHORIZE='https://www.cpoauth.com/oauth/authorize',CID='2bbbe6cf-b13c-4181-8958-61184a2c799e',REDIRECT='https://kjllin.github.io/login/callback/',SCOPE='openid profile email';
+      function gen(len){var a=new Uint8Array(len);crypto.getRandomValues(a);return btoa(String.fromCharCode.apply(null,[].slice.call(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+      var verifier=gen(96),state=gen(16);
+      sessionStorage.setItem('cpoauth_code_verifier',verifier);sessionStorage.setItem('cpoauth_oauth_state',state);sessionStorage.setItem('cpoauth_redirect_uri',REDIRECT);sessionStorage.setItem('cpoauth_action','link');
+      crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(function(digest){var challenge=btoa(String.fromCharCode.apply(null,new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');window.location.href=AUTHORIZE+'?'+new URLSearchParams({response_type:'code',client_id:CID,redirect_uri:REDIRECT,scope:SCOPE,state:state,code_challenge:challenge,code_challenge_method:'S256'}).toString().replace(/\+/g,'%20');});
+    }
+    async function cpoauthUnbind(){if(!confirm('确定解绑 CPOAuth？'))return;if(!sb){KJ.toast('网络错误');return}try{var r=await sb.auth.getSession();if(r.data.session)await sb.from('users').update({cpoauth_sub:null,cpoauth_linked_at:null,cpoauth_username:null}).eq('id',r.data.session.user.id);}catch(e){console.warn('CPOAuth unbind:',e)}localStorage.removeItem('kjllin_cpoauth');KJ.toast('已解绑 CPOAuth');renderCpoauthBinding();}
+    window.cpoauthUnbind=cpoauthUnbind;
+
+    $('#logoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
+    $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
+
+    // Theme
+    var themeBtn=$('#themeBtn');
+    function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    // 移动端
+    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
+    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+
+    if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
+
+    function showLoginPrompt(){$('#loginPrompt').style.display='';$('#accountContent').style.display='none';$('#loginMsg').textContent='请登录后管理账号';$('#loginLink').hidden=false;}
+
+    var authReady=false;
+    sb.auth.onAuthStateChange(function(event,session){
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(session&&session.user){loadUser();return}showLoginPrompt();}
+      else if(event==='SIGNED_OUT'){authReady=true;showLoginPrompt();}
+      else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session&&session.user)loadUser();}
+    });
+    setTimeout(function(){if(!authReady)loadUser();},3000);
+    setTimeout(function(){if($('#loginMsg').textContent==='加载中...'){$('#loginMsg').textContent='加载超时，请检查网络后刷新页面';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);
+    })();
+  </script>
+</body>
+</html>
