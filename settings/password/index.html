@@ -33,15 +33,30 @@
     .form-group{margin-bottom:20px}
     .form-group label{display:block;font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px}
     .form-group input{width:100%;padding:10px 14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-input);color:var(--color-text-primary);font-size:15px;font-family:var(--font-sans);outline:none;transition:all var(--transition-fast)}
-    .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-accent-glow)}
+    .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow)}
     .form-group input::placeholder{color:var(--color-text-tertiary)}
     .form-hint{font-size:12px;color:var(--color-text-tertiary);margin-top:6px}
+    /* ── 密码强度指示器 ── */
+    .pw-strength-bar{height:4px;border-radius:2px;margin-top:8px;background:var(--color-border);overflow:hidden}
+    .pw-strength-fill{height:100%;border-radius:2px;width:0;transition:width 0.3s var(--spring-default), background 0.3s var(--spring-default)}
+    .pw-strength-fill.weak{width:25%;background:var(--color-danger)}
+    .pw-strength-fill.fair{width:50%;background:var(--color-warning)}
+    .pw-strength-fill.good{width:75%;background:var(--color-accent)}
+    .pw-strength-fill.strong{width:100%;background:var(--color-success)}
+    .pw-strength-text{font-size:11px;font-weight:500;margin-top:4px;transition:color 0.3s}
+    .pw-rules{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
+    .pw-rule{font-size:11px;color:var(--color-text-tertiary);display:flex;align-items:center;gap:4px;transition:color 0.2s}
+    .pw-rule.pass{color:var(--color-success)}
+    .pw-rule.pass i{opacity:1}
+    .pw-rule i{font-size:10px;opacity:0.4}
     .form-actions{margin-top:28px;display:flex;gap:12px}
     .btn-submit{padding:10px 28px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast)}
-    .btn-submit:hover:not(:disabled){background:var(--color-accent-hover)}
+    .btn-submit:hover:not(:disabled){background:var(--color-accent-hover);transform:translateY(-1px);box-shadow:0 4px 12px var(--color-accent-glow)}
+    .btn-submit:active:not(:disabled){transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn-submit:disabled{opacity:0.5;cursor:not-allowed}
     .btn-cancel{padding:10px 28px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:14px;cursor:pointer;text-decoration:none;text-align:center;transition:all var(--transition-fast)}
     .btn-cancel:hover{border-color:var(--color-accent);color:var(--color-accent)}
+    .btn-cancel:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
 
     @media(max-width:520px){.menu-item{display:none}.hamburger{display:grid}.card-glass-form{padding:24px 20px}.container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}.page-header h1{font-size:20px}.page-header .icon{font-size:36px}.form-actions{flex-direction:column}.btn-submit,.btn-cancel{width:100%;text-align:center}}
     @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
@@ -85,7 +100,17 @@
       <div class="card-glass-form">
         <h2><i class="fas fa-lock"></i> 修改登录密码</h2>
         <div class="form-group"><label>当前密码</label><input type="password" id="currentPassword" placeholder="输入当前密码" autocomplete="current-password"></div>
-        <div class="form-group"><label>新密码</label><input type="password" id="newPassword" placeholder="至少 8 位，含字母与数字" autocomplete="new-password"><div class="form-hint">至少 8 个字符，建议包含大小写字母和数字</div></div>
+        <div class="form-group"><label>新密码</label><input type="password" id="newPassword" placeholder="至少 8 位，含字母与数字" autocomplete="new-password">
+          <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
+          <div class="pw-strength-text" id="pwStrengthText"></div>
+          <div class="pw-rules" id="pwRules">
+            <span class="pw-rule" data-rule="length"><i class="fas fa-circle"></i> 至少 8 个字符</span>
+            <span class="pw-rule" data-rule="upper"><i class="fas fa-circle"></i> 含大写字母</span>
+            <span class="pw-rule" data-rule="lower"><i class="fas fa-circle"></i> 含小写字母</span>
+            <span class="pw-rule" data-rule="digit"><i class="fas fa-circle"></i> 含数字</span>
+            <span class="pw-rule" data-rule="special"><i class="fas fa-circle"></i> 特殊字符</span>
+          </div>
+        </div>
         <div class="form-group"><label>确认新密码</label><input type="password" id="confirmPassword" placeholder="再次输入新密码" autocomplete="new-password"></div>
         <div class="form-actions">
           <button class="btn-submit" id="submitBtn">更新密码</button>
@@ -134,8 +159,36 @@
         if(r2.error)throw r2.error;
         KJ.toast('密码已更新')
         $('#currentPassword').value='';$('#newPassword').value='';$('#confirmPassword').value='';
+        $('#pwStrengthFill').className='pw-strength-fill';$('#pwStrengthText').textContent='';
+        document.querySelectorAll('.pw-rule').forEach(function(r){r.classList.remove('pass');});
       }catch(e){KJ.toast(KJ.formatSupabaseError(e)||'密码修改失败，请检查当前密码');}
       btn.disabled=false;btn.textContent='更新密码';
+    });
+
+    // ── 实时密码强度检测 ──
+    var rules={length:/.{8,}/,upper:/[A-Z]/,lower:/[a-z]/,digit:/\d/,special:/[^A-Za-z0-9]/};
+    $('#newPassword').addEventListener('input',function(){
+      var pw=this.value,score=0,details=[];
+      document.querySelectorAll('.pw-rule').forEach(function(r){
+        var key=r.dataset.rule,ok=rules[key]&&rules[key].test(pw);
+        r.classList.toggle('pass',ok);r.querySelector('i').className=ok?'fas fa-check-circle':'fas fa-circle';
+        if(ok){score++;if(key==='length')details.push('长度 ✓');}
+      });
+      var fill=$('#pwStrengthFill'),txt=$('#pwStrengthText'),level='',color='';
+      fill.className='pw-strength-fill';
+      if(pw.length===0){txt.textContent='';}
+      else if(score<=1){fill.classList.add('weak');txt.textContent='弱 — 很容易被猜解';txt.style.color='var(--color-danger)';}
+      else if(score===2){fill.classList.add('fair');txt.textContent='一般 — 可以进一步加强';txt.style.color='var(--color-warning)';}
+      else if(score===3||score===4){fill.classList.add('good');txt.textContent='良好 — 安全性较高';txt.style.color='var(--color-accent)';}
+      else{fill.classList.add('strong');txt.textContent='强 — 非常安全';txt.style.color='var(--color-success)';}
+    });
+
+    // ── 确认密码实时匹配提示 ──
+    $('#confirmPassword').addEventListener('input',function(){
+      var np=$('#newPassword').value;
+      if(!this.value){this.style.borderColor='';return}
+      if(this.value===np){this.style.borderColor='var(--color-success)';}
+      else{this.style.borderColor='var(--color-danger)';}
     });
 
     setTimeout(function(){if($('#loginPrompt').style.display!=='none'){$('#loginMsg').textContent='加载超时，请检查网络';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);

@@ -106,16 +106,17 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background-color: var(--bg-body);
-            font-family: Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text-primary);
+            font-family: var(--font-sans);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
             user-select: none;
         }
         canvas {
-            border: 1px solid #000;
-            background-color: #f7f7f7;
+            border: 1px solid var(--color-border);
+            background-color: var(--color-bg-raised);
             max-width: 100%;
             height: auto;
         }
@@ -123,11 +124,12 @@
             margin-top: 10px;
             font-size: 18px;
             text-align: center;
+            color: var(--color-text-primary);
         }
         #weatherInfo {
             margin-top: 5px;
             font-size: 14px;
-            color: #555;
+            color: var(--color-text-secondary);
         }
         /* 隐藏预加载的图像 */
         #groundTexture, #dinoSpriteSheet, #coinImage, #flyImage, #xrzImage { display: none; }
@@ -142,15 +144,18 @@
         .touch-btn {
             padding: 10px 18px;
             font-size: 16px;
-            border: 1px solid #999;
-            border-radius: 6px;
-            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background: var(--color-bg-glass);
+            color: var(--color-text-primary);
             cursor: pointer;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
+            transition: all var(--duration-instant) var(--spring-default);
         }
         .touch-btn:active {
-            background: #ddd;
+            background: var(--color-bg-hover);
+            transform: scale(0.95);
         }
         @media (max-width: 850px) {
             #touchBtns { display: flex; }
@@ -196,10 +201,10 @@
     <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
 <div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
 <div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
-    <div id="cloudScores" style="margin-top:8px;font-size:14px;color:#555;text-align:center;">
+    <div id="cloudScores" style="margin-top:8px;font-size:14px;color:var(--color-text-secondary);text-align:center;">
       云端最高分: <span id="dinoCloudBest">-</span> | 我云最高分: <span id="dinoMyBest">-</span>
     </div>
-    <div id="authHint" style="margin-top:6px;font-size:12px;color:#888;text-align:center;">
+    <div id="authHint" style="margin-top:6px;font-size:12px;color:var(--color-text-tertiary);text-align:center;">
       <a href="/login/?redirect=/game/dino/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端
     </div>
     <div id="touchBtns">
@@ -356,9 +361,9 @@
           if (!hint) return;
           if (user) {
             var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-            hint.innerHTML = '<span style="color:#34c88a">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
+            hint.innerHTML = '<span style="color:var(--color-success)">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
           } else {
-            hint.innerHTML = '<a href="/login/?redirect=/game/dino/" style="color:#0078d4;text-decoration:none">登录</a> 以同步游戏记录到云端';
+            hint.innerHTML = '<a href="/login/?redirect=/game/dino/" style="color:var(--color-accent);text-decoration:none">登录</a> 以同步游戏记录到云端';
           }
         }
 
@@ -942,7 +947,7 @@
 
                 // 更优雅的方式：绘制一个矩形来"擦除"该区域的地面贴图
                 // 沟壑的位置仍然基于原始地面，但视觉上它会出现在移动后的地面贴图之上
-                ctx.fillStyle = '#f7f7f7'; // 使用画布背景色
+                ctx.fillStyle = getComputedStyle(canvas).backgroundColor; // 使用画布背景色（适配暗色模式）
                 ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
 
                 // 检测是否掉入沟壑 - 关键调用位置
