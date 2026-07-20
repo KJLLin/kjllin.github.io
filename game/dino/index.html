@@ -32,71 +32,6 @@
           border: 1px solid var(--border-mica);
           box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
         }
-        /* ── 紧凑版顶部导航栏 ── */
-        .top-menu {
-          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-          padding: 4px 12px;
-          display: flex; align-items: center; justify-content: center;
-          pointer-events: none;
-        }
-        .menu-bar {
-          display: flex; align-items: center; gap: 2px;
-          padding: 4px 8px;
-          border-radius: var(--radius-sm);
-          border: 1px solid var(--border-mica);
-          box-shadow: var(--shadow-rest);
-          pointer-events: all;
-          background: var(--bg-mica);
-          -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-        }
-        .menu-logo {
-          font-size: 15px; font-weight: 700; color: var(--accent);
-          padding: 4px 10px; letter-spacing: 0.2px; margin-right: 2px;
-        }
-        .menu-divider {
-          width: 1px; height: 18px; background: var(--border-mica); margin: 0 3px; border-radius: 1px;
-        }
-        .menu-item {
-          padding: 4px 10px; border-radius: var(--radius-sm);
-          font-size: 12px; font-weight: 500; color: var(--text-secondary);
-          text-decoration: none; cursor: pointer;
-          border: none; background: none;
-          transition: all 0.15s ease;
-          white-space: nowrap; position: relative;
-          letter-spacing: 0.2px;
-        }
-        .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
-        .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
-        .menu-item.active::after {
-          content: ''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
-          width: 14px; height: 1.5px; border-radius: 1px; background: var(--accent);
-        }
-        .menu-btn {
-          width: 28px; height: 28px; border-radius: var(--radius-sm); border: none;
-          font-size: 14px; cursor: pointer;
-          background: var(--bg-mica-hover); color: var(--text-primary);
-          display: grid; place-items: center;
-          transition: all 0.15s ease;
-        }
-        .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
-        .menu-btn:active { transform: scale(0.92); }
-        /* ── 移动端汉堡菜单 ── */
-        .hamburger { display: none; }
-        .mobile-menu-dropdown {
-          display: none; position: fixed; top: calc(44px + env(safe-area-inset-top, 0px) + 6px);
-          left: 12px; right: 12px;
-          padding: 6px; border-radius: var(--radius-sm);
-          border: 1px solid var(--border-mica);
-          box-shadow: var(--shadow-hover);
-          background: var(--bg-mica-scroll);
-          -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-          flex-direction: column; gap: 2px;
-          pointer-events: all; z-index: 101;
-        }
-        .mobile-menu-dropdown.open { display: flex; }
-        .mobile-menu-dropdown .menu-item {
-          display: block; width: 100%; text-align: left; pointer-events: auto;
-        }
         body {
             margin: 0;
             padding: 20px;
@@ -160,40 +95,37 @@
         @media (max-width: 850px) {
             #touchBtns { display: flex; }
         }
-        @media (max-width: 768px) {
-          .menu-bar .menu-item { display: none; }
-          .menu-bar .menu-divider { display: none; }
-          .hamburger { display: grid !important; }
-        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/common.js"></script>
 </head>
 <body>
-  <!-- ==================== 紧凑导航栏 ==================== -->
-  <header class="top-menu">
-    <nav class="menu-bar" id="menuBar">
-      <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
-      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
-      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
-      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
-      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
-      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
-    </nav>
-    <div class="mobile-menu-dropdown" id="mobileMenu">
-      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
-      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
-      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
-      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-    </div>
-  </header>
+<div class="bg-base"></div>
+
+<!-- ================== 全局导航栏 ================== -->
+<header class="top-menu">
+  <nav class="menu-bar mica" id="menuBar">
+    <span class="menu-logo">KJLLin</span>
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+    <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+    <span id="userTag" class="menu-user-tag"></span>
+    <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+    <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+  </nav>
+  <div class="mobile-menu-dropdown mica" id="mobileMenu">
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+  </div>
+</header>
 
 	<div id="gameInfo">I wanna be Dinosaur!</div>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
@@ -208,10 +140,10 @@
       <a href="/login/?redirect=/game/dino/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端
     </div>
     <div id="touchBtns">
-        <button class="touch-btn" id="btnLeft">🌬 左风</button>
-        <button class="touch-btn" id="btnJump" style="font-weight:bold;font-size:20px;">🦘 跳跃</button>
-        <button class="touch-btn" id="btnRight">🌬 右风</button>
-        <button class="touch-btn" id="btnRain">🌧 下雨</button>
+        <button class="touch-btn" id="btnLeft"><i class="fas fa-wind"></i> 左风</button>
+        <button class="touch-btn" id="btnJump" style="font-weight:bold;font-size:20px;"><i class="fas fa-arrow-up"></i> 跳跃</button>
+        <button class="touch-btn" id="btnRight"><i class="fas fa-wind"></i> 右风</button>
+        <button class="touch-btn" id="btnRain"><i class="fas fa-cloud-rain"></i> 下雨</button>
     </div>
     <!-- 预加载地面贴图 -->
     <img id="groundTexture" src="data:image/png;base64,..." alt="" aria-hidden="true">
@@ -224,17 +156,7 @@
 
     <script>
         // ====================== 导航栏 JS ======================
-        const hamburgerBtn = document.getElementById('hamburgerBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
-        hamburgerBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          mobileMenu.classList.toggle('open');
-        });
-        document.addEventListener('click', function(e) {
-          if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
-            mobileMenu.classList.remove('open');
-          }
-        });
+        KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
         // 主题切换
         const themeBtn = document.getElementById('themeBtn');
         function updateThemeUI() {
@@ -361,7 +283,7 @@
           if (!hint) return;
           if (user) {
             var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-            hint.innerHTML = '<span style="color:var(--color-success)">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
+            hint.innerHTML = '<span style="color:var(--color-success)"><i class="fas fa-check"></i></span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
           } else {
             hint.innerHTML = '<a href="/login/?redirect=/game/dino/" style="color:var(--color-accent);text-decoration:none">登录</a> 以同步游戏记录到云端';
           }
@@ -392,7 +314,7 @@
             const { error: insErr } = await sb.from('game_scores').insert({
               user_id: userId, nick: nick, game: GAME_NAME, score: finalScore
             });
-            if (insErr) { console.warn('Save score insert error:', insErr); return; }
+            if (insErr) { KJ.toast('云端同步失败: '+KJ.formatSupabaseError(insErr)); return; }
 
             const { data: cloudBest } = await sb
               .from('game_scores').select('score').eq('game', GAME_NAME)
@@ -403,7 +325,7 @@
 
             if (cloudBest) document.getElementById('dinoCloudBest').textContent = cloudBest.score;
             if (myBest) document.getElementById('dinoMyBest').textContent = myBest.score;
-          } catch(e) { console.warn('Save score failed:', e); }
+          } catch(e) { console.warn('Save score failed:', e); KJ.toast('云端同步失败，请检查网络连接'); }
         }
         let currentWeather = 'sunny';
         let windDirection = 0;
@@ -1128,5 +1050,6 @@
         })();
         resetGame(); // 使用resetGame来初始化并启动游戏
     </script>
+<div id="toast" class="toast hidden"></div>
 </body>
 </html>

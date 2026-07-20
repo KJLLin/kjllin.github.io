@@ -11,21 +11,6 @@
   <title>账号安全中心 · 设置 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* ── 导航栏（theme.css 令牌） ── */
-    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
-    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
-    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
-    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}
-    .menu-item.active{font-weight:600}
-    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
-    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}
-    #themeBtn{border-radius:50%}
-    .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:calc(58px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
-    .mobile-menu-dropdown.open{display:flex}
-    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
-
     /* ── 布局 ── */
     .container{max-width:740px;margin:0 auto;padding:80px 16px 40px;position:relative;z-index:1}
 
@@ -96,7 +81,6 @@
     .binding-row .b-status{font-size:13px;display:flex;align-items:center;gap:6px;margin-left:auto}
 
     @media(max-width:520px){
-      .menu-item{display:none}.hamburger{display:grid}
       .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
       .page-header h1{font-size:22px}
       .page-header .icon{font-size:40px}
@@ -117,13 +101,13 @@
       .danger-zone .btn-row .btn-danger-outline{font-size:12px;padding:8px 14px}
       .card-glass{padding:18px 16px !important}
     }
-    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
 </head>
 <body>
-  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
+  <div class="bg-base"></div>
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
-    <nav class="menu-bar" id="menuBar">
+    <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
@@ -131,10 +115,12 @@
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown" id="mobileMenu">
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -151,7 +137,7 @@
         <span style="color:var(--color-text-tertiary);font-size:13px;margin:0 6px">›</span>
         <span style="color:var(--color-text-secondary);font-size:13px">账号安全</span>
       </nav>
-      <span class="icon">🔒</span><h1>账号安全中心</h1>
+      <span class="icon"><i class="fas fa-lock"></i></span><h1>账号安全中心</h1>
     </div>
 
     <div id="loginPrompt" class="card card-glass" style="text-align:center;padding:48px 24px">
@@ -162,7 +148,7 @@
     <div id="accountContent" style="display:none">
       <!-- 个人资料 -->
       <div class="card card-glass card-anim">
-        <div class="card-header">👤 个人资料<a href="/settings/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a></div>
+        <div class="card-header"><i class="fas fa-user"></i> 个人资料<a href="/settings/profile/" class="card-action">编辑 <i class="fas fa-chevron-right"></i></a></div>
         <div class="profile-header">
           <div class="avatar" id="profileAvatar">U</div>
           <div class="profile-text"><div class="name" id="profileName">--</div><div class="email" id="profileEmail">--</div></div>
@@ -171,18 +157,18 @@
 
       <!-- 安全概览 -->
       <div class="card card-glass card-anim">
-        <div class="card-header">🛡️ 安全概览<a href="/settings/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
+        <div class="card-header"><i class="fas fa-shield-halved"></i> 安全概览<a href="/settings/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
         <div class="security-grid">
-          <div class="security-item"><div class="si-icon">🔑</div><div class="si-label">密码强度</div><div class="si-value" id="pwdStrength">检测中</div></div>
-          <div class="security-item"><div class="si-icon">📧</div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
-          <div class="security-item"><div class="si-icon">🔐</div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
-          <div class="security-item"><div class="si-icon">📱</div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-key"></i></div><div class="si-label">密码强度</div><div class="si-value" id="pwdStrength">检测中</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-envelope"></i></div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-lock"></i></div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-mobile-screen"></i></div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
         </div>
       </div>
 
       <!-- 账号信息 -->
       <div class="card card-glass card-anim">
-        <div class="card-header">📊 账号信息</div>
+        <div class="card-header"><i class="fas fa-chart-bar"></i> 账号信息</div>
         <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
         <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
         <div class="info-row"><span class="label">最近登录</span><span class="value" id="infoLastLogin">--</span></div>
@@ -191,23 +177,23 @@
 
       <!-- 当前设备 -->
       <div class="card card-glass card-anim">
-        <div class="card-header">💻 当前设备</div>
+        <div class="card-header"><i class="fas fa-laptop"></i> 当前设备</div>
         <div class="info-row"><span class="label">浏览器</span><span class="value" id="deviceBrowser">检测中...</span></div>
         <div class="info-row"><span class="label">操作系统</span><span class="value" id="deviceOS">--</span></div>
         <div class="info-row"><span class="label">屏幕 / 语言</span><span class="value" id="deviceScreen">--</span></div>
         <div class="info-row"><span class="label">IP 地址</span><span class="value" id="deviceIP">获取中...</span></div>
-        <div class="info-row"><span class="label">连接状态</span><span class="value" style="color:var(--color-success)">🟢 在线</span></div>
+        <div class="info-row"><span class="label">连接状态</span><span class="value" style="color:var(--color-success)"><i class="fas fa-circle" style="color:var(--color-success)"></i> 在线</span></div>
       </div>
 
       <!-- 最近登录（从 Supabase 读取） -->
       <div class="card card-glass card-anim">
-        <div class="card-header">🕐 最近登录<a href="/settings/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a></div>
+        <div class="card-header"><i class="fas fa-clock"></i> 最近登录<a href="/settings/devices/" class="card-action">查看全部 <i class="fas fa-chevron-right"></i></a></div>
         <div id="loginHistory" style="color:var(--color-text-tertiary);font-size:13px;min-height:32px">加载中...</div>
       </div>
 
       <!-- 第三方绑定 -->
       <div class="card card-glass card-anim">
-        <div class="card-header">🔗 第三方账号绑定</div>
+        <div class="card-header"><i class="fas fa-link"></i> 第三方账号绑定</div>
         <div class="binding-row"><span class="b-icon"><i class="fab fa-google" style="color:#4285f4"></i></span><span class="b-label">Google</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
         <div class="binding-row"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
         <div class="binding-row"><span class="b-icon"><i class="fab fa-weixin" style="color:#07c160"></i></span><span class="b-label">微信</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
@@ -221,7 +207,7 @@
         <p>退出登录后需要重新输入密码才能访问账号相关功能</p>
         <div class="btn-row">
           <button class="btn-danger-outline" id="logoutAllBtn">登出所有设备</button>
-          <button class="btn-danger-outline" id="logoutBtn">退出登录</button>
+          <button class="btn-danger-outline" id="accountLogoutBtn">退出登录</button>
         </div>
       </div>
     </div>
@@ -273,7 +259,7 @@
         var u=unique[m];
         var t=u.logged_in_at||u.created_at||u.time||'';
         var ts=t?fmtDate(t):'--';
-        var dt=u.source==='cloud'?' ☁️':'';
+        var dt=u.source==='cloud'?' <i class="fas fa-cloud"></i>':'';
         lines.push('<div class="info-row"><span class="label">'+KJ.escapeHtml(u.os||'--')+' · '+KJ.escapeHtml(u.browser||'--')+'</span><span class="value" style="font-size:12px">'+ts+dt+'<br><span style="font-size:11px;color:var(--color-text-tertiary)">'+KJ.escapeHtml(u.ip||'--')+'</span></span></div>');
       }
       el.innerHTML=lines.join('');
@@ -351,7 +337,7 @@
     async function cpoauthUnbind(){if(!confirm('确定解绑 CPOAuth？'))return;if(!sb){KJ.toast('网络错误');return}try{var r=await sb.auth.getSession();if(r.data.session)await sb.from('users').update({cpoauth_sub:null,cpoauth_linked_at:null,cpoauth_username:null}).eq('id',r.data.session.user.id);}catch(e){console.warn('CPOAuth unbind:',e)}localStorage.removeItem('kjllin_cpoauth');KJ.toast('已解绑 CPOAuth');renderCpoauthBinding();}
     window.cpoauthUnbind=cpoauthUnbind;
 
-    $('#logoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
+    $('#accountLogoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
     $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
 
     // Theme
@@ -360,10 +346,7 @@
     themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
     KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
 
-    // 移动端
-    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
-    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
-    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
 
     if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
 
@@ -379,5 +362,6 @@
     setTimeout(function(){if($('#loginMsg').textContent==='加载中...'){$('#loginMsg').textContent='加载超时，请检查网络后刷新页面';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);
     })();
   </script>
+  <div id="toast" class="toast hidden"></div>
 </body>
 </html>

@@ -131,74 +131,6 @@
       padding: 28px 16px; position: relative; z-index: 1;
     }
 
-    /* ── 顶部导航栏 — Fluent Mica 磨砂 ── */
-    .top-menu {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 8px 16px;
-      display: flex; align-items: center; justify-content: center;
-      pointer-events: none;
-    }
-    .menu-bar {
-      display: flex; align-items: center; gap: 4px;
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-mica);
-      box-shadow: var(--shadow-rest);
-      pointer-events: all;
-      background: var(--bg-mica);
-      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      transition: all var(--transition-normal);
-    }
-    .menu-logo {
-      font-size: 18px; font-weight: 700; color: var(--accent);
-      padding: 6px 14px; letter-spacing: 0.2px; margin-right: 4px;
-    }
-    .menu-divider {
-      width: 1px; height: 22px; background: var(--border-mica); margin: 0 5px; border-radius: 1px;
-    }
-    .menu-item {
-      padding: 7px 14px; border-radius: var(--radius-sm);
-      font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
-      text-decoration: none; cursor: pointer;
-      border: none; background: none;
-      transition: all var(--transition-fast);
-      white-space: nowrap; position: relative;
-      letter-spacing: 0.3px;
-    }
-    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
-    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
-    .menu-item.active::after {
-      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
-      width: 18px; height: 2px; border-radius: 1px; background: var(--accent);
-    }
-    .menu-btn {
-      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
-      font-size: 16px; cursor: pointer;
-      background: var(--bg-mica-hover); color: var(--text-primary);
-      display: grid; place-items: center;
-      transition: all var(--transition-fast);
-    }
-    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
-    .menu-btn:active { transform: scale(0.92); }
-
-    /* ── 移动端汉堡菜单 ── */
-    .hamburger { display: none; }
-    .mobile-menu-dropdown {
-      display: none; position: fixed; top: calc(56px + env(safe-area-inset-top, 0px) + 8px);
-      left: 16px; right: 16px;
-      padding: 8px; border-radius: var(--radius-md);
-      border: 1px solid var(--border-mica);
-      box-shadow: var(--shadow-hover);
-      background: var(--bg-mica-scroll);
-      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      flex-direction: column; gap: 2px;
-      pointer-events: all; z-index: 101;
-    }
-    .mobile-menu-dropdown.open { display: flex; }
-    .mobile-menu-dropdown .menu-item {
-      display: block; width: 100%; text-align: left; pointer-events: auto;
-    }
-
     /* 主卡片 */
     .card {
       border-radius: var(--radius-lg);
@@ -376,11 +308,6 @@
       .bg-mica-glow-1, .bg-mica-glow-2 {
         animation: none; -webkit-animation: none;
       }
-      /* 移动端导航：隐藏桌面菜单项，显示汉堡按钮 */
-      .menu-bar .menu-item { display: none; }
-      .menu-bar .menu-item.mobile-show { display: block; }
-      .menu-bar .menu-divider { display: none; }
-      .hamburger { display: grid !important; }
     }
 
     @media (max-width: 400px) {
@@ -399,22 +326,22 @@
   <div class="bg-mica-glow-1"></div>
   <div class="bg-mica-glow-2"></div>
 
-  <!-- ==================== 导航栏 ==================== -->
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
-    <nav class="menu-bar" id="menuBar">
+    <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown" id="mobileMenu">
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -427,7 +354,7 @@
   <div class="container">
     <div class="card mica">
       <div class="game-header">
-        <div class="game-icon">🔢</div>
+        <div class="game-icon"><i class="fas fa-table-cells"></i></div>
         <h1 class="game-title">舒尔特方格</h1>
         <p class="game-desc">按顺序依次点击数字 1 → 2 → 3 …，<br>越快越好，锻炼专注力！</p>
       </div>
@@ -443,15 +370,15 @@
 
       <div class="info-bar">
         <div class="info-item">
-          <div class="info-label">⏱ 用时</div>
+          <div class="info-label"><i class="fas fa-stopwatch"></i> 用时</div>
           <div class="info-value" id="timer">0.00s</div>
         </div>
         <div class="info-item">
-          <div class="info-label">🏆 最佳</div>
+          <div class="info-label"><i class="fas fa-trophy"></i> 最佳</div>
           <div class="info-value best" id="bestTime">--</div>
         </div>
         <div class="info-item">
-          <div class="info-label">🎯 进度</div>
+          <div class="info-label"><i class="fas fa-bullseye"></i> 进度</div>
           <div class="info-value" id="progress">0/25</div>
         </div>
         
@@ -464,7 +391,7 @@
       <div id="completeMsg" class="complete-msg" style="display:none;"></div>
 
       <div class="btn-row">
-        <button class="btn primary" id="btnRestart" onclick="restart()">🔄 重新开始</button>
+        <button class="btn primary" id="btnRestart" onclick="restart()"><i class="fas fa-arrows-rotate"></i> 重新开始</button>
       </div>
     </div>
 
@@ -483,6 +410,38 @@
     const completeMsg = document.getElementById('completeMsg');
     const sizeBtns = document.querySelectorAll('.size-btn');
 
+    // Supabase 云端同步
+    var supabase = KJ.createSupabase();
+    var GAME_NAME = 'schulte';
+    var cloudBest = null;
+
+    async function saveScore(finalScore) {
+      if (!supabase) return;
+      try {
+        var { data: { session } } = await supabase.auth.getSession();
+        if (!session || !session.user) { KJ.toast('请先登录以同步游戏纪录'); return; }
+        var userId = session.user.id;
+        var userEmail = session.user.email || '';
+        var nick = userEmail.split('@')[0] || userId.substring(0, 8);
+
+        var { error: insErr } = await supabase.from('game_scores').insert({
+          user_id: userId, nick: nick, game: GAME_NAME, score: Math.round(finalScore * 100)
+        });
+        if (insErr) { KJ.toast('云端同步失败: ' + (insErr.message || '请检查网络')); return; }
+
+        var { data: best } = await supabase
+          .from('game_scores').select('score').eq('game', GAME_NAME)
+          .order('score', { ascending: true }).limit(1).maybeSingle();
+        if (best) cloudBest = best.score / 100;
+      } catch(e) { console.warn('Cloud save failed:', e); }
+    }
+
+    function updateCloudDisplay() {
+      var el = document.getElementById('cloudBest');
+      if (!el) return;
+      el.textContent = cloudBest !== null ? cloudBest.toFixed(2) + 's' : '--';
+    }
+
     let gridSize = 5;
     let numbers = [];
     let currentIndex = 0;
@@ -494,17 +453,7 @@
     let touchStartData = {};
 
     // 汉堡菜单
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const mobileMenu = document.getElementById('mobileMenu');
-    hamburgerBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      mobileMenu.classList.toggle('open');
-    });
-    document.addEventListener('click', function(e) {
-      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
-        mobileMenu.classList.remove('open');
-      }
-    });
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
 
     function shuffle(arr) {
       const a = arr.slice();
@@ -614,12 +563,15 @@
           const isNewBest = saveBestTime(elapsedSec);
           updateBestDisplay();
 
-          let msg = '🎉 完成！用时 ' + elapsedSec.toFixed(2) + ' 秒';
+          let msg = '<i class="fas fa-party-horn"></i> 完成！用时 ' + elapsedSec.toFixed(2) + ' 秒';
           if (isNewBest) {
-            msg += ' — 🏆 新纪录！';
+            msg += ' — <i class="fas fa-trophy"></i> 新纪录！';
           }
-          completeMsg.textContent = msg;
+          completeMsg.innerHTML = msg;
           completeMsg.style.display = 'block';
+
+          // 云端同步
+          saveScore(elapsedSec).then(function() { updateCloudDisplay(); });
 
           const cells = gridEl.querySelectorAll('.cell');
           cells.forEach(c => c.classList.remove('next-hint'));
@@ -685,6 +637,6 @@
     themeBtn.addEventListener('touchstart', handleTouchStart);
     themeBtn.addEventListener('touchend', e => handleTouchEnd(e, toggleTheme));
     KJ.onSystemThemeChange(initTheme);
-  </script>
+  </script>  <div id="toast" class="toast hidden"></div>
 </body>
 </html>

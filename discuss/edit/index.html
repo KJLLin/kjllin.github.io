@@ -21,18 +21,6 @@
     body{background:var(--bg-body);color:var(--text-primary)}
     .bg-base{position:fixed;inset:0;background:var(--bg-body);z-index:-3;pointer-events:none}
     .mica{background:var(--bg-mica);background-image:var(--iridescent);backdrop-filter:var(--blur-card);-webkit-backdrop-filter:var(--blur-card);border:1px solid var(--border-mica);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow)}
-    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--radius-lg);box-shadow:var(--glass-shadow);pointer-events:all;border-top:1px solid var(--color-border-glass)}
-    .menu-logo{font-size:18px;font-weight:700;color:var(--accent);padding:6px 14px}
-    .menu-divider{width:1px;height:20px;background:var(--border-mica);margin:0 4px}
-    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
-    .menu-item:hover,.menu-item.active{color:var(--accent);background:var(--accent-glow)}
-    .menu-btn{width:34px;height:34px;border-radius:50%;border:none;font-size:16px;cursor:pointer;background:rgba(220,220,220,0.4);color:var(--text-primary);display:grid;place-items:center}
-    [data-theme="dark"] .menu-btn{background:rgba(40,40,40,0.4)}
-    .menu-btn:hover{background:var(--accent-glow);color:var(--accent)}
-    .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:absolute;top:100%;left:16px;right:16px;margin-top:8px;padding:8px;border-radius:var(--radius-md);box-shadow:var(--shadow-hover);flex-direction:column;gap:2px;pointer-events:all;z-index:101}
-    .mobile-menu-dropdown.open{display:flex}
 
     .container{max-width:860px;margin:0 auto;padding:80px 16px calc(40px + env(safe-area-inset-bottom, 0px))}
     .page-header{margin-bottom:24px;animation:fadeUp 0.5s var(--win-ease)}
@@ -75,25 +63,24 @@
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;font-size:14px;z-index:300;background:var(--text-primary);color:var(--bg-body);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn 0.3s var(--bounce)}
     @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}}
 
-    @media(max-width:768px){.card{padding:18px}.container{padding:72px 12px calc(40px + env(safe-area-inset-bottom, 0px))}.menu-item{font-size:12px;padding:6px 10px}}
-    @media(max-width:520px){.menu-bar .menu-item{display:none}.hamburger{display:grid}.menu-divider{display:none}}
-    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
+    @media(max-width:768px){.card{padding:18px}.container{padding:72px 12px calc(40px + env(safe-area-inset-bottom, 0px))}}
   </style>
 </head>
 <body>
   <div class="bg-base"></div>
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
     <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -118,7 +105,7 @@
     </div>
 
     <div class="error-state mica" id="errorState" style="display:none">
-      <div class="icon">😕</div>
+      <div class="icon"><i class="fas fa-face-frown"></i></div>
       <div class="text" id="errorText"></div>
       <a href="/discuss/" class="btn btn-primary" style="text-decoration:none;display:inline-block;line-height:1.4">返回讨论版</a>
     </div>
@@ -230,6 +217,6 @@
       sb.auth.getSession().then(function(r){if(r?.data?.session?.user)loadPost(r.data.session.user);else showError('请先登录')}).catch(function(){showError('网络错误，请刷新后重试')});
     }else showError('服务暂不可用');
     })();
-  </script>
+  </script>  <div id="toast" class="toast hidden"></div>
 </body>
 </html>

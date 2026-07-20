@@ -147,67 +147,6 @@
       box-shadow: var(--glass-shadow);
     }
 
-    /* ====================== 顶部菜单栏 ====================== */
-    .top-menu {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 8px 16px;
-      display: flex; align-items: center; justify-content: center;
-      pointer-events: none;
-    }
-    .menu-bar {
-      display: flex; align-items: center; gap: 4px;
-      padding: 6px 8px; border-radius: var(--radius-lg);
-      box-shadow: var(--glass-shadow);
-      pointer-events: all;
-      transition: transform var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal);
-    }
-    .menu-bar.scrolled {
-      background: var(--bg-mica-scroll);
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-2px);
-    }
-    .menu-logo {
-      font-size: 18px; font-weight: 700; color: var(--accent);
-      padding: 6px 14px; letter-spacing: 0.2px;
-      margin-right: 4px;
-    }
-    .menu-item {
-      padding: 7px 14px; border-radius: var(--radius-sm);
-      font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
-      text-decoration: none; cursor: pointer;
-      border: none; background: none;
-      transition: all var(--transition-fast);
-      white-space: nowrap; position: relative;
-      letter-spacing: 0.3px;
-    }
-    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
-    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
-    .menu-item.active::after {
-      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
-      width: 16px; height: 2px; border-radius: 1px; background: var(--accent);
-    }
-    .menu-divider { width: 1px; height: 20px; background: var(--border-mica); margin: 0 4px; }
-    .menu-btn {
-      width: 34px; height: 34px; border-radius: 50%; border: none;
-      font-size: 16px; cursor: pointer;
-      background: rgba(220,220,220,0.4); color: var(--text-primary);
-      display: grid; place-items: center;
-      transition: all var(--transition-fast);
-    }
-    [data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
-    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
-    .menu-btn:active { transform: scale(0.92); }
-
-    /* 移动端汉堡菜单 */
-    .hamburger { display: none; }
-    .mobile-menu-dropdown {
-      display: none; position: absolute; top: 100%; left: 16px; right: 16px;
-      margin-top: 8px; padding: 8px; border-radius: var(--radius-md);
-      box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px;
-      pointer-events: all; z-index: 101;
-    }
-    .mobile-menu-dropdown.open { display: flex; }
-
     /* ====================== 布局 ====================== */
     .container { max-width: 860px; margin: 0 auto; padding: 80px 16px calc(40px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1; }
 
@@ -406,18 +345,10 @@
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
     @media (max-width: 520px) {
-      .menu-bar .menu-item { display: none; }
-      .menu-bar .menu-item.mobile-show { display: block; }
-      .hamburger { display: grid; }
-      .menu-divider { display: none; }
       .post-card .post-title { font-size: 20px; }
       .post-card .post-meta { font-size: 12px; }
       .markdown-body { font-size: 13px; }
       .not-found h2 { font-size: 18px; }
-    }
-    @media (min-width: 521px) {
-      .hamburger { display: none !important; }
-      .mobile-menu-dropdown { display: none !important; }
     }
 
     * { -webkit-user-select: none; user-select: none; }
@@ -438,19 +369,19 @@
     </div>
   </div>
 
-  <!-- ==================== 顶部菜单栏 ==================== -->
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
     <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -481,8 +412,6 @@
     const loader = $('#loader');
     const backTop = $('#backTop');
     const menuBar = $('#menuBar');
-    const hamburgerBtn = $('#hamburgerBtn');
-    const mobileMenu = $('#mobileMenu');
     const mainContainer = $('#mainContainer');
     let isScrolling = false;
     let touchStartData = {};
@@ -596,20 +525,10 @@
     function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ====================== 移动端菜单 ======================
-    function toggleMobileMenu() {
-      mobileMenu.classList.toggle('open');
-    }
-    document.addEventListener('click', function(e) {
-      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
-        mobileMenu.classList.remove('open');
-      }
-    });
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
 
     // ====================== 事件绑定 ======================
     themeBtn.addEventListener('click', toggleTheme);
-    
-    
-    hamburgerBtn.addEventListener('click', toggleMobileMenu);
     
     
     backTop.addEventListener('click', goToTop);
@@ -645,17 +564,17 @@
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
-        copyBtn.textContent = '📋';
+        copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
         copyBtn.title = '复制代码';
         wrapper.appendChild(copyBtn);
 
         copyBtn.addEventListener('click', () => {
           const code = pre.textContent || '';
           navigator.clipboard.writeText(code).then(() => {
-            copyBtn.textContent = '✓';
+            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
             copyBtn.classList.add('copied');
             setTimeout(() => {
-              copyBtn.textContent = '📋';
+              copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
               copyBtn.classList.remove('copied');
             }, 2000);
           }).catch(() => {
@@ -666,10 +585,10 @@
             ta.select();
             try { document.execCommand('copy'); } catch(_) {}
             document.body.removeChild(ta);
-            copyBtn.textContent = '✓';
+            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
             copyBtn.classList.add('copied');
             setTimeout(() => {
-              copyBtn.textContent = '📋';
+              copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
               copyBtn.classList.remove('copied');
             }, 2000);
           });
@@ -779,7 +698,7 @@
         '</div>';
       mainContainer.innerHTML = breadcrumb +
         '<div class="not-found mica">' +
-        '<div class="icon">📭</div>' +
+        '<div class="icon"><i class="fas fa-inbox"></i></div>' +
         '<h2>找不到这篇帖子</h2>' +
         '<p>帖子可能已被删除，或者链接地址不正确</p>' +
         '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
@@ -793,7 +712,7 @@
         '</div>';
       mainContainer.innerHTML = breadcrumb +
         '<div class="not-found mica">' +
-        '<div class="icon">⚠️</div>' +
+        '<div class="icon"><i class="fas fa-triangle-exclamation"></i></div>' +
         '<h2>加载帖子失败</h2>' +
         '<p>' + KJ.escapeHtml(msg || '未知错误') + '</p>' +
         '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
@@ -855,6 +774,6 @@
       await loadPost();
       setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 400);
     });
-  </script>
+  </script>  <div id="toast" class="toast hidden"></div>
 </body>
 </html>
