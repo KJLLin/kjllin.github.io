@@ -881,3 +881,90 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
     transition: none;
   }
 }
+
+/* ================================================================
+   全站统一导航栏 — Apple Liquid Glass
+   匹配 /chat/style.css 标准，所有页面复用
+   ================================================================ */
+.top-menu {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 8px 16px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.menu-bar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xl);
+  pointer-events: all;
+  background: var(--color-bg-glass-solid);
+  background-image: var(--iridescent);
+  backdrop-filter: var(--blur-nav);
+  -webkit-backdrop-filter: var(--blur-nav);
+  border: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-glass);
+  box-shadow: var(--glass-shadow);
+}
+.menu-logo {
+  font-size: 18px; font-weight: 700; color: var(--color-accent);
+  padding: 6px 14px; margin-right: 4px;
+  letter-spacing: -0.2px;
+}
+.menu-item {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
+  text-decoration: none; white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+.menu-item:hover, .menu-item.active {
+  color: var(--color-accent); background: var(--color-accent-glow);
+}
+.menu-item.active { font-weight: 600; }
+/* 移除旧版 active::after 下划线，统一为上述高亮 */
+.menu-item.active::after { display: none; }
+
+.menu-btn {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+  font-size: 16px; cursor: pointer;
+  background: var(--color-bg-hover); color: var(--color-text-secondary);
+  display: grid; place-items: center;
+  transition: all var(--transition-fast);
+}
+.menu-btn:hover { background: var(--color-accent-glow); color: var(--color-accent); }
+#themeBtn { border-radius: 50%; }
+.menu-user-tag {
+  font-size: 12px; color: var(--color-text-secondary);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 6px;
+}
+.logout-btn, .menu-btn.logout-btn {
+  color: var(--color-danger) !important;
+}
+.logout-btn:hover, .menu-btn.logout-btn:hover {
+  background: var(--color-danger-bg) !important;
+}
+
+.hamburger { display: none; }
+.mobile-menu-dropdown {
+  display: none; position: absolute; top: 100%; left: 16px; right: 16px;
+  margin-top: 8px; padding: 8px; border-radius: var(--radius-lg);
+  flex-direction: column; gap: 2px;
+  pointer-events: all; z-index: 101;
+  background: var(--color-bg-glass-solid);
+  backdrop-filter: var(--blur-surface);
+  -webkit-backdrop-filter: var(--blur-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+.mobile-menu-dropdown.open { display: flex; }
+.mobile-menu-dropdown .menu-item { display: block; width: 100%; text-align: left; }
+
+@media (max-width: 520px) {
+  .menu-bar .menu-item { display: none; }
+  .hamburger { display: grid; }
+  .menu-user-tag { display: none; }
+}
+@media (min-width: 521px) {
+  .hamburger { display: none !important; }
+  .mobile-menu-dropdown { display: none !important; }
+}

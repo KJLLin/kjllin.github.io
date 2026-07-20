@@ -11,21 +11,6 @@
   <title>设备管理 · 设置 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* ── 导航栏（使用 theme.css 令牌） ── */
-    .top-menu{position:fixed;top:0;left:0;right:0;z-index:100;padding:8px 16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .menu-bar{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--radius-lg);border:1px solid var(--color-border);border-top:1px solid var(--color-border-glass);box-shadow:var(--glass-shadow);pointer-events:all;background:var(--color-bg-glass);background-image:var(--iridescent);backdrop-filter:var(--blur-nav);-webkit-backdrop-filter:var(--blur-nav)}
-    .menu-logo{font-size:18px;font-weight:700;color:var(--color-accent);padding:6px 14px}
-    .menu-item{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--color-text-secondary);text-decoration:none;transition:all var(--transition-fast);white-space:nowrap}
-    .menu-item:hover,.menu-item.active{color:var(--color-accent);background:var(--color-accent-glow)}
-    .menu-item.active{font-weight:600}
-    .menu-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:none;font-size:16px;cursor:pointer;background:var(--color-bg-hover);color:var(--color-text-primary);display:grid;place-items:center;transition:all var(--transition-fast)}
-    .menu-btn:hover{background:var(--color-accent-glow);color:var(--color-accent)}
-    #themeBtn{border-radius:50%}
-    .hamburger{display:none}
-    .mobile-menu-dropdown{display:none;position:fixed;top:58px;top:calc(58px + env(safe-area-inset-top, 0px));left:16px;right:16px;padding:8px;border-radius:var(--radius-md);border:1px solid var(--color-border);box-shadow:var(--shadow-lg);flex-direction:column;gap:2px;pointer-events:all;z-index:101;background:var(--color-bg-glass-solid);backdrop-filter:var(--blur-surface);-webkit-backdrop-filter:var(--blur-surface);max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto}
-    .mobile-menu-dropdown.open{display:flex}
-    .mobile-menu-dropdown .menu-item{display:block;width:100%;text-align:left}
-
     /* ── 页面布局 ── */
     .container{max-width:760px;margin:0 auto;padding:80px 16px 40px;position:relative;z-index:1}
     .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--color-text-tertiary);text-decoration:none;font-size:13px;margin-bottom:24px;transition:color var(--transition-fast)}
@@ -81,7 +66,6 @@
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
     @media(max-width:520px){
-      .menu-item{display:none}.hamburger{display:grid}
       .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
       .page-header h1{font-size:22px}.page-header .icon{font-size:40px}
       .page-header .subtitle{font-size:12px}
@@ -98,13 +82,13 @@
       .device-time{font-size:11px;flex:1 1 auto;text-align:left;margin-top:4px;width:100%}
       .card-glass{padding:16px 14px !important}
     }
-    @media(min-width:521px){.hamburger{display:none!important}.mobile-menu-dropdown{display:none!important}}
   </style>
 </head>
 <body>
-  <div style="position:fixed;inset:0;background:var(--color-bg);z-index:-3;pointer-events:none"></div>
+  <div class="bg-base"></div>
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
-    <nav class="menu-bar" id="menuBar">
+    <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
@@ -112,10 +96,12 @@
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
-      <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown" id="mobileMenu">
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -131,7 +117,7 @@
       <span style="color:var(--color-text-tertiary);font-size:13px;margin:0 6px">›</span>
       <span style="color:var(--color-text-secondary);font-size:13px">设备管理</span>
     </nav>
-    <div class="page-header"><span class="icon">📱</span><h1>登录设备管理</h1></div>
+    <div class="page-header"><span class="icon"><i class="fas fa-mobile-screen"></i></span><h1>登录设备管理</h1></div>
 
     <div id="loginPrompt" class="card" style="text-align:center;padding:48px 24px">
       <p style="color:var(--color-text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
@@ -151,13 +137,13 @@
 
       <!-- 当前设备 -->
       <div class="card card-glass section-card">
-        <h2>💻 当前设备 <span class="current-badge">当前</span></h2>
+        <h2><i class="fas fa-laptop"></i> 当前设备 <span class="current-badge">当前</span></h2>
         <div id="currentDevice" style="min-height:52px"></div>
       </div>
 
       <!-- 历史设备 -->
       <div class="card card-glass section-card" style="animation-delay:0.18s">
-        <h2>📋 最近 1 年登录过的设备 <span class="count" id="historyCount"></span></h2>
+        <h2><i class="fas fa-clipboard"></i> 最近 1 年登录过的设备 <span class="count" id="historyCount"></span></h2>
         <div id="deviceList"></div>
       </div>
     </div>
@@ -215,7 +201,7 @@
         '<div class="device-icon '+deviceType(ua.os)+'">'+deviceIcon(ua.os)+'</div>'+
         '<div class="device-info"><div class="name">'+KJ.escapeHtml(ua.browser)+' · '+KJ.escapeHtml(ua.os+(ua.osVer?' '+ua.osVer:''))+'</div>'+
         '<div class="detail">'+KJ.escapeHtml(ua.screen)+'</div></div>'+
-        '<div class="device-time"><span style="color:var(--color-success);font-weight:500">🟢 在线</span></div></div>';
+        '<div class="device-time"><span style="color:var(--color-success);font-weight:500"><i class="fas fa-circle" style="color:var(--color-success)"></i> 在线</span></div></div>';
 
       // 3. 合并 Supabase + localStorage 数据
       var allRecords=[];
@@ -278,7 +264,7 @@
       $('#historyCount').textContent=historical.length+' 台';
 
       if(historical.length===0){
-        listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无其他设备登录记录</p><p style="font-size:12px;margin-top:4px">使用更多设备登录后将在此显示</p></div>';
+        listEl.innerHTML='<div class="empty-state"><div class="icon"><i class="fas fa-inbox"></i></div><p>暂无其他设备登录记录</p><p style="font-size:12px;margin-top:4px">使用更多设备登录后将在此显示</p></div>';
         return;
       }
 
@@ -294,7 +280,7 @@
           '<div class="device-icon '+dt+'">'+deviceIcon(dv.os||'')+'</div>'+
           '<div class="device-info"><div class="name">'+KJ.escapeHtml(dv.browser||'--')+'</div>'+
           '<div class="detail">'+KJ.escapeHtml(dv.os||'--')+' <span class="dot"></span> '+timeAgo+
-          (dv.source==='cloud'?' <span class="cloud-badge">☁️</span>':'')+'</div></div>'+
+          (dv.source==='cloud'?' <span class="cloud-badge"><i class="fas fa-cloud"></i></span>':'')+'</div></div>'+
           '<div class="device-time"><div>'+ts+'</div><div class="ip">'+KJ.escapeHtml(dv.ip||'--')+'</div></div></div>'
         );
       }
@@ -324,10 +310,7 @@
     themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
     KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
 
-    // 移动端菜单
-    var hb=$('#hamburgerBtn'),mm=$('#mobileMenu');
-    hb.addEventListener('click',function(e){e.stopPropagation();mm.classList.toggle('open');});
-    document.addEventListener('click',function(e){if(!hb.contains(e.target)&&!mm.contains(e.target))mm.classList.remove('open');});
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
 
     if(!sb){$('#loginMsg').textContent='网络错误，请刷新后重试';return}
 
@@ -344,5 +327,6 @@
     },8000);
     })();
   </script>
+  <div id="toast" class="toast hidden"></div>
 </body>
 </html>

@@ -106,23 +106,6 @@
       box-shadow: var(--shadow-rest);
     }
 
-    .top-menu { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 8px 16px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-    .menu-bar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: var(--radius-md); pointer-events: all; transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal); }
-    .menu-bar.scrolled { background: var(--bg-mica-scroll); box-shadow: var(--shadow-scroll); transform: translateY(-2px); }
-    .menu-logo { font-size: 18px; font-weight: 700; color: var(--accent); padding: 6px 14px; letter-spacing: 0.2px; }
-    .menu-item { padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500; color: var(--text-secondary); text-decoration: none; cursor: pointer; border: none; background: none; transition: all var(--transition-fast); white-space: nowrap; }
-    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
-    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
-    .menu-divider { width: 1px; height: 20px; background: var(--border-mica); margin: 0 4px; }
-    .menu-btn { width: 34px; height: 34px; border-radius: var(--radius-sm); border: none; font-size: 16px; cursor: pointer; background: rgba(220,220,220,0.4); color: var(--text-primary); display: grid; place-items: center; transition: all var(--transition-fast); }
-    [data-theme="dark"] .menu-btn { background: rgba(40,40,40,0.4); }
-    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
-    .menu-btn:active { transform: scale(0.92); }
-    #themeBtn { border-radius: 50%; }
-    .hamburger { display: none; }
-    .mobile-menu-dropdown { display: none; position: absolute; top: 100%; left: 16px; right: 16px; margin-top: 8px; padding: 8px; border-radius: var(--radius-md); box-shadow: var(--shadow-hover); flex-direction: column; gap: 2px; pointer-events: all; z-index: 101; }
-    .mobile-menu-dropdown.open { display: flex; }
-
     .container { max-width: 960px; margin: 0 auto; padding: 80px 16px calc(40px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1; }
 
     .page-header { text-align: center; margin-bottom: 36px; animation: fadeUp 0.7s var(--win-ease) forwards; }
@@ -242,30 +225,14 @@
     .auth-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
 
     /* 用户信息栏 */
-    .user-info-bar { display: flex; align-items: center; gap: 8px; }
-    .user-avatar { width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
-    .user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .logout-btn { padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition-fast); }
-    .logout-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(231,76,60,0.08); }
-
     .hidden { display: none !important; }
 
     @media (max-width: 768px) {
-      .top-menu { padding: 6px 10px; }
-      .menu-bar { padding: 4px 6px; gap: 0; }
-      .menu-item { padding: 6px 10px; font-size: 12px; }
-      .menu-logo { font-size: 16px; padding: 6px 10px; }
-      .menu-divider { display: none; }
       .container { padding: 72px 16px calc(40px + env(safe-area-inset-bottom, 0px)); }
       .toolbar { padding: 12px 14px; }
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
     @media (max-width: 520px) {
-      .menu-bar .menu-item { display: none; }
-      .hamburger { display: grid; }
-      .user-info-bar .user-name { display: none; }
-      .user-info-bar .logout-btn { display: none; }
-      .user-info-bar { gap: 4px; }
       .auth-card { padding: 24px 18px; }
       .auth-header .header-icon { font-size: 32px; }
       .auth-header h2 { font-size: 20px; }
@@ -273,11 +240,6 @@
       .toolbar { flex-direction: column; align-items: stretch; }
       .search-box { min-width: auto; }
       .storage-info { margin-left: 0; }
-    }
-    @media (min-width: 521px) {
-      .hamburger { display: none !important; }
-      .mobile-menu-dropdown { display: none !important; }
-      .mobile-menu-logout { display: none !important; }
     }
 
     ::-webkit-scrollbar { width: 6px; }
@@ -295,20 +257,15 @@
   <header class="top-menu">
     <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item active"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
-      <div class="user-info-bar hidden" id="userInfoBar">
-        <div class="user-avatar" id="userAvatarDrop"><i class="fas fa-user"></i></div>
-        <span class="user-name" id="userNameDisplay"></span>
-        <button class="logout-btn" id="logoutMenuBtn">退出</button>
-      </div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
     <div class="mobile-menu-dropdown mica" id="mobileMenu">
@@ -340,10 +297,10 @@
     </div>
 
     <div class="toolbar mica">
-      <button class="btn btn-primary" id="uploadBtn">📤 上传文件</button>
+      <button class="btn btn-primary" id="uploadBtn"><i class="fas fa-upload"></i> 上传文件</button>
       <input type="file" id="fileInput" multiple hidden>
-      <input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索文件...">
-      <button class="btn btn-outline" id="refreshBtn">🔄 刷新</button>
+      <input type="text" class="search-box" id="searchBox" placeholder="搜索文件...">
+      <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-arrows-rotate"></i> 刷新</button>
       <div class="storage-info">
         <span id="storageText">已用 --</span>
         <div class="storage-bar"><div class="storage-bar-fill" id="storageBar" style="width:0%"></div></div>
@@ -351,7 +308,7 @@
     </div>
 
     <div class="drop-zone mica" id="dropZone">
-      <div class="drop-zone-icon">📁</div>
+      <div class="drop-zone-icon"><i class="fas fa-folder"></i></div>
       <div class="drop-zone-text">拖拽文件到此处或点击上方按钮上传</div>
     </div>
 
@@ -375,7 +332,7 @@
 
   <div class="overlay hidden" id="previewOverlay">
     <div class="preview-card">
-      <button class="preview-close" id="previewClose">✕</button>
+      <button class="preview-close" id="previewClose"><i class="fas fa-xmark"></i></button>
       <div class="preview-title" id="previewTitle"></div>
       <div class="preview-content" id="previewContent"></div>
     </div>
@@ -417,29 +374,10 @@
       currentUser = user;
       $('#authPage').classList.add('hidden');
       $('#driveContent').classList.remove('hidden');
-      $('#userInfoBar').classList.remove('hidden');
       const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-      $('#userNameDisplay').textContent = nick;
-      $('#userAvatarDrop').textContent = nick.charAt(0).toUpperCase();
-      // 更新移动端菜单
-      updateMobileMenu(nick);
+      var tag = $('#userTag');
+      if (tag) { tag.textContent = nick; tag.title = nick; }
       loadAndRender();
-    }
-
-    function updateMobileMenu(nick) {
-      const m = $('#mobileMenu');
-      m.querySelectorAll('.mobile-menu-logout,.mobile-menu-user').forEach(e => e.remove());
-      if (!nick) return;
-      const userItem = document.createElement('span');
-      userItem.className = 'menu-item mobile-menu-user';
-      userItem.style.cssText = 'pointer-events:none;font-weight:600;color:var(--accent)';
-      userItem.innerHTML = '<i class="fas fa-user"></i> ' + KJ.escapeHtml(nick);
-      m.appendChild(userItem);
-      const logoutLink = document.createElement('a');
-      logoutLink.className = 'menu-item mobile-menu-logout';
-      logoutLink.textContent = '🚪 退出登录';
-      logoutLink.addEventListener('click', e => { e.preventDefault(); doLogout(); mobileMenu.classList.remove('open'); });
-      m.appendChild(logoutLink);
     }
 
     // 退出
@@ -626,17 +564,17 @@
 
     // ====================== 文件图标 ======================
     function getFileIcon(type, name) {
-      if (type.startsWith('image/')) return '🖼️';
-      if (type.startsWith('video/')) return '🎬';
-      if (type.startsWith('audio/')) return '🎵';
-      if (type.includes('pdf')) return '📕';
-      if (type.includes('zip') || type.includes('rar') || type.includes('tar') || type.includes('7z')) return '📦';
-      if (type.includes('text') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css')) return '📄';
-      if (name.endsWith('.md')) return '\u{1F4DD}';
-      if (name.endsWith('.doc') || name.endsWith('.docx')) return '📃';
-      if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '📊';
-      if (name.endsWith('.ppt') || name.endsWith('.pptx')) return '📽️';
-      return '📎';
+      if (type.startsWith('image/')) return '<i class="fas fa-file-image"></i>';
+      if (type.startsWith('video/')) return '<i class="fas fa-video"></i>';
+      if (type.startsWith('audio/')) return '<i class="fas fa-music"></i>';
+      if (type.includes('pdf')) return '<i class="fas fa-file-pdf"></i>';
+      if (type.includes('zip') || type.includes('rar') || type.includes('tar') || type.includes('7z')) return '<i class="fas fa-box-archive"></i>';
+      if (type.includes('text') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css')) return '<i class="fas fa-file-lines"></i>';
+      if (name.endsWith('.md')) return '<i class="fas fa-file-pen"></i>';
+      if (name.endsWith('.doc') || name.endsWith('.docx')) return '<i class="fas fa-file-word"></i>';
+      if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '<i class="fas fa-file-excel"></i>';
+      if (name.endsWith('.ppt') || name.endsWith('.pptx')) return '<i class="fas fa-file-powerpoint"></i>';
+      return '<i class="fas fa-paperclip"></i>';
     }
 
     function formatSize(bytes) {
@@ -699,8 +637,8 @@
               <div class="file-meta">${formatSize(f.size)} · ${formatDate(f.updated || f.created)}</div>
             </div>
             <div class="file-actions">
-              <button class="file-btn" data-action="preview" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览">👁</button>
-              <button class="file-btn" data-action="download" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" title="下载">⬇</button>
+              <button class="file-btn" data-action="preview" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
+              <button class="file-btn" data-action="download" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
               <button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
             </div>
           </div>`;
@@ -852,7 +790,7 @@
     });
 
     // ====================== 事件 ======================
-    $('#logoutMenuBtn').addEventListener('click', doLogout);
+    $('#logoutBtn').addEventListener('click', doLogout);
 
     // 云盘事件
     $('#uploadBtn').addEventListener('click', () => $('#fileInput').click());
@@ -990,5 +928,6 @@
       }
     });
   </script>
+<div id="toast" class="toast hidden"></div>
 </body>
 </html>

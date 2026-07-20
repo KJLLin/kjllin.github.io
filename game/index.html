@@ -124,48 +124,6 @@
       padding: 28px 16px calc(28px + env(safe-area-inset-bottom, 0px)); position: relative; z-index: 1;
     }
 
-    /* 导航栏 */
-    .navbar {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 20px; border-radius: var(--radius-md);
-      margin-bottom: 30px; box-shadow: var(--shadow-rest);
-      position: sticky; top: 16px; z-index: 90;
-    }
-    .navbar.scrolled {
-      background: var(--bg-mica-scroll);
-      box-shadow: var(--shadow-scroll);
-      transform: translateY(-2px);
-    }
-    .nav-left { display: flex; align-items: center; gap: 12px; }
-    .back-btn {
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
-      border: none; background: rgba(220, 220, 220, 0.4);
-      color: var(--text-primary); font-size: 18px; cursor: pointer;
-      display: grid; place-items: center;
-    }
-    [data-theme="dark"] .back-btn { background: rgba(40, 40, 40, 0.4); }
-    .back-btn:hover { background: rgba(220, 220, 220, 0.6); }
-    [data-theme="dark"] .back-btn:hover { background: rgba(50, 50, 50, 0.6); }
-    .back-btn:active { transform: scale(0.95); }
-    .logo {
-      font-size: 20px; font-weight: 600; color: var(--accent);
-      letter-spacing: 0.2px;
-    }
-
-    .theme-btn {
-      width: 40px; height: 40px; border-radius: var(--radius-full);
-      border: none; font-size: 18px;
-      background: rgba(220, 220, 220, 0.4);
-      color: var(--text-primary); cursor: pointer;
-      display: grid; place-items: center;
-    }
-    [data-theme="dark"] .theme-btn { background: rgba(40, 40, 40, 0.4); }
-    .theme-btn:hover { background: rgba(220, 220, 220, 0.6); }
-    [data-theme="dark"] .theme-btn:hover { background: rgba(50, 50, 50, 0.6); }
-    .theme-btn:active { transform: scale(0.95); }
-
-    /* 昵称链接：防止窄屏溢出 */
-    #authLink { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
 
     /* 页头 */
     .page-header {
@@ -313,29 +271,42 @@
   <div class="bg-mica-glow-1"></div>
   <div class="bg-mica-glow-2"></div>
 
-  <div class="container">
-    <!-- 导航栏 -->
-    <nav class="navbar mica" id="navbar">
-      <div class="nav-left">
-        <button class="back-btn" onclick="goHome()" aria-label="返回主页">←</button>
-        <span class="logo">游戏中心</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <a href="/login/?redirect=/game/" id="authLink" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:500">登录</a>
-        <button id="themeBtn" class="theme-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
-      </div>
+  <!-- ================== 全局导航栏 ================== -->
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
 
+  <div class="container">
     <!-- 页头 -->
     <header class="page-header">
-      <div class="header-icon">🎮</div>
+      <div class="header-icon"><i class="fas fa-gamepad"></i></div>
       <h1 class="header-title">游戏中心</h1>
       <p class="header-desc">精选小游戏合集，随时开玩</p>
     </header>
 
     <!-- 搜索栏 -->
     <div class="search-wrap">
-      <input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索游戏..." autocomplete="off">
+      <input type="text" class="search-box" id="searchBox" placeholder="搜索游戏..." autocomplete="off">
     </div>
 
     <!-- 游戏列表 -->
@@ -345,7 +316,7 @@
 
         <a href="/game/dino/" class="game-card mica" data-keywords="恐龙 跑酷 dino 躲避 金币 天气">
           <div class="card-shine"></div>
-          <div class="card-icon">🦖</div>
+          <div class="card-icon"><i class="fas fa-dragon"></i></div>
           <h3 class="card-title">恐龙快跑升级版</h3>
           <p class="card-desc">Chrome 经典小恐龙跑酷游戏，支持触屏滑动操作。躲避障碍、收集金币、召唤天气，挑战更高分数！</p>
           <div class="card-tags">
@@ -357,7 +328,7 @@
 
         <a href="/game/tfe/" class="game-card mica" data-keywords="2048 数字 合并 滑动 益智 拼图">
           <div class="card-shine"></div>
-          <div class="card-icon">🧩</div>
+          <div class="card-icon"><i class="fas fa-puzzle-piece"></i></div>
           <h3 class="card-title">2048</h3>
           <p class="card-desc">经典数字合并益智游戏。滑动合并相同数字，挑战 2048！键盘/触屏双模式操控。</p>
           <div class="card-tags">
@@ -381,7 +352,7 @@
 
         <a href="/game/schulte/" class="game-card mica" data-keywords="舒尔特 方格 注意力 数字 专注 训练 计时">
           <div class="card-shine"></div>
-          <div class="card-icon">🔢</div>
+          <div class="card-icon"><i class="fas fa-table-cells"></i></div>
           <h3 class="card-title">舒尔特方格</h3>
           <p class="card-desc">经典注意力训练工具，按顺序点击数字，挑战最快速度。支持多种规格，记录最佳成绩！</p>
           <div class="card-tags">
@@ -392,7 +363,7 @@
         </a>
 
       </div>
-      <div class="no-results" id="noResults">😕 没有找到匹配的游戏</div>
+      <div class="no-results" id="noResults"><i class="fas fa-face-frown"></i> 没有找到匹配的游戏</div>
     </section>
 
     <!-- 页脚 -->
@@ -406,11 +377,9 @@
     const $ = s => document.querySelector(s);
     const root = document.documentElement;
     const themeBtn = document.getElementById('themeBtn');
-    const navbar = document.getElementById('navbar');
+    const menuBar = document.getElementById('menuBar');
     let isScrolling = false;
     let touchStartData = {};
-
-    function goHome() { window.location.href = '/'; }
 
     // 触摸点击判定
     function handleTouchStart(e) {
@@ -453,7 +422,7 @@
       if (isScrolling) return;
       isScrolling = true;
       requestAnimationFrame(() => {
-        navbar.classList.toggle('scrolled', window.scrollY > 20);
+        menuBar.classList.toggle('scrolled', window.scrollY > 20);
         isScrolling = false;
       });
     }
@@ -466,9 +435,7 @@
     (function() {
       var sb = KJ.createSupabase();
       KJ.initMessageBanner(sb);
-      var authLink = $('#authLink');
 
-      // 同步检查 localStorage 中的 session（无网络延迟，立即响应）
       function getStoredUser() {
         try {
           var now = Date.now();
@@ -486,35 +453,36 @@
         return null;
       }
 
-      function updateAuthLink(user) {
-        if (!authLink) return;
+      function updateUserTag(user) {
+        var tag = $('#userTag');
+        if (!tag) return;
         if (user) {
           var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-          authLink.textContent = KJ.escapeHtml(nick);
-          authLink.href = '/settings/';
-          authLink.title = '设置';
+          tag.textContent = nick;
+          tag.title = nick;
         } else {
-          authLink.textContent = '登录';
-          authLink.href = '/login/?redirect=/game/';
-          authLink.title = '';
+          tag.textContent = '';
+          tag.title = '';
         }
       }
 
-      // 先用 localStorage 立即显示状态（无闪烁）
-      updateAuthLink(getStoredUser());
+      updateUserTag(getStoredUser());
 
       if (sb) {
         sb.auth.onAuthStateChange(function(event, session) {
-          updateAuthLink(session?.user || null);
+          updateUserTag(session?.user || null);
+          if (event === 'SIGNED_OUT') updateUserTag(null);
         });
         sb.auth.getSession().then(function(r) {
-          updateAuthLink(r?.data?.session?.user || null);
+          updateUserTag(r?.data?.session?.user || null);
         }).catch(function() {});
       }
     })();
 
     $('#searchBox').addEventListener('input', filterGames);
     window.addEventListener('scroll', handleScroll);
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
   </script>
+<div id="toast" class="toast hidden"></div>
 </body>
 </html>

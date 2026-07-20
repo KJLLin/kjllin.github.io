@@ -135,74 +135,6 @@
       padding: 62px 16px 0;
     }
 
-    /* ── 顶部导航栏 — Fluent Mica 磨砂 ── */
-    .top-menu {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 8px 16px;
-      display: flex; align-items: center; justify-content: center;
-      pointer-events: none;
-    }
-    .menu-bar {
-      display: flex; align-items: center; gap: 4px;
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-mica);
-      box-shadow: var(--shadow-rest);
-      pointer-events: all;
-      background: var(--bg-mica);
-      background-image: var(--iridescent);
-      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      transition: all var(--transition-normal);
-    }
-    .menu-logo {
-      font-size: 18px; font-weight: 700; color: var(--accent);
-      padding: 6px 14px; letter-spacing: 0.2px; margin-right: 4px;
-    }
-    .menu-divider {
-      width: 1px; height: 22px; background: var(--border-mica); margin: 0 5px; border-radius: 1px;
-    }
-    .menu-item {
-      padding: 7px 14px; border-radius: var(--radius-sm);
-      font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
-      text-decoration: none; cursor: pointer;
-      border: none; background: none;
-      transition: all var(--transition-fast);
-      white-space: nowrap; position: relative;
-      letter-spacing: 0.3px;
-    }
-    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
-    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
-    .menu-item.active::after {
-      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
-      width: 18px; height: 2px; border-radius: 1px; background: var(--accent);
-    }
-    .menu-btn {
-      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
-      font-size: 16px; cursor: pointer;
-      background: var(--bg-mica-hover); color: var(--text-primary);
-      display: grid; place-items: center;
-      transition: all var(--transition-fast);
-    }
-    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
-    .menu-btn:active { transform: scale(0.92); }
-    /* ── 移动端汉堡菜单 ── */
-    .hamburger { display: none; }
-    .mobile-menu-dropdown {
-      display: none; position: fixed; top: calc(56px + env(safe-area-inset-top, 0px) + 8px);
-      left: 16px; right: 16px;
-      padding: 8px; border-radius: var(--radius-md);
-      border: 1px solid var(--border-mica);
-      box-shadow: var(--shadow-hover);
-      background: var(--bg-mica-scroll);
-      -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      flex-direction: column; gap: 2px;
-      pointer-events: all; z-index: 101;
-    }
-    .mobile-menu-dropdown.open { display: flex; }
-    .mobile-menu-dropdown .menu-item {
-      display: block; width: 100%; text-align: left; pointer-events: auto;
-    }
-
     /* 分数面板 */
     .score-panel {
       display: flex; justify-content: center; gap: 28px;
@@ -326,11 +258,6 @@
     [data-theme="dark"] .modal-btn.secondary { background: rgba(40, 40, 40, 0.4); }
 
     /* 响应式 */
-    @media (max-width: 768px) {
-      .menu-bar .menu-item { display: none; }
-      .menu-bar .menu-divider { display: none; }
-      .hamburger { display: grid !important; }
-    }
     @media (max-width: 480px) {
       .container { padding: 0 10px; }
       .score-value { font-size: 30px; }
@@ -350,22 +277,22 @@
   <div class="bg-mica-glow-1"></div>
   <div class="bg-mica-glow-2"></div>
 
-  <!-- ==================== 导航栏 ==================== -->
+  <!-- ================== 全局导航栏 ================== -->
   <header class="top-menu">
-    <nav class="menu-bar" id="menuBar">
+    <nav class="menu-bar mica" id="menuBar">
       <span class="menu-logo">KJLLin</span>
-      <div class="menu-divider"></div>
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
-      <div class="menu-divider"></div>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
       <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
     </nav>
-    <div class="mobile-menu-dropdown" id="mobileMenu">
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
       <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
@@ -426,7 +353,7 @@
       <div class="modal-emoji">💀</div>
       <div class="modal-title">游戏结束</div>
       <div class="modal-score" id="modalScore">0</div>
-      <div class="new-record" id="newRecord">🎉 新纪录!</div>
+      <div class="new-record" id="newRecord"><i class="fas fa-party-horn"></i> 新纪录!</div>
       <div class="modal-best" id="modalBest">最高分: 0</div>
       <button class="modal-btn primary" id="restartBtn">重新开始</button>
       <button class="modal-btn secondary" id="backBtn">返回游戏中心</button>
@@ -540,7 +467,7 @@
       if (!hint) return;
       if (user) {
         var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-        hint.innerHTML = '<span style="color:var(--success)">✓</span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
+        hint.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i></span> 已登录：' + KJ.escapeHtml(nick) + ' · 记录将自动同步云端';
       } else {
         hint.innerHTML = '<a href="/login/?redirect=/game/snake/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端';
       }
@@ -573,7 +500,7 @@
         const { error: insErr } = await sb.from('game_scores').insert({
           user_id: userId, nick: nick, game: GAME_NAME, score: finalScore
         });
-        if (insErr) { console.warn('Save score insert error:', insErr); return; }
+        if (insErr) { KJ.toast('云端同步失败: '+KJ.formatSupabaseError(insErr)); return; }
 
         const { data: cloudBest } = await sb
           .from('game_scores').select('score').eq('game', GAME_NAME)
@@ -584,7 +511,7 @@
 
         if (cloudBest) $('#cloudBest').textContent = cloudBest.score;
         if (myBest) $('#myBest').textContent = myBest.score;
-      } catch(e) { console.warn('Save score failed:', e); }
+      } catch(e) { console.warn('Save score failed:', e); KJ.toast('云端同步失败，请检查网络连接'); }
     }
 
     const COLS = 20;
@@ -984,17 +911,7 @@
       $('#themeBtn').addEventListener('click', toggleTheme);
 
       // 汉堡菜单
-      const hamburgerBtn = document.getElementById('hamburgerBtn');
-      const mobileMenu = document.getElementById('mobileMenu');
-      hamburgerBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        mobileMenu.classList.toggle('open');
-      });
-      document.addEventListener('click', function(e) {
-        if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
-          mobileMenu.classList.remove('open');
-        }
-      });
+      KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
 
       // 键盘
       document.addEventListener('keydown', handleKeyDown);
@@ -1056,6 +973,6 @@
       initParticles();
       draw();
     });
-  </script>
+  </script>  <div id="toast" class="toast hidden"></div>
 </body>
 </html>
