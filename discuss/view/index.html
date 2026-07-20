@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,6 +15,7 @@
   <!-- CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css">
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
@@ -690,11 +692,20 @@
       let html;
       try {
         html = marked.parse(raw);
-        // 基础 XSS 过滤：移除 script/event handlers
-        html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                   .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-                   .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-                   .replace(/javascript\s*:/gi, '');
+        // 使用 DOMPurify 净化（防 XSS）
+        if (typeof DOMPurify !== 'undefined') {
+          html = DOMPurify.sanitize(html, {
+            ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','hr','strong','em','b','i','u','s','del','a','ul','ol','li','blockquote','pre','code','img','table','thead','tbody','tr','th','td','span','div','sub','sup','details','summary','input'],
+            ALLOWED_ATTR: ['href','title','target','rel','src','alt','width','height','class','id','type','checked','disabled'],
+            ALLOW_DATA_ATTR: false
+          });
+        } else {
+          // 回退：基础 XSS 过滤
+          html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+                     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+                     .replace(/javascript\s*:/gi, '');
+        }
       } catch(e) {
         html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + KJ.escapeHtml(raw) + '</pre>';
       }
@@ -802,6 +813,7 @@
       }
 
       const sb = KJ.createSupabase();
+      KJ.initMessageBanner(sb);
       if (!sb) {
         showError('数据库连接失败，请刷新页面重试');
         return;

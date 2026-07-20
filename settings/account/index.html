@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#f5f5f7">
@@ -144,7 +145,14 @@
   </header>
 
   <div class="container">
-    <div class="page-header"><span class="icon">🔒</span><h1>账号安全中心</h1><p style="font-size:13px;color:var(--color-text-tertiary);margin-top:4px">设置 › 账号安全</p></div>
+    <div class="page-header">
+      <nav aria-label="breadcrumb" style="margin-bottom:6px">
+        <a href="/settings/" style="color:var(--color-accent);text-decoration:none;font-size:13px;font-weight:500"><i class="fas fa-arrow-left"></i> 返回设置</a>
+        <span style="color:var(--color-text-tertiary);font-size:13px;margin:0 6px">›</span>
+        <span style="color:var(--color-text-secondary);font-size:13px">账号安全</span>
+      </nav>
+      <span class="icon">🔒</span><h1>账号安全中心</h1>
+    </div>
 
     <div id="loginPrompt" class="card card-glass" style="text-align:center;padding:48px 24px">
       <p style="color:var(--color-text-tertiary);margin-bottom:16px" id="loginMsg">加载中...</p>
@@ -225,6 +233,7 @@
     var $=function(s){return document.querySelector(s);};
     var sb,user;
     try{sb=KJ.createSupabase();}catch(e){}
+    if(sb) KJ.initMessageBanner(sb);
 
     function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
     async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var d=await r.json();var ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
@@ -300,7 +309,7 @@
         try{
           var r2=await sb.from('users').select('last_login_time,status').eq('id',user.id).limit(1);
           if(r2.data&&r2.data.length){$('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);$('#infoStatus').textContent=r2.data[0].status==='active'?'正常':'待审核';}
-        }catch(e){}
+        }catch(e){$('#infoLastLogin').textContent='加载失败';$('#infoStatus').textContent='--';}
 
         var ua=KJ.parseUA();
         $('#deviceBrowser').textContent=ua.browser;
