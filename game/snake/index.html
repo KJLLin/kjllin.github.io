@@ -132,7 +132,7 @@
       height: 100vh; height: 100dvh;
       position: relative; z-index: 1;
       max-width: 640px; margin: 0 auto;
-      padding: 0 16px;
+      padding: 62px 16px 0;
     }
 
     /* ── 顶部导航栏 — Fluent Mica 磨砂 ── */
@@ -268,7 +268,7 @@
 
     /* 弹窗遮罩 */
     .modal-overlay {
-      position: fixed; inset: 0; z-index: 100;
+      position: fixed; inset: 0; z-index: 200;
       background: var(--overlay);
       display: flex; align-items: center; justify-content: center;
       opacity: 0; pointer-events: none;
@@ -1013,6 +1013,11 @@
       // 弹窗按钮
       $('#restartBtn').addEventListener('click', () => {
         restartGame();
+      });
+
+      // 返回游戏中心
+      $('#backBtn').addEventListener('click', () => {
+        window.location.href = '/game/';
       });
 
       // 点击弹窗外部关闭（不关闭，只允许按钮操作）

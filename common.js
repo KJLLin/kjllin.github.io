@@ -579,6 +579,37 @@
     }
   }
 
+  // ====================== 客户端频率限制（防止操作过于频繁） ======================
+  /**
+   * 客户端请求频率限制器
+   * 使用滑动窗口记录操作时间戳，超出阈值返回 false
+   * 
+   * 使用方式：if (!KJ.rateLimit('upload', 3000)) return; // 3秒内只能操作一次
+   * 
+   * @param {string} key - 操作标识（如 'upload', 'post', 'delete'）
+   * @param {number} [windowMs=3000] - 时间窗口（毫秒）
+   * @param {number} [maxOps=1] - 窗口内最大操作次数
+   * @param {string} [msg='操作过于频繁，请稍后再试'] - 超限提示
+   * @returns {boolean} true=允许操作，false=被限制
+   */
+  var _rateLimitStore = {};
+  function rateLimit(key, windowMs, maxOps, msg) {
+    windowMs = windowMs || 3000;
+    maxOps = maxOps || 1;
+    msg = msg || '操作过于频繁，请稍后再试';
+    var now = Date.now();
+    if (!_rateLimitStore[key]) _rateLimitStore[key] = [];
+    var timestamps = _rateLimitStore[key];
+    // 清理过期记录
+    while (timestamps.length > 0 && now - timestamps[0] > windowMs) timestamps.shift();
+    if (timestamps.length >= maxOps) {
+      toast(msg, 2800);
+      return false;
+    }
+    timestamps.push(now);
+    return true;
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -606,7 +637,8 @@
     recordLoginDevice: recordLoginDevice,
     parseUA: parseUA,
     initMessageBanner: initMessageBanner,
-    dismissMessageBanner: dismissBanner
+    dismissMessageBanner: dismissBanner,
+    rateLimit: rateLimit
   };
 
   // 注入 Toast 样式
