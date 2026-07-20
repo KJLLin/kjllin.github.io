@@ -300,7 +300,7 @@ pre, code, .mono, .tile, .score-val {
 @media (max-width: 768px) {
   .menu-bar .menu-item { display: none; }
   .menu-bar .menu-divider { display: none; }
-  .menu-bar .theme-toggle { display: none; }
+  .theme-toggle .theme-btn { width: 24px; height: 22px; font-size: 11px; }
   .hamburger { display: grid !important; }
 }
 @media (max-width: 440px) {
@@ -333,6 +333,7 @@ pre, code, .mono, .tile, .score-val {
       <button class="theme-btn" data-theme="light" title="浅色" style="width:28px;height:24px;border:none;border-radius:7px;background:transparent;color:var(--text-tertiary);font-size:12px;cursor:pointer;display:grid;place-items:center;transition:all 0.2s;">☀</button>
       <button class="theme-btn" data-theme="dark" title="深色" style="width:28px;height:24px;border:none;border-radius:7px;background:transparent;color:var(--text-tertiary);font-size:12px;cursor:pointer;display:grid;place-items:center;transition:all 0.2s;">☾</button>
     </div>
+    <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
     <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
   </nav>
   <div class="mobile-menu-dropdown" id="mobileMenu">
@@ -428,6 +429,8 @@ pre, code, .mono, .tile, .score-val {
     $('#themeToggle').querySelectorAll('.theme-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.theme === mode);
     });
+    const tb = $('#themeBtn');
+    if (tb) tb.innerHTML = KJ.getThemeIcon(mode);
   }
 
   $('#themeToggle').addEventListener('click', function(e) {
@@ -438,6 +441,16 @@ pre, code, .mono, .tile, .score-val {
     else KJ.safeStorage.setItem('theme', t);
     initTheme();
   });
+
+  // 导航栏主题按钮（与芯片同步）
+  const tbNav = $('#themeBtn');
+  if (tbNav) {
+    tbNav.addEventListener('click', function() {
+      var state = KJ.toggleTheme();
+      KJ.applyTheme('#f3f3f3', '#0f0f0f');
+      updateThemeBtnUI(state.mode);
+    });
+  }
 
   KJ.onSystemThemeChange(initTheme);
 

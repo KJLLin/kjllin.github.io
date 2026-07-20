@@ -155,6 +155,64 @@ html {
   --scrollbar-thumb-hover: rgba(0,0,0,0.22);
 }
 
+/* ====================== 全局主题按钮 (Apple Design) ====================== */
+/* 圆形图标主题按钮（导航栏等） */
+.menu-btn,
+.theme-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+.menu-btn:hover,
+.theme-btn:hover {
+  background: var(--color-accent-glow);
+  color: var(--color-accent);
+}
+.menu-btn:active,
+.theme-btn:active {
+  transform: scale(0.92);
+  transition: transform var(--duration-instant) var(--spring-default);
+}
+
+/* 主题芯片（三选一：light/dark/auto） */
+.theme-chips {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.theme-chip-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  flex-shrink: 0; white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+.theme-chip-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-glow);
+}
+.theme-chip-btn:active {
+  transform: scale(0.95);
+  transition: transform var(--duration-instant) var(--spring-default);
+}
+.theme-chip-btn.active {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+}
+
 /* ====================== Keyboard Focus (无障碍) ====================== */
 /* Apple 风格 focus ring：仅键盘导航时显示，鼠标点击不显示 */
 :focus:not(:focus-visible) { outline: none; }

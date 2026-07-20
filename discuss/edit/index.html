@@ -51,8 +51,10 @@
     .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     .btn{font-size:13px;padding:8px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:inherit;font-weight:500;transition:all var(--transition-fast)}
     .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-light)}
+    .btn-primary:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn-secondary{background:var(--bg-mica);color:var(--text-secondary);border:1px solid var(--border-mica)}
     .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-secondary:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn:disabled{opacity:0.5;cursor:not-allowed}
 
     .EasyMDEContainer{margin-bottom:0}

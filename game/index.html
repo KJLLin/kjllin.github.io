@@ -164,6 +164,9 @@
     [data-theme="dark"] .theme-btn:hover { background: rgba(50, 50, 50, 0.6); }
     .theme-btn:active { transform: scale(0.95); }
 
+    /* 昵称链接：防止窄屏溢出 */
+    #authLink { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
+
     /* 页头 */
     .page-header {
       text-align: center; margin-bottom: 50px;
