@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -130,33 +131,73 @@
       padding: 28px 16px; position: relative; z-index: 1;
     }
 
-    /* 返回按钮 */
-    .back-btn {
-      position: absolute; top: 12px; left: 12px; z-index: 10;
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
+    /* ── 顶部导航栏 — Fluent Mica 磨砂 ── */
+    .top-menu {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 8px 16px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .menu-bar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
       border: 1px solid var(--border-mica);
+      box-shadow: var(--shadow-rest);
+      pointer-events: all;
       background: var(--bg-mica);
       -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      color: var(--text-primary); font-size: 18px; cursor: pointer;
-      display: grid; place-items: center;
-      box-shadow: var(--shadow-rest);
+      transition: all var(--transition-normal);
     }
-    .back-btn:hover { background: var(--bg-mica-hover); }
-    .back-btn:active { transform: scale(0.95); }
+    .menu-logo {
+      font-size: 18px; font-weight: 700; color: var(--accent);
+      padding: 6px 14px; letter-spacing: 0.2px; margin-right: 4px;
+    }
+    .menu-divider {
+      width: 1px; height: 22px; background: var(--border-mica); margin: 0 5px; border-radius: 1px;
+    }
+    .menu-item {
+      padding: 7px 14px; border-radius: var(--radius-sm);
+      font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
+      text-decoration: none; cursor: pointer;
+      border: none; background: none;
+      transition: all var(--transition-fast);
+      white-space: nowrap; position: relative;
+      letter-spacing: 0.3px;
+    }
+    .menu-item:hover { color: var(--accent); background: var(--accent-glow); }
+    .menu-item.active { color: var(--accent); background: var(--accent-glow); font-weight: 600; }
+    .menu-item.active::after {
+      content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+      width: 18px; height: 2px; border-radius: 1px; background: var(--accent);
+    }
+    .menu-btn {
+      width: 34px; height: 34px; border-radius: var(--radius-sm); border: none;
+      font-size: 16px; cursor: pointer;
+      background: var(--bg-mica-hover); color: var(--text-primary);
+      display: grid; place-items: center;
+      transition: all var(--transition-fast);
+    }
+    .menu-btn:hover { background: var(--accent-glow); color: var(--accent); }
+    .menu-btn:active { transform: scale(0.92); }
 
-    /* 主题切换按钮 */
-    .theme-btn {
-      position: absolute; top: 12px; right: 12px; z-index: 10;
-      width: 36px; height: 36px; border-radius: var(--radius-full);
+    /* ── 移动端汉堡菜单 ── */
+    .hamburger { display: none; }
+    .mobile-menu-dropdown {
+      display: none; position: fixed; top: calc(56px + env(safe-area-inset-top, 0px) + 8px);
+      left: 16px; right: 16px;
+      padding: 8px; border-radius: var(--radius-md);
       border: 1px solid var(--border-mica);
-      background: var(--bg-mica);
+      box-shadow: var(--shadow-hover);
+      background: var(--bg-mica-scroll);
       -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-      color: var(--text-primary); font-size: 16px; cursor: pointer;
-      display: grid; place-items: center;
-      box-shadow: var(--shadow-rest);
+      flex-direction: column; gap: 2px;
+      pointer-events: all; z-index: 101;
     }
-    .theme-btn:hover { background: var(--bg-mica-hover); }
-    .theme-btn:active { transform: scale(0.95); }
+    .mobile-menu-dropdown.open { display: flex; }
+    .mobile-menu-dropdown .menu-item {
+      display: block; width: 100%; text-align: left; pointer-events: auto;
+    }
 
     /* 主卡片 */
     .card {
@@ -335,6 +376,11 @@
       .bg-mica-glow-1, .bg-mica-glow-2 {
         animation: none; -webkit-animation: none;
       }
+      /* 移动端导航：隐藏桌面菜单项，显示汉堡按钮 */
+      .menu-bar .menu-item { display: none; }
+      .menu-bar .menu-item.mobile-show { display: block; }
+      .menu-bar .menu-divider { display: none; }
+      .hamburger { display: grid !important; }
     }
 
     @media (max-width: 400px) {
@@ -353,8 +399,30 @@
   <div class="bg-mica-glow-1"></div>
   <div class="bg-mica-glow-2"></div>
 
-  <button class="back-btn" onclick="goBack()" aria-label="返回游戏中心" title="返回游戏中心">←</button>
-  <button id="themeBtn" class="theme-btn" aria-label="切换深色/浅色模式" title="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+  <!-- ==================== 导航栏 ==================== -->
+  <header class="top-menu">
+    <nav class="menu-bar" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <div class="menu-divider"></div>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
 
   <div class="container">
     <div class="card mica">
@@ -425,9 +493,18 @@
     let isComplete = false;
     let touchStartData = {};
 
-    function goBack() {
-      window.location.href = '/game/';
-    }
+    // 汉堡菜单
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    hamburgerBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      mobileMenu.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (!hamburgerBtn.contains(e.target) && !mobileMenu.contains(e.target)) {
+        mobileMenu.classList.remove('open');
+      }
+    });
 
     function shuffle(arr) {
       const a = arr.slice();

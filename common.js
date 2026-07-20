@@ -389,6 +389,196 @@
     return { browser: b, os: os, osVer: osVer, screen: screen };
   }
 
+  // ====================== 站内信全站横幅通知 ======================
+  /**
+   * 初始化站内信横幅通知（全站通用，在 /chat 页面自动隐藏）
+   * 
+   * 使用方式：
+   *   页面加载 Supabase 后调用 KJ.initMessageBanner(sb)
+   *   支持 Realtime 实时推送新消息时弹出横幅
+   * 
+   * @param {object} sb - Supabase 客户端实例
+   * @param {object} [opts]
+   * @param {string} [opts.chatPath='/chat'] - 站内信页面路径
+   */
+  var _bannerState = { dismissed: false, channel: null, currentUnread: 0, sb: null };
+
+  function initMessageBanner(sb, opts) {
+    opts = opts || {};
+    var chatPath = opts.chatPath || '/chat';
+
+    // 在 /chat 页面本身不显示横幅
+    if (global.location.pathname.indexOf(chatPath) === 0) return;
+
+    _bannerState.sb = sb;
+    _bannerState.dismissed = false;
+
+    // 初始检查未读消息
+    checkAndShowBanner(sb, chatPath);
+
+    // 订阅 Realtime：新消息到达时更新横幅
+    try {
+      if (_bannerState.channel) _bannerState.channel.unsubscribe();
+      _bannerState.channel = sb
+        .channel('kj_banner_pm')
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'private_messages' },
+          function(payload) {
+            // 只处理发给当前用户的消息
+            var msg = payload.new || {};
+            getCurrentUserId(sb).then(function(uid) {
+              if (msg.recipient_id === uid) {
+                // 有新消息，重新检查未读数
+                checkAndShowBanner(sb, chatPath);
+              }
+            }).catch(function() {});
+          }
+        )
+        .subscribe();
+    } catch(e) {
+      console.warn('Message banner realtime subscribe failed:', e);
+    }
+  }
+
+  /**
+   * 获取当前登录用户 ID
+   */
+  async function getCurrentUserId(sb) {
+    try {
+      var { data: { session } } = await sb.auth.getSession();
+      return session && session.user ? session.user.id : null;
+    } catch(e) { return null; }
+  }
+
+  /**
+   * 检查未读消息并显示/更新横幅
+   */
+  async function checkAndShowBanner(sb, chatPath) {
+    if (_bannerState.dismissed) return;
+    if (global.location.pathname.indexOf(chatPath) === 0) return;
+
+    try {
+      var uid = await getCurrentUserId(sb);
+      if (!uid) { removeBanner(); return; }
+
+      var { count, error } = await sb
+        .from('private_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', uid)
+        .eq('read', false);
+
+      if (error) { removeBanner(); return; }
+
+      var unread = count || 0;
+      _bannerState.currentUnread = unread;
+
+      if (unread > 0) {
+        showBanner(unread, chatPath);
+      } else {
+        removeBanner();
+      }
+    } catch(e) {
+      removeBanner();
+    }
+  }
+
+  /**
+   * 显示横幅
+   */
+  function showBanner(unread, chatPath) {
+    // 移除旧横幅
+    var existing = document.getElementById('kj-msg-banner');
+    if (existing) {
+      existing.querySelector('.kj-banner-count').textContent = unread > 99 ? '99+' : unread;
+      existing.style.display = '';
+      return;
+    }
+
+    var banner = document.createElement('div');
+    banner.id = 'kj-msg-banner';
+    banner.setAttribute('role', 'alert');
+    banner.setAttribute('aria-live', 'polite');
+
+    var countText = unread > 99 ? '99+' : unread;
+    var msgText = '您有 ' + countText + ' 条未读站内信';
+
+    banner.innerHTML =
+      '<div class="kj-banner-inner">' +
+        '<div class="kj-banner-left">' +
+          '<i class="fas fa-envelope kj-banner-icon"></i>' +
+          '<span class="kj-banner-text">' + escapeHtml(msgText) + '</span>' +
+        '</div>' +
+        '<div class="kj-banner-right">' +
+          '<a href="' + chatPath + '" class="kj-banner-action">查看</a>' +
+          '<button class="kj-banner-close" aria-label="关闭通知" title="关闭">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+
+    // 关闭按钮
+    banner.querySelector('.kj-banner-close').addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dismissBanner();
+    });
+
+    // 插入 body 最前面
+    document.body.insertBefore(banner, document.body.firstChild);
+
+    // 动画入场（延迟一帧确保 DOM 就绪）
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        banner.classList.add('kj-banner-visible');
+      });
+    });
+
+    // 调整页面顶部间距（如果有固定导航栏）
+    adjustPagePadding(true);
+  }
+
+  /**
+   * 移除横幅
+   */
+  function removeBanner() {
+    var banner = document.getElementById('kj-msg-banner');
+    if (!banner) return;
+    banner.classList.remove('kj-banner-visible');
+    setTimeout(function() {
+      if (banner.parentNode) banner.parentNode.removeChild(banner);
+      adjustPagePadding(false);
+    }, 350);
+  }
+
+  /**
+   * 关闭横幅（session 内不再显示）
+   */
+  function dismissBanner() {
+    _bannerState.dismissed = true;
+    removeBanner();
+  }
+
+  /**
+   * 调整页面顶部间距以容纳横幅
+   * 如果页面使用 fixed/sticky 导航栏，需要下移
+   */
+  function adjustPagePadding(add) {
+    var nav = document.querySelector('.kj-nav, nav.glass-nav, header.glass-nav, .site-nav');
+    if (nav && nav.style) {
+      if (add) {
+        nav.style.top = '44px';
+      } else {
+        nav.style.top = '0';
+      }
+    }
+    // 同时调整 body padding
+    if (add) {
+      document.body.style.paddingTop = '44px';
+    } else {
+      document.body.style.paddingTop = '';
+    }
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -414,7 +604,9 @@
     formatDate: formatDate,
     warmUpServices: warmUpServices,
     recordLoginDevice: recordLoginDevice,
-    parseUA: parseUA
+    parseUA: parseUA,
+    initMessageBanner: initMessageBanner,
+    dismissMessageBanner: dismissBanner
   };
 
   // 注入 Toast 样式

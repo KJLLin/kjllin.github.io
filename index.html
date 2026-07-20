@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f5f5f7">
   <meta name="description" content="KJLLin · 个人主页 | 站内信 | 游戏中心 | 资源云盘">
-  <title>KJLLin · 个人主页</title>
+  <title>个人主页 · KJLLin</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
   <style>
@@ -567,6 +568,7 @@
         if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
         return;
       }
+      KJ.initMessageBanner(sb);
       sb.auth.onAuthStateChange(function(event) {
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION' || event === 'USER_DELETED') updateUserUI();
       });

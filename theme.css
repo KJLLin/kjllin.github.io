@@ -155,6 +155,68 @@ html {
   --scrollbar-thumb-hover: rgba(0,0,0,0.22);
 }
 
+/* ====================== Keyboard Focus (无障碍) ====================== */
+/* Apple 风格 focus ring：仅键盘导航时显示，鼠标点击不显示 */
+:focus:not(:focus-visible) { outline: none; }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 圆角元素使用更柔和的焦点环 */
+.btn:focus-visible,
+.menu-item:focus-visible,
+.card:focus-visible,
+.card-glass:focus-visible,
+.card-glass-strong:focus-visible,
+.game-card:focus-visible,
+.conv-item:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 4px var(--color-accent-glow);
+}
+
+/* 链接焦点 */
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* 按钮焦点 */
+button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-accent-light);
+}
+
+[data-theme="dark"] .btn:focus-visible,
+[data-theme="dark"] .card:focus-visible,
+[data-theme="dark"] .card-glass:focus-visible,
+[data-theme="dark"] .card-glass-strong:focus-visible,
+[data-theme="dark"] .game-card:focus-visible,
+[data-theme="dark"] .conv-item:focus-visible {
+  box-shadow: 0 0 0 4px rgba(64, 169, 255, 0.2);
+}
+
+/* 减少动效偏好：移除焦点环过渡 */
+@media (prefers-reduced-motion: reduce) {
+  :focus-visible {
+    transition: none;
+  }
+}
+
 /* ====================== Dark Mode ====================== */
 [data-theme="dark"]:root {
   --color-bg: #0a0a0c;
@@ -600,4 +662,164 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
   font-style: normal;
   font-variant: normal;
   text-rendering: auto;
+}
+
+/* ================================================================
+   站内信全站横幅通知 — Apple Design
+   材质深度 · 弹簧入场 · 无障碍 · 响应式
+   ================================================================ */
+#kj-msg-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10000;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-normal);
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform 0.4s var(--spring-bounce), opacity 0.3s var(--spring-default);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+#kj-msg-banner.kj-banner-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.kj-banner-inner {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kj-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kj-banner-icon {
+  font-size: 16px;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.kj-banner-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kj-banner-count {
+  font-weight: 700;
+}
+
+.kj-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.kj-banner-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s var(--spring-default);
+  white-space: nowrap;
+}
+
+.kj-banner-action:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.kj-banner-action:active {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(0.96);
+  transition: transform 80ms var(--spring-default);
+}
+
+.kj-banner-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s var(--spring-default);
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.kj-banner-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.kj-banner-close:active {
+  background: rgba(255, 255, 255, 0.38);
+  transform: scale(0.9);
+  transition: transform 80ms var(--spring-default);
+}
+
+/* 移动端适配 */
+@media (max-width: 640px) {
+  #kj-msg-banner {
+    height: 40px;
+    font-size: 13px;
+  }
+
+  .kj-banner-inner {
+    padding: 0 12px;
+  }
+
+  .kj-banner-action {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  .kj-banner-close {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+}
+
+/* 暗色模式下横幅微调 */
+[data-theme="dark"] #kj-msg-banner {
+  background: var(--color-accent);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  #kj-msg-banner {
+    transition: none;
+  }
 }
