@@ -486,7 +486,7 @@
         if (user) {
           var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
           authLink.textContent = KJ.escapeHtml(nick);
-          authLink.href = '/account/';
+          authLink.href = '/settings/';
           authLink.title = '账号安全中心';
         } else {
           authLink.textContent = '登录';
