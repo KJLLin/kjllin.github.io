@@ -7,6 +7,9 @@
 /* ====================== CSS Reset & Base ====================== */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* 全局隐藏类 — 必须用 !important 防止被页面局部样式覆盖 */
+.hidden, [hidden] { display: none !important; }
+
 html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
