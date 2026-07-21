@@ -128,7 +128,7 @@
 
     .container {
       max-width: 600px; margin: 0 auto;
-      padding: 28px 16px; position: relative; z-index: 1;
+      padding: 78px 16px 28px; position: relative; z-index: 1;
     }
 
     /* 主卡片 */
@@ -138,7 +138,7 @@
       padding: 32px 28px;
       animation: fadeUp 0.7s var(--win-ease) forwards;
       -webkit-animation: fadeUp 0.7s var(--win-ease) forwards;
-      margin-top: 56px;
+      margin-top: 16px;
     }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(24px); }
@@ -298,8 +298,8 @@
     ::-webkit-scrollbar-track { background: transparent; }
 
     @media (max-width: 768px) {
-      .container { padding: 24px 12px; }
-      .card { padding: 24px 16px; margin-top: 48px; }
+      .container { padding: 72px 12px 24px; }
+      .card { padding: 24px 16px; margin-top: 12px; }
       .game-title { font-size: 22px; }
       .cell { font-size: 18px; }
       .grid { gap: 6px; }
