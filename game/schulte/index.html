@@ -421,11 +421,9 @@
         var { data: { session } } = await supabase.auth.getSession();
         if (!session || !session.user) { KJ.toast('请先登录以同步游戏纪录'); return; }
         var userId = session.user.id;
-        var userEmail = session.user.email || '';
-        var nick = userEmail.split('@')[0] || userId.substring(0, 8);
 
         var { error: insErr } = await supabase.from('game_scores').insert({
-          user_id: userId, nick: nick, game: GAME_NAME, score: Math.round(finalScore * 100)
+          user_id: userId, game: GAME_NAME, score: Math.round(finalScore * 100)
         });
         if (insErr) { KJ.toast('云端同步失败: ' + (insErr.message || '请检查网络')); return; }
 

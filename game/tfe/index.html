@@ -414,11 +414,9 @@ pre, code, .mono, .tile, .score-val {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
       const userId = session.user.id;
-      const userEmail = session.user.email || '';
-      const nick = userEmail.split('@')[0] || userId.substring(0, 8);
 
       const { error: insErr } = await supabase.from('game_scores').insert({
-        user_id: userId, nick: nick, game: GAME_NAME, score: finalScore
+        user_id: userId, game: GAME_NAME, score: finalScore
       });
       if (insErr) { KJ.toast('云端同步失败: '+KJ.formatSupabaseError(insErr)); return; }
 
