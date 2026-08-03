@@ -220,12 +220,32 @@
         if (sb) {
           sb.auth.onAuthStateChange(function(event, session) {
             updateAuthUI(session?.user || null);
+            if (session) loadCloudScores();
           });
           sb.auth.getSession().then(function(r) {
             updateAuthUI(r?.data?.session?.user || null);
+            if (r?.data?.session) loadCloudScores();
           }).catch(function() {});
         }
         const GAME_NAME = 'dino';
+
+        async function loadCloudScores() {
+          if (!sb) return;
+          try {
+            const { data: cloudBest } = await sb
+              .from('game_scores').select('score').eq('game', GAME_NAME)
+              .order('score', { ascending: false }).limit(1).maybeSingle();
+            if (cloudBest) document.getElementById('dinoCloudBest').textContent = cloudBest.score;
+
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+              const { data: myBest } = await sb
+                .from('game_scores').select('score').eq('user_id', session.user.id).eq('game', GAME_NAME)
+                .order('score', { ascending: false }).limit(1).maybeSingle();
+              if (myBest) document.getElementById('dinoMyBest').textContent = myBest.score;
+            }
+          } catch(e) { console.warn('Load scores failed:', e); }
+        }
 
         async function saveScore(finalScore) {
           if (!sb) return;
