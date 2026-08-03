@@ -51,10 +51,20 @@
         }
         canvas {
             border: 1px solid var(--color-border);
-            background-color: var(--color-bg-raised);
+            background-color: #87CEEB;
             max-width: 100%;
             height: auto;
         }
+        /* 昼夜指示器 */
+        #dayNightIndicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            font-size: 14px;
+            color: var(--color-text-secondary);
+        }
+        #dayNightEmoji { font-size: 20px; }
         #gameInfo {
             margin-top: 10px;
             font-size: 18px;
@@ -133,6 +143,11 @@
     <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
 <div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
 <div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
+    <div id="dayNightIndicator">
+      <span id="dayNightEmoji">☀️</span>
+      <span id="dayNightText">白天</span>
+      <span style="font-size:12px;opacity:0.7;">(昼夜自动更替)</span>
+    </div>
     <div id="cloudScores" style="margin-top:8px;font-size:14px;color:var(--color-text-secondary);text-align:center;">
       云端最高分: <span id="dinoCloudBest">-</span> | 我云最高分: <span id="dinoMyBest">-</span>
     </div>
@@ -330,6 +345,175 @@
         let windEffect = 0;
         let rainDrops = [];
 
+        // ==================== 昼夜更替系统 ====================
+        // dayTime: 0-2400 (模拟24小时循环), 每帧 +0.5, 约 2分钟一个完整昼夜
+        let dayTime = 800; // 从早上8点开始
+        const DAY_CYCLE_SPEED = 0.5; // 每帧增加的时间
+        const DAY_START = 600;   // 06:00 黎明
+        const DAY_FULL = 800;    // 08:00 白天
+        const DUSK_START = 1700; // 17:00 黄昏
+        const NIGHT_START = 1900;// 19:00 夜晚
+        const NIGHT_DEEP = 200;  // 02:00 深夜
+        const DAWN_START = 500;  // 05:00 破晓
+        let stars = []; // 星星数组
+        
+        // 预生成星星（固定位置，只在夜晚显示）
+        function generateStars() {
+            stars = [];
+            for (var i = 0; i < 60; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.6),
+                    size: 0.5 + Math.random() * 2,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        generateStars();
+        
+        function getSkyColors() {
+            // 返回当前时间的天空颜色（顶部和底部）
+            var t = dayTime;
+            var topColor, botColor;
+            
+            if (t >= DAY_FULL && t < DUSK_START) {
+                // 白天: 浅蓝 → 深蓝
+                var p = (t - DAY_FULL) / (DUSK_START - DAY_FULL);
+                topColor = lerpColor([135, 206, 235], [100, 180, 220], p);
+                botColor = lerpColor([200, 230, 255], [180, 210, 240], p);
+            } else if (t >= DUSK_START && t < NIGHT_START) {
+                // 黄昏: 蓝 → 橙红
+                var p2 = (t - DUSK_START) / (NIGHT_START - DUSK_START);
+                topColor = lerpColor([100, 180, 220], [40, 20, 60], p2);
+                botColor = lerpColor([180, 210, 240], [255, 130, 60], p2);
+            } else if (t >= NIGHT_START || t < DAWN_START) {
+                // 夜晚: 深蓝紫
+                topColor = [15, 10, 40];
+                botColor = [25, 20, 60];
+            } else if (t >= DAWN_START && t < DAY_START) {
+                // 黎明: 深蓝 → 浅蓝
+                var p3 = (t - DAWN_START) / (DAY_START - DAWN_START);
+                topColor = lerpColor([25, 20, 60], [135, 206, 235], p3);
+                botColor = lerpColor([60, 40, 80], [200, 230, 255], p3);
+            } else {
+                // 清晨 (5:00-6:00)
+                var p4 = (t - DAWN_START) / (DAY_START - DAWN_START);
+                topColor = lerpColor([25, 20, 60], [135, 206, 235], p4);
+                botColor = lerpColor([60, 40, 80], [200, 230, 255], p4);
+            }
+            
+            return { top: topColor, bot: botColor };
+        }
+        
+        function lerpColor(c1, c2, t) {
+            t = Math.max(0, Math.min(1, t));
+            return [
+                Math.round(c1[0] + (c2[0] - c1[0]) * t),
+                Math.round(c1[1] + (c2[1] - c1[1]) * t),
+                Math.round(c1[2] + (c2[2] - c1[2]) * t)
+            ];
+        }
+        
+        function isNightTime() { return dayTime >= NIGHT_START || dayTime < DAWN_START; }
+        function isDuskDawn() { return (dayTime >= DUSK_START && dayTime < NIGHT_START) || (dayTime >= DAWN_START && dayTime < DAY_START); }
+        
+        function updateDayNight() {
+            dayTime += DAY_CYCLE_SPEED;
+            if (dayTime >= 2400) dayTime -= 2400;
+            
+            var emojiEl = document.getElementById('dayNightEmoji');
+            var textEl = document.getElementById('dayNightText');
+            if (!emojiEl || !textEl) return;
+            
+            if (dayTime >= DAY_FULL && dayTime < DUSK_START) {
+                emojiEl.textContent = '☀️'; textEl.textContent = '白天';
+            } else if (dayTime >= DUSK_START && dayTime < NIGHT_START) {
+                emojiEl.textContent = '🌅'; textEl.textContent = '黄昏';
+            } else if (dayTime >= NIGHT_START || dayTime < DAWN_START) {
+                emojiEl.textContent = '🌙'; textEl.textContent = '夜晚';
+            } else {
+                emojiEl.textContent = '🌄'; textEl.textContent = '黎明';
+            }
+        }
+        
+        function drawSky() {
+            var colors = getSkyColors();
+            var topC = 'rgb(' + colors.top.join(',') + ')';
+            var botC = 'rgb(' + colors.bot.join(',') + ')';
+            
+            var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, topC);
+            grad.addColorStop(0.7, botC);
+            grad.addColorStop(1, '#5A3E18'); // 地面颜色
+            
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制太阳/月亮
+            if (!isNightTime()) {
+                // 太阳
+                var sunProgress = (dayTime - DAY_START) / (NIGHT_START - DAY_START);
+                if (dayTime < DAY_START) sunProgress = 0;
+                sunProgress = Math.max(0, Math.min(1, sunProgress));
+                var sunX = sunProgress * canvas.width;
+                var sunY = canvas.height * 0.15 + Math.sin(sunProgress * Math.PI) * canvas.height * 0.35;
+                
+                var sunAlpha = isDuskDawn() ? 0.6 : 0.9;
+                // 光晕
+                var sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 50);
+                sunGrad.addColorStop(0, 'rgba(255,240,200,' + sunAlpha + ')');
+                sunGrad.addColorStop(0.3, 'rgba(255,200,100,' + (sunAlpha*0.5) + ')');
+                sunGrad.addColorStop(1, 'rgba(255,150,50,0)');
+                ctx.fillStyle = sunGrad;
+                ctx.fillRect(sunX - 60, sunY - 60, 120, 120);
+                
+                ctx.fillStyle = 'rgba(255,245,200,' + sunAlpha + ')';
+                ctx.beginPath();
+                ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 月亮
+                var moonProgress = 0.5;
+                if (dayTime >= NIGHT_START) {
+                    moonProgress = (dayTime - NIGHT_START) / (2400 - NIGHT_START + DAWN_START);
+                } else {
+                    moonProgress = (dayTime + 2400 - NIGHT_START) / (2400 - NIGHT_START + DAWN_START);
+                }
+                moonProgress = Math.max(0, Math.min(1, moonProgress));
+                var moonX = moonProgress * canvas.width;
+                var moonY = canvas.height * 0.12 + Math.sin(moonProgress * Math.PI) * canvas.height * 0.3;
+                
+                var moonGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 40);
+                moonGrad.addColorStop(0, 'rgba(255,255,240,0.9)');
+                moonGrad.addColorStop(0.5, 'rgba(220,220,200,0.3)');
+                moonGrad.addColorStop(1, 'rgba(200,200,180,0)');
+                ctx.fillStyle = moonGrad;
+                ctx.fillRect(moonX - 50, moonY - 50, 100, 100);
+                
+                ctx.fillStyle = 'rgba(255,255,230,0.9)';
+                ctx.beginPath();
+                ctx.arc(moonX, moonY, 14, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 绘制星星（仅在夜晚）
+            if (isNightTime()) {
+                var starAlpha = isDuskDawn() ? 
+                    (dayTime >= DUSK_START ? (dayTime - DUSK_START) / (NIGHT_START - DUSK_START) : (DAWN_START - dayTime) / (DAWN_START - NIGHT_DEEP)) 
+                    : 0.9;
+                starAlpha = Math.max(0.1, Math.min(0.9, starAlpha));
+                
+                for (var i = 0; i < stars.length; i++) {
+                    var s = stars[i];
+                    var twinkle = 0.4 + 0.6 * Math.abs(Math.sin(Date.now() / 2000 + s.twinkle));
+                    ctx.fillStyle = 'rgba(255,255,255,' + (starAlpha * twinkle) + ')';
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
         // --- 手动天气召唤新增 ---
         let weatherCooldown = 0; // 冷却时间计数器 (以帧为单位)
         const cooldownDuration = 10 * 60; // 10秒冷却时间，假设每秒60帧
@@ -344,11 +528,6 @@
         // 游戏对象数组
         let obstacles = []; // 包含所有障碍物 (仙人掌, 翼龙, 沟壑)
         let coins = [];
-
-        // --- 恐龙动画相关 ---
-        let dinoAnimationFrame = 0;
-        let dinoAnimationTimer = 0;
-        const dinoAnimationInterval = 150; // 每150毫秒切换一次帧
 
         // --- 恐龙对象 ---
         const dino = {
@@ -367,56 +546,138 @@
                 if (isJumping) {
                     this.y += velocity;
                     velocity += gravity;
-                    if (this.y >= DINO_GROUND_Y) { // 检查是否回到地面 (基于原始位置)
-                        this.y = DINO_GROUND_Y; // 确保精确地停在地面上 (基于原始位置)
+                    if (this.y >= DINO_GROUND_Y) {
+                        this.y = DINO_GROUND_Y;
                         isJumping = false;
                         velocity = 0;
                     }
                 }
-
-                // --- 更新动画 ---
-                if (!isJumping) { // 只有在地面奔跑时才播放奔跑动画
-                    dinoAnimationTimer += 16.67; // 假设每帧大约16.67ms (60fps)
-                    if (dinoAnimationTimer >= dinoAnimationInterval) {
-                        dinoAnimationTimer = 0;
-                        // 循环播放前4帧 (索引 0, 1, 2, 3)，每帧宽50px -> 现在是44px
-                        dinoAnimationFrame = (dinoAnimationFrame + 1) % 4;
-                    }
-                }
             },
             draw: function() {
-                // 完整性检查：确保贴图已正确加载
-                if (dinoSpriteSheetImg && dinoSpriteSheetImg.complete && dinoSpriteSheetImg.naturalWidth > 0) {
-                  if (isGameOver) {
-                      ctx.drawImage(
-                          dinoSpriteSheetImg,
-                          176, 0, 44, 47,
-                          this.x, this.y, this.width, this.height
-                      );
-                  } else {
-                      ctx.drawImage(
-                          dinoSpriteSheetImg,
-                          dinoAnimationFrame * 44, 0, 44, 47,
-                          this.x, this.y, this.width, this.height
-                      );
-                  }
-                } else {
-                  // 降级绘制：简单绿色恐龙
-                  ctx.fillStyle = '#228B22';
-                  ctx.fillRect(this.x + 6, this.y + 12, 26, 18); // 身体
-                  ctx.fillRect(this.x + 24, this.y + 4, 14, 12);  // 头部
-                  ctx.fillStyle = '#323232';
-                  ctx.fillRect(this.x + 10, this.y + 30, 6, 15);  // 前腿
-                  ctx.fillRect(this.x + 22, this.y + 30, 6, 15);  // 后腿
-                  if (isGameOver) {
-                    ctx.save();
-                    ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                // 使用 Canvas 原生绘制经典 T-Rex 恐龙
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                
+                // 受伤变红
+                if (isGameOver) {
+                    // 游戏结束状态 - 恐龙倒下
                     ctx.rotate(Math.PI / 2);
-                    ctx.fillStyle = '#8B0000';
-                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-                    ctx.restore();
-                  }
                 }
+                
+                // ===== 绘制经典 T-Rex 恐龙 =====
+                var s = 1.0; // 缩放比例
+                var ox = -this.width/2;
+                var oy = -this.height/2;
+                
+                // 身体颜色
+                ctx.fillStyle = '#535353';
+                ctx.strokeStyle = '#303030';
+                ctx.lineWidth = 1.5;
+                
+                // 尾巴
+                ctx.beginPath();
+                ctx.moveTo(ox + 2*s, oy + 22*s);
+                ctx.lineTo(ox - 4*s, oy + 18*s);
+                ctx.lineTo(ox - 2*s, oy + 32*s);
+                ctx.lineTo(ox + 6*s, oy + 36*s);
+                ctx.lineTo(ox + 10*s, oy + 30*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 身体主体
+                ctx.beginPath();
+                ctx.ellipse(ox + 18*s, oy + 24*s, 14*s, 11*s, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 脖子
+                ctx.beginPath();
+                ctx.moveTo(ox + 22*s, oy + 16*s);
+                ctx.quadraticCurveTo(ox + 32*s, oy + 8*s, ox + 30*s, oy + 0*s);
+                ctx.quadraticCurveTo(ox + 26*s, oy - 2*s, ox + 24*s, oy + 4*s);
+                ctx.quadraticCurveTo(ox + 20*s, oy + 8*s, ox + 18*s, oy + 14*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 头部
+                ctx.beginPath();
+                ctx.moveTo(ox + 30*s, oy + 0*s);
+                ctx.quadraticCurveTo(ox + 42*s, oy - 2*s, ox + 44*s, oy + 4*s);
+                ctx.quadraticCurveTo(ox + 46*s, oy + 10*s, ox + 40*s, oy + 14*s);
+                ctx.quadraticCurveTo(ox + 36*s, oy + 14*s, ox + 32*s, oy + 10*s);
+                ctx.quadraticCurveTo(ox + 28*s, oy + 6*s, ox + 30*s, oy + 0*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 上颚
+                ctx.beginPath();
+                ctx.moveTo(ox + 42*s, oy + 4*s);
+                ctx.lineTo(ox + 50*s, oy + 6*s);
+                ctx.lineTo(ox + 48*s, oy + 8*s);
+                ctx.lineTo(ox + 44*s, oy + 8*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 下颚
+                ctx.beginPath();
+                ctx.moveTo(ox + 44*s, oy + 10*s);
+                ctx.lineTo(ox + 48*s, oy + 14*s);
+                ctx.lineTo(ox + 44*s, oy + 14*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 眼睛
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(ox + 38*s, oy + 4*s, 3*s, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(ox + 39*s, oy + 3.5*s, 1.5*s, 0, Math.PI*2);
+                ctx.fill();
+                
+                // 背部鳞片
+                ctx.fillStyle = '#404040';
+                ctx.strokeStyle = '#303030';
+                for (var i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(ox + (14 + i*8)*s, oy + 10*s);
+                    ctx.lineTo(ox + (12 + i*8)*s, oy + 2*s);
+                    ctx.lineTo(ox + (16 + i*8)*s, oy + 10*s);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // 腿 - 奔跑动画
+                ctx.fillStyle = '#535353';
+                ctx.strokeStyle = '#303030';
+                var legPhase = isJumping ? 0 : Math.sin(Date.now() / 80) * 4;
+                
+                // 前腿
+                ctx.beginPath();
+                ctx.moveTo(ox + 12*s, oy + 30*s);
+                ctx.quadraticCurveTo(ox + 8*s, oy + 40*s, ox + (6 + legPhase)*s, oy + 47*s);
+                ctx.quadraticCurveTo(ox + (12 + legPhase)*s, oy + 48*s, ox + 14*s, oy + 30*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 后腿
+                ctx.beginPath();
+                ctx.moveTo(ox + 24*s, oy + 30*s);
+                ctx.quadraticCurveTo(ox + 22*s, oy + 40*s, ox + (20 - legPhase)*s, oy + 47*s);
+                ctx.quadraticCurveTo(ox + (26 - legPhase)*s, oy + 48*s, ox + 28*s, oy + 30*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.restore();
             }
         };
 
@@ -758,6 +1019,8 @@
                   scoreSaved = true;
                   saveScore(score);
                 }
+                updateDayNight();
+                drawSky();
                 drawGameOver();
                 return;
             }
@@ -767,7 +1030,9 @@
 				// 减去余数以修正误差，保持时间步长稳定
 		        lastDrawTime = currentTime - (elapsed % fpsInterval);
 
-           	ctx.clearRect(0, 0, canvas.width, canvas.height);
+           	// 绘制昼夜天空背景
+           	drawSky();
+           	updateDayNight();
 
             gameSpeed = 5 + score * 0.0005 + windEffect;
 
@@ -972,18 +1237,23 @@
         }
 
         function drawGameOver() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = '40px Arial';
-            ctx.fillStyle = 'white';
+            ctx.font = 'bold 40px Arial';
+            ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
             ctx.fillText('游戏结束!', canvas.width / 2, canvas.height / 2 - 40);
 
-            ctx.font = '20px Arial';
-            ctx.fillText(`最终分数: ${score}`, canvas.width / 2, canvas.height / 2);
-            ctx.fillText(`收集金币: ${coinsCollected}`, canvas.width / 2, canvas.height / 2 + 30);
-            ctx.fillText('按 R 键或点击屏幕重新开始', canvas.width / 2, canvas.height / 2 + 60);
+            ctx.font = '18px Arial';
+            ctx.fillText('最终分数: ' + score, canvas.width / 2, canvas.height / 2);
+            ctx.fillText('收集金币: ' + coinsCollected, canvas.width / 2, canvas.height / 2 + 28);
+            
+            var isNight = isNightTime();
+            ctx.fillStyle = isNight ? '#aaccff' : '#ffdd88';
+            ctx.font = '14px Arial';
+            ctx.fillText((isNight ? '🌙 ' : '☀️ ') + '按 R 键或点击屏幕重新开始', canvas.width / 2, canvas.height / 2 + 60);
+            ctx.textAlign = 'start';
         }
 
         function resetGame() {
@@ -1018,10 +1288,6 @@
             // 重置手动天气变量
             weatherCooldown = 0;
             manualWeatherActive = false;
-
-            // 重置动画状态
-            dinoAnimationFrame = 0;
-            dinoAnimationTimer = 0;
 
             // 重置地面贴图位置
             groundX = 0;
