@@ -146,6 +146,7 @@
     themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI()});
     KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
     KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
+        KJ.initNav(null, { homeUrl: '/' });
 
     // Get post ID from URL
     postId=new URLSearchParams(location.search).get('id');

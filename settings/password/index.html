@@ -128,6 +128,7 @@
     KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
 
     KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
+        KJ.initNav(null, { homeUrl: '/' });
 
     if(!sb){$('#loginMsg').textContent='加载中，请稍候...';return}
 

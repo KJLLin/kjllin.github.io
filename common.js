@@ -389,7 +389,138 @@
     return { browser: b, os: os, osVer: osVer, screen: screen };
   }
 
-  // ====================== 站内信全站横幅通知 ======================
+  // ====================== 统一导航栏 Auth 初始化 ======================
+  /**
+   * 初始化顶部导航栏的登录状态：隐藏/显示登出按钮、填充用户名
+   * 解决全站 14+ 页面重复编写 auth UI 代码的问题
+   * 
+   * 使用方式（页面仅需一行）：
+   *   KJ.initNav(sb);  // sb 为 Supabase 客户端，可选（不传则自动创建）
+   * 
+   * @param {object} [sb] - Supabase 客户端实例（可选）
+   * @param {object} [opts]
+   * @param {string} [opts.logoutBtn='#logoutBtn']  - 退出按钮选择器
+   * @param {string} [opts.userTag='#userTag']      - 用户标签选择器
+   * @param {string} [opts.loginUrl='/login/']       - 登录页路径
+   * @param {string} [opts.homeUrl='/']              - 退出后跳转
+   */
+  function initNav(sb, opts) {
+    opts = opts || {};
+    var logoutSel = opts.logoutBtn || '#logoutBtn';
+    var userTagSel = opts.userTag || '#userTag';
+    var loginUrl = opts.loginUrl || '/login/';
+    var homeUrl = opts.homeUrl || '/';
+    
+    var logoutBtn = document.querySelector(logoutSel);
+    var userTag = document.querySelector(userTagSel);
+    
+    // 如果页面没有导航栏，静默退出
+    if (!logoutBtn && !userTag) return;
+
+    // 创建 Supabase 客户端（如果未传入）
+    if (!sb && global.supabase) {
+      try {
+        sb = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: {
+            persistSession: true,
+            storage: {
+              getItem: function(k) { return safeStorage.getItem(k); },
+              setItem: function(k,v) { safeStorage.setItem(k,v); },
+              removeItem: function(k) { safeStorage.removeItem(k); }
+            }
+          }
+        });
+      } catch(e) { sb = null; }
+    }
+
+    function hideLogout() {
+      if (logoutBtn) logoutBtn.style.display = 'none';
+      if (userTag) userTag.textContent = '';
+    }
+
+    function showLogout() {
+      if (logoutBtn) logoutBtn.style.display = '';
+    }
+
+    function setUserTag(nick) {
+      if (userTag && nick) {
+        userTag.textContent = nick;
+        userTag.title = nick;
+      }
+    }
+
+    // 绑定退出点击
+    if (logoutBtn && !logoutBtn._kjNavBound) {
+      logoutBtn._kjNavBound = true;
+      logoutBtn.addEventListener('click', async function() {
+        if (!confirm('确定退出登录？')) return;
+        try { if (sb) await sb.auth.signOut(); } catch(e) {}
+        global.location.href = homeUrl;
+      });
+    }
+
+    // 先从 localStorage 立即显示（无闪烁）
+    var storedUser = getStoredUser(sb);
+    if (storedUser) {
+      showLogout();
+      setUserTag(storedUser.user_metadata?.nick || storedUser.email?.split('@')[0] || '用户');
+    } else {
+      hideLogout();
+    }
+
+    // 然后从 Supabase 异步确认（修正可能的偏差）
+    if (sb) {
+      sb.auth.onAuthStateChange(function(event, session) {
+        if (session && session.user) {
+          showLogout();
+          setUserTag(session.user.user_metadata?.nick || session.user.email?.split('@')[0] || '用户');
+        } else {
+          hideLogout();
+        }
+      });
+      sb.auth.getSession().then(function(r) {
+        if (r?.data?.session?.user) {
+          showLogout();
+          setUserTag(r.data.session.user.user_metadata?.nick || r.data.session.user.email?.split('@')[0] || '用户');
+        } else {
+          hideLogout();
+        }
+      }).catch(function() {
+        // 网络失败时保留 localStorage 的检测结果
+      });
+    }
+
+    // 初始化站内信横幅
+    if (sb) initMessageBanner(sb);
+  }
+
+  /**
+   * 从 localStorage 读取当前用户信息
+   * @param {object} [sb] - 可选 Supabase 客户端（用于 expires_at 校验）
+   * @returns {object|null}
+   */
+  function getStoredUser(sb) {
+    try {
+      var now = Date.now();
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
+          var val = JSON.parse(localStorage.getItem(key));
+          if (val && val.user) {
+            // 检查 token 是否过期
+            if (val.expires_at) {
+              if (val.expires_at * 1000 <= now) {
+                try { localStorage.removeItem(key); } catch(e) {}
+                return null;
+              }
+            }
+            return val.user;
+          }
+        }
+      }
+    } catch(e) {}
+    return null;
+  }
   /**
    * 初始化站内信横幅通知（全站通用，在 /chat 页面自动隐藏）
    * 
@@ -638,7 +769,8 @@
     parseUA: parseUA,
     initMessageBanner: initMessageBanner,
     dismissMessageBanner: dismissBanner,
-    rateLimit: rateLimit
+    rateLimit: rateLimit,
+    initNav: initNav
   };
 
   // 注入 Toast 样式

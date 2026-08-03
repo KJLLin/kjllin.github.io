@@ -790,7 +790,7 @@
     });
 
     // ====================== 事件 ======================
-    $('#logoutBtn').addEventListener('click', doLogout);
+
 
     // 云盘事件
     $('#uploadBtn').addEventListener('click', () => $('#fileInput').click());
@@ -829,6 +829,7 @@
     updateThemeUI();
 
     KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
+    KJ.initNav(sb, { homeUrl: '/' });
 
     let isScrolling = false;
     const menuBar = $('#menuBar');
