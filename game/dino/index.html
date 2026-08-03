@@ -304,11 +304,6 @@
                 }
             }
         }, 5000);
-        
-        // 处理已缓存的图片（onload 不会再次触发）
-        [coinImg, flyImg, xrzImg].forEach(function(img) {
-            if (img.complete && img.naturalWidth > 0) onImageLoad();
-        });
 
         // 游戏状态
         let gameSpeed = 5;
@@ -916,6 +911,10 @@
         }
 
         // 开始游戏
+        // 处理已缓存的图片（onload 不会再次触发），必须在所有 let 变量声明之后
+        [coinImg, flyImg, xrzImg].forEach(function(img) {
+            if (img.complete && img.naturalWidth > 0) onImageLoad();
+        });
         resetGame(); // 使用resetGame来初始化并启动游戏
     </script>
 
