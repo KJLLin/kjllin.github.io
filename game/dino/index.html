@@ -41,7 +41,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background-color: var(--color-bg);
+            background-color: #f0f0f0;
             color: var(--color-text-primary);
             font-family: var(--font-sans);
             touch-action: manipulation;
@@ -50,7 +50,7 @@
             user-select: none;
         }
         canvas {
-            border: 1px solid #d0d0d0;
+            border: 1px solid #000;
             background-color: #f7f7f7;
             max-width: 100%;
             height: auto;
@@ -66,7 +66,6 @@
             font-size: 14px;
             color: var(--color-text-secondary);
         }
-        /* 隐藏预加载的图像 */
         #groundTexture, #dinoSpriteSheet, #coinImage, #flyImage, #xrzImage { display: none; }
         /* 触屏按钮 */
         #touchBtns {
@@ -137,7 +136,7 @@
       云端最高分: <span id="dinoCloudBest">-</span> | 我云最高分: <span id="dinoMyBest">-</span>
     </div>
     <div id="authHint" style="margin-top:6px;font-size:12px;color:var(--color-text-tertiary);text-align:center;">
-      <a href="/login/?redirect=/game/dino/" style="color:var(--accent);text-decoration:none">登录</a> 以同步游戏记录到云端
+      <a href="/login/?redirect=/game/dino/" style="color:var(--color-accent);text-decoration:none">登录</a> 以同步游戏记录到云端
     </div>
     <div id="touchBtns">
         <button class="touch-btn" id="btnLeft"><i class="fas fa-wind"></i> 左风</button>
@@ -146,13 +145,13 @@
         <button class="touch-btn" id="btnRain"><i class="fas fa-cloud-rain"></i> 下雨</button>
     </div>
     <!-- 预加载地面贴图 -->
-    <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAB7ElEQVR4nO3Wx7WkUBRDUSKRInreBoH3UJB7j28CTPoncGbaS01vMXmsEUfGXfFa9B5TxJpxVNwWr0cfMWWsFYfF7fFG9BlTxWpxeNwRb0ZfMVmsHkfEnfFWfFNuOsPRcQncE6/Cx7BzHAOXxL3wMnwcO8AxcSncDS/HJ7BLHAsXw93xCnwSu8LRcHHcA6/Ep/CbctNqDBazxxZxZvw0WovBY47YMk6Nn0XrMUTMGZvGafHzaCOGjFljszg9fhFtxqAxW2weZ8Qv45ty0ytOhqvjEXgnvoq94eS4Bh6Jt+Jr2DtOgWvioXgbvo594JS4Kh6Gt+Mb2CdOiqvh4XgHvonflJvOYvRYIvaMq+Kx6DzGiCVjr7gsHo8uYsxYKnaLy+OJ6DLGisVi97ginoyuYrRYPPaIK+Op+KbctIaD4xy4JZ6FP8PWcQicE7fC0/Dn2AYOiXPhZng6/gLbxKFwNtwcz8BfYls4GM6OW+CZ+Cv8ptz0Wm5cSz201ENLPbTUQ0s9Pik3nZIbV1IPJfVQUg8l9VBSj0/KjZChShmqlKFKGaqUoUpzKr4pN0KGImUoUoYiZShShiLNKfym3HRablxLPbTUQ0s9tNRDSz0+KTetkhtXUg8l9VBSDyX1UFKPT8rN3xf6+0L/+Rf6BxSOlW7L1t47AAAAAElFTkSuQmCC" alt="" aria-hidden="true">
+    <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAABlBMVEX///9TU1NYzE1OAAAAAXRSTlMAQObYZgAAALJJREFUeF7t1EEKAyEMhtEvMNm7sPfJEVyY+1+ltLgYAsrQCtWhbxEhQvgxIJtSZypxa/WGshgzKdbq/UihMFMlt3o/CspEYoihIMaAb6mCvM6C+BTAeyo+wN4yykV/6pVfkdLpVyI1hh7GJ6QunUoLEQlQglNP2nkQkeF8+ei9cLxMue1qxVRfk1Ej0s6AEGWfVOk0QUtnK5Xo0Lac6wpdtnQqB6VxomPaz+dgF1PaqqmeWJlz1jYUaSIAAAAASUVORK5CYII=" alt="" aria-hidden="true">
     <!-- 预加载恐龙精灵图 -->
-    <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAB8UlEQVR4nO2cwU3EQBAEHYtDICayITGy4iTuAdKOrV7v9M3uuUp+ounS+Uo8kNi+AaBhqxYAmBHCAAggDICAtDD2r118shZxmNlhdQgDBwggDBwggDBwgADCwAECCAMHCDCG8XNA1iIOMzusDmHgAAFBGPov4vNn5GXgMI/DPTGGcfQoWjjM43BPCAMHCCAMHCDAHsY1LRzmcbgnhIEDBGz75/73pL4G/WXgMI8DPCEMHCCAMHCITAzrvYa1DoSBQ2RiWO81rHUgDBwiE8N6r2GtA2HgEJkY1nsNax0IA4fIxLDea1jrQBg4RCaG9V7DWgf+wIeDfbd9tl/ODWsdCAMH+277EMZiXwgcHLvXDGsdCAMH++41w1oH/kUnBBAGYUBAYRyG8dEw/pPXUO77HFb5HHLXCYMwEtbdDsp9wiAMwlgyjNbwP68M49zkuU4YCetuB+V+7jphEEbCuttBue9eH6c1rLJVTAgjYd3toNx3r4/TGlbZKiaEkbDudlDuu9fHaQ2rbBUTwkhYdzso993r47SGVbaKCWEkrLsdlPvu9XFawypbxYQwEtbdDsp99/o4rWGVrWJCGAnrbgflvnv9bhBGwrrbQblPGLkQRsK620G5Txi5JIThpjaMXE/f/Rk+gXeCMF7q6bs/wyfwTjwAbuBhjOPkVewAAAAASUVORK5CYII=" alt="" aria-hidden="true">
-    <!-- 预加载新图片资源（本地优先，外部CDN为备用） -->
-    <img id="coinImage" src="https://epcdiy.org/image/coin.png" crossorigin="anonymous" alt="" aria-hidden="true">
-    <img id="flyImage" src="https://epcdiy.org/image/fly.png" crossorigin="anonymous" alt="" aria-hidden="true">
-    <img id="xrzImage" src="https://epcdiy.org/image/xrz.png" crossorigin="anonymous" alt="" aria-hidden="true">
+    <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=" alt="" aria-hidden="true">
+    <!-- 预加载新图片资源 -->
+    <img id="coinImage" src="images/coin.png" alt="" aria-hidden="true">
+    <img id="flyImage" src="images/fly.png" alt="" aria-hidden="true">
+    <img id="xrzImage" src="images/xrz.png" alt="" aria-hidden="true">
 
     <script>
         // ====================== 导航栏 JS ======================
@@ -171,96 +170,23 @@
         KJ.onSystemThemeChange(updateThemeUI);
         updateThemeUI();
 
-        // ====================== 游戏逻辑 ======================
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const coinsElement = document.getElementById('coins');
-        const weatherTextElement = document.getElementById('weatherText');
-        const windTextElement = document.getElementById('windText');
-        // --- 获取预加载的图像 ---
-        const groundTextureImg = document.getElementById('groundTexture');
-        const dinoSpriteSheetImg = document.getElementById('dinoSpriteSheet');
-        const coinImg = document.getElementById('coinImage');
-        const flyImg = document.getElementById('flyImage');
-        const xrzImg = document.getElementById('xrzImage');
+        // 退出登录
+        var logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) logoutBtn.addEventListener('click', async function() {
+          if (!confirm('确定退出登录？')) return;
+          try { if (sb) await sb.auth.signOut(); } catch(e) {}
+          window.location.href = '/';
+        });
+    </script>
 
-        // --- 图片加载计数器（3张外部图片）---
-        let imagesToLoad = 3; // coin, fly, xrz
-        let allImagesLoaded = false;
-        
-        let fps = 60;
-        let fpsInterval = 1000 / fps;
-        let lastDrawTime = performance.now();
-
-        function onImageLoad() {
-            imagesToLoad--;
-            if (imagesToLoad <= 0) {
-                allImagesLoaded = true;
-                imagesToLoad = 0;
-                console.log("All images loaded, ready to start game.");
-                if (typeof gameLoop === 'function' && !window.gameStarted) {
-                    window.gameStarted = true;
-                    resetGame();
-                }
-            }
-        }
-        
-        // 图片加载失败时的备用处理：直接标记已加载（使用canvas降级绘制）
-        function onImageError(img, id, fallbackSrc) {
-            // 避免重复计数：用 data-loaded 标记防止 onerror 多次触发
-            if (img.dataset.loaded === 'done') return;
-            img.dataset.loaded = 'done';
-            console.warn('Image ' + id + ' failed to load, will use fallback drawing');
-            onImageLoad();
-        }
-        
-        // 兜底：5秒超时强制开始游戏（即使图片未加载完成）
-        setTimeout(function() {
-            if (!allImagesLoaded) {
-                console.warn('Image load timeout, forcing game start with fallback drawing');
-                imagesToLoad = 0;
-                allImagesLoaded = true;
-                if (typeof gameLoop === 'function' && !window.gameStarted) {
-                    window.gameStarted = true;
-                    resetGame();
-                }
-            }
-        }, 5000);
-
-        // 游戏状态
-        let gameSpeed = 5;
-        let score = 0;
-        let coinsCollected = 0;
-        let isGameOver = false;
-        let scoreSaved = false; // 防止重复保存云端分数
-        let isJumping = false;
-        let gravity = 0.5;
-        let jumpVelocity = -12;
-        let baseJumpVelocity = -12;
-        let velocity = 0;
-        let dinoY = canvas.height - 60;
-        // --- 新的恐龙尺寸 ---
-        let dinoHeight = 47;
-        let dinoWidth = 44;
-        // --- 地面贴图相关 ---
-        const GROUND_HEIGHT = 20;
-        const GROUND_TILE_WIDTH = 1200;
-        const ORIGINAL_GROUND_Y = canvas.height - GROUND_HEIGHT; // 原始地面贴图的Y坐标
-        const GROUND_Y = ORIGINAL_GROUND_Y - 6; // 地面贴图上移6个像素
-        const DINO_GROUND_Y = ORIGINAL_GROUND_Y - dinoHeight; // 恐龙站在地面上时的Y坐标，基于原始位置
-        let groundX = 0; // 地面贴图的X坐标偏移
-		let obstacleDistance=233;
-		let obstacleDistanceCur=0;
-
-        // 天气系统
+    <script>
+        // ====================== 云同步 + 游戏逻辑 ======================
+        // Supabase 初始化
         let sb = null;
         try { if (window.supabase) sb = window.supabase.createClient('https://vzqspcuxnwpakofwumat.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg', { auth: { persistSession: true, storage: { getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, setItem: function(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }, removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} } } } }); } catch(e) { console.warn('Supabase init failed, score saving disabled'); }
-        // Fallback to KJ.createSupabase if not initialized
         if (!sb) sb = KJ.createSupabase();
         if (sb) KJ.initMessageBanner(sb);
 
-        // 同步检查 localStorage 中的 session（无网络延迟，立即响应）
         function getStoredUser() {
           try {
             var now3 = Date.now();
@@ -289,7 +215,6 @@
           }
         }
 
-        // 先用 localStorage 立即显示状态（无闪烁）
         updateAuthUI(getStoredUser());
 
         if (sb) {
@@ -325,6 +250,67 @@
             if (myBest) document.getElementById('dinoMyBest').textContent = myBest.score;
           } catch(e) { console.warn('Save score failed:', e); KJ.toast('云端同步失败，请检查网络连接'); }
         }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const coinsElement = document.getElementById('coins');
+        const weatherTextElement = document.getElementById('weatherText');
+        const windTextElement = document.getElementById('windText');
+        // --- 获取预加载的图像 ---
+        const groundTextureImg = document.getElementById('groundTexture');
+        const dinoSpriteSheetImg = document.getElementById('dinoSpriteSheet');
+        const coinImg = document.getElementById('coinImage');
+        const flyImg = document.getElementById('flyImage');
+        const xrzImg = document.getElementById('xrzImage');
+
+        // --- 添加一个加载计数器，确保所有图片都加载完成后再开始游戏 ---
+        let imagesToLoad = 3; // coin, fly, xrz
+        let allImagesLoaded = false;
+		
+		let fps = 60;
+		let fpsInterval = 1000 / fps;
+		let lastDrawTime = performance.now();
+
+        function onImageLoad() {
+            imagesToLoad--;
+            if (imagesToLoad === 0) {
+                allImagesLoaded = true;
+                console.log("All images loaded, ready to start game.");
+                // 如果游戏在等待图片加载，可以在这里开始
+                if (typeof gameLoop === 'function' && !window.gameStarted) {
+                    window.gameStarted = true;
+                    resetGame(); // 开始游戏
+                }
+            }
+        }
+
+        // 游戏状态
+        let gameSpeed = 5;
+        let score = 0;
+        let coinsCollected = 0;
+        let isGameOver = false;
+        let scoreSaved = false; // 防止重复保存云端分数
+        let isJumping = false;
+        let gravity = 0.5;
+        let jumpVelocity = -12;
+        let baseJumpVelocity = -12;
+        let velocity = 0;
+        let dinoY = canvas.height - 60;
+        // --- 新的恐龙尺寸 ---
+        let dinoHeight = 47;
+        let dinoWidth = 44;
+        // --- 地面贴图相关 ---
+        const GROUND_HEIGHT = 20;
+        const GROUND_TILE_WIDTH = 1200;
+        const ORIGINAL_GROUND_Y = canvas.height - GROUND_HEIGHT; // 原始地面贴图的Y坐标
+        const GROUND_Y = ORIGINAL_GROUND_Y - 6; // 地面贴图上移6个像素
+        const DINO_GROUND_Y = ORIGINAL_GROUND_Y - dinoHeight; // 恐龙站在地面上时的Y坐标，基于原始位置
+        let groundX = 0; // 地面贴图的X坐标偏移
+		let obstacleDistance=233;
+		let obstacleDistanceCur=0;
+
+        // 天气系统
         let currentWeather = 'sunny';
         let windDirection = 0;
         let windEffect = 0;
@@ -344,7 +330,6 @@
         // 游戏对象数组
         let obstacles = []; // 包含所有障碍物 (仙人掌, 翼龙, 沟壑)
         let coins = [];
-
 
         // --- 恐龙动画相关 ---
         let dinoAnimationFrame = 0;
@@ -368,123 +353,58 @@
                 if (isJumping) {
                     this.y += velocity;
                     velocity += gravity;
-                    if (this.y >= DINO_GROUND_Y) {
-                        this.y = DINO_GROUND_Y;
+                    if (this.y >= DINO_GROUND_Y) { // 检查是否回到地面 (基于原始位置)
+                        this.y = DINO_GROUND_Y; // 确保精确地停在地面上 (基于原始位置)
                         isJumping = false;
                         velocity = 0;
                     }
                 }
 
                 // --- 更新动画 ---
-                if (!isJumping) {
-                    dinoAnimationTimer += 16.67;
+                if (!isJumping) { // 只有在地面奔跑时才播放奔跑动画
+                    dinoAnimationTimer += 16.67; // 假设每帧大约16.67ms (60fps)
                     if (dinoAnimationTimer >= dinoAnimationInterval) {
                         dinoAnimationTimer = 0;
+                        // 循环播放前4帧 (索引 0, 1, 2, 3)，每帧宽50px -> 现在是44px
                         dinoAnimationFrame = (dinoAnimationFrame + 1) % 4;
                     }
                 }
             },
             draw: function() {
-                // 使用精灵图绘制恐龙（epcdiy.org 原版样式）
+                // --- 绘制动画 ---
                 if (isGameOver) {
-                    ctx.drawImage(dinoSpriteSheetImg, 176, 0, 44, 47, this.x, this.y, this.width, this.height);
+                    // 游戏结束时，绘制失败帧 (第5帧和第6帧，索引为4和5)
+                    // 这里我们选择绘制第5帧作为失败画面 (索引4)
+                    // --- 调整源尺寸为 44x47 ---
+                    ctx.drawImage(
+                        dinoSpriteSheetImg,
+                        176, // (frameIndex * frameWidth) -> 4 * 44
+                        0,
+                        44, // frameWidth
+                        47, // frameHeight
+                        this.x,
+                        this.y,
+                        this.width, // 目标宽度
+                        this.height // 目标高度
+                    );
                 } else {
-                    ctx.drawImage(dinoSpriteSheetImg, dinoAnimationFrame * 44, 0, 44, 47, this.x, this.y, this.width, this.height);
+                    // 正常奔跑时，绘制当前奔跑帧 (前4帧，索引 0, 1, 2, 3)
+                    // --- 调整源尺寸为 44x47 ---
+                    ctx.drawImage(
+                        dinoSpriteSheetImg,
+                        dinoAnimationFrame * 44, // 根据当前帧索引计算源X坐标 (44px per frame)
+                        0, // 源Y坐标始终为0
+                        44, // 每帧的宽度
+                        47, // 每帧的高度
+                        this.x,
+                        this.y,
+                        this.width, // 目标宽度
+                        this.height // 目标高度
+                    );
                 }
-            }        };
-
-
-        // ==================== 触屏支持 ====================
-        let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-
-        canvas.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            const t = e.touches[0];
-            touchStartX = t.clientX;
-            touchStartY = t.clientY;
-            touchStartTime = Date.now();
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            const t = e.changedTouches[0];
-            const dx = t.clientX - touchStartX;
-            const dy = t.clientY - touchStartY;
-            const dt = Date.now() - touchStartTime;
-            const absDx = Math.abs(dx);
-            const absDy = Math.abs(dy);
-
-            if (isGameOver) {
-                resetGame();
-                return;
             }
+        };
 
-            // 短点击 = 跳跃
-            if (absDx < 20 && absDy < 20 && dt < 400) {
-                dino.jump();
-                return;
-            }
-
-            if (absDx < 30 && absDy < 30) return;
-
-            if (absDy > absDx && dy < -30) {
-                dino.jump();
-            } else if (absDy > absDx && dy > 30) {
-                if (currentWeather !== 'rainy') triggerRain();
-            } else if (absDx > absDy && dx < -30) {
-                if (windDirection !== -1) triggerWindLeft();
-            } else if (absDx > absDy && dx > 30) {
-                if (windDirection !== 1) triggerWindRight();
-            }
-        });
-
-        function triggerRain() {
-            if (isGameOver || currentWeather === 'rainy') return;
-            currentWeather = 'rainy';
-            manualWeatherActive = true;
-            weatherTextElement.textContent = '下雨';
-            windTextElement.textContent = '无';
-            windEffect = 0; windDirection = 0;
-            weatherCooldown = cooldownDuration;
-            rainDrops = []; windParticles = [];
-        }
-        function triggerWindLeft() {
-            if (isGameOver || windDirection === -1) return;
-            currentWeather = 'windy';
-            manualWeatherActive = true;
-            weatherTextElement.textContent = '刮风';
-            windTextElement.textContent = '向左';
-            windDirection = -1;
-            windEffect = -1.5;
-            weatherCooldown = cooldownDuration;
-            rainDrops = []; windParticles = [];
-        }
-        function triggerWindRight() {
-            if (isGameOver || windDirection === 1) return;
-            currentWeather = 'windy';
-            manualWeatherActive = true;
-            weatherTextElement.textContent = '刮风';
-            windTextElement.textContent = '向右';
-            windDirection = 1;
-            windEffect = 1.5;
-            weatherCooldown = cooldownDuration;
-            rainDrops = []; windParticles = [];
-        }
-
-        // 触屏按钮事件
-        document.getElementById('btnJump').addEventListener('pointerdown', function(e) {
-            e.preventDefault();
-            if (isGameOver) resetGame(); else dino.jump();
-        });
-        document.getElementById('btnLeft').addEventListener('pointerdown', function(e) {
-            e.preventDefault(); triggerWindLeft();
-        });
-        document.getElementById('btnRight').addEventListener('pointerdown', function(e) {
-            e.preventDefault(); triggerWindRight();
-        });
-        document.getElementById('btnRain').addEventListener('pointerdown', function(e) {
-            e.preventDefault(); triggerRain();
-        });
 
         // 输入处理
         document.addEventListener('keydown', function(e) {
@@ -740,9 +660,7 @@
 				// 减去余数以修正误差，保持时间步长稳定
 		        lastDrawTime = currentTime - (elapsed % fpsInterval);
 
-           	// Chrome 原版白色背景
-           	ctx.fillStyle = '#f7f7f7';
-           	ctx.fillRect(0, 0, canvas.width, canvas.height);
+           	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             gameSpeed = 5 + score * 0.0005 + windEffect;
 
@@ -757,18 +675,8 @@
             }
 
             // 绘制两张地面贴图，一张衔接另一张，形成无缝滚动
-            if (groundTextureImg && groundTextureImg.complete && groundTextureImg.naturalWidth > 0) {
-              ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
-              ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
-            } else {
-              // 降级绘制：棕色地面填充
-              ctx.fillStyle = '#6B4C1E';
-              ctx.fillRect(0, GROUND_Y, canvas.width, GROUND_HEIGHT);
-              ctx.fillStyle = '#5A3E18';
-              for (var gx = (-groundX % 40 + 40) % 40; gx < canvas.width; gx += 40) {
-                ctx.fillRect(gx, GROUND_Y, 20, GROUND_HEIGHT);
-              }
-            }
+            ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
+            ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
 
             // --- 绘制风粒子 ---
             if (currentWeather === 'windy' && manualWeatherActive) {
@@ -801,28 +709,15 @@
                 // --- 处理不同类型的障碍物 ---
                 if (o.type === 'pit') {
                     pits.push(o); // 收集沟壑用于后续处理
-                    // 不在这里绘制沟壑，因为我们要先画其他障碍物，再用沟壑"擦除"地面
+                    // 不在这里绘制沟壑，因为我们要先画其他障碍物，再用沟壑“擦除”地面
                 } else {
-                    // --- 绘制非沟壑障碍物 (使用图片或降级绘制) ---
+                    // --- 绘制非沟壑障碍物 (使用图片) ---
                     if (o.type === 'cactus') {
-                        if (xrzImg && xrzImg.complete && xrzImg.naturalWidth > 0) {
-                            ctx.drawImage(xrzImg, o.x-o.width/2, o.y-o.height, o.width*2, o.height*2);
-                        } else {
-                            // 降级：绘制简单仙人掌
-                            ctx.fillStyle = '#2d8c2d';
-                            ctx.fillRect(o.x, o.y - o.height, o.width, o.height);
-                            ctx.fillRect(o.x - 4, o.y - o.height * 0.7, o.width + 8, o.height * 0.3);
-                        }
+                        // --- 绘制仙人掌图片，缩放到判定框的大小 ---
+                        ctx.drawImage(xrzImg, o.x-o.width/2, o.y-o.height, o.width*2, o.height*2);
                     } else if (o.type === 'ptera') {
-                        if (flyImg && flyImg.complete && flyImg.naturalWidth > 0) {
-                            ctx.drawImage(flyImg, o.x-o.width/2, o.y-o.height/2, o.width*2, o.height*2);
-                        } else {
-                            // 降级：绘制简单翼龙形状
-                            ctx.fillStyle = '#8B4513';
-                            ctx.beginPath();
-                            ctx.ellipse(o.x, o.y, o.width/2, o.height/2, 0, 0, Math.PI*2);
-                            ctx.fill();
-                        }
+                        // --- 绘制翼龙图片，缩放到判定框的大小 (增加50%) ---
+                        ctx.drawImage(flyImg, o.x-o.width/2, o.y-o.height/2, o.width*2, o.height*2);
                     }
 
                     // --- 检测与其他障碍物的碰撞 ---
@@ -851,9 +746,9 @@
                 // ctx.fillStyle = '#f7f7f7';
                 // ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
 
-                // 更优雅的方式：绘制一个矩形来"擦除"该区域的地面贴图
+                // 更优雅的方式：绘制一个矩形来“擦除”该区域的地面贴图
                 // 沟壑的位置仍然基于原始地面，但视觉上它会出现在移动后的地面贴图之上
-                ctx.fillStyle = getComputedStyle(canvas).backgroundColor; // 使用画布背景色（适配暗色模式）
+                ctx.fillStyle = '#f7f7f7'; // 使用画布背景色
                 ctx.fillRect(pit.x, pit.y, pit.width, pit.height);
 
                 // 检测是否掉入沟壑 - 关键调用位置
@@ -869,19 +764,8 @@
                 const c = coins[i];
                 c.x -= gameSpeed;
 
-                // --- 绘制金币图片（或降级绘制）---
-                if (coinImg && coinImg.complete && coinImg.naturalWidth > 0) {
-                    ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
-                } else {
-                    // 降级：绘制金色圆形
-                    ctx.fillStyle = '#FFD700';
-                    ctx.beginPath();
-                    ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#B8860B';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                }
+                // --- 绘制金币图片，缩放到直径为 radius*2 的大小 (增加50%) ---
+                ctx.drawImage(coinImg, c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
 
                 const dx = dino.x + dino.width/2 - c.x;
                 const dy = dino.y + dino.height/2 - c.y;
@@ -935,19 +819,9 @@
             dino.update();
             dino.draw(); // 调用新的draw方法
 
-            // --- Chrome 原版分数显示（右上角）---
+            // --- 更新分数 ---
             score++;
             scoreElement.textContent = score;
-            ctx.font = 'bold 18px "Courier New", monospace';
-            ctx.fillStyle = '#535353';
-            ctx.textAlign = 'right';
-            ctx.fillText(('00000' + score).slice(-5), canvas.width - 20, 30);
-            if (coinsCollected > 0) {
-                ctx.font = '14px "Courier New", monospace';
-                ctx.fillStyle = '#888';
-                ctx.fillText('🪙 ' + coinsCollected, canvas.width - 20, 52);
-            }
-            ctx.textAlign = 'start';
 
 
 			}
@@ -957,38 +831,18 @@
         }
 
         function drawGameOver() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = 'bold 42px "Courier New", monospace';
-            ctx.fillStyle = '#535353';
+            ctx.font = '40px Arial';
+            ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
-            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 35);
+            ctx.fillText('游戏结束!', canvas.width / 2, canvas.height / 2 - 40);
 
-            ctx.font = '18px "Courier New", monospace';
-            ctx.fillStyle = '#757575';
-            ctx.fillText('分数: ' + ('00000' + score).slice(-5), canvas.width / 2, canvas.height / 2 + 10);
-            
-            // Chrome-style restart icon (circular arrow)
-            var cx = canvas.width / 2;
-            var cy = canvas.height / 2 + 55;
-            ctx.strokeStyle = '#535353';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 14, Math.PI * 0.2, Math.PI * 1.8);
-            ctx.stroke();
-            // Arrow head
-            ctx.beginPath();
-            ctx.moveTo(cx + 9, cy - 15);
-            ctx.lineTo(cx + 14, cy - 6);
-            ctx.lineTo(cx + 4, cy - 12);
-            ctx.fillStyle = '#535353';
-            ctx.fill();
-            
-            ctx.font = '13px Arial';
-            ctx.fillStyle = '#999';
-            ctx.fillText('按 R 键或点击屏幕重新开始', canvas.width / 2, canvas.height / 2 + 90);
-            ctx.textAlign = 'start';
+            ctx.font = '20px Arial';
+            ctx.fillText(`最终分数: ${score}`, canvas.width / 2, canvas.height / 2);
+            ctx.fillText(`收集金币: ${coinsCollected}`, canvas.width / 2, canvas.height / 2 + 30);
+            ctx.fillText('按 R 键或 S 键重新开始', canvas.width / 2, canvas.height / 2 + 60);
         }
 
         function resetGame() {
@@ -1000,7 +854,6 @@
             }
             
             isGameOver = false;
-            scoreSaved = false;
             score = 0;
             coinsCollected = 0;
             // --- 基础速度降低50% ---
@@ -1038,32 +891,9 @@
         }
 
         // 开始游戏
-        // 为图片绑定事件处理器（必须用 JS 而非 HTML onload/onerror 属性，
-        // 因为 HTML 属性可能在 <script> 执行前就触发，导致 onImageLoad 未定义）
-        // 必须在所有 let 变量声明之后调用，避免暂时性死区错误
-        (function setupImageHandlers() {
-            var imgs = [
-                { el: coinImg, id: 'coinImage', fallback: 'index_files/coin.png' },
-                { el: flyImg, id: 'flyImage', fallback: 'index_files/fly.png' },
-                { el: xrzImg, id: 'xrzImage', fallback: 'index_files/xrz.png' }
-            ];
-            imgs.forEach(function(item) {
-                if (item.el.complete) {
-                    if (item.el.naturalWidth > 0) {
-                        onImageLoad();
-                    } else {
-                        onImageError(item.el, item.id, item.fallback);
-                    }
-                } else {
-                    item.el.addEventListener('load', onImageLoad);
-                    item.el.addEventListener('error', function() {
-                        onImageError(item.el, item.id, item.fallback);
-                    });
-                }
-            });
-        })();
         resetGame(); // 使用resetGame来初始化并启动游戏
     </script>
+
 <div id="toast" class="toast hidden"></div>
 </body>
 </html>
