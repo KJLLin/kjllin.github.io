@@ -141,6 +141,8 @@
       try{
         await sb.from('users').update({nick:nick}).eq('id',user.id);
         await sb.auth.updateUser({data:{nick:nick}});
+        // 强制从服务端刷新用户元数据，确保本地缓存同步，防止刷新后回退旧昵称
+        try{await sb.auth.getUser()}catch(e){console.warn('getUser refresh failed:',e)}
         $('#profileAvatarLarge').textContent=nick.charAt(0).toUpperCase();
         $('#nickFeedback').textContent='';$('#nickFeedback').className='form-feedback';
         KJ.toast('资料已更新');
