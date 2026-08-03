@@ -311,31 +311,55 @@
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 
-    // CPOAuth
-    function getCpoauthSession(){try{return JSON.parse(localStorage.getItem('kjllin_cpoauth')||'null');}catch(e){return null;}}
+    // ==================== 第三方账号绑定（Supabase 原生） ====================
     async function renderCpoauthBinding(){
       var statusEl=$('#cpoauthStatus');if(!statusEl)return;
-      var session=getCpoauthSession();
-      if(!session&&sb&&user){
-        try{var r=await sb.from('users').select('cpoauth_sub,cpoauth_username,cpoauth_linked_at').eq('id',user.id).single();if(!r.error&&r.data&&r.data.cpoauth_sub){session={provider:'cpoauth',sub:r.data.cpoauth_sub,username:r.data.cpoauth_username||'CPOAuth 用户',linked_at:r.data.cpoauth_linked_at};try{localStorage.setItem('kjllin_cpoauth',JSON.stringify(session));}catch(e){}}}catch(e){console.warn('CPOAuth sync:',e)}
-      }
-      if(session&&(session.sub||session.user)){
-        var name=session.username||(session.user&&(session.user.display_name||session.user.username))||'CPOAuth 用户';
-        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(name)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" onclick="cpoauthUnbind()">解绑</button>';
-      }else{
+      // 从 Supabase auth.identities 检查是否已绑定
+      var isBound = false;
+      var identityName = '';
+      try {
+        if (sb && user) {
+          var { data: { identities } } = await sb.auth.getUserIdentities();
+          if (identities) {
+            for (var j = 0; j < identities.length; j++) {
+              if (identities[j].provider === 'cpoauth') {
+                isBound = true;
+                identityName = identities[j].identity_data?.user_name 
+                  || identities[j].identity_data?.full_name 
+                  || identities[j].identity_data?.email 
+                  || 'CPOAuth 用户';
+                break;
+              }
+            }
+          }
+        }
+      } catch(e) { console.warn('getUserIdentities failed:', e); }
+
+      if (isBound) {
+        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(identityName)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" id="cpoauthUnbindBtn">解绑</button>';
+        setTimeout(function(){ var b=$('#cpoauthUnbindBtn'); if(b) b.addEventListener('click',cpoauthUnbind); },0);
+      } else {
         statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
-        setTimeout(function(){var btn=$('#cpoauthBindBtn');if(btn)btn.addEventListener('click',cpoauthBind);},0);
+        setTimeout(function(){ var b=$('#cpoauthBindBtn'); if(b) b.addEventListener('click',cpoauthBind); },0);
       }
     }
-    function cpoauthBind(){
-      var AUTHORIZE='https://www.cpoauth.com/oauth/authorize',CID='2bbbe6cf-b13c-4181-8958-61184a2c799e',REDIRECT='https://kjllin.github.io/login/callback/',SCOPE='openid profile email';
-      function gen(len){var a=new Uint8Array(len);crypto.getRandomValues(a);return btoa(String.fromCharCode.apply(null,[].slice.call(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
-      var verifier=gen(96),state=gen(16);
-      sessionStorage.setItem('cpoauth_code_verifier',verifier);sessionStorage.setItem('cpoauth_oauth_state',state);sessionStorage.setItem('cpoauth_redirect_uri',REDIRECT);sessionStorage.setItem('cpoauth_action','link');
-      crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(function(digest){var challenge=btoa(String.fromCharCode.apply(null,new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');window.location.href=AUTHORIZE+'?'+new URLSearchParams({response_type:'code',client_id:CID,redirect_uri:REDIRECT,scope:SCOPE,state:state,code_challenge:challenge,code_challenge_method:'S256'}).toString().replace(/\+/g,'%20');});
+
+    async function cpoauthBind(){
+      if (!sb) { KJ.toast('网络错误'); return; }
+      try {
+        await sb.linkIdentity({ provider: 'cpoauth', options: { redirectTo: window.location.href } });
+      } catch(e) { KJ.toast('绑定失败: ' + KJ.formatSupabaseError(e)); }
     }
-    async function cpoauthUnbind(){if(!confirm('确定解绑 CPOAuth？'))return;if(!sb){KJ.toast('网络错误');return}try{var r=await sb.auth.getSession();if(r.data.session)await sb.from('users').update({cpoauth_sub:null,cpoauth_linked_at:null,cpoauth_username:null}).eq('id',r.data.session.user.id);}catch(e){console.warn('CPOAuth unbind:',e)}localStorage.removeItem('kjllin_cpoauth');KJ.toast('已解绑 CPOAuth');renderCpoauthBinding();}
-    window.cpoauthUnbind=cpoauthUnbind;
+
+    async function cpoauthUnbind(){
+      if (!confirm('确定解绑 CPOAuth？')) return;
+      if (!sb) { KJ.toast('网络错误'); return; }
+      try {
+        await sb.unlinkIdentity({ provider: 'cpoauth' });
+        KJ.toast('已解绑 CPOAuth');
+        renderCpoauthBinding();
+      } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
+    }
 
     $('#accountLogoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
     $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
