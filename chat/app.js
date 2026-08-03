@@ -376,31 +376,49 @@ const Search = {
     const trimmed = term.trim();
     if (!trimmed) { el.classList.add('hidden'); el.innerHTML = ''; return; }
 
-    const { data } = await sb
-      .from('users')
-      .select('id, nick, email')
-      .ilike('email', `%${trimmed}%`)
-      .neq('id', S.user.id)
-      .limit(5);
+    if (S.searchLock) return;
+    S.searchLock = true;
 
-    if (!data?.length) {
-      el.innerHTML = '<div class="search-empty">未找到用户</div>';
-      el.classList.remove('hidden');
-      return;
-    }
+    try {
+      const { data, error } = await sb
+        .from('users')
+        .select('id, nick, email')
+        .ilike('email', `%${trimmed}%`)
+        .neq('id', S.user.id)
+        .limit(5);
 
-    let html = '';
-    for (const u of data) {
-      html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
+      if (error) {
+        console.error('Search error:', error);
+        el.innerHTML = '<div class="search-empty">搜索出错，请稍后重试</div>';
+        el.classList.remove('hidden');
+        return;
+      }
+
+      if (!data?.length) {
+        el.innerHTML = '<div class="search-empty">未找到该用户</div>';
+        el.classList.remove('hidden');
+        return;
+      }
+
+      let html = '';
+      for (const u of data) {
+        html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
         <span class="search-avatar">${U.escape((u.nick || u.email || '').charAt(0))}</span>
         <div class="search-info">
           <span class="search-nick">${U.escape(u.nick || '未设置昵称')}</span>
           <span class="search-email">${U.escape(u.email)}</span>
         </div>
       </div>`;
+      }
+      el.innerHTML = html;
+      el.classList.remove('hidden');
+    } catch (e) {
+      console.error('Search failed:', e);
+      el.innerHTML = '<div class="search-empty">搜索出错，请稍后重试</div>';
+      el.classList.remove('hidden');
+    } finally {
+      S.searchLock = false;
     }
-    el.innerHTML = html;
-    el.classList.remove('hidden');
   },
 
   select(userId, nick, email) {

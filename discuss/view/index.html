@@ -750,7 +750,9 @@
           if (error.code === 'PGRST116') {
             showNotFound();
           } else {
-            showError('请求失败：' + error.message);
+            // 不暴露原始 PostgreSQL 错误信息给用户
+            showError('帖子不存在或已删除');
+            console.warn('Load post error:', error.code, error.message);
           }
           return;
         }

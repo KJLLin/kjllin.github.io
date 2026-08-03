@@ -502,6 +502,13 @@
       sb.auth.onAuthStateChange(function(event) {
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION' || event === 'USER_DELETED') updateUserUI();
       });
+      // 退出登录按钮
+      var logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) logoutBtn.addEventListener('click', async function() {
+        if (!confirm('确定退出登录？')) return;
+        try { await sb.auth.signOut(); } catch(e) {}
+        window.location.href = '/';
+      });
       updateUserUI();
       function updateUserUI() {
         var area = document.getElementById('userTag');

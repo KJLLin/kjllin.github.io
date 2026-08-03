@@ -146,9 +146,9 @@
         <button class="touch-btn" id="btnRain"><i class="fas fa-cloud-rain"></i> 下雨</button>
     </div>
     <!-- 预加载地面贴图 -->
-    <img id="groundTexture" src="data:image/png;base64,..." alt="" aria-hidden="true">
+    <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAQCAIAAAAphe5+AAAB7ElEQVR4nO3Wx7WkUBRDUSKRInreBoH3UJB7j28CTPoncGbaS01vMXmsEUfGXfFa9B5TxJpxVNwWr0cfMWWsFYfF7fFG9BlTxWpxeNwRb0ZfMVmsHkfEnfFWfFNuOsPRcQncE6/Cx7BzHAOXxL3wMnwcO8AxcSncDS/HJ7BLHAsXw93xCnwSu8LRcHHcA6/Ep/CbctNqDBazxxZxZvw0WovBY47YMk6Nn0XrMUTMGZvGafHzaCOGjFljszg9fhFtxqAxW2weZ8Qv45ty0ytOhqvjEXgnvoq94eS4Bh6Jt+Jr2DtOgWvioXgbvo594JS4Kh6Gt+Mb2CdOiqvh4XgHvonflJvOYvRYIvaMq+Kx6DzGiCVjr7gsHo8uYsxYKnaLy+OJ6DLGisVi97ginoyuYrRYPPaIK+Op+KbctIaD4xy4JZ6FP8PWcQicE7fC0/Dn2AYOiXPhZng6/gLbxKFwNtwcz8BfYls4GM6OW+CZ+Cv8ptz0Wm5cSz201ENLPbTUQ0s9Pik3nZIbV1IPJfVQUg8l9VBSj0/KjZChShmqlKFKGaqUoUpzKr4pN0KGImUoUoYiZShShiLNKfym3HRablxLPbTUQ0s9tNRDSz0+KTetkhtXUg8l9VBSDyX1UFKPT8rN3xf6+0L/+Rf6BxSOlW7L1t47AAAAAElFTkSuQmCC" alt="" aria-hidden="true">
     <!-- 预加载恐龙精灵图 -->
-    <img id="dinoSpriteSheet" src="data:image/png;base64,..." alt="" aria-hidden="true">
+    <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvCAIAAACQSsOSAAAB8UlEQVR4nO2cwU3EQBAEHYtDICayITGy4iTuAdKOrV7v9M3uuUp+ounS+Uo8kNi+AaBhqxYAmBHCAAggDICAtDD2r118shZxmNlhdQgDBwggDBwggDBwgADCwAECCAMHCDCG8XNA1iIOMzusDmHgAAFBGPov4vNn5GXgMI/DPTGGcfQoWjjM43BPCAMHCCAMHCDAHsY1LRzmcbgnhIEDBGz75/73pL4G/WXgMI8DPCEMHCCAMHCITAzrvYa1DoSBQ2RiWO81rHUgDBwiE8N6r2GtA2HgEJkY1nsNax0IA4fIxLDea1jrQBg4RCaG9V7DWgf+wIeDfbd9tl/ODWsdCAMH+277EMZiXwgcHLvXDGsdCAMH++41w1oH/kUnBBAGYUBAYRyG8dEw/pPXUO77HFb5HHLXCYMwEtbdDsp9wiAMwlgyjNbwP68M49zkuU4YCetuB+V+7jphEEbCuttBue9eH6c1rLJVTAgjYd3toNx3r4/TGlbZKiaEkbDudlDuu9fHaQ2rbBUTwkhYdzso993r47SGVbaKCWEkrLsdlPvu9XFawypbxYQwEtbdDsp99/o4rWGVrWJCGAnrbgflvnv9bhBGwrrbQblPGLkQRsK620G5Txi5JIThpjaMXE/f/Rk+gXeCMF7q6bs/wyfwTjwAbuBhjOPkVewAAAAASUVORK5CYII=" alt="" aria-hidden="true">
     <!-- 预加载新图片资源（本地优先，外部CDN为备用） -->
     <img id="coinImage" src="index_files/coin.png" alt="" aria-hidden="true">
     <img id="flyImage" src="index_files/fly.png" alt="" aria-hidden="true">
@@ -385,36 +385,37 @@
                 }
             },
             draw: function() {
-                // --- 绘制动画 ---
-                if (isGameOver) {
-                    // 游戏结束时，绘制失败帧 (第5帧和第6帧，索引为4和5)
-                    // 这里我们选择绘制第5帧作为失败画面 (索引4)
-                    // --- 调整源尺寸为 44x47 ---
-                    ctx.drawImage(
-                        dinoSpriteSheetImg,
-                        176, // (frameIndex * frameWidth) -> 4 * 44
-                        0,
-                        44, // frameWidth
-                        47, // frameHeight
-                        this.x,
-                        this.y,
-                        this.width, // 目标宽度
-                        this.height // 目标高度
-                    );
+                // 完整性检查：确保贴图已正确加载
+                if (dinoSpriteSheetImg && dinoSpriteSheetImg.complete && dinoSpriteSheetImg.naturalWidth > 0) {
+                  if (isGameOver) {
+                      ctx.drawImage(
+                          dinoSpriteSheetImg,
+                          176, 0, 44, 47,
+                          this.x, this.y, this.width, this.height
+                      );
+                  } else {
+                      ctx.drawImage(
+                          dinoSpriteSheetImg,
+                          dinoAnimationFrame * 44, 0, 44, 47,
+                          this.x, this.y, this.width, this.height
+                      );
+                  }
                 } else {
-                    // 正常奔跑时，绘制当前奔跑帧 (前4帧，索引 0, 1, 2, 3)
-                    // --- 调整源尺寸为 44x47 ---
-                    ctx.drawImage(
-                        dinoSpriteSheetImg,
-                        dinoAnimationFrame * 44, // 根据当前帧索引计算源X坐标 (44px per frame)
-                        0, // 源Y坐标始终为0
-                        44, // 每帧的宽度
-                        47, // 每帧的高度
-                        this.x,
-                        this.y,
-                        this.width, // 目标宽度
-                        this.height // 目标高度
-                    );
+                  // 降级绘制：简单绿色恐龙
+                  ctx.fillStyle = '#228B22';
+                  ctx.fillRect(this.x + 6, this.y + 12, 26, 18); // 身体
+                  ctx.fillRect(this.x + 24, this.y + 4, 14, 12);  // 头部
+                  ctx.fillStyle = '#323232';
+                  ctx.fillRect(this.x + 10, this.y + 30, 6, 15);  // 前腿
+                  ctx.fillRect(this.x + 22, this.y + 30, 6, 15);  // 后腿
+                  if (isGameOver) {
+                    ctx.save();
+                    ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.fillStyle = '#8B0000';
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    ctx.restore();
+                  }
                 }
             }
         };
@@ -781,8 +782,18 @@
             }
 
             // 绘制两张地面贴图，一张衔接另一张，形成无缝滚动
-            ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
-            ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT); // 绘制在新的Y位置
+            if (groundTextureImg && groundTextureImg.complete && groundTextureImg.naturalWidth > 0) {
+              ctx.drawImage(groundTextureImg, groundX, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
+              ctx.drawImage(groundTextureImg, groundX + GROUND_TILE_WIDTH, GROUND_Y, GROUND_TILE_WIDTH, GROUND_HEIGHT);
+            } else {
+              // 降级绘制：棕色地面填充
+              ctx.fillStyle = '#6B4C1E';
+              ctx.fillRect(0, GROUND_Y, canvas.width, GROUND_HEIGHT);
+              ctx.fillStyle = '#5A3E18';
+              for (var gx = (-groundX % 40 + 40) % 40; gx < canvas.width; gx += 40) {
+                ctx.fillRect(gx, GROUND_Y, 20, GROUND_HEIGHT);
+              }
+            }
 
             // --- 绘制风粒子 ---
             if (currentWeather === 'windy' && manualWeatherActive) {

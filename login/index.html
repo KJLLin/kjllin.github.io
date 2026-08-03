@@ -117,6 +117,10 @@
 
     .captcha-row{display:flex;justify-content:center;margin-bottom:20px;min-height:78px}
 
+    .forgot-row{text-align:right;margin-top:2px}
+    .forgot-row a{font-size:13px;color:var(--accent);text-decoration:none;transition:color .2s}
+    .forgot-row a:hover{color:var(--accent-hover);text-decoration:underline}
+
     /* 按钮 */
     .btn{
       width:100%;padding:14px;border-radius:var(--radius-btn);border:none;
@@ -244,10 +248,9 @@
         <div class="field">
           <label>密码</label>
           <input type="password" id="loginPwd" placeholder="输入密码" autocomplete="current-password">
+          <div class="forgot-row"><a href="javascript:void(0)" id="forgotPwdLink">忘记密码？</a></div>
         </div>
-        <div class="captcha-row">
-          <div class="h-captcha" id="captchaLogin" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaLogin" data-expired-callback="onCaptchaLoginExpired"></div>
-        </div>
+        <div class="captcha-row" id="captchaLoginContainer"></div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
 
@@ -264,9 +267,7 @@
           <label>密码 (至少8位)</label>
           <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
         </div>
-        <div class="captcha-row">
-          <div class="h-captcha" id="captchaRegister" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-theme="auto" data-size="normal" data-callback="onCaptchaRegister" data-expired-callback="onCaptchaRegisterExpired"></div>
-        </div>
+        <div class="captcha-row" id="captchaRegisterContainer"></div>
         <button class="btn" id="regBtn">创建账号</button>
       </div>
 
@@ -334,31 +335,42 @@
     // 预热 Auth 和 REST API
     KJ.warmUpServices();
 
-    // Tab 切换
-    document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    // Tab 切换（动态创建/销毁 hCaptcha，确保同时只有一个 widget 渲染）
+    var activeTab='login';
+    document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){
+      var targetTab=t.dataset.tab;
+      if(targetTab===activeTab)return;
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+      document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active')});
       t.classList.add('active');
-      $(t.dataset.tab==='login'?'#loginPanel':'#registerPanel').classList.add('active');
-    }));
+      document.getElementById(targetTab==='login'?'loginPanel':'registerPanel').classList.add('active');
+      // 切换时销毁旧 captcha，渲染新 captcha
+      destroyCaptchaWidget(activeTab);
+      activeTab=targetTab;
+      renderCaptchaWidget(activeTab);
+    })});
 
-    // 更多登录方式
-    let activeTabBeforeMore='login';
-    $('#moreBtn').addEventListener('click',()=>{
+    // 更多登录方式（进入时销毁 captcha，返回时重新创建）
+    var activeTabBeforeMore='login';
+    $('#moreBtn').addEventListener('click',function(){
       activeTabBeforeMore=document.querySelector('.tab.active')?.dataset?.tab||'login';
       document.querySelector('.tabs').style.display='none';
-      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active')});
       $('#moreWrapper').style.display='none';
       $('#moreLoginPanel').classList.add('active');
+      // 销毁当前 captcha（返回时重新创建）
+      destroyCaptchaWidget(activeTabBeforeMore);
     });
-    $('#moreBackBtn').addEventListener('click',()=>{
+    $('#moreBackBtn').addEventListener('click',function(){
       document.querySelector('.tabs').style.display='';
-      document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active')});
       $('#moreWrapper').style.display='';
-      const targetTab=document.querySelector('.tab[data-tab="'+activeTabBeforeMore+'"]');
+      var targetTab=document.querySelector('.tab[data-tab="'+activeTabBeforeMore+'"]');
       if(targetTab)targetTab.classList.add('active');
-      else document.querySelector('.tab[data-tab="login"]').classList.add('active');
-      $(activeTabBeforeMore==='register'?'#registerPanel':'#loginPanel').classList.add('active');
+      else{document.querySelector('.tab[data-tab="login"]').classList.add('active');activeTabBeforeMore='login';}
+      document.getElementById(activeTabBeforeMore==='register'?'registerPanel':'loginPanel').classList.add('active');
+      activeTab=activeTabBeforeMore;
+      renderCaptchaWidget(activeTabBeforeMore);
     });
 
     // CPOAuth PKCE 登录
@@ -416,20 +428,52 @@
 
     $('#cpoauthLoginBtn').addEventListener('click',()=>cpoauthLogin());
 
-    // hCaptcha（每个 widget 独立管理 token 和 widgetId）
+    // hCaptcha（每个 widget 独立管理 token 和 widgetId，动态创建/销毁避免双重渲染）
     let ct={login:'',register:''};
-    const cpId={login:'captchaLogin',register:'captchaRegister'};
-    window.onCaptchaLogin=t=>{ct.login=t};
-    window.onCaptchaLoginExpired=()=>{ct.login=''};
-    window.onCaptchaRegister=t=>{ct.register=t};
-    window.onCaptchaRegisterExpired=()=>{ct.register=''};
+    let widgetIds={login:null,register:null};
 
-    // 重置指定 widget 的验证码（不误伤另一个）
+    // 动态渲染指定 tab 的 hCaptcha widget
+    function renderCaptchaWidget(key){
+      const containerId=key==='login'?'captchaLoginContainer':'captchaRegisterContainer';
+      const container=document.getElementById(containerId);
+      if(!container)return;
+      // 销毁同 key 的旧 widget
+      if(widgetIds[key]!==null){
+        try{if(typeof hcaptcha!=='undefined')hcaptcha.remove(widgetIds[key])}catch(e){}
+        widgetIds[key]=null;
+      }
+      container.innerHTML='';
+      // 等待 hCaptcha API 就绪
+      if(typeof hcaptcha==='undefined'){
+        setTimeout(function(){renderCaptchaWidget(key)},300);
+        return;
+      }
+      widgetIds[key]=hcaptcha.render(container.appendChild(document.createElement('div')),{
+        sitekey:'abe0d880-7704-481a-b892-9b982f7c5890',
+        theme:'auto',
+        size:'normal',
+        callback:function(t){ct[key]=t},
+        'expired-callback':function(){ct[key]=''}
+      });
+    }
+    // 销毁指定 key 的 widget
+    function destroyCaptchaWidget(key){
+      if(widgetIds[key]!==null){
+        try{if(typeof hcaptcha!=='undefined')hcaptcha.remove(widgetIds[key])}catch(e){}
+        widgetIds[key]=null;
+      }
+      var containerId=key==='login'?'captchaLoginContainer':'captchaRegisterContainer';
+      var container=document.getElementById(containerId);
+      if(container)container.innerHTML='';
+    }
+    // 重置指定 widget 的验证码
     function resetCaptcha(key){
       ct[key]='';
-      try{if(typeof hcaptcha!=='undefined')hcaptcha.reset(cpId[key])}catch(e){}
+      if(widgetIds[key]!==null){
+        try{if(typeof hcaptcha!=='undefined')hcaptcha.reset(widgetIds[key])}catch(e){}
+      }
     }
-    // 仅清除 token 不重置 UI（网络错误时保留 token 让用户重试）
+    // 仅清除 token 不重置 UI
     function clearCaptchaToken(key){ct[key]=''}
 
     /**
@@ -518,6 +562,24 @@
     $('#loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginPwd').focus()});
     $('#loginPwd').addEventListener('keydown',e=>{if(e.key==='Enter')$('#loginBtn').click()});
 
+    // 忘记密码
+    let forgotLocked=false;
+    $('#forgotPwdLink').addEventListener('click',async()=>{
+      if(forgotLocked)return;
+      const email=$('#loginEmail').value.trim();
+      if(!email){toast('请先输入邮箱地址');return}
+      forgotLocked=true;
+      try{
+        const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/login/'});
+        if(error)throw error;
+        toast('密码重置邮件已发送，请查收邮箱');
+      }catch(e){
+        console.error('Reset password error:',e);
+        toast('发送失败：'+formatErr(e));
+      }
+      forgotLocked=false;
+    });
+
     // 注册（通过 auth-gate 网关，消除直接调用 Supabase Auth 的绕过风险）
     let regLocked=false;
     $('#regBtn').addEventListener('click',async()=>{
@@ -567,12 +629,13 @@
     KJ.onSystemThemeChange(updateThemeUI);
     updateThemeUI();
 
-    // 隐藏加载遮罩，显示登录表单
+    // 隐藏加载遮罩，显示登录表单，渲染初始 captcha
     (function(){
       var loader = document.getElementById('pageLoader');
       var card = document.getElementById('loginCard');
       if (loader) loader.style.display = 'none';
       if (card) card.style.display = '';
+      renderCaptchaWidget('login');
     })();
   </script>
 </body>
