@@ -378,7 +378,7 @@
       if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
       try {
         await sb.signInWithOAuth({ 
-          provider: 'cpoauth',
+          provider: 'custom:cpoauth',
           options: { redirectTo: window.location.origin + '/' }
         });
       } catch(e) { KJ.toast('登录失败: ' + KJ.formatSupabaseError(e)); }
