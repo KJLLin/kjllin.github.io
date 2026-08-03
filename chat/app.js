@@ -487,14 +487,6 @@ const Realtime = {
 
 // ====================== 事件绑定 ======================
 function bindEvents() {
-  // 退出登录
-  $('#logoutBtn').addEventListener('click', async () => {
-    if (sb) {
-      try { await sb.auth.signOut(); } catch(e) { console.warn('Sign out error:', e); }
-    }
-    window.location.href = '/login/?redirect=/chat';
-  });
-
   // 主题切换
   $('#themeBtn').addEventListener('click', () => Theme.toggle());
 
@@ -685,6 +677,7 @@ async function init() {
 
   // 移动端菜单初始化
   KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
+  KJ.initNav(sb, { homeUrl: '/' });
 
   hideLoading();
 }
