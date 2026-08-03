@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#f3f3f3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
-  <title>CPOAuth 授权 · KJLLin</title>
+  <title>OAuth 授权 · KJLLin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/common.js"></script>
   <style>
@@ -93,188 +93,49 @@
 
   <script>
     (function(){
+      // Supabase Custom OIDC Provider 回调处理
+      // 注意：OAuth 的 code 交换已在 Supabase 服务端完成，
+      // 此页面仅处理到达后的会话恢复和跳转
       const $=s=>document.querySelector(s);
-      const SUPABASE_URL='https://vzqspcuxnwpakofwumat.supabase.co';
-      const EDGE_FN=SUPABASE_URL+'/functions/v1/cpoauth-gate';
-      const CPOAUTH_CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
-      const STORAGE_KEY='kjllin_cpoauth';
-      const VERIFIER_KEY='cpoauth_code_verifier';
-      const STATE_KEY='cpoauth_oauth_state';
-      const ACTION_KEY='cpoauth_action';
-
-      let sb;
-      try{sb=KJ.createSupabase()}catch(e){}
-
-      function setStatus(icon, iconClass, title, msg, showSpinner){
-        $('#spinner').style.display=showSpinner?'block':'none';
-        if(!$('#statusTitle').querySelector('.status-icon')){
-          const si=document.createElement('div');
-          si.className='status-icon '+iconClass;si.innerHTML=icon;
-          $('#statusTitle').parentNode.insertBefore(si,$('#statusTitle'));
-        }
-        $('#statusTitle').textContent=title;
-        $('#statusMsg').textContent=msg;
-      }
-
-      function showError(title, msg, backLink){
-        setStatus('<i class="fas fa-times-circle"></i>','error',title,msg,false);
-        const link=backLink||'/login/';
-        const label=backLink?'返回':'返回登录';
-        $('#actionArea').innerHTML='<a href="'+link+'" class="btn">'+label+'</a>';
-      }
-
-      function showCpoauthUserPreview(userInfo){
-        const name=userInfo.username||userInfo.display_name||userInfo.email||'CPOAuth 用户';
-        const detail=userInfo.email||'';
-        const initial=(name||'?').charAt(0).toUpperCase();
-        $('#extraContent').innerHTML=
-          '<div class="cpoauth-user-preview">'+
-          '<div class="avatar">'+initial+'</div>'+
-          '<div class="info"><div class="name">'+KJ.escapeHtml(name)+'</div>'+
-          (detail?'<div class="detail">'+KJ.escapeHtml(detail)+'</div>':'')+
-          '</div></div>';
+      
+      let sb = KJ.createSupabase();
+      
+      function setStatus(icon, title, msg, showSpinner){
+        $('#spinner').style.display = showSpinner ? 'block' : 'none';
+        $('#statusTitle').textContent = title;
+        $('#statusMsg').textContent = msg;
       }
 
       async function handleCallback(){
-        const params=new URLSearchParams(window.location.search);
-        const error=params.get('error');
-        const errorDesc=params.get('error_description');
-        const code=params.get('code');
-        const state=params.get('state');
-
-        // 用户拒绝授权
-        if(error){
-          showError('授权已取消',errorDesc||'你取消了 CPOAuth 授权');
-          return;
-        }
-
-        if(!code){
-          showError('授权失败','未收到授权码，请返回登录页重试');
-          return;
-        }
-
-        // 验证 state（防 CSRF）
-        const savedState=sessionStorage.getItem(STATE_KEY);
-        if(!savedState||savedState!==state){
-          showError('安全校验失败','请求状态不匹配，可能是 CSRF 攻击，请重试');
-          sessionStorage.removeItem(STATE_KEY);
-          return;
-        }
-        sessionStorage.removeItem(STATE_KEY);
-
-        // 获取 PKCE code_verifier
-        const codeVerifier=sessionStorage.getItem(VERIFIER_KEY);
-        if(!codeVerifier){
-          showError('会话已过期','PKCE 验证信息丢失，请返回重新开始');
-          return;
-        }
-        sessionStorage.removeItem(VERIFIER_KEY);
-
-        // 获取 action（login 或 link）
-        const action=sessionStorage.getItem(ACTION_KEY)||'login';
-        sessionStorage.removeItem(ACTION_KEY);
-
-        try{
-          // 构建请求体
-          // redirect_uri 必须与授权请求中的一致
-          const redirectUri=sessionStorage.getItem('cpoauth_redirect_uri')||
-            (window.location.origin+'/login/callback/');
-          sessionStorage.removeItem('cpoauth_redirect_uri');
-
-          const requestBody={
-            code:code,
-            code_verifier:codeVerifier,
-            redirect_uri:redirectUri,
-            action:action
-          };
-
-          // action=link 时附带 Supabase 会话 token
-          if(action==='link'&&sb){
-            try{
-              const{data:{session}}=await sb.auth.getSession();
-              if(session?.access_token){
-                requestBody.supabase_token=session.access_token;
-              }
-            }catch(e){}
-          }
-
-          // ── 调用 cpoauth-gate Edge Function（服务端验证） ──
-          const res=await fetch(EDGE_FN,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(requestBody)
-          });
-          const data=await res.json();
-
-          if(!data.success){
-            // 未绑定错误 → 特殊处理
-            if(data.error==='cpoauth_not_bound'){
-              setStatus('<i class="fas fa-exclamation-triangle"></i>','warning',
-                '账号未绑定','该 CPOAuth 账号尚未关联本站账号，请先用邮箱密码登录后在设置中绑定',false);
-              if(data.cpoauth_user){
-                showCpoauthUserPreview(data.cpoauth_user);
-              }
-              $('#actionArea').innerHTML=
-                '<a href="/settings/" class="btn">前往设置</a>'+
-                '<a href="/login/" class="btn btn-outline">返回登录</a>';
-              return;
-            }
-
-            showError('授权失败',data.message||data.error||'服务端验证失败');
+        try {
+          setStatus('', '正在完成登录...', '请稍候', true);
+          
+          if (!sb) {
+            setStatus('', '初始化失败', '网络错误，请刷新重试', false);
+            $('#actionArea').innerHTML = '<a href="/login/" class="btn">返回登录</a>';
             return;
           }
 
-          // ── 成功处理 ──
-          if(action==='link'){
-            // 绑定成功
-            setStatus('<i class="fas fa-check-circle"></i>','success',
-              '绑定成功','CPOAuth 账号已关联到你的账号',false);
-            if(data.cpoauth_user){
-              showCpoauthUserPreview(data.cpoauth_user);
-            }
-
-            // 同时保存到 localStorage
-            try{
-              localStorage.setItem(STORAGE_KEY,JSON.stringify({
-                provider:'cpoauth',
-                sub:data.cpoauth_user.sub,
-                username:data.cpoauth_user.username,
-                email:data.cpoauth_user.email,
-                linked_at:new Date().toISOString()
-              }));
-            }catch(e){}
-
-            setTimeout(()=>{window.location.href='/settings/'},1200);
-            return;
+          // Supabase 会自动从 URL hash 中提取 session
+          // getSessionFromUrl 已废弃，改用 getSession 检查
+          var { data: { session } } = await sb.auth.getSession();
+          
+          if (session) {
+            setStatus('', '登录成功', '正在跳转...', false);
+            $('#actionArea').innerHTML = '<a href="/" class="btn">进入首页</a>';
+            setTimeout(function(){ window.location.href = '/'; }, 800);
+          } else {
+            // 检查是否有 error 参数
+            var params = new URLSearchParams(window.location.search);
+            var err = params.get('error_description') || params.get('error') || '';
+            setStatus('', err ? '授权失败' : '会话已过期', 
+              err || '请返回登录页重试', false);
+            $('#actionArea').innerHTML = '<a href="/login/" class="btn">返回登录</a>';
           }
-
-          // action=login → 跳转到 Supabase 生成的一次性登录链接
-          // (cpoauth-gate 已通过 Admin API 为绑定用户生成了 magiclink session)
-          if(!data.action_link){
-            showError('登录失败','服务端未返回有效的会话链接');
-            return;
-          }
-
-          // 保存 CPOAuth 信息到 localStorage
-          try{
-            localStorage.setItem(STORAGE_KEY,JSON.stringify({
-              provider:'cpoauth',
-              sub:data.cpoauth_user.sub,
-              username:data.cpoauth_user.username,
-              email:data.cpoauth_user.email,
-              linked_at:new Date().toISOString()
-            }));
-          }catch(e){}
-
-          setStatus('<i class="fas fa-check-circle"></i>','success',
-            '验证通过','正在创建会话...',false);
-
-          // 跳转到 Supabase 生成的 action_link（自动创建会话+跳转首页）
-          setTimeout(()=>{window.location.href=data.action_link},600);
-
-        }catch(e){
-          console.error('CPOAuth callback error:',e);
-          showError('验证失败',e.message||'无法连接安全网关，请稍后重试');
+        } catch(e) {
+          console.error('OAuth callback error:', e);
+          setStatus('', '验证失败', e.message || '请返回重试', false);
+          $('#actionArea').innerHTML = '<a href="/login/" class="btn">返回登录</a>';
         }
       }
 

@@ -373,60 +373,16 @@
       renderCaptchaWidget(activeTabBeforeMore);
     });
 
-    // CPOAuth PKCE 登录
-    const CPOAUTH_AUTHORIZE='https://www.cpoauth.com/oauth/authorize';
-    const CPOAUTH_CLIENT_ID='2bbbe6cf-b13c-4181-8958-61184a2c799e';
-    const CPOAUTH_REDIRECT='https://kjllin.github.io/login/callback/';
-    const CPOAUTH_SCOPE='openid profile email';
-
-    function generateCodeVerifier(){
-      const array=new Uint8Array(96);
-      crypto.getRandomValues(array);
-      return btoa(String.fromCharCode(...array))
-        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    }
-
-    async function generateCodeChallenge(verifier){
-      const encoder=new TextEncoder();
-      const data=encoder.encode(verifier);
-      const digest=await crypto.subtle.digest('SHA-256',data);
-      return btoa(String.fromCharCode(...new Uint8Array(digest)))
-        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    }
-
-    function generateState(){
-      const array=new Uint8Array(16);
-      crypto.getRandomValues(array);
-      return btoa(String.fromCharCode(...array))
-        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    }
-
-    async function cpoauthLogin(action){
-      const codeVerifier=generateCodeVerifier();
-      const codeChallenge=await generateCodeChallenge(codeVerifier);
-      const state=generateState();
-
-      sessionStorage.setItem('cpoauth_code_verifier',codeVerifier);
-      sessionStorage.setItem('cpoauth_oauth_state',state);
-      sessionStorage.setItem('cpoauth_redirect_uri',CPOAUTH_REDIRECT);
-      if(action)sessionStorage.setItem('cpoauth_action',action);
-
-      const params=new URLSearchParams({
-        response_type:'code',
-        client_id:CPOAUTH_CLIENT_ID,
-        redirect_uri:CPOAUTH_REDIRECT,
-        scope:CPOAUTH_SCOPE,
-        state:state,
-        code_challenge:codeChallenge,
-        code_challenge_method:'S256'
-      });
-
-      // URLSearchParams 把空格编码为 +，但部分 OAuth 服务端只认 %20
-      const url=CPOAUTH_AUTHORIZE+'?'+params.toString().replace(/\+/g,'%20');
-      window.location.href=url;
-    }
-
-    $('#cpoauthLoginBtn').addEventListener('click',()=>cpoauthLogin());
+    // Supabase Custom OIDC Provider — CPOAuth 登录
+    $('#cpoauthLoginBtn').addEventListener('click', async () => {
+      if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
+      try {
+        await sb.signInWithOAuth({ 
+          provider: 'cpoauth',
+          options: { redirectTo: window.location.origin + '/' }
+        });
+      } catch(e) { KJ.toast('登录失败: ' + KJ.formatSupabaseError(e)); }
+    });
 
     // hCaptcha（每个 widget 独立管理 token 和 widgetId，动态创建/销毁避免双重渲染）
     let ct={login:'',register:''};
