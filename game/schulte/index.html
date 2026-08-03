@@ -415,6 +415,18 @@
     var GAME_NAME = 'schulte';
     var cloudBest = null;
 
+    async function loadCloudScores() {
+      if (!supabase) return;
+      try {
+        var { data: best } = await supabase
+          .from('game_scores').select('score').eq('game', GAME_NAME)
+          .order('score', { ascending: true }).limit(1).maybeSingle();
+        if (best) cloudBest = best.score / 100;
+        updateCloudDisplay();
+      } catch(e) { console.warn('Load scores failed:', e); }
+    }
+    loadCloudScores();
+
     async function saveScore(finalScore) {
       if (!supabase) return;
       try {
