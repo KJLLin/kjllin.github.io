@@ -149,9 +149,9 @@
     <!-- 预加载恐龙精灵图 -->
     <img id="dinoSpriteSheet" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvAgMAAABiRrxWAAAADFBMVEX///9TU1P39/f///+TS9URAAAAAXRSTlMAQObYZgAAAPpJREFUeF7d0jFKRkEMhdGLMM307itNLALyVmHvJuzTDMjdn72E95PGFEZSmeoU4YMMgxhskvQec8YSVFX1NhGcS5ywtbmC8khcZeKq+ZWJ4F8Sr2+ZCErjkJFEfcjAc/6/BMlfcz6xHdhRthYzIZhIHMcTVY1scUUiAphK8CMSPUbieTBhvD9Lj0vyV4wklEGzHpciKGOJoBp7XDcFs4kWxxM7Ey3iZ8JbzASAvMS7XLOJHTTvEkEZSeQl7DMuwVyCasqK5+XzQRYLUJlMbPXjFcn3m8eKBSjWZMJwvGIOvViAzCbUj1VEDoqFOEQGE3SyInJQLOQMJL4B7enP1UbLXJQAAAAASUVORK5CYII=" alt="" aria-hidden="true">
     <!-- 预加载新图片资源 -->
-    <img id="coinImage" src="images/coin.png" alt="" aria-hidden="true">
-    <img id="flyImage" src="images/fly.png" alt="" aria-hidden="true">
-    <img id="xrzImage" src="images/xrz.png" alt="" aria-hidden="true">
+    <img id="coinImage" src="images/coin.png" alt="" aria-hidden="true" onload="onImageLoad()" onerror="onImageError(this,'coin')">
+    <img id="flyImage" src="images/fly.png" alt="" aria-hidden="true" onload="onImageLoad()" onerror="onImageError(this,'fly')">
+    <img id="xrzImage" src="images/xrz.png" alt="" aria-hidden="true" onload="onImageLoad()" onerror="onImageError(this,'xrz')">
 
     <script>
         // ====================== 导航栏 JS ======================
@@ -274,16 +274,41 @@
 
         function onImageLoad() {
             imagesToLoad--;
-            if (imagesToLoad === 0) {
+            if (imagesToLoad <= 0) {
+                imagesToLoad = 0;
                 allImagesLoaded = true;
                 console.log("All images loaded, ready to start game.");
-                // 如果游戏在等待图片加载，可以在这里开始
                 if (typeof gameLoop === 'function' && !window.gameStarted) {
                     window.gameStarted = true;
-                    resetGame(); // 开始游戏
+                    resetGame();
                 }
             }
         }
+        
+        function onImageError(img, name) {
+            if (img && img.dataset && img.dataset.loaded === 'done') return;
+            if (img && img.dataset) img.dataset.loaded = 'done';
+            console.warn('Image ' + name + ' failed to load, using fallback');
+            onImageLoad();
+        }
+        
+        // 超时兜底：5秒后强制开始（即使图片未加载完成）
+        setTimeout(function() {
+            if (!allImagesLoaded) {
+                console.warn('Image load timeout, forcing game start');
+                imagesToLoad = 0;
+                allImagesLoaded = true;
+                if (typeof gameLoop === 'function' && !window.gameStarted) {
+                    window.gameStarted = true;
+                    resetGame();
+                }
+            }
+        }, 5000);
+        
+        // 处理已缓存的图片（onload 不会再次触发）
+        [coinImg, flyImg, xrzImg].forEach(function(img) {
+            if (img.complete && img.naturalWidth > 0) onImageLoad();
+        });
 
         // 游戏状态
         let gameSpeed = 5;
