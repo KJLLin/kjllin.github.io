@@ -499,7 +499,51 @@
         return;
       }
       KJ.initNav(sb, { homeUrl: '/' });
-      setTimeout(function() { typeGreeting(''); }, 500);
+
+      // 主页打字机问候 + 新用户引导
+      sb.auth.getSession().then(function(r) {
+        var user = r?.data?.session?.user;
+        if (user) {
+          // 优先 user_metadata.nick，其次 email 前缀，再尝试 identities
+          var nick = '';
+          if (user.user_metadata?.nick) nick = user.user_metadata.nick;
+          else if (user.user_metadata?.user_name) nick = user.user_metadata.user_name;
+          else if (user.user_metadata?.full_name) nick = user.user_metadata.full_name;
+          else if (user.email) nick = user.email.split('@')[0];
+          else {
+            // 尝试从 identities 获取 CPOAuth 等第三方登录的用户名
+            try {
+              sb.auth.getUserIdentities().then(function(idResp) {
+                var identities = idResp?.data?.identities;
+                if (identities && identities.length) {
+                  var idName = identities[0].identity_data?.user_name
+                    || identities[0].identity_data?.full_name
+                    || identities[0].identity_data?.name
+                    || identities[0].identity_data?.email?.split('@')[0];
+                  if (idName) typeGreeting(idName);
+                }
+              }).catch(function() {});
+            } catch(e) {}
+          }
+          if (nick) {
+            typeGreeting(nick);
+            // 新用户引导（注册5分钟内显示）
+            if (user.created_at && !sessionStorage.getItem('kj_onboarding_shown')) {
+              var created = new Date(user.created_at).getTime();
+              if (Date.now() - created < 5 * 60 * 1000) {
+                sessionStorage.setItem('kj_onboarding_shown', '1');
+                setTimeout(function() { showOnboarding(nick); }, 800);
+              }
+            }
+          }
+        }
+      }).catch(function() {});
+
+      // 兜底：500ms 后如果还没获取到昵称，默认显示"欢迎回来"
+      setTimeout(function() {
+        var el = document.getElementById('typeName');
+        if (el && !el.dataset.typed) typeGreeting('');
+      }, 500);
       var l = document.getElementById('loader');
       if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
       } catch(e) { showError('Supabase: '+e.message); var l=document.getElementById('loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);} }
