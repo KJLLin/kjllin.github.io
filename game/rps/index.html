@@ -15,6 +15,11 @@
           --border: var(--color-border, rgba(0,0,0,0.08));
           --text: var(--color-text-primary, #1d1d1f);
           --text2: var(--color-text-secondary, #86868b);
+          --text3: var(--color-text-tertiary, #aeaeb2);
+          --danger: #ff3b30;
+          --success: #34c759;
+          --warning: #ff9500;
+          --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         body {
             margin: 0; padding: 20px; padding-top: 80px;
@@ -36,6 +41,20 @@
             text-align: center;
         }
 
+        /* 加载遮罩 */
+        .loading-shield {
+            position: fixed; inset: 0; z-index: 999;
+            background: var(--color-bg, #f5f5f7);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 16px;
+        }
+        .loading-spinner {
+            width: 36px; height: 36px; border: 3px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* 模式选择 */
         .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
         .mode-tab {
@@ -43,74 +62,173 @@
             background: transparent; color: var(--text2); font-size: 15px; font-weight: 600;
             cursor: pointer; transition: all .2s;
         }
+        .mode-tab:hover { border-color: var(--accent); color: var(--accent); }
         .mode-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
         /* 出手按钮 */
         .choices { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
         .choice-btn {
             width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--border);
-            background: var(--bg-glass); font-size: 32px; cursor: pointer; transition: all .15s;
+            background: var(--bg-glass); font-size: 32px; cursor: pointer; transition: all .2s var(--spring);
             display: flex; align-items: center; justify-content: center; color: var(--text);
         }
-        .choice-btn:hover { transform: scale(1.08); border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,113,227,0.2); }
-        .choice-btn:active { transform: scale(0.95); }
-        .choice-btn.selected { border-color: var(--accent); background: rgba(0,113,227,0.08); }
-        .choice-btn.disabled { pointer-events: none; opacity: 0.5; }
+        .choice-btn:hover { transform: scale(1.1); border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,113,227,0.25); }
+        .choice-btn:active { transform: scale(0.92); transition: all .08s; }
+        .choice-btn.selected { border-color: var(--accent); background: rgba(0,113,227,0.1); }
+        .choice-btn.disabled { pointer-events: none; opacity: 0.45; transform: none; }
 
         /* 结果区 */
         .battle-area { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; }
         .player-side { text-align: center; }
-        .player-emoji { font-size: 64px; transition: transform .3s; color: var(--text); }
+        .player-emoji { font-size: 64px; transition: transform .3s var(--spring); color: var(--text); }
         .player-emoji.winner { animation: bounce .5s ease; color: var(--accent); }
+        .player-emoji.pop-in { animation: popIn .35s var(--spring); }
         .player-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
-        .vs { font-size: 28px; font-weight: 900; color: var(--text2); }
-        .result-text { font-size: 24px; font-weight: 700; margin: 12px 0; min-height: 36px; }
-        .result-text.win { color: #34c759; }
-        .result-text.lose { color: #ff3b30; }
-        .result-text.draw { color: #ff9500; }
+        .player-name { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+        .vs { font-size: 24px; font-weight: 900; color: var(--text3); }
+        .result-text { font-size: 22px; font-weight: 700; margin: 8px 0; min-height: 32px; }
+        .result-text.win { color: var(--success); }
+        .result-text.lose { color: var(--danger); }
+        .result-text.draw { color: var(--warning); }
+
+        @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+        @keyframes popIn { 0%{transform:scale(0.4);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
 
         /* 分数 */
-        .scoreboard { display: flex; justify-content: center; gap: 32px; margin: 12px 0; }
-        .score-item { text-align: center; }
+        .scoreboard { display: flex; justify-content: center; gap: 28px; margin: 10px 0; }
+        .score-item { text-align: center; min-width: 48px; }
         .score-num { font-size: 28px; font-weight: 700; }
-        .score-label { font-size: 11px; color: var(--text2); }
+        .score-label { font-size: 11px; color: var(--text3); }
+        .score-item .score-num.win-color { color: var(--success); }
+        .score-item .score-num.lose-color { color: var(--danger); }
+
+        /* 联机状态提示 */
+        .status-bar {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 8px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 12px;
+            background: var(--accent-glow-weak, rgba(0,113,227,0.05));
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-dot.waiting { background: var(--warning); animation: pulse 1.5s infinite; }
+        .status-dot.ready { background: var(--success); }
+        .status-dot.locked { background: var(--accent); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
         /* 联机房 */
         .room-setup { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .room-header {
+            display: flex; align-items: center; gap: 8px; justify-content: center;
+            margin-bottom: 4px;
+        }
         .room-code {
-            font-size: 40px; font-weight: 900; letter-spacing: 8px; color: var(--accent);
+            font-size: 36px; font-weight: 900; letter-spacing: 6px; color: var(--accent);
             font-family: 'Courier New', monospace;
         }
+        .copy-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--bg-glass); color: var(--text2); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+            transition: all .15s;
+        }
+        .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .copy-btn.copied { background: var(--success); color: #fff; border-color: var(--success); }
+
         .btn {
             padding: 10px 24px; border-radius: 12px; border: none;
             font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s;
         }
         .btn-primary { background: var(--accent); color: #fff; }
-        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 8px; }
+        .btn:disabled { opacity: 0.5; pointer-events: none; transform: none; }
         .input {
             padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border);
             font-size: 16px; text-align: center; background: var(--bg-glass); color: var(--text);
             width: 120px; letter-spacing: 4px; font-family: 'Courier New', monospace;
+            outline: none; transition: border-color .2s;
         }
+        .input:focus { border-color: var(--accent); }
         .waiting-text { color: var(--text2); font-size: 14px; }
         .waiting-dots::after { content: ''; animation: dots 1.5s infinite; }
         @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
-        @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
 
         .history { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
         .history-dot {
             width: 10px; height: 10px; border-radius: 50%;
         }
-        .history-dot.win { background: #34c759; }
-        .history-dot.lose { background: #ff3b30; }
-        .history-dot.draw { background: #ff9500; }
+        .history-dot.win { background: var(--success); }
+        .history-dot.lose { background: var(--danger); }
+        .history-dot.draw { background: var(--warning); }
+
+        /* 邀请好友 */
+        .invite-section {
+            border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;
+            display: flex; flex-direction: column; gap: 10px; align-items: center;
+        }
+        .invite-title { font-size: 14px; font-weight: 600; color: var(--text2); }
+        .invite-search-box {
+            position: relative; width: 100%; max-width: 280px;
+        }
+        .invite-input {
+            width: 100%; padding: 10px 14px; border-radius: 10px;
+            border: 1px solid var(--border); font-size: 14px;
+            background: var(--bg-glass); color: var(--text); outline: none;
+            box-sizing: border-box;
+        }
+        .invite-input:focus { border-color: var(--accent); }
+        .invite-results {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+            background: var(--bg-glass); backdrop-filter: blur(24px);
+            border: 1px solid var(--border); border-radius: 10px; margin-top: 4px;
+            max-height: 200px; overflow-y: auto; display: none;
+        }
+        .invite-results.show { display: block; }
+        .invite-result-item {
+            padding: 10px 14px; cursor: pointer; display: flex; align-items: center;
+            gap: 10px; font-size: 13px; transition: background .15s;
+        }
+        .invite-result-item:hover { background: var(--accent-glow-weak); }
+        .invite-result-item .invite-avatar {
+            width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; flex-shrink: 0;
+        }
+        .invite-result-item .invite-info { overflow: hidden; text-align: left; }
+        .invite-result-item .invite-nick { font-weight: 600; color: var(--text); }
+        .invite-result-item .invite-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .invite-hint { font-size: 11px; color: var(--text3); }
+
+        /* 分隔线 */
+        .divider-text {
+            display: flex; align-items: center; gap: 10px; color: var(--text3);
+            font-size: 13px; margin: 4px 0; width: 200px;
+        }
+        .divider-text::before, .divider-text::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+
+        /* 响应式 */
+        @media (max-width: 420px) {
+            .choice-btn { width: 68px; height: 68px; font-size: 28px; }
+            .player-emoji { font-size: 52px; }
+            .room-code { font-size: 28px; letter-spacing: 4px; }
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/common.js"></script>
 </head>
 <body>
+
+<!-- 登录加载遮罩 -->
+<div class="loading-shield" id="authShield">
+  <div class="loading-spinner"></div>
+  <span style="color:var(--text2);font-size:14px">正在验证身份...</span>
+</div>
+
 <div class="bg-base"></div>
 
 <header class="top-menu">
@@ -137,7 +255,7 @@
   </div>
 </header>
 
-<div class="container">
+<div class="container" id="mainContent" style="display:none">
   <h2 style="text-align:center"><i class="fas fa-hand-back-fist"></i> <i class="fas fa-hand"></i> <i class="fas fa-hand-scissors"></i> 石头剪刀布</h2>
 
   <!-- 模式选择 -->
@@ -150,9 +268,9 @@
   <div id="aiMode">
     <div class="card">
       <div class="scoreboard">
-        <div class="score-item"><div class="score-num" id="aiMyScore">0</div><div class="score-label">我</div></div>
-        <div class="score-item"><div class="score-num" id="aiDrawScore">0</div><div class="score-label">平</div></div>
-        <div class="score-item"><div class="score-num" id="aiBotScore">0</div><div class="score-label">AI</div></div>
+        <div class="score-item"><div class="score-num win-color" id="aiMyScore">0</div><div class="score-label">胜</div></div>
+        <div class="score-item"><div class="score-num" id="aiDrawScore" style="color:var(--warning)">0</div><div class="score-label">平</div></div>
+        <div class="score-item"><div class="score-num lose-color" id="aiBotScore">0</div><div class="score-label">负</div></div>
       </div>
       <div class="battle-area">
         <div class="player-side">
@@ -178,18 +296,56 @@
   <!-- ========== 联机模式 ========== -->
   <div id="onlineMode" style="display:none">
     <div class="card" id="onlineSetup">
-      <h3>双人联机对战</h3>
+      <h3 style="margin-top:0"><i class="fas fa-globe"></i> 双人联机对战</h3>
       <div class="room-setup">
         <button class="btn btn-primary" onclick="createRoom()" style="width:200px"><i class="fas fa-plus"></i> 创建房间</button>
-        <div style="color:var(--text2);margin:8px 0">— 或 —</div>
+        <div class="divider-text">— 或 —</div>
         <input type="text" class="input" id="roomCodeInput" placeholder="房间号" maxlength="4" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
         <button class="btn btn-outline" onclick="joinRoom()" style="width:200px"><i class="fas fa-door-open"></i> 加入房间</button>
+      </div>
+
+      <!-- 邀请好友 -->
+      <div class="invite-section">
+        <div class="invite-title"><i class="fas fa-paper-plane"></i> 邀请好友</div>
+        <p class="invite-hint">搜索好友邮箱发送房间邀请链接</p>
+        <div class="invite-search-box">
+          <input type="text" class="invite-input" id="inviteInput" placeholder="输入好友邮箱搜索..." autocomplete="off">
+          <div class="invite-results" id="inviteResults"></div>
+        </div>
       </div>
     </div>
 
     <div class="card" id="onlineGame" style="display:none">
-      <div class="room-code" id="roomDisplay"></div>
-      <div class="waiting-text waiting-dots" id="waitingText">等待对手加入</div>
+      <!-- 房间号 + 复制 -->
+      <div class="room-header">
+        <span class="room-code" id="roomDisplay"></span>
+        <button class="copy-btn" id="copyRoomBtn" title="复制房间号"><i class="fas fa-copy"></i></button>
+      </div>
+
+      <!-- 状态栏 -->
+      <div class="status-bar" id="statusBar">
+        <span class="status-dot waiting" id="statusDot"></span>
+        <span id="statusText">等待对手加入</span>
+      </div>
+
+      <!-- 联机分数 -->
+      <div class="scoreboard">
+        <div class="score-item">
+          <div class="score-num win-color" id="onMyScore">0</div>
+          <div class="score-label">我</div>
+          <div class="player-name" id="onMyName"></div>
+        </div>
+        <div class="score-item">
+          <div class="score-num" id="onDrawScore" style="color:var(--warning)">0</div>
+          <div class="score-label">平</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num lose-color" id="onOppScore">0</div>
+          <div class="score-label">对方</div>
+          <div class="player-name" id="onOppName">等待中...</div>
+        </div>
+      </div>
+
       <div class="battle-area">
         <div class="player-side">
           <div class="player-emoji" id="onMyEmoji"><i class="fas fa-circle-question"></i></div>
@@ -201,15 +357,32 @@
           <div class="player-label" id="onOppLabel">对手</div>
         </div>
       </div>
+
+      <!-- 对方出拳提示（隐藏的） -->
+      <div class="waiting-text" id="oppReadyHint" style="display:none">
+        <i class="fas fa-check-circle" style="color:var(--success)"></i> 对方已出拳，等你出手！
+      </div>
+
       <div class="result-text" id="onResult"></div>
       <div class="choices">
         <button class="choice-btn" id="onRock" onclick="playOnline('rock')"><i class="fas fa-hand-back-fist"></i></button>
         <button class="choice-btn" id="onPaper" onclick="playOnline('paper')"><i class="fas fa-hand"></i></button>
         <button class="choice-btn" id="onScissors" onclick="playOnline('scissors')"><i class="fas fa-hand-scissors"></i></button>
       </div>
-      <button class="btn btn-outline" onclick="leaveRoom()" style="margin-top:12px"><i class="fas fa-sign-out-alt"></i> 离开房间</button>
+
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button class="btn btn-outline btn-sm" id="rematchBtn" onclick="resetRound()" style="display:none"><i class="fas fa-redo"></i> 再来一局</button>
+        <button class="btn btn-danger btn-sm" onclick="leaveRoom()"><i class="fas fa-sign-out-alt"></i> 离开房间</button>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- 登录引导 -->
+<div class="card" id="loginPrompt" style="display:none;margin-top:48px">
+  <i class="fas fa-lock" style="font-size:40px;color:var(--text3)"></i>
+  <p style="margin:12px 0;color:var(--text2)">请登录后开始游戏</p>
+  <a href="/login/?redirect=/game/rps/" class="btn btn-primary" style="display:inline-block;text-decoration:none"><i class="fas fa-sign-in-alt"></i> 去登录</a>
 </div>
 
 <script>
@@ -227,29 +400,86 @@ KJ.onSystemThemeChange(updateThemeUI);
 updateThemeUI();
 
 // ====================== Supabase ======================
-let sb = KJ.createSupabase();
+var sb = KJ.createSupabase();
 if (sb) KJ.initNav(sb, { homeUrl: '/' });
 else KJ.initNav(null, { homeUrl: '/' });
 
 // ====================== 常量 ======================
-const CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
-const PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
-const WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+var CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
+var PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
+var WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 
 function getResult(a, b) {
   if (a === b) return 'draw';
   return WIN_MAP[a] === b ? 'win' : 'lose';
 }
 
+// ====================== 登录门控 ======================
+var myUserId = null;
+var myNick = '玩家';
+
+function showMain() {
+  document.getElementById('authShield').style.display = 'none';
+  document.getElementById('mainContent').style.display = '';
+}
+
+function redirectLogin() {
+  document.getElementById('authShield').style.display = 'none';
+  document.getElementById('loginPrompt').style.display = '';
+  // 3秒后自动跳转
+  setTimeout(function() {
+    window.location.href = '/login/?redirect=/game/rps/';
+  }, 3000);
+}
+
+if (sb) {
+  sb.auth.getSession().then(function(r) {
+    if (r && r.data && r.data.session) {
+      myUserId = r.data.session.user.id;
+      myNick = r.data.session.user.user_metadata && r.data.session.user.user_metadata.nick
+        || (r.data.session.user.email ? r.data.session.user.email.split('@')[0] : '玩家');
+      showMain();
+      // 检查 URL 参数 room
+      checkUrlRoom();
+    } else {
+      redirectLogin();
+    }
+  }).catch(function() {
+    redirectLogin();
+  });
+
+  // 监听登出
+  sb.auth.onAuthStateChange(function(event) {
+    if (event === 'SIGNED_OUT') {
+      redirectLogin();
+    }
+  });
+} else {
+  redirectLogin();
+}
+
+// ====================== URL 房间号自动加入 ======================
+function checkUrlRoom() {
+  var params = new URLSearchParams(window.location.search);
+  var room = params.get('room');
+  if (room && room.length === 4) {
+    switchMode('online');
+    document.getElementById('roomCodeInput').value = room.toUpperCase();
+    setTimeout(function() { joinRoom(); }, 500);
+  }
+}
+
 // ====================== 联机模式（变量提前声明） ======================
-let currentRoom = null;
-let onlineChannel = null;
-let myOnlineChoice = null;
-let oppOnlineChoice = null;
-let isHost = false;
+var currentRoom = null;
+var onlineChannel = null;
+var myOnlineChoice = null;
+var oppOnlineChoice = null;
+var isHost = false;
+var onScores = { win: 0, draw: 0, lose: 0 };
+var onlineRoundTimer = null;
 
 // ====================== 模式切换 ======================
-let currentMode = 'ai';
+var currentMode = 'ai';
 function switchMode(mode) {
   currentMode = mode;
   document.getElementById('tabAI').classList.toggle('active', mode === 'ai');
@@ -260,36 +490,38 @@ function switchMode(mode) {
 }
 
 // ====================== AI 模式 ======================
-let aiScores = { win: 0, draw: 0, lose: 0 };
-let aiHistory = [];
-let aiLocked = false;
+var aiScores = { win: 0, draw: 0, lose: 0 };
+var aiHistory = [];
+var aiLocked = false;
 
 function playAI(playerChoice) {
   if (aiLocked) return;
   aiLocked = true;
 
-  const choices = ['rock', 'paper', 'scissors'];
-  const botChoice = choices[Math.floor(Math.random() * 3)];
-  const result = getResult(playerChoice, botChoice);
+  var choices = ['rock', 'paper', 'scissors'];
+  var botChoice = choices[Math.floor(Math.random() * 3)];
+  var result = getResult(playerChoice, botChoice);
 
-  const myEl = document.getElementById('aiMyEmoji');
-  const botEl = document.getElementById('aiBotEmoji');
+  var myEl = document.getElementById('aiMyEmoji');
+  var botEl = document.getElementById('aiBotEmoji');
 
   // 动画序列
   myEl.innerHTML = CHOICE_ICON['rock']; botEl.innerHTML = CHOICE_ICON['rock'];
-  let tick = 0;
-  const interval = setInterval(() => {
+  var tick = 0;
+  var interval = setInterval(function() {
     myEl.innerHTML = CHOICE_ICON[choices[tick % 3]];
     botEl.innerHTML = CHOICE_ICON[choices[(tick + 1) % 3]];
     tick++;
   }, 100);
 
-  setTimeout(() => {
+  setTimeout(function() {
     clearInterval(interval);
     myEl.innerHTML = CHOICE_ICON[playerChoice];
     botEl.innerHTML = CHOICE_ICON[botChoice];
+    myEl.classList.add('pop-in'); botEl.classList.add('pop-in');
+    setTimeout(function() { myEl.classList.remove('pop-in'); botEl.classList.remove('pop-in'); }, 350);
 
-    const resEl = document.getElementById('aiResult');
+    var resEl = document.getElementById('aiResult');
     if (result === 'win') {
       resEl.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
       myEl.classList.add('winner');
@@ -302,7 +534,7 @@ function playAI(playerChoice) {
       resEl.innerHTML = '<span class="draw"><i class="fas fa-handshake"></i> 平局</span>';
       aiScores.draw++;
     }
-    setTimeout(() => { myEl.classList.remove('winner'); botEl.classList.remove('winner'); }, 500);
+    setTimeout(function() { myEl.classList.remove('winner'); botEl.classList.remove('winner'); }, 500);
 
     document.getElementById('aiMyScore').textContent = aiScores.win;
     document.getElementById('aiDrawScore').textContent = aiScores.draw;
@@ -316,34 +548,40 @@ function playAI(playerChoice) {
 }
 
 function updateAIHistory() {
-  const el = document.getElementById('aiHistory');
-  el.innerHTML = aiHistory.slice(-30).map(r =>
-    '<span class="history-dot ' + r + '" title="' + (r === 'win' ? '胜' : r === 'lose' ? '负' : '平') + '"></span>'
-  ).join('');
+  var el = document.getElementById('aiHistory');
+  el.innerHTML = aiHistory.slice(-30).map(function(r) {
+    return '<span class="history-dot ' + r + '" title="' + (r === 'win' ? '胜' : r === 'lose' ? '负' : '平') + '"></span>';
+  }).join('');
 }
 
 // ====================== 联机模式 ======================
 
 function genRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code = '';
+  for (var i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
 
 async function createRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  const code = genRoomCode();
+  var code = genRoomCode();
   await setupOnlineRoom(code, true);
-  document.getElementById('roomDisplay').textContent = code;
+  updateInviteSection(code);
 }
 
 async function joinRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  var code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
   if (code.length !== 4) { KJ.toast('请输入4位房间号'); return; }
   await setupOnlineRoom(code, false);
-  document.getElementById('roomDisplay').textContent = code;
+  updateInviteSection(code);
+}
+
+function updateInviteSection(code) {
+  // 更新邀请区域的提示，显示当前房间号
+  var hint = document.querySelector('.invite-hint');
+  if (hint) hint.textContent = '当前房间：' + code + ' | 搜索好友邮箱发送邀请';
 }
 
 async function setupOnlineRoom(code, _isHost) {
@@ -351,42 +589,97 @@ async function setupOnlineRoom(code, _isHost) {
   currentRoom = code;
   myOnlineChoice = null;
   oppOnlineChoice = null;
+  onScores = { win: 0, draw: 0, lose: 0 };
+  if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
 
   document.getElementById('onlineSetup').style.display = 'none';
   document.getElementById('onlineGame').style.display = '';
   document.getElementById('roomDisplay').textContent = code;
-  document.getElementById('waitingText').textContent = '等待对手加入';
-  document.getElementById('waitingText').style.display = '';
   document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
   document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
   document.getElementById('onResult').textContent = '';
   document.getElementById('onOppLabel').textContent = '对手';
+  document.getElementById('onOppName').textContent = '等待中...';
+  document.getElementById('onMyName').textContent = myNick;
+  document.getElementById('oppReadyHint').style.display = 'none';
+  document.getElementById('rematchBtn').style.display = 'none';
+  updateOnlineScores();
+  setStatus('waiting', '等待对手加入');
   enableChoices();
 
+  // 复制按钮
+  var copyBtn = document.getElementById('copyRoomBtn');
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(code).then(function() {
+      copyBtn.classList.add('copied');
+      copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+      KJ.toast('房间号已复制：' + code);
+      setTimeout(function() {
+        copyBtn.classList.remove('copied');
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+      }, 2000);
+    }).catch(function() {
+      KJ.toast('复制失败，请手动复制');
+    });
+  };
+
+  // 关闭旧 channel
+  if (onlineChannel) {
+    try { sb.removeChannel(onlineChannel); } catch(e) {}
+    onlineChannel = null;
+  }
+
   // 订阅 Realtime channel
-  onlineChannel = sb.channel('rps-' + code);
-  onlineChannel.on('broadcast', { event: 'choice' }, (payload) => {
+  onlineChannel = sb.channel('rps-' + code, {
+    config: { broadcast: { self: false } }
+  });
+
+  onlineChannel.on('broadcast', { event: 'choice' }, function(payload) {
     oppOnlineChoice = payload.payload.choice;
-    document.getElementById('onOppEmoji').innerHTML = CHOICE_ICON[oppOnlineChoice];
-    checkOnlineResult();
-  }).on('broadcast', { event: 'join' }, (payload) => {
-    document.getElementById('onOppLabel').textContent = payload.payload.name || '对手';
-    document.getElementById('waitingText').style.display = 'none';
+    // ★ 不显示对方选择，只显示提示
+    document.getElementById('oppReadyHint').style.display = '';
+    setStatus('locked', '对方已出拳');
+    // 如果我也出拳了，立即揭晓
+    if (myOnlineChoice) revealOnlineResult();
+  });
+
+  onlineChannel.on('broadcast', { event: 'join' }, function(payload) {
+    var oppName = payload.payload.name || '玩家';
+    document.getElementById('onOppLabel').textContent = oppName;
+    document.getElementById('onOppName').textContent = oppName;
+    setStatus('ready', '对手已就绪，请出拳！');
     enableChoices();
-  }).on('broadcast', { event: 'leave' }, () => {
-    document.getElementById('waitingText').textContent = '对手离开了，等待新对手...';
-    document.getElementById('waitingText').style.display = '';
+  });
+
+  onlineChannel.on('broadcast', { event: 'leave' }, function() {
+    setStatus('waiting', '对手离开了，等待新对手...');
+    document.getElementById('onOppLabel').textContent = '对手';
+    document.getElementById('onOppName').textContent = '等待中...';
     document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
+    document.getElementById('oppReadyHint').style.display = 'none';
     oppOnlineChoice = null;
+    myOnlineChoice = null;
     document.getElementById('onResult').textContent = '';
+    document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
+    document.getElementById('rematchBtn').style.display = 'none';
+    if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
     enableChoices();
-  }).subscribe(async (status) => {
+  });
+
+  onlineChannel.on('broadcast', { event: 'reset' }, function() {
+    // 对方请求重置回合
+    resetRoundState();
+  });
+
+  onlineChannel.subscribe(async function(status) {
     if (status === 'SUBSCRIBED') {
-      // 广播自己的加入
       try {
-        var { data: { session } } = await sb.auth.getSession();
-        var name = session?.user?.user_metadata?.nick || session?.user?.email?.split('@')[0] || '玩家';
-        onlineChannel.send({ type: 'broadcast', event: 'join', payload: { name } });
+        var sessionRes = await sb.auth.getSession();
+        var name = (sessionRes && sessionRes.data && sessionRes.data.session)
+          ? (sessionRes.data.session.user.user_metadata && sessionRes.data.session.user.user_metadata.nick)
+            || (sessionRes.data.session.user.email ? sessionRes.data.session.user.email.split('@')[0] : '玩家')
+          : '玩家';
+        onlineChannel.send({ type: 'broadcast', event: 'join', payload: { name: name } });
       } catch(e) {}
     }
   });
@@ -395,44 +688,218 @@ async function setupOnlineRoom(code, _isHost) {
 function playOnline(choice) {
   if (!onlineChannel || myOnlineChoice) return;
   myOnlineChoice = choice;
+
+  // 显示自己的选择
   document.getElementById('onMyEmoji').innerHTML = CHOICE_ICON[choice];
-  document.querySelectorAll('#onlineGame .choice-btn').forEach(b => b.classList.add('disabled'));
-  onlineChannel.send({ type: 'broadcast', event: 'choice', payload: { choice } });
-  checkOnlineResult();
+  document.getElementById('onMyEmoji').classList.add('pop-in');
+  setTimeout(function() { document.getElementById('onMyEmoji').classList.remove('pop-in'); }, 350);
+
+  // 禁用按钮
+  document.querySelectorAll('#onlineGame .choice-btn').forEach(function(b) { b.classList.add('disabled'); });
+
+  // 发送自己的选择
+  onlineChannel.send({ type: 'broadcast', event: 'choice', payload: { choice: choice } });
+
+  // 检查双方是否都已出拳
+  if (oppOnlineChoice) {
+    // 对方先出了，直接揭晓
+    setTimeout(function() { revealOnlineResult(); }, 300);
+  } else {
+    setStatus('locked', '等待对方出拳...');
+  }
 }
 
-function checkOnlineResult() {
+function revealOnlineResult() {
   if (!myOnlineChoice || !oppOnlineChoice) return;
-  const result = getResult(myOnlineChoice, oppOnlineChoice);
-  const el = document.getElementById('onResult');
-  if (result === 'win') el.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
-  else if (result === 'lose') el.innerHTML = '<span class="lose"><i class="fas fa-face-frown"></i> 你输了</span>';
-  else el.innerHTML = '<span class="draw"><i class="fas fa-handshake"></i> 平局</span>';
 
-  setTimeout(() => {
-    myOnlineChoice = null; oppOnlineChoice = null;
-    document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
-    document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
-    document.getElementById('onResult').textContent = '';
-    enableChoices();
-  }, 2000);
+  document.getElementById('oppReadyHint').style.display = 'none';
+
+  // 揭晓对方选择（动画）
+  document.getElementById('onOppEmoji').innerHTML = CHOICE_ICON[oppOnlineChoice];
+  document.getElementById('onOppEmoji').classList.add('pop-in');
+  setTimeout(function() { document.getElementById('onOppEmoji').classList.remove('pop-in'); }, 350);
+
+  var result = getResult(myOnlineChoice, oppOnlineChoice);
+  var el = document.getElementById('onResult');
+
+  if (result === 'win') {
+    el.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
+    document.getElementById('onMyEmoji').classList.add('winner');
+    onScores.win++;
+  } else if (result === 'lose') {
+    el.innerHTML = '<span class="lose"><i class="fas fa-face-frown"></i> 你输了</span>';
+    document.getElementById('onOppEmoji').classList.add('winner');
+    onScores.lose++;
+  } else {
+    el.innerHTML = '<span class="draw"><i class="fas fa-handshake"></i> 平局</span>';
+    onScores.draw++;
+  }
+
+  setTimeout(function() {
+    document.getElementById('onMyEmoji').classList.remove('winner');
+    document.getElementById('onOppEmoji').classList.remove('winner');
+  }, 500);
+
+  updateOnlineScores();
+  setStatus('ready', '结果已出');
+  document.getElementById('rematchBtn').style.display = '';
+
+  // 2.5s 后自动准备下一轮
+  onlineRoundTimer = setTimeout(function() {
+    if (currentRoom) {
+      onlineChannel.send({ type: 'broadcast', event: 'reset', payload: {} });
+      resetRoundState();
+    }
+    onlineRoundTimer = null;
+  }, 2500);
+}
+
+function resetRound() {
+  if (onlineChannel) {
+    onlineChannel.send({ type: 'broadcast', event: 'reset', payload: {} });
+  }
+  resetRoundState();
+}
+
+function resetRoundState() {
+  if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
+  myOnlineChoice = null;
+  oppOnlineChoice = null;
+  document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
+  document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
+  document.getElementById('onResult').textContent = '';
+  document.getElementById('oppReadyHint').style.display = 'none';
+  document.getElementById('rematchBtn').style.display = 'none';
+  setStatus('ready', '新回合，请出拳！');
+  enableChoices();
+}
+
+function updateOnlineScores() {
+  document.getElementById('onMyScore').textContent = onScores.win;
+  document.getElementById('onDrawScore').textContent = onScores.draw;
+  document.getElementById('onOppScore').textContent = onScores.lose;
+}
+
+function setStatus(state, text) {
+  var dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
 }
 
 function enableChoices() {
-  document.querySelectorAll('#onlineGame .choice-btn').forEach(b => b.classList.remove('disabled'));
+  document.querySelectorAll('#onlineGame .choice-btn').forEach(function(b) { b.classList.remove('disabled'); });
   myOnlineChoice = null;
 }
 
 function leaveRoom() {
   if (onlineChannel) {
     try { onlineChannel.send({ type: 'broadcast', event: 'leave', payload: {} }); } catch(e) {}
-    sb.removeChannel(onlineChannel);
+    try { sb.removeChannel(onlineChannel); } catch(e) {}
     onlineChannel = null;
   }
+  if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
   currentRoom = null;
   document.getElementById('onlineSetup').style.display = '';
   document.getElementById('onlineGame').style.display = 'none';
 }
+
+// ====================== 邀请好友 ======================
+var inviteTimer = null;
+var inviteLock = false;
+
+document.getElementById('inviteInput').addEventListener('input', function() {
+  clearTimeout(inviteTimer);
+  var val = this.value.trim();
+  if (!val || val.length < 2) {
+    document.getElementById('inviteResults').classList.remove('show');
+    return;
+  }
+  inviteTimer = setTimeout(function() { searchUsers(val); }, 400);
+});
+
+async function searchUsers(query) {
+  if (inviteLock || !sb) return;
+  inviteLock = true;
+  try {
+    var { data, error } = await sb.from('users')
+      .select('id, nick, email')
+      .ilike('email', '%' + query + '%')
+      .neq('id', myUserId)
+      .limit(5);
+    if (error) { console.warn('搜索用户失败:', error); return; }
+    renderInviteResults(data || []);
+  } catch(e) {
+    console.warn('搜索异常:', e);
+  } finally {
+    inviteLock = false;
+  }
+}
+
+function renderInviteResults(users) {
+  var el = document.getElementById('inviteResults');
+  if (!users.length) {
+    el.innerHTML = '<div class="invite-result-item" style="color:var(--text3);cursor:default"><i class="fas fa-search"></i> 未找到用户</div>';
+    el.classList.add('show');
+    return;
+  }
+  el.innerHTML = users.map(function(u) {
+    var nick = u.nick || (u.email ? u.email.split('@')[0] : '用户');
+    var initial = (nick[0] || '?').toUpperCase();
+    return '<div class="invite-result-item" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '" data-email="' + KJ.escapeHtml(u.email || '') + '">'
+      + '<div class="invite-avatar">' + KJ.escapeHtml(initial) + '</div>'
+      + '<div class="invite-info"><div class="invite-nick">' + KJ.escapeHtml(nick) + '</div><div class="invite-email">' + KJ.escapeHtml(u.email || '') + '</div></div>'
+      + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent)"></i>'
+      + '</div>';
+  }).join('');
+  el.classList.add('show');
+}
+
+// 事件代理：点击搜索结果
+document.getElementById('inviteResults').addEventListener('click', function(e) {
+  var item = e.target.closest('.invite-result-item');
+  if (!item) return;
+  var uid = item.dataset.uid;
+  var nick = item.dataset.nick;
+  var email = item.dataset.email;
+  if (uid && nick) sendInvite(uid, nick, email);
+});
+
+async function sendInvite(userId, nick, email) {
+  if (!currentRoom) {
+    KJ.toast('请先创建房间');
+    return;
+  }
+  if (!sb) { KJ.toast('网络错误'); return; }
+
+  var inviteLink = 'https://kjllin.github.io/game/rps/?room=' + currentRoom;
+  var inviteText = '[游戏邀请] ' + myNick + ' 邀请你进行石头剪刀布对战！ 房间号：' + currentRoom + ' 点击加入：' + inviteLink;
+
+  try {
+    var { error } = await sb.from('private_messages').insert({
+      sender_id: myUserId,
+      recipient_id: userId,
+      text: inviteText
+    });
+    if (error) {
+      console.error('发送邀请失败:', error);
+      KJ.toast('发送失败，请重试');
+      return;
+    }
+    KJ.toast('已向 ' + nick + ' 发送对战邀请！');
+    document.getElementById('inviteInput').value = '';
+    document.getElementById('inviteResults').classList.remove('show');
+  } catch(e) {
+    console.error('发送异常:', e);
+    KJ.toast('发送失败，请重试');
+  }
+}
+
+// 点击空白关闭搜索结果
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.invite-search-box')) {
+    document.getElementById('inviteResults').classList.remove('show');
+  }
+});
 </script>
 <div id="toast" class="toast hidden"></div>
 </body>
