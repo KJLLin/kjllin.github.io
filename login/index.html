@@ -379,7 +379,7 @@
       try {
         await sb.auth.signInWithOAuth({ 
           provider: 'custom:cpoauth',
-          options: { redirectTo: window.location.origin + '/' }
+          options: { redirectTo: window.location.origin + (redirect !== '/' ? redirect : '/') }
         });
       } catch(e) { KJ.toast('登录失败: ' + KJ.formatSupabaseError(e)); }
     });
