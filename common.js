@@ -448,7 +448,7 @@
 
     function setUserTag(nick) {
       if (userTag && nick) {
-        userTag.textContent = nick;
+        userTag.innerHTML = '<a href="/settings/" class="menu-item"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</a>';
         userTag.title = nick;
       }
     }
