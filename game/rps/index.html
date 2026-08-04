@@ -49,8 +49,8 @@
         .choices { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
         .choice-btn {
             width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--border);
-            background: #fff; font-size: 36px; cursor: pointer; transition: all .15s;
-            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-glass); font-size: 32px; cursor: pointer; transition: all .15s;
+            display: flex; align-items: center; justify-content: center; color: var(--text);
         }
         .choice-btn:hover { transform: scale(1.08); border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,113,227,0.2); }
         .choice-btn:active { transform: scale(0.95); }
@@ -60,8 +60,8 @@
         /* 结果区 */
         .battle-area { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; }
         .player-side { text-align: center; }
-        .player-emoji { font-size: 64px; transition: transform .3s; }
-        .player-emoji.winner { animation: bounce .5s ease; }
+        .player-emoji { font-size: 64px; transition: transform .3s; color: var(--text); }
+        .player-emoji.winner { animation: bounce .5s ease; color: var(--accent); }
         .player-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
         .vs { font-size: 28px; font-weight: 900; color: var(--text2); }
         .result-text { font-size: 24px; font-weight: 700; margin: 12px 0; min-height: 36px; }
@@ -138,7 +138,7 @@
 </header>
 
 <div class="container">
-  <h2 style="text-align:center">🪨 📄 ✂️ 石头剪刀布</h2>
+  <h2 style="text-align:center"><i class="fas fa-hand-back-fist"></i> <i class="fas fa-hand"></i> <i class="fas fa-hand-scissors"></i> 石头剪刀布</h2>
 
   <!-- 模式选择 -->
   <div class="mode-tabs">
@@ -156,20 +156,20 @@
       </div>
       <div class="battle-area">
         <div class="player-side">
-          <div class="player-emoji" id="aiMyEmoji">🤔</div>
+          <div class="player-emoji" id="aiMyEmoji"><i class="fas fa-circle-question"></i></div>
           <div class="player-label">你</div>
         </div>
         <div class="vs">VS</div>
         <div class="player-side">
-          <div class="player-emoji" id="aiBotEmoji">🤖</div>
+          <div class="player-emoji" id="aiBotEmoji"><i class="fas fa-robot"></i></div>
           <div class="player-label">AI</div>
         </div>
       </div>
       <div class="result-text" id="aiResult"></div>
       <div class="choices">
-        <button class="choice-btn" onclick="playAI('rock')">✊</button>
-        <button class="choice-btn" onclick="playAI('paper')">✋</button>
-        <button class="choice-btn" onclick="playAI('scissors')">✌️</button>
+        <button class="choice-btn" onclick="playAI('rock')"><i class="fas fa-hand-back-fist"></i></button>
+        <button class="choice-btn" onclick="playAI('paper')"><i class="fas fa-hand"></i></button>
+        <button class="choice-btn" onclick="playAI('scissors')"><i class="fas fa-hand-scissors"></i></button>
       </div>
       <div class="history" id="aiHistory"></div>
     </div>
@@ -192,20 +192,20 @@
       <div class="waiting-text waiting-dots" id="waitingText">等待对手加入</div>
       <div class="battle-area">
         <div class="player-side">
-          <div class="player-emoji" id="onMyEmoji">🤔</div>
+          <div class="player-emoji" id="onMyEmoji"><i class="fas fa-circle-question"></i></div>
           <div class="player-label">你</div>
         </div>
         <div class="vs">VS</div>
         <div class="player-side">
-          <div class="player-emoji" id="onOppEmoji">🤔</div>
+          <div class="player-emoji" id="onOppEmoji"><i class="fas fa-circle-question"></i></div>
           <div class="player-label" id="onOppLabel">对手</div>
         </div>
       </div>
       <div class="result-text" id="onResult"></div>
       <div class="choices">
-        <button class="choice-btn" id="onRock" onclick="playOnline('rock')">✊</button>
-        <button class="choice-btn" id="onPaper" onclick="playOnline('paper')">✋</button>
-        <button class="choice-btn" id="onScissors" onclick="playOnline('scissors')">✌️</button>
+        <button class="choice-btn" id="onRock" onclick="playOnline('rock')"><i class="fas fa-hand-back-fist"></i></button>
+        <button class="choice-btn" id="onPaper" onclick="playOnline('paper')"><i class="fas fa-hand"></i></button>
+        <button class="choice-btn" id="onScissors" onclick="playOnline('scissors')"><i class="fas fa-hand-scissors"></i></button>
       </div>
       <button class="btn btn-outline" onclick="leaveRoom()" style="margin-top:12px"><i class="fas fa-sign-out-alt"></i> 离开房间</button>
     </div>
@@ -232,7 +232,8 @@ if (sb) KJ.initNav(sb, { homeUrl: '/' });
 else KJ.initNav(null, { homeUrl: '/' });
 
 // ====================== 常量 ======================
-const EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
+const CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
+const PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
 const WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 
 function getResult(a, b) {
@@ -275,30 +276,30 @@ function playAI(playerChoice) {
   const botEl = document.getElementById('aiBotEmoji');
 
   // 动画序列
-  myEl.textContent = '✊'; botEl.textContent = '✊';
+  myEl.innerHTML = CHOICE_ICON['rock']; botEl.innerHTML = CHOICE_ICON['rock'];
   let tick = 0;
   const interval = setInterval(() => {
-    myEl.textContent = EMOJI[choices[tick % 3]];
-    botEl.textContent = EMOJI[choices[(tick + 1) % 3]];
+    myEl.innerHTML = CHOICE_ICON[choices[tick % 3]];
+    botEl.innerHTML = CHOICE_ICON[choices[(tick + 1) % 3]];
     tick++;
   }, 100);
 
   setTimeout(() => {
     clearInterval(interval);
-    myEl.textContent = EMOJI[playerChoice];
-    botEl.textContent = EMOJI[botChoice];
+    myEl.innerHTML = CHOICE_ICON[playerChoice];
+    botEl.innerHTML = CHOICE_ICON[botChoice];
 
     const resEl = document.getElementById('aiResult');
     if (result === 'win') {
-      resEl.innerHTML = '<span class="win">你赢了！🎉</span>';
+      resEl.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
       myEl.classList.add('winner');
       aiScores.win++;
     } else if (result === 'lose') {
-      resEl.innerHTML = '<span class="lose">AI 赢了 😅</span>';
+      resEl.innerHTML = '<span class="lose"><i class="fas fa-face-frown"></i> AI 赢了</span>';
       botEl.classList.add('winner');
       aiScores.lose++;
     } else {
-      resEl.innerHTML = '<span class="draw">平局 🤝</span>';
+      resEl.innerHTML = '<span class="draw"><i class="fas fa-handshake"></i> 平局</span>';
       aiScores.draw++;
     }
     setTimeout(() => { myEl.classList.remove('winner'); botEl.classList.remove('winner'); }, 500);
@@ -356,8 +357,8 @@ async function setupOnlineRoom(code, _isHost) {
   document.getElementById('roomDisplay').textContent = code;
   document.getElementById('waitingText').textContent = '等待对手加入';
   document.getElementById('waitingText').style.display = '';
-  document.getElementById('onMyEmoji').textContent = '🤔';
-  document.getElementById('onOppEmoji').textContent = '🤔';
+  document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
+  document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
   document.getElementById('onResult').textContent = '';
   document.getElementById('onOppLabel').textContent = '对手';
   enableChoices();
@@ -366,7 +367,7 @@ async function setupOnlineRoom(code, _isHost) {
   onlineChannel = sb.channel('rps-' + code);
   onlineChannel.on('broadcast', { event: 'choice' }, (payload) => {
     oppOnlineChoice = payload.payload.choice;
-    document.getElementById('onOppEmoji').textContent = EMOJI[oppOnlineChoice];
+    document.getElementById('onOppEmoji').innerHTML = CHOICE_ICON[oppOnlineChoice];
     checkOnlineResult();
   }).on('broadcast', { event: 'join' }, (payload) => {
     document.getElementById('onOppLabel').textContent = payload.payload.name || '对手';
@@ -375,7 +376,7 @@ async function setupOnlineRoom(code, _isHost) {
   }).on('broadcast', { event: 'leave' }, () => {
     document.getElementById('waitingText').textContent = '对手离开了，等待新对手...';
     document.getElementById('waitingText').style.display = '';
-    document.getElementById('onOppEmoji').textContent = '🤔';
+    document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
     oppOnlineChoice = null;
     document.getElementById('onResult').textContent = '';
     enableChoices();
@@ -394,7 +395,7 @@ async function setupOnlineRoom(code, _isHost) {
 function playOnline(choice) {
   if (!onlineChannel || myOnlineChoice) return;
   myOnlineChoice = choice;
-  document.getElementById('onMyEmoji').textContent = EMOJI[choice];
+  document.getElementById('onMyEmoji').innerHTML = CHOICE_ICON[choice];
   document.querySelectorAll('#onlineGame .choice-btn').forEach(b => b.classList.add('disabled'));
   onlineChannel.send({ type: 'broadcast', event: 'choice', payload: { choice } });
   checkOnlineResult();
@@ -404,14 +405,14 @@ function checkOnlineResult() {
   if (!myOnlineChoice || !oppOnlineChoice) return;
   const result = getResult(myOnlineChoice, oppOnlineChoice);
   const el = document.getElementById('onResult');
-  if (result === 'win') el.innerHTML = '<span class="win">你赢了！🎉</span>';
-  else if (result === 'lose') el.innerHTML = '<span class="lose">你输了 😅</span>';
-  else el.innerHTML = '<span class="draw">平局 🤝</span>';
+  if (result === 'win') el.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
+  else if (result === 'lose') el.innerHTML = '<span class="lose"><i class="fas fa-face-frown"></i> 你输了</span>';
+  else el.innerHTML = '<span class="draw"><i class="fas fa-handshake"></i> 平局</span>';
 
   setTimeout(() => {
     myOnlineChoice = null; oppOnlineChoice = null;
-    document.getElementById('onMyEmoji').textContent = '🤔';
-    document.getElementById('onOppEmoji').textContent = '🤔';
+    document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
+    document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
     document.getElementById('onResult').textContent = '';
     enableChoices();
   }, 2000);
