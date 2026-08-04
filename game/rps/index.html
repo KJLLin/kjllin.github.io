@@ -445,7 +445,7 @@ else KJ.initNav(null, { homeUrl: '/' });
 var CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
 var PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
 var WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-var ROOM_TIMEOUT = 5 * 60 * 1000; // 5 分钟房间过期
+var ROOM_TIMEOUT = 10 * 60 * 1000; // 10 分钟房间过期
 
 function getResult(a, b) {
   if (a === b) return 'draw';
