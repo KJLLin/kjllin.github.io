@@ -435,7 +435,11 @@
 
     function hideLogout() {
       if (logoutBtn) logoutBtn.style.display = 'none';
-      if (userTag) userTag.textContent = '';
+      // 未登录时在 userTag 位置显示登录按钮
+      if (userTag) {
+        var currentPath = encodeURIComponent(global.location.pathname + global.location.search);
+        userTag.innerHTML = '<a href="/login/?redirect=' + currentPath + '" class="menu-item" style="color:var(--color-accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
+      }
     }
 
     function showLogout() {
