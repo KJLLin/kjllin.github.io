@@ -447,8 +447,6 @@
     // 仅清除 token 不重置 UI
     function clearCaptchaToken(key){ct[key]=''}
 
-    /**
-     * 服务端验证 hCaptcha token
     // ====================== 登录（Supabase Attack Protection 服务端验证 CAPTCHA） ======================
     let loginLocked=false;
     $('#loginBtn').addEventListener('click',async()=>{
