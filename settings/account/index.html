@@ -347,7 +347,7 @@
     async function cpoauthBind(){
       if (!sb) { KJ.toast('网络错误'); return; }
       try {
-        await sb.linkIdentity({ provider: 'custom:cpoauth', options: { redirectTo: window.location.href } });
+        await sb.auth.linkIdentity({ provider: 'custom:cpoauth', options: { redirectTo: window.location.href } });
       } catch(e) { KJ.toast('绑定失败: ' + KJ.formatSupabaseError(e)); }
     }
 
@@ -355,7 +355,7 @@
       if (!confirm('确定解绑 CPOAuth？')) return;
       if (!sb) { KJ.toast('网络错误'); return; }
       try {
-        await sb.unlinkIdentity({ provider: 'custom:cpoauth' });
+        await sb.auth.unlinkIdentity({ provider: 'custom:cpoauth' });
         KJ.toast('已解绑 CPOAuth');
         renderCpoauthBinding();
       } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
