@@ -449,51 +449,7 @@
 
     /**
      * 服务端验证 hCaptcha token
-     * 用 text/plain 避免 CORS preflight（Deno req.json 仍可正常解析）
-     */
-    async function verifyCaptcha(key){
-      if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return false}
-      if(!ct[key]){toast('请完成人机验证');return false}
-      try{
-        const res=await fetch(SUPABASE_URL+'/functions/v1/verify-captcha',{
-          method:'POST',
-          headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({token:ct[key]})
-        });
-        const raw=await res.text();
-        let data;
-        try{data=JSON.parse(raw)}catch(e){data=null}
-        if(data&&data.success)return true;
-        // 服务器明确拒绝 → 显示错误码 → 重置
-        const codes=data&&data['error-codes']?data['error-codes'].join(','):'';
-        const diag=data&&data.diag?JSON.stringify(data.diag):'';
-        console.error('hCaptcha verify failed:',raw);
-        if(codes)toast('人机验证未通过 ('+codes+')，请重试');
-        else if(diag)toast('后端诊断: '+diag+'，请联系管理员');
-        else toast('人机验证未通过，请重试');
-        resetCaptcha(key);
-        return false;
-      }catch(e){
-        // 网络错误 → token 保留 → 用户可直接重试，无需重新验证
-        console.error('hCaptcha verify error:',e);
-        toast('网络错误，请稍后重试（无需重新验证）');
-        return false;
-      }
-    }
-
-    /**
-     * 调用 auth-gate 统一认证网关（服务端强制验证 hCaptcha，消除 anon key 绕过风险）
-     */
-    async function authGate(body){
-      const res=await fetch(SUPABASE_URL+'/functions/v1/auth-gate',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(body)
-      });
-      return res.json();
-    }
-
-    // 登录（通过 auth-gate 网关，消除直接调用 Supabase Auth 的绕过风险）
+    // ====================== 登录（Supabase Attack Protection 服务端验证 CAPTCHA） ======================
     let loginLocked=false;
     $('#loginBtn').addEventListener('click',async()=>{
       if(loginLocked)return;
@@ -508,21 +464,22 @@
       btn.disabled=true;btn.textContent='登录中...';
 
       try{
-        const data=await authGate({email,password:pwd,captcha_token:ct.login,action:'login'});
-        if(!data.success){
-          toast(data.error||'登录失败');
+        const { data, error } = await sb.auth.signInWithPassword({ 
+          email, password: pwd,
+          options: { captchaToken: ct.login }
+        });
+        if(error){
+          toast(KJ.formatSupabaseError(error));
           loginLocked=false;btn.disabled=false;btn.textContent='登 录';
-          if(data.error&&data.error.includes('人机验证'))resetCaptcha('login');
+          if(error.message&&error.message.includes('captcha'))resetCaptcha('login');
           return;
         }
-        // auth-gate 服务端已验证 captcha + 调用 Supabase Auth，返回 session tokens
-        await sb.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
         // 确保 users 表有该用户行（非阻塞）
         try{
           const{data:u}=await sb.from('users').select('id').eq('id',data.session.user.id).maybeSingle();
           if(!u)await sb.from('users').insert({id:data.session.user.id,nick:data.session.user.user_metadata?.nick||email.split('@')[0],email,is_admin:false,status:'active',created_at:new Date().toISOString()});
         }catch(e){console.warn('Users table sync skipped:',e)}
-        KJ.recordLoginDevice(sb); // 记录登录设备（非阻塞）
+        KJ.recordLoginDevice(sb);
         window.location.href=redirect;
       }catch(e){
         console.error('Login error:',e);
@@ -551,7 +508,7 @@
       forgotLocked=false;
     });
 
-    // 注册（通过 auth-gate 网关，消除直接调用 Supabase Auth 的绕过风险）
+    // ====================== 注册 ======================
     let regLocked=false;
     $('#regBtn').addEventListener('click',async()=>{
       if(regLocked)return;
@@ -568,14 +525,17 @@
       btn.disabled=true;btn.textContent='创建中...';
 
       try{
-        const data=await authGate({email,password:pwd,captcha_token:ct.register,action:'register',nick});
-        if(!data.success){
-          toast(data.error||'注册失败');
+        const { data, error } = await sb.auth.signUp({ 
+          email, password: pwd,
+          options: { captchaToken: ct.register, data: { nick } }
+        });
+        if(error){
+          toast(KJ.formatSupabaseError(error));
           regLocked=false;btn.disabled=false;btn.textContent='创建账号';
-          if(data.error&&data.error.includes('人机验证'))resetCaptcha('register');
+          if(error.message&&error.message.includes('captcha'))resetCaptcha('register');
           return;
         }
-        toast(data.message||'注册成功！');
+        toast(data.user?.identities?.length ? '注册成功！' : '验证邮件已发送，请查收邮箱');
         setTimeout(()=>window.location.href=redirect,800);
       }catch(e){
         console.error('Register error:',e);
