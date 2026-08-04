@@ -463,7 +463,7 @@
     var storedUser = getStoredUser(sb);
     if (storedUser) {
       showLogout();
-      setUserTag(storedUser.user_metadata?.nick || storedUser.email?.split('@')[0] || '用户');
+      setUserTag(getDisplayNick(storedUser));
     } else {
       hideLogout();
     }
@@ -473,7 +473,20 @@
       sb.auth.onAuthStateChange(function(event, session) {
         if (session && session.user) {
           showLogout();
-          setUserTag(session.user.user_metadata?.nick || session.user.email?.split('@')[0] || '用户');
+          setUserTag(getDisplayNick(session.user));
+          // CPOAuth 等第三方登录可能没有 user_metadata.nick — 尝试从 identities 获取
+          if (!session.user.user_metadata?.nick && !session.user.email) {
+            sb.auth.getUserIdentities().then(function(idResp) {
+              var identities = idResp?.data?.identities;
+              if (identities && identities.length) {
+                var idName = identities[0].identity_data?.user_name
+                  || identities[0].identity_data?.full_name
+                  || identities[0].identity_data?.name
+                  || identities[0].identity_data?.email?.split('@')[0];
+                if (idName) setUserTag(idName);
+              }
+            }).catch(function() {});
+          }
         } else {
           hideLogout();
         }
@@ -481,7 +494,7 @@
       sb.auth.getSession().then(function(r) {
         if (r?.data?.session?.user) {
           showLogout();
-          setUserTag(r.data.session.user.user_metadata?.nick || r.data.session.user.email?.split('@')[0] || '用户');
+          setUserTag(getDisplayNick(r.data.session.user));
         } else {
           hideLogout();
         }
@@ -496,7 +509,7 @@
 
   /**
    * 从 localStorage 读取当前用户信息
-   * @param {object} [sb] - 可选 Supabase 客户端（用于 expires_at 校验）
+   * @param {object} [sb] - 可选 Supabase 客户端
    * @returns {object|null}
    */
   function getStoredUser(sb) {
@@ -507,7 +520,6 @@
         if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
           var val = JSON.parse(localStorage.getItem(key));
           if (val && val.user) {
-            // 检查 token 是否过期
             if (val.expires_at) {
               if (val.expires_at * 1000 <= now) {
                 try { localStorage.removeItem(key); } catch(e) {}
@@ -520,6 +532,25 @@
       }
     } catch(e) {}
     return null;
+  }
+
+  /**
+   * 获取用户展示昵称（支持 CPOAuth 等第三方登录）
+   * @param {object} user - Supabase user 对象
+   * @returns {string}
+   */
+  function getDisplayNick(user) {
+    if (!user) return '用户';
+    // 1. 自定义昵称
+    if (user.user_metadata?.nick) return user.user_metadata.nick;
+    // 2. CPOAuth/OAuth username
+    if (user.user_metadata?.user_name) return user.user_metadata.user_name;
+    // 3. CPOAuth/OAuth full_name  
+    if (user.user_metadata?.full_name) return user.user_metadata.full_name;
+    if (user.user_metadata?.name) return user.user_metadata.name;
+    // 4. Email 前缀
+    if (user.email) return user.email.split('@')[0];
+    return '用户';
   }
   /**
    * 初始化站内信横幅通知（全站通用，在 /chat 页面自动隐藏）
