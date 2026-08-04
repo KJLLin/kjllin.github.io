@@ -501,18 +501,20 @@
       KJ.initNav(sb, { homeUrl: '/' });
 
       // 主页打字机问候 + 新用户引导
-      sb.auth.getSession().then(function(r) {
-        var user = r?.data?.session?.user;
-        if (user) {
-          // 优先 user_metadata.nick，其次 email 前缀，再尝试 identities
-          var nick = '';
-          if (user.user_metadata?.nick) nick = user.user_metadata.nick;
-          else if (user.user_metadata?.user_name) nick = user.user_metadata.user_name;
-          else if (user.user_metadata?.full_name) nick = user.user_metadata.full_name;
-          else if (user.email) nick = user.email.split('@')[0];
-          else {
-            // 尝试从 identities 获取 CPOAuth 等第三方登录的用户名
-            try {
+      // 处理 OAuth 回跳：URL hash 可能还没被 Supabase SDK 处理完，需要重试
+      function greetUser(retryCount) {
+        retryCount = retryCount || 0;
+        sb.auth.getSession().then(function(r) {
+          var user = r?.data?.session?.user;
+          if (user) {
+            var nick = '';
+            if (user.user_metadata?.nick) nick = user.user_metadata.nick;
+            else if (user.user_metadata?.user_name) nick = user.user_metadata.user_name;
+            else if (user.user_metadata?.full_name) nick = user.user_metadata.full_name;
+            else if (user.email) nick = user.email.split('@')[0];
+            
+            if (!nick) {
+              // 从 identities 获取 CPOAuth 等第三方登录的用户名
               sb.auth.getUserIdentities().then(function(idResp) {
                 var identities = idResp?.data?.identities;
                 if (identities && identities.length) {
@@ -520,24 +522,60 @@
                     || identities[0].identity_data?.full_name
                     || identities[0].identity_data?.name
                     || identities[0].identity_data?.email?.split('@')[0];
-                  if (idName) typeGreeting(idName);
+                  if (idName) { typeGreeting(idName); greetOnboarding(user, idName); }
                 }
               }).catch(function() {});
-            } catch(e) {}
-          }
-          if (nick) {
-            typeGreeting(nick);
-            // 新用户引导（注册5分钟内显示）
-            if (user.created_at && !sessionStorage.getItem('kj_onboarding_shown')) {
-              var created = new Date(user.created_at).getTime();
-              if (Date.now() - created < 5 * 60 * 1000) {
-                sessionStorage.setItem('kj_onboarding_shown', '1');
-                setTimeout(function() { showOnboarding(nick); }, 800);
-              }
+              return;
             }
+            
+            typeGreeting(nick);
+            greetOnboarding(user, nick);
+            return;
+          }
+          
+          // OAuth 回跳后可能还没处理完 hash — 重试
+          if (retryCount < 5 && window.location.hash && window.location.hash.length > 1) {
+            setTimeout(function() { greetUser(retryCount + 1); }, 200);
+          }
+        }).catch(function() {
+          if (retryCount < 5 && window.location.hash && window.location.hash.length > 1) {
+            setTimeout(function() { greetUser(retryCount + 1); }, 200);
+          }
+        });
+      }
+
+      function greetOnboarding(user, nick) {
+        if (user.created_at && !sessionStorage.getItem('kj_onboarding_shown')) {
+          var created = new Date(user.created_at).getTime();
+          if (Date.now() - created < 5 * 60 * 1000) {
+            sessionStorage.setItem('kj_onboarding_shown', '1');
+            setTimeout(function() { showOnboarding(nick); }, 800);
           }
         }
-      }).catch(function() {});
+      }
+
+      greetUser();
+
+      // 监听 OAuth 登录完成事件（比轮询 getSession 更可靠）
+      sb.auth.onAuthStateChange(function(event, session) {
+        if (event === 'SIGNED_IN' && session && session.user) {
+          var user = session.user;
+          var nick = user.user_metadata?.nick || user.user_metadata?.user_name 
+            || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : '');
+          if (nick) { typeGreeting(nick); greetOnboarding(user, nick); }
+          else {
+            sb.auth.getUserIdentities().then(function(idResp) {
+              var identities = idResp?.data?.identities;
+              if (identities && identities.length) {
+                var idName = identities[0].identity_data?.user_name
+                  || identities[0].identity_data?.full_name
+                  || identities[0].identity_data?.email?.split('@')[0];
+                if (idName) { typeGreeting(idName); greetOnboarding(user, idName); }
+              }
+            }).catch(function() {});
+          }
+        }
+      });
 
       // 兜底：500ms 后如果还没获取到昵称，默认显示"欢迎回来"
       setTimeout(function() {
