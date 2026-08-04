@@ -164,12 +164,20 @@
         .history-dot.lose { background: var(--danger); }
         .history-dot.draw { background: var(--warning); }
 
+        /* 联机方式子标签 */
+        .connect-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .connect-tab {
+            flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border);
+            background: transparent; color: var(--text2); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+        }
+        .connect-tab:hover { border-color: var(--accent); color: var(--accent); }
+        .connect-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
         /* 邀请好友 */
         .invite-section {
-            border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;
-            display: flex; flex-direction: column; gap: 10px; align-items: center;
+            display: flex; flex-direction: column; gap: 12px; align-items: center;
         }
-        .invite-title { font-size: 14px; font-weight: 600; color: var(--text2); }
         .invite-search-box {
             position: relative; width: 100%; max-width: 280px;
         }
@@ -200,7 +208,12 @@
         .invite-result-item .invite-info { overflow: hidden; text-align: left; }
         .invite-result-item .invite-nick { font-weight: 600; color: var(--text); }
         .invite-result-item .invite-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .invite-hint { font-size: 11px; color: var(--text3); }
+        .invite-hint { font-size: 12px; color: var(--text3); }
+        .sent-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+        .sent-tag {
+            font-size: 12px; padding: 4px 10px; border-radius: 8px;
+            background: var(--success); color: #fff; display: flex; align-items: center; gap: 4px;
+        }
 
         /* 分隔线 */
         .divider-text {
@@ -297,20 +310,40 @@
   <div id="onlineMode" style="display:none">
     <div class="card" id="onlineSetup">
       <h3 style="margin-top:0"><i class="fas fa-globe"></i> 双人联机对战</h3>
-      <div class="room-setup">
-        <button class="btn btn-primary" onclick="createRoom()" style="width:200px"><i class="fas fa-plus"></i> 创建房间</button>
-        <div class="divider-text">— 或 —</div>
-        <input type="text" class="input" id="roomCodeInput" placeholder="房间号" maxlength="4" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
-        <button class="btn btn-outline" onclick="joinRoom()" style="width:200px"><i class="fas fa-door-open"></i> 加入房间</button>
+
+      <!-- 联机方式选择 -->
+      <div class="connect-tabs">
+        <button class="connect-tab active" id="tabCode" onclick="switchConnect('code')"><i class="fas fa-key"></i> 房间号</button>
+        <button class="connect-tab" id="tabInvite" onclick="switchConnect('invite')"><i class="fas fa-paper-plane"></i> 邀请卡片</button>
       </div>
 
-      <!-- 邀请好友 -->
-      <div class="invite-section">
-        <div class="invite-title"><i class="fas fa-paper-plane"></i> 邀请好友</div>
-        <p class="invite-hint">搜索好友邮箱发送房间邀请链接</p>
-        <div class="invite-search-box">
-          <input type="text" class="invite-input" id="inviteInput" placeholder="输入好友邮箱搜索..." autocomplete="off">
-          <div class="invite-results" id="inviteResults"></div>
+      <!-- 方式一：房间号 -->
+      <div id="connectCode">
+        <div class="room-setup">
+          <button class="btn btn-primary" onclick="createRoom()" style="width:200px"><i class="fas fa-plus"></i> 创建房间</button>
+          <div class="divider-text">— 或 —</div>
+          <input type="text" class="input" id="roomCodeInput" placeholder="房间号" maxlength="4" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          <button class="btn btn-outline" onclick="joinRoom()" style="width:200px"><i class="fas fa-door-open"></i> 加入房间</button>
+        </div>
+      </div>
+
+      <!-- 方式二：邀请卡片 -->
+      <div id="connectInvite" style="display:none">
+        <div class="invite-section">
+          <p class="invite-hint">创建房间后向好友发送站内信邀请卡片，好友点击链接即可加入</p>
+          <button class="btn btn-primary" id="createInviteBtn" onclick="createInviteRoom()" style="width:200px"><i class="fas fa-plus"></i> 创建房间并邀请</button>
+          <div id="inviteAfterCreate" style="display:none">
+            <div class="room-header" style="margin-bottom:8px">
+              <span style="font-size:13px;color:var(--text2)">房间号：</span>
+              <span class="room-code" id="inviteRoomCode" style="font-size:28px;letter-spacing:4px"></span>
+              <button class="copy-btn" id="inviteCopyBtn" title="复制房间号" style="font-size:12px"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="invite-search-box">
+              <input type="text" class="invite-input" id="inviteInput" placeholder="输入好友邮箱搜索..." autocomplete="off">
+              <div class="invite-results" id="inviteResults"></div>
+            </div>
+            <div class="sent-list" id="sentList"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -478,6 +511,16 @@ var isHost = false;
 var onScores = { win: 0, draw: 0, lose: 0 };
 var onlineRoundTimer = null;
 
+// ====================== 联机方式切换 ======================
+var currentConnect = 'code';
+function switchConnect(method) {
+  currentConnect = method;
+  document.getElementById('tabCode').classList.toggle('active', method === 'code');
+  document.getElementById('tabInvite').classList.toggle('active', method === 'invite');
+  document.getElementById('connectCode').style.display = method === 'code' ? '' : 'none';
+  document.getElementById('connectInvite').style.display = method === 'invite' ? '' : 'none';
+}
+
 // ====================== 模式切换 ======================
 var currentMode = 'ai';
 function switchMode(mode) {
@@ -567,7 +610,6 @@ async function createRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
   var code = genRoomCode();
   await setupOnlineRoom(code, true);
-  updateInviteSection(code);
 }
 
 async function joinRoom() {
@@ -575,13 +617,36 @@ async function joinRoom() {
   var code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
   if (code.length !== 4) { KJ.toast('请输入4位房间号'); return; }
   await setupOnlineRoom(code, false);
-  updateInviteSection(code);
 }
 
-function updateInviteSection(code) {
-  // 更新邀请区域的提示，显示当前房间号
-  var hint = document.querySelector('.invite-hint');
-  if (hint) hint.textContent = '当前房间：' + code + ' | 搜索好友邮箱发送邀请';
+// 邀请模式：创建房间 + 展示邀请界面
+var inviteSentUsers = [];
+async function createInviteRoom() {
+  if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
+  var code = genRoomCode();
+  inviteSentUsers = [];
+  document.getElementById('sentList').innerHTML = '';
+  document.getElementById('createInviteBtn').style.display = 'none';
+  document.getElementById('inviteAfterCreate').style.display = '';
+  document.getElementById('inviteRoomCode').textContent = code;
+  document.getElementById('inviteInput').value = '';
+  document.getElementById('inviteResults').classList.remove('show');
+
+  // 设置复制按钮
+  var copyBtn = document.getElementById('inviteCopyBtn');
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(code).then(function() {
+      copyBtn.classList.add('copied');
+      copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+      KJ.toast('房间号已复制：' + code);
+      setTimeout(function() {
+        copyBtn.classList.remove('copied');
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+      }, 2000);
+    }).catch(function() { KJ.toast('复制失败'); });
+  };
+
+  await setupOnlineRoom(code, true);
 }
 
 async function setupOnlineRoom(code, _isHost) {
@@ -799,6 +864,14 @@ function leaveRoom() {
   }
   if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
   currentRoom = null;
+  // 重置邀请界面
+  inviteSentUsers = [];
+  document.getElementById('sentList').innerHTML = '';
+  document.getElementById('createInviteBtn').style.display = '';
+  document.getElementById('inviteAfterCreate').style.display = 'none';
+  document.getElementById('inviteInput').value = '';
+  document.getElementById('inviteResults').classList.remove('show');
+  // 显示设置页
   document.getElementById('onlineSetup').style.display = '';
   document.getElementById('onlineGame').style.display = 'none';
 }
@@ -865,14 +938,16 @@ document.getElementById('inviteResults').addEventListener('click', function(e) {
 });
 
 async function sendInvite(userId, nick, email) {
-  if (!currentRoom) {
+  var roomCodeEl = document.getElementById('inviteRoomCode');
+  var roomCode = roomCodeEl ? roomCodeEl.textContent.trim() : '';
+  if (!roomCode) {
     KJ.toast('请先创建房间');
     return;
   }
   if (!sb) { KJ.toast('网络错误'); return; }
 
-  var inviteLink = 'https://kjllin.github.io/game/rps/?room=' + currentRoom;
-  var inviteText = '[游戏邀请] ' + myNick + ' 邀请你进行石头剪刀布对战！ 房间号：' + currentRoom + ' 点击加入：' + inviteLink;
+  var inviteLink = 'https://kjllin.github.io/game/rps/?room=' + roomCode;
+  var inviteText = '[游戏邀请] ' + myNick + ' 邀请你进行石头剪刀布对战！ 房间号：' + roomCode + ' 点击加入：' + inviteLink;
 
   try {
     var { error } = await sb.from('private_messages').insert({
@@ -888,6 +963,17 @@ async function sendInvite(userId, nick, email) {
     KJ.toast('已向 ' + nick + ' 发送对战邀请！');
     document.getElementById('inviteInput').value = '';
     document.getElementById('inviteResults').classList.remove('show');
+
+    // 记录已邀请
+    if (inviteSentUsers.indexOf(userId) === -1) {
+      inviteSentUsers.push(userId);
+      var sentEl = document.getElementById('sentList');
+      sentEl.innerHTML = inviteSentUsers.map(function(id, i) {
+        var tag = '<span class="sent-tag"><i class="fas fa-check"></i> ' + KJ.escapeHtml(nick) + '</span>';
+        if (i === 0) return tag;
+        return tag;
+      }).join('') + '<span class="sent-tag" style="background:var(--border);color:var(--text2)"><i class="fas fa-paper-plane"></i> 已邀 ' + inviteSentUsers.length + ' 人</span>';
+    }
   } catch(e) {
     console.error('发送异常:', e);
     KJ.toast('发送失败，请重试');
