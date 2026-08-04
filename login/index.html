@@ -377,7 +377,7 @@
     $('#cpoauthLoginBtn').addEventListener('click', async () => {
       if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
       try {
-        await sb.signInWithOAuth({ 
+        await sb.auth.signInWithOAuth({ 
           provider: 'custom:cpoauth',
           options: { redirectTo: window.location.origin + '/' }
         });
