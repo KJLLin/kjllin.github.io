@@ -195,7 +195,7 @@
       <div class="card card-glass card-anim">
         <div class="card-header"><i class="fas fa-link"></i> 第三方账号绑定</div>
         <div class="binding-row"><span class="b-icon"><i class="fab fa-google" style="color:#4285f4"></i></span><span class="b-label">Google</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
-        <div class="binding-row"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
+        <div class="binding-row" id="githubBindingRow"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" id="githubStatus">检查中...</span></div>
         <div class="binding-row"><span class="b-icon"><i class="fab fa-weixin" style="color:#07c160"></i></span><span class="b-label">微信</span><span class="b-status" style="color:var(--color-text-tertiary)">未绑定</span></div>
         <div class="binding-row" id="cpoauthBindingRow"><span class="b-icon"><i class="fas fa-code" style="color:#667eea"></i></span><span class="b-label">CPOAuth</span><span class="b-status" id="cpoauthStatus">检查中...</span></div>
         <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:12px;text-align:center"><i class="fas fa-info-circle"></i> 更多第三方登录即将上线</div>
@@ -305,6 +305,7 @@
         loadIP().then(function(ip){$('#deviceIP').textContent=ip;saveLoginRecord(ip);renderLoginHistory();});
         renderLoginHistory();
         renderCpoauthBinding();
+        renderGithubBinding();
 
         var days=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
         var el=$('#pwdStrength');el.textContent=days>90?'建议修改':'正常';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
@@ -358,6 +359,55 @@
         await sb.auth.unlinkIdentity({ provider: 'custom:cpoauth' });
         KJ.toast('已解绑 CPOAuth');
         renderCpoauthBinding();
+      } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
+    }
+
+    // ==================== GitHub 绑定（Supabase 内置 Provider） ====================
+    async function renderGithubBinding(){
+      var statusEl=$('#githubStatus');if(!statusEl)return;
+      var isBound = false;
+      var identityName = '';
+      try {
+        if (sb && user) {
+          var { data: { identities } } = await sb.auth.getUserIdentities();
+          if (identities) {
+            for (var j = 0; j < identities.length; j++) {
+              if (identities[j].provider === 'github') {
+                isBound = true;
+                identityName = identities[j].identity_data?.user_name 
+                  || identities[j].identity_data?.full_name 
+                  || identities[j].identity_data?.name 
+                  || 'GitHub 用户';
+                break;
+              }
+            }
+          }
+        }
+      } catch(e) { console.warn('getUserIdentities failed:', e); }
+
+      if (isBound) {
+        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(identityName)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" id="githubUnbindBtn">解绑</button>';
+        setTimeout(function(){ var b=$('#githubUnbindBtn'); if(b) b.addEventListener('click',githubUnbind); },0);
+      } else {
+        statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="githubBindBtn">绑定</button>';
+        setTimeout(function(){ var b=$('#githubBindBtn'); if(b) b.addEventListener('click',githubBind); },0);
+      }
+    }
+
+    async function githubBind(){
+      if (!sb) { KJ.toast('网络错误'); return; }
+      try {
+        await sb.auth.linkIdentity({ provider: 'github', options: { redirectTo: window.location.href } });
+      } catch(e) { KJ.toast('绑定失败: ' + KJ.formatSupabaseError(e)); }
+    }
+
+    async function githubUnbind(){
+      if (!confirm('确定解绑 GitHub？')) return;
+      if (!sb) { KJ.toast('网络错误'); return; }
+      try {
+        await sb.auth.unlinkIdentity({ provider: 'github' });
+        KJ.toast('已解绑 GitHub');
+        renderGithubBinding();
       } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
     }
 
