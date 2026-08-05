@@ -236,6 +236,22 @@
         .my-rooms-header { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .my-rooms-header .count { font-size: 11px; font-weight: 400; color: var(--text3); }
 
+        /* 邀请确认弹窗 */
+        .invite-modal {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .invite-modal-card {
+            background: var(--bg-glass); backdrop-filter: blur(24px);
+            border: 1px solid var(--border); border-radius: 20px;
+            padding: 32px 28px; max-width: 340px; width: 90%;
+            text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+            animation: modalIn .3s var(--spring);
+        }
+        @keyframes modalIn { from { opacity:0;transform:scale(0.9) translateY(20px) } to { opacity:1;transform:scale(1) translateY(0) } }
+        .invite-modal-icon { font-size: 36px; margin-bottom: 12px; color: var(--accent); }
+
         .divider-text {
             display: flex; align-items: center; gap: 10px; color: var(--text3);
             font-size: 13px; margin: 4px 0; width: 200px;
@@ -576,8 +592,11 @@ function checkUrlRoom() {
     fromInvite = true;
     switchMode('online');
     switchConnect('code');
-    document.getElementById('roomCodeInput').value = invite.toUpperCase();
-    setTimeout(function() { joinRoom(); }, 500);
+    // 清除 URL 参数防重复
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', '/game/rps/');
+    }
+    showInviteConfirm(invite.toUpperCase());
     return;
   }
 
@@ -587,6 +606,40 @@ function checkUrlRoom() {
     document.getElementById('roomCodeInput').value = room.toUpperCase();
     setTimeout(function() { joinRoom(); }, 500);
   }
+}
+
+// ====================== 邀请确认弹窗 ======================
+var pendingInviteCode = null;
+
+function showInviteConfirm(code) {
+  pendingInviteCode = code;
+  // 从 DB 获取邀请者昵称
+  document.getElementById('inviteModalTitle').textContent = '石头剪刀布对战邀请';
+  document.getElementById('inviteModalMsg').textContent = '有人邀请你进行对战，是否接受？';
+  document.getElementById('inviteModal').style.display = '';
+  // 异步获取邀请者信息
+  if (sb) {
+    sb.from('rps_rooms').select('host_nick').ilike('code', code).maybeSingle().then(function(r) {
+      if (r && r.data && r.data.host_nick) {
+        document.getElementById('inviteModalMsg').textContent = r.data.host_nick + ' 邀请你进行石头剪刀布对战，是否接受？';
+      }
+    }).catch(function() {});
+  }
+}
+
+function acceptInvite() {
+  document.getElementById('inviteModal').style.display = 'none';
+  if (!pendingInviteCode) return;
+  document.getElementById('roomCodeInput').value = pendingInviteCode;
+  joinRoom();
+  pendingInviteCode = null;
+}
+
+function declineInvite() {
+  document.getElementById('inviteModal').style.display = 'none';
+  pendingInviteCode = null;
+  fromInvite = false;
+  switchMode('ai');
 }
 
 // ====================== 联机变量 ======================
@@ -1138,7 +1191,23 @@ async function setupOnlineRoom(code, _isHost) {
 
   document.getElementById('onlineSetup').style.display = 'none';
   document.getElementById('onlineGame').style.display = '';
-  document.getElementById('roomDisplay').textContent = code;
+
+  // 显示/隐藏房间号标题
+  var roomHeader2 = document.querySelector('#onlineGame .room-header');
+  if (fromInvite) {
+    roomHeader2.style.display = 'none';
+  } else {
+    roomHeader2.style.display = '';
+    document.getElementById('roomDisplay').textContent = code;
+    var copyBtn2 = document.getElementById('copyRoomBtn');
+    copyBtn2.onclick = function() {
+      navigator.clipboard.writeText(code).then(function() {
+        copyBtn2.classList.add('copied'); copyBtn2.innerHTML = '<i class="fas fa-check"></i>';
+        KJ.toast('房间号已复制：' + code);
+        setTimeout(function() { copyBtn2.classList.remove('copied'); copyBtn2.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
+      }).catch(function() { KJ.toast('复制失败'); });
+    };
+  }
   document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
   document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
   document.getElementById('onResult').textContent = '';
@@ -1226,16 +1295,6 @@ async function setupOnlineRoom(code, _isHost) {
       // host 方：服务端管理房间过期，不再启动客户端计时器
     }
   });
-
-  // 复制按钮
-  var copyBtn = document.getElementById('copyRoomBtn');
-  copyBtn.onclick = function() {
-    navigator.clipboard.writeText(code).then(function() {
-      copyBtn.classList.add('copied'); copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-      KJ.toast('房间号已复制：' + code);
-      setTimeout(function() { copyBtn.classList.remove('copied'); copyBtn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-    }).catch(function() { KJ.toast('复制失败'); });
-  };
 }
 
 // ====================== 对战逻辑 ======================
@@ -1335,7 +1394,7 @@ function leaveRoom() {
     onlineChannel = null;
   }
   if (dbChannel) { try { sb.removeChannel(dbChannel); } catch(e) {} dbChannel = null; }
-  if (currentRoom) { closeRoomInDB(currentRoom); }
+  if (currentRoom && isHost) { closeRoomInDB(currentRoom); }
   if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
   if (joinTimeoutId) { clearTimeout(joinTimeoutId); joinTimeoutId = null; }
   currentRoom = null;
@@ -1363,5 +1422,18 @@ document.addEventListener('click', function(e) {
 });
 </script>
 <div id="toast" class="toast hidden"></div>
+
+<!-- 邀请确认弹窗 -->
+<div id="inviteModal" class="invite-modal" style="display:none">
+  <div class="invite-modal-card">
+    <div class="invite-modal-icon"><i class="fas fa-hand-back-fist"></i> <i class="fas fa-hand"></i> <i class="fas fa-hand-scissors"></i></div>
+    <h3 id="inviteModalTitle">石头剪刀布对战邀请</h3>
+    <p id="inviteModalMsg" style="color:var(--text2);font-size:14px;margin:8px 0 20px"></p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-outline" onclick="declineInvite()" style="min-width:100px"><i class="fas fa-times"></i> 拒绝</button>
+      <button class="btn btn-primary" onclick="acceptInvite()" style="min-width:100px"><i class="fas fa-check"></i> 接受</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
