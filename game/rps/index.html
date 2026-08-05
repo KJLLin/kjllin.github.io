@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#f3f3f3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -490,11 +490,11 @@ async function createRoomInDB(code, inviteOnly, invitedIds) {
 async function validateRoomInDB(code) {
   if (!sb) return { ok: false, reason: 'network' };
   var { data, error } = await sb.from('rps_rooms')
-    .select('*').eq('code', code).maybeSingle();
+    .select('*').ilike('code', code).maybeSingle();
   if (error || !data) return { ok: false, reason: 'not_found' };
   if (data.status === 'closed') return { ok: false, reason: 'closed' };
   if (new Date(data.expires_at) < new Date()) {
-    await sb.from('rps_rooms').update({ status: 'closed' }).eq('code', code);
+    await sb.from('rps_rooms').update({ status: 'closed' }).ilike('code', code);
     return { ok: false, reason: 'expired' };
   }
   if (data.status === 'playing' && data.joined_by && data.joined_by !== myUserId) {
@@ -507,13 +507,13 @@ async function joinRoomInDB(code) {
   if (!sb || !myUserId) return false;
   var { error } = await sb.from('rps_rooms')
     .update({ joined_by: myUserId, status: 'playing' })
-    .eq('code', code).eq('status', 'waiting');
+    .ilike('code', code).eq('status', 'waiting');
   return !error;
 }
 
 async function closeRoomInDB(code) {
   if (!sb) return;
-  await sb.from('rps_rooms').update({ status: 'closed' }).eq('code', code).eq('host_id', myUserId);
+  await sb.from('rps_rooms').update({ status: 'closed' }).ilike('code', code).eq('host_id', myUserId);
 }
 
 // 监听房间状态变化（服务端关闭通知）
@@ -648,7 +648,7 @@ async function rejoinRoom(code, isInvite) {
     inviteRoomCode = code;
     // 加载受邀列表
     try {
-      var { data } = await sb.from('rps_rooms').select('invited_users').eq('code', code).maybeSingle();
+      var { data } = await sb.from('rps_rooms').select('invited_users').ilike('code', code).maybeSingle();
       if (data && data.invited_users) {
         inviteSentUsers = data.invited_users.map(function(id) { return { id: id, nick: '' }; });
       }
@@ -753,7 +753,7 @@ function genRoomCode() {
 
 // 邀请专用：生成不可猜测的长令牌
 function genInviteToken() {
-  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var tok = '';
   for (var i = 0; i < 12; i++) tok += chars[Math.floor(Math.random() * chars.length)];
   return tok;
@@ -995,7 +995,7 @@ async function sendInviteMsg(userId, nick) {
       updateSentList();
       // 同步到数据库
       var ids = inviteSentUsers.map(function(u) { return u.id; });
-      sb.from('rps_rooms').update({ invited_users: ids }).eq('code', inviteRoomCode).then(function() {}).catch(function() {});
+      sb.from('rps_rooms').update({ invited_users: ids }).ilike('code', inviteRoomCode).then(function() {}).catch(function() {});
     }
     document.getElementById('enterGameBtn').style.display = '';
   } catch(e) { KJ.toast('发送失败'); }
