@@ -445,11 +445,64 @@ else KJ.initNav(null, { homeUrl: '/' });
 var CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
 var PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
 var WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-var ROOM_TIMEOUT = 15 * 60 * 1000; // 15 分钟房间过期
 
 function getResult(a, b) {
   if (a === b) return 'draw';
   return WIN_MAP[a] === b ? 'win' : 'lose';
+}
+
+// ====================== 服务端房间管理 ======================
+async function createRoomInDB(code, inviteOnly, invitedIds) {
+  if (!sb || !myUserId) return false;
+  var { error } = await sb.from('rps_rooms').insert({
+    code: code,
+    host_id: myUserId,
+    host_nick: myNick,
+    invite_only: inviteOnly || false,
+    invited_users: invitedIds || [],
+    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  });
+  return !error;
+}
+
+async function validateRoomInDB(code) {
+  if (!sb) return { ok: false, reason: 'network' };
+  var { data, error } = await sb.from('rps_rooms')
+    .select('*').eq('code', code).maybeSingle();
+  if (error || !data) return { ok: false, reason: 'not_found' };
+  if (data.status === 'closed') return { ok: false, reason: 'closed' };
+  if (new Date(data.expires_at) < new Date()) {
+    await sb.from('rps_rooms').update({ status: 'closed' }).eq('code', code);
+    return { ok: false, reason: 'expired' };
+  }
+  if (data.status === 'playing' && data.joined_by && data.joined_by !== myUserId) {
+    return { ok: false, reason: 'full' };
+  }
+  return { ok: true, room: data };
+}
+
+async function joinRoomInDB(code) {
+  if (!sb || !myUserId) return false;
+  var { error } = await sb.from('rps_rooms')
+    .update({ joined_by: myUserId, status: 'playing' })
+    .eq('code', code).eq('status', 'waiting');
+  return !error;
+}
+
+async function closeRoomInDB(code) {
+  if (!sb) return;
+  await sb.from('rps_rooms').update({ status: 'closed' }).eq('code', code).eq('host_id', myUserId);
+}
+
+// 监听房间状态变化（服务端关闭通知）
+function subscribeRoomChanges(code, onClosed) {
+  if (!sb) return null;
+  return sb.channel('rps-db-' + code)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rps_rooms', filter: 'code=eq.' + code }, function(payload) {
+      if (payload.new && payload.new.status === 'closed') {
+        onClosed();
+      }
+    }).subscribe();
 }
 
 // ====================== 登录门控 ======================
@@ -516,12 +569,12 @@ function checkUrlRoom() {
 // ====================== 联机变量 ======================
 var currentRoom = null;
 var onlineChannel = null;
+var dbChannel = null;           // 服务端房间状态监听
 var myOnlineChoice = null;
 var oppOnlineChoice = null;
 var isHost = false;
 var onScores = { win: 0, draw: 0, lose: 0 };
 var onlineRoundTimer = null;
-var roomExpireTimer = null;
 var joinTimeoutId = null;
 var inviteRoomCode = null;      // 邀请模式下隐藏的房间号
 var inviteSentUsers = [];
@@ -627,13 +680,21 @@ function genInviteToken() {
 
 async function createRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  await setupOnlineRoom(genRoomCode(), true);
+  var code = genRoomCode();
+  if (!(await createRoomInDB(code, false, []))) { KJ.toast('创建房间失败，请重试'); return; }
+  await setupOnlineRoom(code, true);
 }
 
 async function joinRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
   var code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
   if (code.length !== 4 && code.length !== 12) { KJ.toast('请输入4位房间号'); return; }
+  var valid = await validateRoomInDB(code);
+  if (!valid.ok) {
+    KJ.toast(valid.reason === 'expired' ? '房间已过期' : valid.reason === 'closed' ? '房间已关闭' : valid.reason === 'full' ? '房间已满' : '房间不存在或已过期');
+    return;
+  }
+  if (!(await joinRoomInDB(code))) { KJ.toast('加入失败，请重试'); return; }
   await setupOnlineRoom(code, false);
 }
 
@@ -647,6 +708,8 @@ async function createInviteRoom() {
   inviteRoomCode = code;
   inviteSentUsers = [];
 
+  if (!(await createRoomInDB(code, true, []))) { KJ.toast('创建房间失败，请重试'); return; }
+
   document.getElementById('createInviteBtn').style.display = 'none';
   document.getElementById('inviteAfterCreate').style.display = '';
   document.getElementById('sentList').innerHTML = '';
@@ -654,19 +717,10 @@ async function createInviteRoom() {
   document.getElementById('inviteInput').value = '';
   document.getElementById('inviteResults').classList.remove('show');
 
-  // 加载站内信联系人
-  if (!inviteConvLoaded) {
-    loadConversationList();
-    inviteConvLoaded = true;
-  } else {
-    resetConvListSent();
-  }
+  if (!inviteConvLoaded) { loadConversationList(); inviteConvLoaded = true; }
+  else { resetConvListSent(); }
 
-  // 订阅房间 channel（后台等待）
   await openHostChannel(code);
-
-  // 启动过期倒计时
-  startInviteTimeout(code);
 }
 
 async function openHostChannel(code) {
@@ -714,46 +768,6 @@ async function openHostChannel(code) {
       } catch(e) {}
     }
   });
-}
-
-function startInviteTimeout(code) {
-  if (roomExpireTimer) clearTimeout(roomExpireTimer);
-  var expireAt = Date.now() + ROOM_TIMEOUT;
-  updateInviteTimeoutDisplay(expireAt);
-
-  roomExpireTimer = setInterval(function() {
-    var remaining = expireAt - Date.now();
-    if (remaining <= 0) {
-      clearInterval(roomExpireTimer);
-      roomExpireTimer = null;
-      document.getElementById('inviteTimeout').textContent = '房间已过期';
-      document.getElementById('inviteTimeout').className = 'timeout-bar expiring';
-      // 关闭 channel
-      if (onlineChannel) {
-        try { sb.removeChannel(onlineChannel); } catch(e) {}
-        onlineChannel = null;
-      }
-      currentRoom = null;
-      inviteRoomCode = null;
-      // 禁用邀请列表
-      document.querySelectorAll('.conv-item-inline').forEach(function(el) { el.classList.add('sent'); });
-      document.getElementById('createInviteBtn').style.display = '';
-      document.getElementById('inviteAfterCreate').style.display = 'none';
-      KJ.toast('房间已过期，请重新创建');
-    } else {
-      updateInviteTimeoutDisplay(expireAt);
-    }
-  }, 10000);
-}
-
-function updateInviteTimeoutDisplay(expireAt) {
-  var remaining = Math.max(0, expireAt - Date.now());
-  var min = Math.floor(remaining / 60000);
-  var sec = Math.floor((remaining % 60000) / 1000);
-  var el = document.getElementById('inviteTimeout');
-  el.textContent = '房间有效期剩余 ' + min + ' 分 ' + sec + ' 秒';
-  if (remaining < 60000) el.className = 'timeout-bar expiring';
-  else el.className = 'timeout-bar';
 }
 
 // ====================== 站内信联系人列表 ======================
@@ -912,7 +926,6 @@ function updateSentList() {
 
 function enterGameFromInvite() {
   if (!inviteRoomCode) { KJ.toast('房间已过期'); return; }
-  if (roomExpireTimer) { clearInterval(roomExpireTimer); roomExpireTimer = null; }
   fromInvite = true;
   enterGameRoom(inviteRoomCode, null);
 }
@@ -963,7 +976,6 @@ function enterGameRoom(code, oppName) {
     document.getElementById('onOppLabel').textContent = oppName;
     document.getElementById('onOppName').textContent = oppName;
     setStatus('ready', '对手已就绪，请出拳！');
-    resetRoomTimer();
     enableChoices();
   } else {
     document.getElementById('onOppLabel').textContent = '对手';
@@ -971,21 +983,8 @@ function enterGameRoom(code, oppName) {
     setStatus('waiting', '等待对方接受邀请...');
   }
 
-  // 房间过期倒计时
-  if (roomExpireTimer) clearTimeout(roomExpireTimer);
-  var expireAt = Date.now() + ROOM_TIMEOUT;
-  document.getElementById('gameTimeout').style.display = '';
-  updateGameTimeout(expireAt);
-  roomExpireTimer = setInterval(function() {
-    var remaining = expireAt - Date.now();
-    if (remaining <= 0) {
-      clearInterval(roomExpireTimer); roomExpireTimer = null;
-      document.getElementById('gameTimeout').textContent = '房间已过期';
-      document.getElementById('gameTimeout').className = 'timeout-bar expiring';
-    } else {
-      updateGameTimeout(expireAt);
-    }
-  }, 10000);
+  // 房间过期倒计时 - 由服务端管理
+  document.getElementById('gameTimeout').style.display = 'none';
 
   // 设置 channel 事件监听（如果是从 invite 模式进入，channel 已存在且已订阅）
   if (onlineChannel && currentRoom === code) {
@@ -1013,7 +1012,6 @@ function enterGameRoom(code, oppName) {
       document.getElementById('onOppLabel').textContent = name;
       document.getElementById('onOppName').textContent = name;
       setStatus('ready', '对手已就绪，请出拳！');
-      resetRoomTimer();
       enableChoices();
     });
     onlineChannel.on('broadcast', { event: 'leave' }, function() {
@@ -1034,30 +1032,13 @@ function enterGameRoom(code, oppName) {
   }
 }
 
-function updateGameTimeout(expireAt) {
-  var remaining = Math.max(0, expireAt - Date.now());
-  var min = Math.floor(remaining / 60000);
-  var sec = Math.floor((remaining % 60000) / 1000);
-  var el = document.getElementById('gameTimeout');
-  el.textContent = '房间剩余 ' + min + ' 分 ' + sec + ' 秒';
-  if (remaining < 60000) el.className = 'timeout-bar expiring';
-  else el.className = 'timeout-bar';
-}
-
-// 对手加入时重置倒计时
-function resetRoomTimer() {
-  if (roomExpireTimer) clearInterval(roomExpireTimer);
+// ====================== 服务端房间关闭处理 ======================
+function onRoomClosed() {
+  setStatus('expired', '房间已过期或关闭');
+  document.getElementById('gameTimeout').textContent = '房间已过期';
   document.getElementById('gameTimeout').style.display = '';
-  var expireAt = Date.now() + ROOM_TIMEOUT;
-  updateGameTimeout(expireAt);
-  roomExpireTimer = setInterval(function() {
-    var remaining = expireAt - Date.now();
-    if (remaining <= 0) {
-      clearInterval(roomExpireTimer); roomExpireTimer = null;
-      document.getElementById('gameTimeout').textContent = '房间已过期';
-      document.getElementById('gameTimeout').className = 'timeout-bar expiring';
-    } else { updateGameTimeout(expireAt); }
-  }, 10000);
+  document.getElementById('gameTimeout').className = 'timeout-bar expiring';
+  KJ.toast('房间已过期');
 }
 
 // ====================== 标准房间（房间号方式） ======================
@@ -1069,7 +1050,6 @@ async function setupOnlineRoom(code, _isHost) {
   oppOnlineChoice = null;
   onScores = { win: 0, draw: 0, lose: 0 };
   if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
-  if (roomExpireTimer) { clearTimeout(roomExpireTimer); roomExpireTimer = null; }
   if (joinTimeoutId) { clearTimeout(joinTimeoutId); joinTimeoutId = null; }
 
   document.getElementById('onlineSetup').style.display = 'none';
@@ -1089,10 +1069,11 @@ async function setupOnlineRoom(code, _isHost) {
   enableChoices();
 
   // 关闭旧 channel
-  if (onlineChannel) {
-    try { sb.removeChannel(onlineChannel); } catch(e) {}
-    onlineChannel = null;
-  }
+  if (onlineChannel) { try { sb.removeChannel(onlineChannel); } catch(e) {} onlineChannel = null; }
+  if (dbChannel) { try { sb.removeChannel(dbChannel); } catch(e) {} dbChannel = null; }
+
+  // 订阅服务端房间状态变化
+  dbChannel = subscribeRoomChanges(code, onRoomClosed);
 
   onlineChannel = sb.channel('rps-' + code, { config: { broadcast: { self: false } } });
 
@@ -1110,7 +1091,6 @@ async function setupOnlineRoom(code, _isHost) {
     document.getElementById('onOppLabel').textContent = oppName;
     document.getElementById('onOppName').textContent = oppName;
     setStatus('ready', '对手已就绪，请出拳！');
-    resetRoomTimer();
     enableChoices();
   });
 
@@ -1159,20 +1139,8 @@ async function setupOnlineRoom(code, _isHost) {
         }, 10000);
       }
 
-      // host 方：启动过期倒计时
-      if (isHost) {
-        document.getElementById('gameTimeout').style.display = '';
-        var expireAt = Date.now() + ROOM_TIMEOUT;
-        updateGameTimeout(expireAt);
-        roomExpireTimer = setInterval(function() {
-          var remaining = expireAt - Date.now();
-          if (remaining <= 0) {
-            clearInterval(roomExpireTimer); roomExpireTimer = null;
-            document.getElementById('gameTimeout').textContent = '房间已过期';
-            document.getElementById('gameTimeout').className = 'timeout-bar expiring';
-          } else { updateGameTimeout(expireAt); }
-        }, 10000);
-      }
+      // host 方：服务端管理房间过期，不再启动客户端计时器
+    }
     }
   });
 
@@ -1283,8 +1251,9 @@ function leaveRoom() {
     try { sb.removeChannel(onlineChannel); } catch(e) {}
     onlineChannel = null;
   }
+  if (dbChannel) { try { sb.removeChannel(dbChannel); } catch(e) {} dbChannel = null; }
+  if (currentRoom) { closeRoomInDB(currentRoom); }
   if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
-  if (roomExpireTimer) { clearTimeout(roomExpireTimer); roomExpireTimer = null; }
   if (joinTimeoutId) { clearTimeout(joinTimeoutId); joinTimeoutId = null; }
   currentRoom = null;
   inviteRoomCode = null;
