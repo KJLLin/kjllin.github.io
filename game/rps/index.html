@@ -632,7 +632,7 @@ async function createRoom() {
 async function joinRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
   var code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-  if (code.length !== 4) { KJ.toast('请输入4位房间号'); return; }
+  if (code.length !== 4 && code.length !== 12) { KJ.toast('请输入4位房间号'); return; }
   await setupOnlineRoom(code, false);
 }
 
