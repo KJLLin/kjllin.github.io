@@ -442,8 +442,9 @@
         <button class="choice-btn" id="onScissors" onclick="playOnline('scissors')"><i class="fas fa-hand-scissors"></i></button>
       </div>
 
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" id="rematchBtn" onclick="resetRound()" style="display:none"><i class="fas fa-redo"></i> 再来一局</button>
+        <button class="btn btn-outline btn-sm" id="closeRoomBtn" onclick="closeCurrentRoom()" style="display:none"><i class="fas fa-door-closed"></i> 关闭房间</button>
         <button class="btn btn-danger btn-sm" onclick="leaveRoom()"><i class="fas fa-sign-out-alt"></i> 离开房间</button>
       </div>
 
@@ -532,13 +533,16 @@ async function closeRoomInDB(code) {
   await sb.from('rps_rooms').update({ status: 'closed' }).ilike('code', code).eq('host_id', myUserId);
 }
 
-// 监听房间状态变化（服务端关闭通知）
-function subscribeRoomChanges(code, onClosed) {
+// 监听房间状态变化（服务端关闭通知 + 双方出拳判断）
+function subscribeRoomChanges(code, onClosed, onBothMoved) {
   if (!sb) return null;
   return sb.channel('rps-db-' + code)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rps_rooms', filter: 'code=eq.' + code }, function(payload) {
-      if (payload.new && payload.new.status === 'closed') {
-        onClosed();
+      if (!payload.new) return;
+      if (payload.new.status === 'closed') { onClosed(); return; }
+      // 双方都已出拳 → 服务端触发揭晓
+      if (payload.new.host_move && payload.new.guest_move && payload.new.round_status === 'waiting') {
+        if (onBothMoved) onBothMoved(payload.new.host_move, payload.new.guest_move);
       }
     }).subscribe();
 }
@@ -1107,6 +1111,7 @@ function enterGameRoom(code, oppName) {
   document.getElementById('onMyName').textContent = myNick;
   document.getElementById('oppReadyHint').style.display = 'none';
   document.getElementById('rematchBtn').style.display = 'none';
+  document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
   updateOnlineScores();
 
   if (oppName) {
@@ -1125,13 +1130,7 @@ function enterGameRoom(code, oppName) {
 
   // 设置 channel 事件监听（如果是从 invite 模式进入，channel 已存在且已订阅）
   if (onlineChannel && currentRoom === code) {
-    // 重绑事件
-    onlineChannel.on('broadcast', { event: 'choice' }, function(payload) {
-      oppOnlineChoice = payload.payload.choice;
-      document.getElementById('oppReadyHint').style.display = '';
-      setStatus('locked', '对方已出拳');
-      if (myOnlineChoice) revealOnlineResult();
-    });
+    // 重绑事件（choice 不再通过广播，改用服务端 DB）
     onlineChannel.on('broadcast', { event: 'join' }, function(payload) {
       // ★ 邀请模式 Host：校验加入者身份
       if (fromInvite) {
@@ -1160,6 +1159,7 @@ function enterGameRoom(code, oppName) {
       document.getElementById('onResult').textContent = '';
       document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
       document.getElementById('rematchBtn').style.display = 'none';
+  document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
       enableChoices();
     });
     onlineChannel.on('broadcast', { event: 'reset' }, function() { resetRoundState(); });
@@ -1216,6 +1216,7 @@ async function setupOnlineRoom(code, _isHost) {
   document.getElementById('onMyName').textContent = myNick;
   document.getElementById('oppReadyHint').style.display = 'none';
   document.getElementById('rematchBtn').style.display = 'none';
+  document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
   document.getElementById('gameTimeout').style.display = 'none';
   updateOnlineScores();
   setStatus('waiting', '等待对手加入');
@@ -1226,16 +1227,11 @@ async function setupOnlineRoom(code, _isHost) {
   if (dbChannel) { try { sb.removeChannel(dbChannel); } catch(e) {} dbChannel = null; }
 
   // 订阅服务端房间状态变化
-  dbChannel = subscribeRoomChanges(code, onRoomClosed);
+  dbChannel = subscribeRoomChanges(code, onRoomClosed, onBothMoved);
 
   onlineChannel = sb.channel('rps-' + code, { config: { broadcast: { self: false } } });
 
-  onlineChannel.on('broadcast', { event: 'choice' }, function(payload) {
-    oppOnlineChoice = payload.payload.choice;
-    document.getElementById('oppReadyHint').style.display = '';
-    setStatus('locked', '对方已出拳');
-    if (myOnlineChoice) revealOnlineResult();
-  });
+  // choice 已改用服务端 DB，不再通过广播
 
   onlineChannel.on('broadcast', { event: 'join' }, function(payload) {
     // 收到 join → 房间存在
@@ -1257,6 +1253,7 @@ async function setupOnlineRoom(code, _isHost) {
     document.getElementById('onResult').textContent = '';
     document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
     document.getElementById('rematchBtn').style.display = 'none';
+  document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
     if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
     enableChoices();
   });
@@ -1299,29 +1296,18 @@ async function setupOnlineRoom(code, _isHost) {
 
 // ====================== 对战逻辑 ======================
 
-function playOnline(choice) {
-  if (!onlineChannel || myOnlineChoice) return;
-  myOnlineChoice = choice;
-  document.getElementById('onMyEmoji').innerHTML = CHOICE_ICON[choice];
-  document.getElementById('onMyEmoji').classList.add('pop-in');
-  setTimeout(function() { document.getElementById('onMyEmoji').classList.remove('pop-in'); }, 350);
-  document.querySelectorAll('#onlineGame .choice-btn').forEach(function(b) { b.classList.add('disabled'); });
-  onlineChannel.send({ type: 'broadcast', event: 'choice', payload: { choice: choice } });
-  if (oppOnlineChoice) {
-    setTimeout(function() { revealOnlineResult(); }, 300);
-  } else {
-    setStatus('locked', '等待对方出拳...');
-  }
-}
+// ====================== 服务端胜负判断 ======================
+function onBothMoved(hostMove, guestMove) {
+  var myMove = isHost ? hostMove : guestMove;
+  var oppMove = isHost ? guestMove : hostMove;
+  if (!myMove || !oppMove) return;
 
-function revealOnlineResult() {
-  if (!myOnlineChoice || !oppOnlineChoice) return;
-  document.getElementById('oppReadyHint').style.display = 'none';
-  document.getElementById('onOppEmoji').innerHTML = CHOICE_ICON[oppOnlineChoice];
+  // 揭晓对方选择（从服务端获取，无法作弊）
+  document.getElementById('onOppEmoji').innerHTML = CHOICE_ICON[oppMove];
   document.getElementById('onOppEmoji').classList.add('pop-in');
   setTimeout(function() { document.getElementById('onOppEmoji').classList.remove('pop-in'); }, 350);
 
-  var result = getResult(myOnlineChoice, oppOnlineChoice);
+  var result = getResult(myMove, oppMove);
   var el = document.getElementById('onResult');
   if (result === 'win') {
     el.innerHTML = '<span class="win"><i class="fas fa-trophy"></i> 你赢了！</span>';
@@ -1353,6 +1339,27 @@ function revealOnlineResult() {
   }, 2500);
 }
 
+function playOnline(choice) {
+  if (!onlineChannel || myOnlineChoice || !currentRoom) return;
+  myOnlineChoice = choice;
+
+  // 显示自己的选择
+  document.getElementById('onMyEmoji').innerHTML = CHOICE_ICON[choice];
+  document.getElementById('onMyEmoji').classList.add('pop-in');
+  setTimeout(function() { document.getElementById('onMyEmoji').classList.remove('pop-in'); }, 350);
+
+  // 禁用按钮
+  document.querySelectorAll('#onlineGame .choice-btn').forEach(function(b) { b.classList.add('disabled'); });
+
+  setStatus('locked', '等待对方出拳...');
+
+  // ★ 存储到服务端，不直接广播给对方（防止作弊）
+  var moveField = isHost ? 'host_move' : 'guest_move';
+  sb.from('rps_rooms').update(JSON.parse('{"' + moveField + '":"' + choice + '"}')).ilike('code', currentRoom).then(function(r) {
+    if (r.error) { KJ.toast('出拳失败，请重试'); enableChoices(); }
+  }).catch(function() { KJ.toast('出拳失败'); enableChoices(); });
+}
+
 function resetRound() {
   if (onlineChannel) onlineChannel.send({ type: 'broadcast', event: 'reset', payload: {} });
   resetRoundState();
@@ -1366,8 +1373,13 @@ function resetRoundState() {
   document.getElementById('onResult').textContent = '';
   document.getElementById('oppReadyHint').style.display = 'none';
   document.getElementById('rematchBtn').style.display = 'none';
+  document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
   setStatus('ready', '新回合，请出拳！');
   enableChoices();
+  // 清除服务端出拳记录
+  if (currentRoom) {
+    sb.from('rps_rooms').update({ host_move: null, guest_move: null }).ilike('code', currentRoom).then(function(){}).catch(function(){});
+  }
 }
 
 function updateOnlineScores() {
@@ -1387,6 +1399,15 @@ function enableChoices() {
   myOnlineChoice = null;
 }
 
+function closeCurrentRoom() {
+  if (currentRoom && isHost) {
+    if (confirm('确定关闭此房间吗？房间关闭后对方将无法继续游戏。')) {
+      closeRoomInDB(currentRoom);
+      leaveRoom();
+    }
+  }
+}
+
 function leaveRoom() {
   if (onlineChannel) {
     try { onlineChannel.send({ type: 'broadcast', event: 'leave', payload: {} }); } catch(e) {}
@@ -1394,7 +1415,6 @@ function leaveRoom() {
     onlineChannel = null;
   }
   if (dbChannel) { try { sb.removeChannel(dbChannel); } catch(e) {} dbChannel = null; }
-  if (currentRoom && isHost) { closeRoomInDB(currentRoom); }
   if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
   if (joinTimeoutId) { clearTimeout(joinTimeoutId); joinTimeoutId = null; }
   currentRoom = null;
