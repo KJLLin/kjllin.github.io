@@ -445,7 +445,7 @@ else KJ.initNav(null, { homeUrl: '/' });
 var CHOICE_ICON = { rock: '<i class="fas fa-hand-back-fist"></i>', paper: '<i class="fas fa-hand"></i>', scissors: '<i class="fas fa-hand-scissors"></i>' };
 var PLACEHOLDER_ICON = '<i class="fas fa-circle-question"></i>';
 var WIN_MAP = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-var ROOM_TIMEOUT = 10 * 60 * 1000; // 10 分钟房间过期
+var ROOM_TIMEOUT = 15 * 60 * 1000; // 15 分钟房间过期
 
 function getResult(a, b) {
   if (a === b) return 'draw';
@@ -497,6 +497,7 @@ function checkUrlRoom() {
 
   // 邀请链接（专属参数 ?invite=TOKEN，无法通过删除参数降级为 room 加入）
   if (invite && invite.length >= 8) {
+    fromInvite = true;
     switchMode('online');
     switchConnect('code');
     document.getElementById('roomCodeInput').value = invite.toUpperCase();
@@ -962,6 +963,7 @@ function enterGameRoom(code, oppName) {
     document.getElementById('onOppLabel').textContent = oppName;
     document.getElementById('onOppName').textContent = oppName;
     setStatus('ready', '对手已就绪，请出拳！');
+    resetRoomTimer();
     enableChoices();
   } else {
     document.getElementById('onOppLabel').textContent = '对手';
@@ -1011,6 +1013,7 @@ function enterGameRoom(code, oppName) {
       document.getElementById('onOppLabel').textContent = name;
       document.getElementById('onOppName').textContent = name;
       setStatus('ready', '对手已就绪，请出拳！');
+      resetRoomTimer();
       enableChoices();
     });
     onlineChannel.on('broadcast', { event: 'leave' }, function() {
@@ -1039,6 +1042,22 @@ function updateGameTimeout(expireAt) {
   el.textContent = '房间剩余 ' + min + ' 分 ' + sec + ' 秒';
   if (remaining < 60000) el.className = 'timeout-bar expiring';
   else el.className = 'timeout-bar';
+}
+
+// 对手加入时重置倒计时
+function resetRoomTimer() {
+  if (roomExpireTimer) clearInterval(roomExpireTimer);
+  document.getElementById('gameTimeout').style.display = '';
+  var expireAt = Date.now() + ROOM_TIMEOUT;
+  updateGameTimeout(expireAt);
+  roomExpireTimer = setInterval(function() {
+    var remaining = expireAt - Date.now();
+    if (remaining <= 0) {
+      clearInterval(roomExpireTimer); roomExpireTimer = null;
+      document.getElementById('gameTimeout').textContent = '房间已过期';
+      document.getElementById('gameTimeout').className = 'timeout-bar expiring';
+    } else { updateGameTimeout(expireAt); }
+  }, 10000);
 }
 
 // ====================== 标准房间（房间号方式） ======================
@@ -1091,6 +1110,7 @@ async function setupOnlineRoom(code, _isHost) {
     document.getElementById('onOppLabel').textContent = oppName;
     document.getElementById('onOppName').textContent = oppName;
     setStatus('ready', '对手已就绪，请出拳！');
+    resetRoomTimer();
     enableChoices();
   });
 
