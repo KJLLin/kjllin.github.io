@@ -219,6 +219,23 @@
         }
         .timeout-bar.expiring { color: var(--danger); }
 
+        /* 活跃房间卡片 */
+        .active-room-card {
+            display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+            border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px;
+            cursor: pointer; transition: all .15s; background: var(--bg-glass);
+        }
+        .active-room-card:hover { border-color: var(--accent); background: var(--accent-glow-weak); }
+        .active-room-card .room-type-icon { font-size: 18px; color: var(--accent); width: 32px; text-align: center; flex-shrink: 0; }
+        .active-room-card .room-info { flex: 1; min-width: 0; }
+        .active-room-card .room-info-title { font-size: 13px; font-weight: 600; color: var(--text); }
+        .active-room-card .room-info-detail { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .active-room-card .room-status-badge { font-size: 11px; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+        .room-status-badge.waiting { background: rgba(255,149,0,0.15); color: var(--warning); }
+        .room-status-badge.playing { background: rgba(52,199,89,0.15); color: var(--success); }
+        .my-rooms-header { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .my-rooms-header .count { font-size: 11px; font-weight: 400; color: var(--text3); }
+
         .divider-text {
             display: flex; align-items: center; gap: 10px; color: var(--text3);
             font-size: 13px; margin: 4px 0; width: 200px;
@@ -310,6 +327,9 @@
   <div id="onlineMode" style="display:none">
     <div class="card" id="onlineSetup">
       <h3 style="margin-top:0"><i class="fas fa-globe"></i> 双人联机对战</h3>
+
+      <!-- 你创建的活跃房间 -->
+      <div id="myActiveRooms" style="display:none;margin-bottom:16px;text-align:left"></div>
 
       <div class="connect-tabs">
         <button class="connect-tab active" id="tabCode" onclick="switchConnect('code')"><i class="fas fa-key"></i> 房间号</button>
@@ -532,6 +552,7 @@ if (sb) {
         || (r.data.session.user.email ? r.data.session.user.email.split('@')[0] : '玩家');
       showMain();
       checkUrlRoom();
+      loadMyActiveRooms();
     } else {
       redirectLogin();
     }
@@ -582,6 +603,63 @@ var inviteRoomCode = null;      // 邀请模式下隐藏的房间号
 var inviteSentUsers = [];
 var fromInvite = false;         // 是否来自邀请模式（隐藏房间号）
 
+// ====================== 加载活跃房间 ======================
+async function loadMyActiveRooms() {
+  var el = document.getElementById('myActiveRooms');
+  if (!sb || !myUserId) { el.style.display = 'none'; return; }
+  try {
+    var { data, error } = await sb.from('rps_rooms')
+      .select('*').eq('host_id', myUserId)
+      .in('status', ['waiting', 'playing'])
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if (error || !data || !data.length) { el.style.display = 'none'; return; }
+
+    var html = '<div class="my-rooms-header"><i class="fas fa-door-open"></i> 你的房间 <span class="count">(' + data.length + ')</span></div>';
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      var typeIcon = r.invite_only ? '<i class="fas fa-paper-plane"></i>' : '<i class="fas fa-key"></i>';
+      var typeLabel = r.invite_only ? '邀请房间' : '房间号';
+      var statusClass = r.status === 'playing' ? 'playing' : 'waiting';
+      var statusLabel = r.status === 'playing' ? '对战中' : '等待中';
+      var codeDisplay = r.invite_only ? '仅受邀可加入' : r.code;
+      // 计算剩余时间
+      var remaining = Math.max(0, new Date(r.expires_at) - new Date());
+      var rm = Math.floor(remaining / 60000);
+      var timeStr = rm > 0 ? rm + ' 分钟后过期' : '即将过期';
+      html += '<div class="active-room-card" onclick="rejoinRoom(\'' + r.code + '\', ' + r.invite_only + ')" data-code="' + r.code + '">'
+        + '<div class="room-type-icon">' + typeIcon + '</div>'
+        + '<div class="room-info">'
+        + '<div class="room-info-title">' + typeLabel + ' ' + KJ.escapeHtml(codeDisplay) + '</div>'
+        + '<div class="room-info-detail">' + timeStr + '</div>'
+        + '</div>'
+        + '<div class="room-status-badge ' + statusClass + '">' + statusLabel + '</div>'
+        + '</div>';
+    }
+    el.innerHTML = html;
+    el.style.display = '';
+  } catch(e) { el.style.display = 'none'; }
+}
+
+async function rejoinRoom(code, isInvite) {
+  if (!sb) { KJ.toast('网络错误'); return; }
+  fromInvite = isInvite;
+  if (isInvite) {
+    inviteRoomCode = code;
+    // 加载受邀列表
+    try {
+      var { data } = await sb.from('rps_rooms').select('invited_users').eq('code', code).maybeSingle();
+      if (data && data.invited_users) {
+        inviteSentUsers = data.invited_users.map(function(id) { return { id: id, nick: '' }; });
+      }
+    } catch(e) {}
+    await openHostChannel(code);
+    enterGameRoom(code, null);
+  } else {
+    await setupOnlineRoom(code, true);
+  }
+}
+
 // ====================== 联机方式切换 ======================
 var currentConnect = 'code';
 function switchConnect(method) {
@@ -601,6 +679,7 @@ function switchMode(mode) {
   document.getElementById('aiMode').style.display = mode === 'ai' ? '' : 'none';
   document.getElementById('onlineMode').style.display = mode === 'online' ? '' : 'none';
   if (mode === 'online' && currentRoom) leaveRoom();
+  if (mode === 'online') loadMyActiveRooms();
 }
 
 // ====================== AI 模式 ======================
@@ -1272,6 +1351,7 @@ function leaveRoom() {
   document.getElementById('onlineSetup').style.display = '';
   document.getElementById('onlineGame').style.display = 'none';
   document.getElementById('gameTimeout').style.display = 'none';
+  loadMyActiveRooms();
   inviteConvLoaded = false;
 }
 
