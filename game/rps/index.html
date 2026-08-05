@@ -454,6 +454,8 @@ function getResult(a, b) {
 // ====================== 服务端房间管理 ======================
 async function createRoomInDB(code, inviteOnly, invitedIds) {
   if (!sb || !myUserId) return false;
+  // 顺手清理旧房间（懒清理，零额外开销）
+  sb.rpc('clean_expired_rps_rooms').then(function(){}).catch(function(){});
   var { error } = await sb.from('rps_rooms').insert({
     code: code,
     host_id: myUserId,
