@@ -912,6 +912,9 @@ async function sendInviteMsg(userId, nick) {
     if (inviteSentUsers.indexOf(userId) === -1) {
       inviteSentUsers.push({ id: userId, nick: nick });
       updateSentList();
+      // 同步到数据库
+      var ids = inviteSentUsers.map(function(u) { return u.id; });
+      sb.from('rps_rooms').update({ invited_users: ids }).eq('code', inviteRoomCode).then(function() {}).catch(function() {});
     }
     document.getElementById('enterGameBtn').style.display = '';
   } catch(e) { KJ.toast('发送失败'); }
