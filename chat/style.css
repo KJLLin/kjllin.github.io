@@ -394,6 +394,18 @@ input, textarea, button { font-family: inherit; }
   border-bottom-left-radius: 6px;
 }
 
+/* 消息中的链接 */
+.msg-me .msg-bubble a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.msg-them .msg-bubble a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* 消息时间 */
 .msg-time {
   font-size: 11px; color: var(--color-text-tertiary);
