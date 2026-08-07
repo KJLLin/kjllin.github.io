@@ -45,7 +45,7 @@ const U = {
   },
   // 将文本中的 URL 转为可点击链接（在 escape 之后调用）
   linkify(text) {
-    return text.replace(/(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g, '<a href="$1" target="_blank" rel="noopener" style="word-break:break-all">$1</a>');
+    return text.replace(/(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="word-break:break-all">$1</a>');
   },
 };
 
