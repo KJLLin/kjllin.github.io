@@ -304,20 +304,11 @@
 
   <script>
     const $=s=>document.querySelector(s);
-    const SUPABASE_URL='https://vzqspcuxnwpakofwumat.supabase.co';
-    const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
 
     let sb=KJ.createSupabase();
 
-    // 安全校验：防止开放重定向
-    function safeRedirect(raw){
-      const def='/';
-      if(!raw)return def;
-      try{const u=new URL(raw,location.origin);if(u.origin===location.origin&&!raw.startsWith('//'))return raw}catch(e){}
-      if(raw.startsWith('/')&&!raw.startsWith('//'))return raw;
-      return def;
-    }
-    const redirect=safeRedirect(new URLSearchParams(location.search).get('redirect'));
+    // 安全重定向校验（使用 common.js 统一实现）
+    const redirect=KJ.safeRedirect(new URLSearchParams(location.search).get('redirect'));
 
     function toast(msg){
       const e=document.querySelector('.toast');if(e)e.remove();
