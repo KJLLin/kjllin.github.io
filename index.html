@@ -227,11 +227,18 @@
 
     /* ── 页脚 ── */
     .footer {
-      text-align: center; padding: 40px 20px; font-size: 13px;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      flex-wrap: wrap;
+      padding: 40px 20px; font-size: 13px;
       color: var(--color-text-tertiary);
       border-top: 1px solid var(--color-border);
       margin-top: 24px;
     }
+    .footer a {
+      color: var(--color-accent); text-decoration: none; font-weight: 500;
+    }
+    .footer a:hover { text-decoration: underline; }
+    .footer .footer-sep { opacity: 0.4; }
 
     /* ── 用户选择限制 ── */
     body * { -webkit-user-select: none; user-select: none; }
@@ -292,7 +299,6 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/docs/" class="menu-item"><i class="fas fa-book"></i> 文档</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
@@ -305,7 +311,6 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/docs/" class="menu-item"><i class="fas fa-book"></i> 文档</a>
       <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
     </div>
   </header>
@@ -351,7 +356,7 @@
       </div>
     </section>
 
-    <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
+    <footer class="footer"><span>© 2026 KJLLin · All Rights Reserved</span> <span class="footer-sep">|</span> <a href="/docs/"><i class="fas fa-book"></i> 帮助文档</a></footer>
   </div>
 
   <button id="backTop" aria-label="返回顶部">↑</button>
