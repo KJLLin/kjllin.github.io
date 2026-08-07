@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f3f3">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <title>帮助文档 · KJLLin</title>
+  <style>
+    :root {
+      --bg: var(--color-bg, #f5f5f7);
+      --bg-glass: var(--color-bg-glass, rgba(255,255,255,0.72));
+      --border: var(--color-border, rgba(0,0,0,0.06));
+      --text: var(--color-text-primary, #1d1d1f);
+      --text2: var(--color-text-secondary, #6e6e73);
+      --text3: var(--color-text-tertiary, #86868b);
+      --accent: var(--color-accent, #0071e3);
+      --spring: cubic-bezier(0.34,1.56,0.64,1);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: "SF Pro Display","PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+      background: var(--bg); color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 布局 */
+    .docs-layout {
+      display: flex; min-height: 100vh; padding-top: 64px;
+      max-width: 1280px; margin: 0 auto;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 260px; flex-shrink: 0; padding: 24px 16px 48px;
+      border-right: 1px solid var(--border);
+      position: sticky; top: 64px; height: calc(100vh - 64px);
+      overflow-y: auto; background: var(--bg);
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb, rgba(0,0,0,0.15)); border-radius: 2px; }
+
+    .sidebar-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      color: var(--text3); letter-spacing: 0.5px;
+      margin: 20px 0 8px 12px;
+    }
+    .sidebar-title:first-child { margin-top: 0; }
+
+    .sidebar-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 14px; color: var(--text2); cursor: pointer;
+      transition: all .15s; text-decoration: none;
+      margin-bottom: 1px;
+    }
+    .sidebar-item:hover { background: var(--accent-glow-weak, rgba(0,113,227,0.06)); color: var(--text); }
+    .sidebar-item.active { background: var(--accent-glow-weak, rgba(0,113,227,0.1)); color: var(--accent); font-weight: 600; }
+    .sidebar-item i { width: 18px; text-align: center; font-size: 13px; opacity: 0.7; }
+
+    .sidebar-search {
+      margin-bottom: 16px; position: relative;
+    }
+    .sidebar-search input {
+      width: 100%; padding: 8px 12px 8px 32px; border-radius: 8px;
+      border: 1px solid var(--border); font-size: 13px;
+      background: var(--bg-glass); color: var(--text); outline: none;
+    }
+    .sidebar-search i {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text3); font-size: 13px;
+    }
+
+    /* 内容区 */
+    .content {
+      flex: 1; padding: 32px 48px 80px; min-width: 0; max-width: 800px;
+    }
+    .content h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+    .content h2 {
+      font-size: 22px; font-weight: 600; margin: 32px 0 12px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .content h3 { font-size: 17px; font-weight: 600; margin: 24px 0 8px; }
+    .content p { font-size: 15px; line-height: 1.7; color: var(--text2); margin: 10px 0; }
+    .content ul, .content ol { margin: 10px 0; padding-left: 20px; color: var(--text2); font-size: 15px; line-height: 1.7; }
+    .content li { margin: 4px 0; }
+    .content a { color: var(--accent); text-decoration: none; }
+    .content a:hover { text-decoration: underline; }
+
+    .content .tip {
+      background: rgba(0,113,227,0.06); border: 1px solid rgba(0,113,227,0.15);
+      border-radius: 10px; padding: 14px 18px; margin: 16px 0; font-size: 14px;
+      color: var(--text2); display: flex; gap: 10px; align-items: flex-start;
+    }
+    .content .tip i { color: var(--accent); font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+    .content .warn {
+      background: rgba(255,149,0,0.06); border: 1px solid rgba(255,149,0,0.2);
+      border-radius: 10px; padding: 14px 18px; margin: 16px 0; font-size: 14px;
+      color: var(--text2); display: flex; gap: 10px; align-items: flex-start;
+    }
+    .content .warn i { color: #ff9500; font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+
+    .content code {
+      background: var(--accent-glow-weak, rgba(0,113,227,0.08));
+      padding: 2px 6px; border-radius: 4px; font-size: 13px;
+      font-family: "SF Mono","Consolas","Cascadia Code",monospace;
+      color: var(--accent);
+    }
+    .content pre {
+      background: var(--color-bg-glass-solid, rgba(0,0,0,0.04));
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 20px; overflow-x: auto; margin: 12px 0;
+      font-size: 13px; line-height: 1.6;
+    }
+
+    .content .step {
+      display: flex; gap: 12px; margin: 12px 0; align-items: flex-start;
+    }
+    .content .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: #fff; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .content .step-text { font-size: 15px; color: var(--text2); line-height: 1.6; padding-top: 2px; }
+
+    .content .card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px; margin: 16px 0;
+    }
+    .content .feature-card {
+      background: var(--bg-glass); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 20px; cursor: pointer; transition: all .2s; text-decoration: none; color: inherit;
+    }
+    .feature-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06); border-color: var(--accent); }
+    .feature-card i { font-size: 24px; color: var(--accent); margin-bottom: 10px; }
+    .feature-card h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .feature-card p { font-size: 12px; color: var(--text3); margin: 0; }
+
+    .content .empty-state { text-align: center; padding: 40px; color: var(--text3); }
+    .content .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+
+    /* 响应式 */
+    @media (max-width: 860px) {
+      .sidebar { display: none; }
+      .sidebar.open {
+        display: block; position: fixed; top: 64px; left: 0; bottom: 0;
+        width: 280px; z-index: 100; background: var(--bg);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+      }
+      .content { padding: 24px 20px 60px; }
+      .mobile-sidebar-toggle {
+        display: flex !important; position: fixed; bottom: 24px; right: 24px; z-index: 200;
+        width: 44px; height: 44px; border-radius: 50%;
+        background: var(--accent); color: #fff; border: none;
+        font-size: 18px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,113,227,0.3);
+      }
+    }
+    .mobile-sidebar-toggle { display: none; }
+  </style>
+</head>
+<body>
+<div class="bg-base"></div>
+
+<header class="top-menu">
+  <nav class="menu-bar mica" id="menuBar">
+    <span class="menu-logo">KJLLin</span>
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/docs/" class="menu-item active"><i class="fas fa-book"></i> 文档</a>
+    <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+    <button id="themeBtn" class="menu-btn" aria-label="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
+    <span id="userTag" class="menu-user-tag"></span>
+    <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+    <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+  </nav>
+  <div class="mobile-menu-dropdown mica" id="mobileMenu">
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+    <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+    <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+    <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+    <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+    <a href="/docs/" class="menu-item active"><i class="fas fa-book"></i> 文档</a>
+    <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+  </div>
+</header>
+
+<div class="docs-layout">
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-search">
+      <i class="fas fa-search"></i>
+      <input type="text" placeholder="搜索文档..." id="docsSearch" oninput="filterSidebar()">
+    </div>
+
+    <div class="sidebar-title">📖 开始使用</div>
+    <a class="sidebar-item active" data-section="getting-started" onclick="navigateTo('getting-started', this)"><i class="fas fa-rocket"></i> 快速入门</a>
+    <a class="sidebar-item" data-section="register" onclick="navigateTo('register', this)"><i class="fas fa-user-plus"></i> 注册与登录</a>
+    <a class="sidebar-item" data-section="oauth" onclick="navigateTo('oauth', this)"><i class="fas fa-link"></i> 第三方登录</a>
+
+    <div class="sidebar-title">🎮 游戏中心</div>
+    <a class="sidebar-item" data-section="game-overview" onclick="navigateTo('game-overview', this)"><i class="fas fa-gamepad"></i> 游戏总览</a>
+    <a class="sidebar-item" data-section="game-rps" onclick="navigateTo('game-rps', this)"><i class="fas fa-hand-back-fist"></i> 石头剪刀布</a>
+    <a class="sidebar-item" data-section="game-dino" onclick="navigateTo('game-dino', this)"><i class="fas fa-dragon"></i> 恐龙快跑</a>
+    <a class="sidebar-item" data-section="game-2048" onclick="navigateTo('game-2048', this)"><i class="fas fa-puzzle-piece"></i> 2048</a>
+    <a class="sidebar-item" data-section="game-snake" onclick="navigateTo('game-snake', this)"><i class="fas fa-snake"></i> 贪吃蛇</a>
+    <a class="sidebar-item" data-section="game-schulte" onclick="navigateTo('game-schulte', this)"><i class="fas fa-table-cells"></i> 舒尔特方格</a>
+
+    <div class="sidebar-title">💬 社交功能</div>
+    <a class="sidebar-item" data-section="chat" onclick="navigateTo('chat', this)"><i class="fas fa-envelope"></i> 站内信</a>
+    <a class="sidebar-item" data-section="discuss" onclick="navigateTo('discuss', this)"><i class="fas fa-comments"></i> 讨论版</a>
+
+    <div class="sidebar-title">☁️ 云盘</div>
+    <a class="sidebar-item" data-section="cloud" onclick="navigateTo('cloud', this)"><i class="fas fa-cloud-upload-alt"></i> 资源云盘</a>
+
+    <div class="sidebar-title">🔐 账号与安全</div>
+    <a class="sidebar-item" data-section="account" onclick="navigateTo('account', this)"><i class="fas fa-shield-halved"></i> 账号安全</a>
+    <a class="sidebar-item" data-section="devices" onclick="navigateTo('devices', this)"><i class="fas fa-mobile-screen"></i> 设备管理</a>
+    <a class="sidebar-item" data-section="password" onclick="navigateTo('password', this)"><i class="fas fa-lock"></i> 修改密码</a>
+
+    <div class="sidebar-title">❓ 帮助</div>
+    <a class="sidebar-item" data-section="faq" onclick="navigateTo('faq', this)"><i class="fas fa-circle-question"></i> 常见问题</a>
+    <a class="sidebar-item" data-section="update-log" onclick="navigateTo('update-log', this)"><i class="fas fa-clock-rotate-left"></i> 更新日志</a>
+  </aside>
+
+  <!-- 内容区 -->
+  <main class="content" id="docContent"></main>
+</div>
+
+<button class="mobile-sidebar-toggle" id="mobileSidebarBtn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i></button>
+
+<script src="/common.js"></script>
+<script>
+// ====================== 导航栏 ======================
+KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
+var themeBtn = document.getElementById('themeBtn');
+function updateThemeUI() {
+  var state = KJ.applyTheme('#f5f5f7', '#0a0a0a');
+  themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
+}
+themeBtn.addEventListener('click', function(){ KJ.toggleTheme(); updateThemeUI(); });
+KJ.onSystemThemeChange(updateThemeUI);
+updateThemeUI();
+
+var sb = KJ.createSupabase();
+if (sb) KJ.initNav(sb, { homeUrl: '/' });
+else KJ.initNav(null, { homeUrl: '/' });
+
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#sidebar') && !e.target.closest('#mobileSidebarBtn')) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+});
+
+// ====================== 文档内容 ======================
+var docs = {
+  'getting-started': {
+    title: '🚀 快速入门',
+    content: '<p>欢迎来到 <strong>KJLLin</strong>！这是一个集游戏、社交、云存储于一体的个人综合平台。</p>'
+      + '<h2>平台功能一览</h2>'
+      + '<div class="card-grid">'
+      + '<a class="feature-card" href="/game/"><i class="fas fa-gamepad"></i><h4>游戏中心</h4><p>恐龙快跑、2048、贪吃蛇、舒尔特方格、石头剪刀布</p></a>'
+      + '<a class="feature-card" href="/chat"><i class="fas fa-envelope"></i><h4>站内信</h4><p>私密对话，支持在线状态与实时通知</p></a>'
+      + '<a class="feature-card" href="/cloud/"><i class="fas fa-cloud"></i><h4>资源云盘</h4><p>上传、分享文件，支持批量下载</p></a>'
+      + '<a class="feature-card" href="/discuss/"><i class="fas fa-comments"></i><h4>讨论版</h4><p>发帖交流，支持 Markdown 与代码高亮</p></a>'
+      + '</div>'
+      + '<h2>开始使用</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text"><strong>注册账号</strong> — 访问 <a href="/login/">登录页面</a>，使用邮箱注册或通过 CPOAuth / GitHub 快速登录。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text"><strong>完善资料</strong> — 在 <a href="/settings/">设置中心</a> 修改昵称、头像等信息。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text"><strong>开始探索</strong> — 玩游戏、发私信、上传文件，享受完整功能。</span></div>'
+      + '<div class="tip"><i class="fas fa-lightbulb"></i><span>所有游戏均支持云端排行榜，登录后数据自动同步，换设备也不丢失。</span></div>'
+  },
+  'register': {
+    title: '👤 注册与登录',
+    content: '<p>KJLLin 支持多种注册与登录方式，你可以选择最适合的方式。</p>'
+      + '<h2>邮箱注册</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">访问 <a href="/login/">登录页面</a>，切换到「注册」标签。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">输入你的邮箱地址和密码（至少 8 位）。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">完成 hCaptcha 人机验证。</span></div>'
+      + '<div class="step"><span class="step-num">4</span><span class="step-text">点击「注册」按钮，成功后自动登录。</span></div>'
+      + '<h2>邮箱登录</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">在登录页面输入邮箱和密码。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">完成 hCaptcha 验证后点击「登录」。</span></div>'
+      + '<div class="warn"><i class="fas fa-triangle-exclamation"></i><span>请妥善保管密码。平台不会以任何方式索要你的密码。</span></div>'
+  },
+  'oauth': {
+    title: '🔗 第三方登录',
+    content: '<p>KJLLin 支持通过以下第三方平台快速登录，无需额外注册。</p>'
+      + '<h2>CPOAuth 登录</h2>'
+      + '<p>CPOAuth 是平台自定义的 OAuth 2.0 认证网关。点击登录页的「CPOAuth 登录」按钮，将跳转到认证页面完成授权。授权成功后自动返回并登录。</p>'
+      + '<div class="tip"><i class="fas fa-lightbulb"></i><span>CPOAuth 登录后，昵称将自动同步。你可以在 <a href="/settings/account/">账号绑定</a> 中管理第三方登录。</span></div>'
+      + '<h2>GitHub 登录</h2>'
+      + '<p>点击登录页的「GitHub 登录」按钮，授权后自动返回并登录。支持绑定和解绑。</p>'
+      + '<h2>账号绑定</h2>'
+      + '<p>在 <a href="/settings/account/">账号绑定页面</a>，你可以：</p>'
+      + '<ul><li>查看当前已绑定的第三方账号</li><li>绑定新的 CPOAuth 或 GitHub 账号</li><li>解绑不再使用的第三方登录</li></ul>'
+  },
+  'game-overview': {
+    title: '🎮 游戏总览',
+    content: '<p>KJLLin 游戏中心提供多款精选小游戏，支持触屏和键盘操作，所有游戏均支持云端排行榜。</p>'
+      + '<h2>游戏列表</h2>'
+      + '<div class="card-grid">'
+      + '<a class="feature-card" href="/game/rps/"><i class="fas fa-hand-back-fist"></i><h4>石头剪刀布</h4><p>人机对战 + 双人联机</p></a>'
+      + '<a class="feature-card" href="/game/dino/"><i class="fas fa-dragon"></i><h4>恐龙快跑</h4><p>经典跑酷，收集金币</p></a>'
+      + '<a class="feature-card" href="/game/tfe/"><i class="fas fa-puzzle-piece"></i><h4>2048</h4><p>数字合并益智游戏</p></a>'
+      + '<a class="feature-card" href="/game/snake/"><i class="fas fa-snake"></i><h4>贪吃蛇</h4><p>经典怀旧游戏</p></a>'
+      + '<a class="feature-card" href="/game/schulte/"><i class="fas fa-table-cells"></i><h4>舒尔特方格</h4><p>注意力训练工具</p></a>'
+      + '</div>'
+      + '<h2>云端排行榜</h2>'
+      + '<p>登录后，你的最高分会自动同步到云端。更换设备游戏时，分数不会丢失。点击游戏页的排行榜可查看全站排名。</p>'
+  },
+  'game-rps': {
+    title: '✊ 石头剪刀布',
+    content: '<p>经典猜拳游戏，支持<strong>人机对战</strong>和<strong>双人联机对战</strong>两种模式。</p>'
+      + '<h2>人机对战</h2>'
+      + '<p>与 AI 进行猜拳。选择石头、剪刀或布，AI 会随机出拳。每次结果会记录在历史圆点中，胜平负分数实时更新。</p>'
+      + '<h2>双人联机</h2>'
+      + '<p>通过两种方式与好友对战：</p>'
+      + '<h3>方式一：房间号</h3>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">点击「创建房间」生成 4 位房间号。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">将房间号分享给好友（可点击复制按钮）。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">好友输入房间号加入，双方即可开始对战。</span></div>'
+      + '<h3>方式二：邀请卡片</h3>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">切换到「邀请卡片」标签，点击「创建房间并邀请」。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">从最近联系人或搜索中选择好友，发送邀请。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">好友在站内信收到邀请卡片，点击链接接受后进入房间。</span></div>'
+      + '<h2>防作弊机制</h2>'
+      + '<p>联机对战时，双方出拳均存储在服务端数据库中。只有双方都完成出拳后，结果才会同时揭晓。无法通过查看网页代码提前获知对方选择。</p>'
+      + '<div class="tip"><i class="fas fa-lightbulb"></i><span>房间有效期为 15 分钟。房主可以随时点击「关闭房间」结束游戏。返回游戏页面时可查看自己未过期的活跃房间。</span></div>'
+  },
+  'game-dino': {
+    title: '🦖 恐龙快跑',
+    content: '<p>Chrome 经典小恐龙跑酷游戏的升级版，支持触屏滑动操作。</p>'
+      + '<h2>操作方式</h2>'
+      + '<ul><li><strong>桌面端</strong>：空格键 / 上箭头跳跃，下箭头蹲下</li><li><strong>移动端</strong>：上滑跳跃，下滑蹲下</li></ul>'
+      + '<h2>游戏特色</h2>'
+      + '<ul><li>收集金币获得额外分数</li><li>天气系统（晴天/雨天/沙尘暴）影响游戏难度</li><li>速度随分数递增，越来越快</li><li>云端排行榜，记录你的最高分</li></ul>'
+  },
+  'game-2048': {
+    title: '🧩 2048',
+    content: '<p>经典数字合并益智游戏。滑动合并相同数字，挑战 2048。</p>'
+      + '<h2>操作方式</h2>'
+      + '<ul><li><strong>桌面端</strong>：方向键控制滑动方向</li><li><strong>移动端</strong>：触屏滑动</li></ul>'
+      + '<h2>规则</h2><p>每次滑动，所有方块朝同一方向移动。相同数字的方块碰撞后合并为它们的和。每次滑动后会随机出现一个新的 2 或 4。当 2048 出现时即为胜利！</p>'
+  },
+  'game-snake': {
+    title: '🐍 贪吃蛇',
+    content: '<p>经典贪吃蛇游戏，键盘/触屏双模式操控。</p>'
+      + '<h2>操作方式</h2>'
+      + '<ul><li><strong>桌面端</strong>：方向键控制蛇的移动方向</li><li><strong>移动端</strong>：触屏滑动控制方向</li></ul>'
+      + '<p>速度随分数递增，支持最高分本地记录和云端同步。</p>'
+  },
+  'game-schulte': {
+    title: '🔢 舒尔特方格',
+    content: '<p>经典注意力训练工具，按顺序点击数字，挑战最快速度。</p>'
+      + '<h2>玩法</h2><p>方格中随机排列 1 到 N² 的数字（N 为规格）。按顺序从 1 开始依次点击所有数字，记录完成时间。</p>'
+      + '<h2>规格选择</h2><p>支持 3×3、4×4、5×5、6×6 多种规格，难度逐渐递增。</p>'
+      + '<div class="tip"><i class="fas fa-lightbulb"></i><span>每天训练 5-10 分钟有助于提升注意力和反应速度。</span></div>'
+  },
+  'chat': {
+    title: '💬 站内信',
+    content: '<p>站内信支持用户之间发送私密消息，具备在线状态提示和实时通知功能。</p>'
+      + '<h2>发起对话</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">在左侧搜索框中输入对方的注册邮箱。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">点击搜索结果中的用户，即可打开对话窗口。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">输入消息，按 Enter 或点击发送。</span></div>'
+      + '<h2>消息通知</h2><p>当收到新消息时，全站顶部会显示红色通知横幅。点击即可跳转到对话。</p>'
+      + '<h2>屏蔽与删除</h2><p>右键点击对话列表中的用户，可以屏蔽该用户或删除聊天记录。屏蔽后对方无法再给你发消息。</p>'
+      + '<h2>游戏邀请</h2><p>在石头剪刀布游戏中发送的邀请卡片会以特殊格式显示在站内信中，包含可点击的加入链接。</p>'
+  },
+  'discuss': {
+    title: '📝 讨论版',
+    content: '<p>讨论版是用户交流的公共空间，支持发帖、回复，内容支持 Markdown 格式和代码高亮。</p>'
+      + '<h2>浏览帖子</h2><p>讨论版首页展示最新帖子，支持分页浏览。点击帖子标题进入详情页查看完整内容和回复。</p>'
+      + '<h2>发布帖子</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">点击「发布新帖」按钮。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">输入标题和内容（支持 Markdown 格式）。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">完成 hCaptcha 验证后发布。</span></div>'
+      + '<h2>Markdown 支持</h2><p>支持标题、粗体、斜体、链接、图片、代码块、表格等标准 Markdown 语法。代码块支持语法高亮。</p>'
+  },
+  'cloud': {
+    title: '☁️ 资源云盘',
+    content: '<p>资源云盘提供文件上传、管理和分享功能。</p>'
+      + '<h2>上传文件</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">点击「上传文件」按钮选择本地文件。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">文件大于 5MB 时需要完成 hCaptcha 验证。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">上传后文件显示在列表中，支持下载、分享和删除。</span></div>'
+      + '<h2>文件管理</h2><ul><li>支持批量下载选中的文件</li><li>文件列表显示大小、上传时间</li><li>可创建文件夹组织文件</li></ul>'
+      + '<div class="warn"><i class="fas fa-triangle-exclamation"></i><span>请勿上传违法或侵权内容。平台保留删除违规文件的权利。</span></div>'
+  },
+  'account': {
+    title: '🔐 账号安全',
+    content: '<p>账号安全页面帮助你管理第三方登录绑定和账号状态。</p>'
+      + '<h2>第三方绑定</h2><p>在 <a href="/settings/account/">账号绑定</a> 页面可以：</p>'
+      + '<ul><li>绑定 CPOAuth 账号</li><li>绑定 GitHub 账号</li><li>解绑已绑定的第三方登录</li></ul>'
+      + '<div class="warn"><i class="fas fa-triangle-exclamation"></i><span>请确保至少保留一种登录方式（邮箱密码或第三方），否则可能无法登录。</span></div>'
+  },
+  'devices': {
+    title: '📱 设备管理',
+    content: '<p>设备管理页面展示所有登录过你账号的设备记录。</p>'
+      + '<h2>设备信息</h2><p>每条记录包含：</p>'
+      + '<ul><li>浏览器类型和版本</li><li>操作系统及版本</li><li>屏幕分辨率</li><li>IP 地址和登录时间</li></ul>'
+      + '<div class="tip"><i class="fas fa-lightbulb"></i><span>如果发现可疑的设备登录记录，建议立即修改密码。</span></div>'
+  },
+  'password': {
+    title: '🔒 修改密码',
+    content: '<p>在 <a href="/settings/password/">密码修改页面</a> 可以更新你的登录密码。</p>'
+      + '<h2>修改流程</h2>'
+      + '<div class="step"><span class="step-num">1</span><span class="step-text">输入当前密码进行验证。</span></div>'
+      + '<div class="step"><span class="step-num">2</span><span class="step-text">输入新密码（至少 8 位，建议包含大小写字母和数字）。</span></div>'
+      + '<div class="step"><span class="step-num">3</span><span class="step-text">确认新密码，点击「更新密码」。</span></div>'
+      + '<div class="warn"><i class="fas fa-triangle-exclamation"></i><span>修改密码后，所有设备上的登录状态将被清除，需要重新登录。</span></div>'
+  },
+  'faq': {
+    title: '❓ 常见问题',
+    content: '<h2>账号相关</h2>'
+      + '<p><strong>Q: 忘记密码怎么办？</strong><br>A: 目前需要通过 CPOAuth 或 GitHub 第三方登录找回访问权限，然后修改密码。纯邮箱注册用户请联系管理员。</p>'
+      + '<p><strong>Q: 如何注销账号？</strong><br>A: 目前暂不支持自助注销。如需注销，请联系管理员处理。</p>'
+      + '<h2>游戏相关</h2>'
+      + '<p><strong>Q: 更换电脑后游戏分数丢失？</strong><br>A: 登录后分数会自动同步到云端。请确保已登录状态，分数会跟随账号跨设备同步。</p>'
+      + '<p><strong>Q: 石头剪刀布联机时对方不回应？</strong><br>A: 房间有效期为 15 分钟。如果对方长时间无响应，可以关闭房间后重新创建。确认对方已收到邀请链接。</p>'
+      + '<h2>文件相关</h2>'
+      + '<p><strong>Q: 文件上传有大小限制吗？</strong><br>A: 目前免费用户可以上传文件。大文件（超过 5MB）需要完成 hCaptcha 验证以确保安全。</p>'
+      + '<p><strong>Q: 上传的文件可以保存多久？</strong><br>A: 文件会持续保存，除非你主动删除或违反使用条款被平台移除。</p>'
+      + '<h2>其他</h2>'
+      + '<p><strong>Q: 支持哪些浏览器？</strong><br>A: 推荐使用最新版 Chrome、Edge、Safari 或 Firefox。IE 浏览器不受支持。</p>'
+      + '<p><strong>Q: 遇到 Bug 如何反馈？</strong><br>A: 可以在 <a href="/discuss/">讨论版</a> 发帖反馈，或在站内信联系管理员。</p>'
+  },
+  'update-log': {
+    title: '📋 更新日志',
+    content: '<h2>2026 年 8 月</h2>'
+      + '<ul>'
+      + '<li><strong>石头剪刀布：</strong>新增双人联机对战，支持房间号和邀请卡片两种方式。服务端防作弊判断胜负。房间有效期 15 分钟。</li>'
+      + '<li><strong>站内信：</strong>消息中的链接自动转为可点击格式，支持游戏邀请卡片。</li>'
+      + '<li><strong>全站安全：</strong>CSP 安全策略加固，hCaptcha 兼容性优化。</li>'
+      + '<li><strong>讨论版：</strong>修复颜色适配问题。</li>'
+      + '</ul>'
+      + '<h2>2026 年 7 月</h2>'
+      + '<ul>'
+      + '<li><strong>全站导航：</strong>统一顶部菜单栏，支持登录状态感知。</li>'
+      + '<li><strong>登录系统：</strong>接入 Supabase Attack Protection，hCaptcha 服务端验证。</li>'
+      + '<li><strong>第三方登录：</strong>CPOAuth 迁移至 Supabase Custom OIDC Provider，新增 GitHub 登录绑定。</li>'
+      + '<li><strong>游戏中心：</strong>四款游戏全部支持云端排行榜，分数跨设备同步。</li>'
+      + '</ul>'
+  }
+};
+
+// ====================== 导航与渲染 ======================
+var currentSection = 'getting-started';
+
+function navigateTo(section, el) {
+  currentSection = section;
+  document.querySelectorAll('.sidebar-item').forEach(function(s) { s.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  renderContent(section);
+  // 移动端关闭侧边栏
+  document.getElementById('sidebar').classList.remove('open');
+  // 重置搜索
+  document.getElementById('docsSearch').value = '';
+  document.querySelectorAll('.sidebar-item').forEach(function(s) { s.style.display = ''; });
+}
+
+function renderContent(section) {
+  var d = docs[section];
+  if (!d) { document.getElementById('docContent').innerHTML = '<div class="empty-state"><i class="fas fa-file"></i><p>文档未找到</p></div>'; return; }
+  document.getElementById('docContent').innerHTML = '<h1>' + d.title + '</h1>' + d.content;
+  document.getElementById('docContent').scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
+function filterSidebar() {
+  var q = document.getElementById('docsSearch').value.toLowerCase();
+  document.querySelectorAll('.sidebar-item').forEach(function(s) {
+    var text = (s.textContent || '').toLowerCase();
+    s.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+  });
+}
+
+// 初始渲染
+renderContent('getting-started');
+
+// 从 URL hash 加载指定文档
+if (window.location.hash) {
+  var hash = window.location.hash.substring(1);
+  if (docs[hash]) {
+    var el = document.querySelector('[data-section="' + hash + '"]');
+    navigateTo(hash, el);
+  }
+}
+</script>
+<div id="toast" class="toast hidden"></div>
+</body>
+</html>
