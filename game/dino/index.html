@@ -54,6 +54,8 @@
             background-color: #f7f7f7;
             max-width: 100%;
             height: auto;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
         #gameInfo {
             margin-top: 10px;
@@ -70,14 +72,19 @@
         /* 触屏按钮 */
         #touchBtns {
             display: none;
-            margin-top: 12px;
-            gap: 8px;
+            margin-top: 16px;
+            gap: 12px;
             flex-wrap: wrap;
             justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 420px;
         }
         .touch-btn {
-            padding: 10px 18px;
-            font-size: 16px;
+            min-width: 56px;
+            min-height: 48px;
+            padding: 10px 16px;
+            font-size: 15px;
             border: 1px solid var(--color-border);
             border-radius: var(--radius-sm);
             background: var(--color-bg-glass);
@@ -85,14 +92,56 @@
             cursor: pointer;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
             transition: all var(--duration-instant) var(--spring-default);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .touch-btn:active {
             background: var(--color-bg-hover);
-            transform: scale(0.95);
+            transform: scale(0.94);
+        }
+        .touch-btn.btn-jump {
+            min-width: 96px;
+            min-height: 56px;
+            font-size: 20px;
+            font-weight: 700;
+            background: var(--color-accent);
+            color: var(--color-text-on-accent);
+            border-color: transparent;
+            box-shadow: 0 4px 14px var(--color-accent-glow);
+        }
+        .touch-btn.btn-jump:active {
+            transform: scale(0.92);
+            box-shadow: 0 2px 8px var(--color-accent-glow);
+        }
+        .touch-btn.btn-restart {
+            display: none;
+            min-width: 140px;
+            min-height: 52px;
+            font-size: 16px;
+            font-weight: 700;
+            background: var(--color-success);
+            color: #fff;
+            border-color: transparent;
+        }
+        .touch-btn.btn-restart.show { display: inline-flex; }
+        /* 触屏手势提示 */
+        #touchHint {
+            display: none;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            text-align: center;
+            line-height: 1.6;
         }
         @media (max-width: 850px) {
             #touchBtns { display: flex; }
+            #touchHint { display: block; }
+            body { padding: 12px; padding-top: calc(72px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -140,10 +189,12 @@
     </div>
     <div id="touchBtns">
         <button class="touch-btn" id="btnLeft"><i class="fas fa-wind"></i> 左风</button>
-        <button class="touch-btn" id="btnJump" style="font-weight:bold;font-size:20px;"><i class="fas fa-arrow-up"></i> 跳跃</button>
-        <button class="touch-btn" id="btnRight"><i class="fas fa-wind"></i> 右风</button>
+        <button class="touch-btn btn-jump" id="btnJump"><i class="fas fa-arrow-up"></i> 跳跃</button>
+        <button class="touch-btn" id="btnRight"><i class="fas fa-wind fa-flip-horizontal"></i> 右风</button>
         <button class="touch-btn" id="btnRain"><i class="fas fa-cloud-rain"></i> 下雨</button>
+        <button class="touch-btn btn-restart" id="btnRestart"><i class="fas fa-rotate-right"></i> 重新开始</button>
     </div>
+    <div id="touchHint">🖐️ 在游戏画面区域：上滑跳跃 · 左滑左风 · 右滑右风 · 下滑下雨</div>
     <!-- 预加载地面贴图 -->
     <img id="groundTexture" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAAMAgMAAAAPCKxBAAAABlBMVEX///9TU1NYzE1OAAAAAXRSTlMAQObYZgAAALJJREFUeF7t1EEKAyEMhtEvMNm7sPfJEVyY+1+ltLgYAsrQCtWhbxEhQvgxIJtSZypxa/WGshgzKdbq/UihMFMlt3o/CspEYoihIMaAb6mCvM6C+BTAeyo+wN4yykV/6pVfkdLpVyI1hh7GJ6QunUoLEQlQglNP2nkQkeF8+ei9cLxMue1qxVRfk1Ej0s6AEGWfVOk0QUtnK5Xo0Lac6wpdtnQqB6VxomPaz+dgF1PaqqmeWJlz1jYUaSIAAAAASUVORK5CYII=" alt="" aria-hidden="true">
     <!-- 预加载恐龙精灵图 -->
@@ -445,51 +496,50 @@
         };
 
 
-        // 输入处理
+        // ====================== 游戏动作函数（键盘/触屏共用） ======================
+        function jumpAction() {
+            if (!isGameOver) dino.jump();
+        }
+        function castRain() {
+            if (isGameOver || currentWeather === 'rainy') return;
+            currentWeather = 'rainy';
+            manualWeatherActive = true;
+            weatherTextElement.textContent = '下雨';
+            windTextElement.textContent = '无';
+            windEffect = 0;
+            windDirection = 0;
+            weatherCooldown = cooldownDuration;
+            rainDrops = [];
+            windParticles = [];
+        }
+        function castWind(dir) {
+            if (isGameOver || windDirection === dir) return;
+            currentWeather = 'windy';
+            manualWeatherActive = true;
+            weatherTextElement.textContent = '刮风';
+            windTextElement.textContent = dir < 0 ? '向左' : '向右';
+            windDirection = dir;
+            windEffect = dir * 1.5;
+            weatherCooldown = cooldownDuration;
+            rainDrops = [];
+            windParticles = [];
+        }
+        function restartAction() {
+            if (isGameOver) resetGame();
+        }
+
+        // ====================== 键盘输入 ======================
         document.addEventListener('keydown', function(e) {
-            if ((e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') && !isGameOver) {
-                dino.jump();
+            if (e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') {
+                jumpAction();
             }
-            // --- 修改：R键改为S键召唤雨天 ---
-            if (e.code === 'KeyS' && !isGameOver&&currentWeather!='rainy') { // 移除了 && weatherCooldown === 0
-                // S键召唤雨天
-                currentWeather = 'rainy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '下雨';
-                windTextElement.textContent = '无';
-                windEffect = 0;
-                windDirection = 0;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
+            if (e.code === 'KeyS') {
+                if (isGameOver) restartAction();
+                else castRain();
             }
-            if (e.code === 'KeyA' && !isGameOver&&windDirection!=-1) { // 移除了 && weatherCooldown === 0
-                // A键召唤左方向风
-                currentWeather = 'windy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '刮风';
-                windTextElement.textContent = '向左';
-                windDirection = -1;
-                windEffect = windDirection * 1.5;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
-            }
-            if (e.code === 'KeyD' && !isGameOver&&windDirection!=1) { // 移除了 && weatherCooldown === 0
-                // D键召唤右方向风
-                currentWeather = 'windy';
-                manualWeatherActive = true; // 标记为手动天气
-                weatherTextElement.textContent = '刮风';
-                windTextElement.textContent = '向右';
-                windDirection = 1;
-                windEffect = windDirection * 1.5;
-                weatherCooldown = cooldownDuration; // 设置冷却时间 -> 立即重置
-                rainDrops = []; // 清空可能存在的旧雨滴
-                windParticles = []; // 清空风粒子
-            }
-            if ((e.code === 'KeyR' || e.code === 'KeyS') && isGameOver) { // 按 R 或 S 键都可以重新开始
-                resetGame();
-            }
+            if (e.code === 'KeyA') castWind(-1);
+            if (e.code === 'KeyD') castWind(1);
+            if (e.code === 'KeyR' && isGameOver) restartAction();
         });
 
         // --- 重写沟壑掉落判断 ---
@@ -881,7 +931,15 @@
             ctx.font = '20px Arial';
             ctx.fillText(`最终分数: ${score}`, canvas.width / 2, canvas.height / 2);
             ctx.fillText(`收集金币: ${coinsCollected}`, canvas.width / 2, canvas.height / 2 + 30);
-            ctx.fillText('按 R 键或 S 键重新开始', canvas.width / 2, canvas.height / 2 + 60);
+
+            // 根据设备显示不同的重新开始提示
+            const isTouch = window.matchMedia('(max-width: 850px)').matches;
+            ctx.font = '16px Arial';
+            ctx.fillText(isTouch ? '点击下方按钮或轻触画面重新开始' : '按 R 键或 S 键重新开始', canvas.width / 2, canvas.height / 2 + 60);
+
+            // 显示触屏重新开始按钮
+            const restartBtn = document.getElementById('btnRestart');
+            if (restartBtn) restartBtn.classList.add('show');
         }
 
         function resetGame() {
@@ -925,9 +983,64 @@
 
             scoreElement.textContent = score;
             coinsElement.textContent = coinsCollected;
+            // 隐藏触屏重新开始按钮
+            const restartBtn = document.getElementById('btnRestart');
+            if (restartBtn) restartBtn.classList.remove('show');
             window.gameStarted = true; // 标记游戏已开始
             gameLoop(performance.now());
         }
+
+        // ====================== 触屏控制 ======================
+        // 按钮事件绑定（pointerdown 同时支持触摸与鼠标，响应最快）
+        function bindTouchBtn(id, action) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('pointerdown', function(e) {
+                e.preventDefault();
+                action();
+            });
+            // 阻止后续 click 造成重复触发
+            btn.addEventListener('click', function(e) { e.preventDefault(); });
+        }
+        bindTouchBtn('btnJump', jumpAction);
+        bindTouchBtn('btnLeft', function() { castWind(-1); });
+        bindTouchBtn('btnRight', function() { castWind(1); });
+        bindTouchBtn('btnRain', castRain);
+        bindTouchBtn('btnRestart', restartAction);
+
+        // 画布触摸手势：上滑跳跃 · 左滑左风 · 右滑右风 · 下滑下雨 · 轻触重开
+        let gsX = 0, gsY = 0, gsActive = false, gsHandled = false;
+        canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length !== 1) return;
+            gsX = e.touches[0].clientX;
+            gsY = e.touches[0].clientY;
+            gsActive = true;
+            gsHandled = false;
+        }, { passive: true });
+        canvas.addEventListener('touchmove', function(e) {
+            if (!gsActive || gsHandled || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - gsX;
+            const dy = e.touches[0].clientY - gsY;
+            const threshold = 30; // 滑动阈值，避免误触
+            if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // 水平滑动 → 刮风
+                if (dx > 0) castWind(1);
+                else castWind(-1);
+            } else {
+                // 垂直滑动 → 跳跃 / 下雨
+                if (dy < 0) jumpAction();
+                else if (isGameOver) restartAction();
+                else castRain();
+            }
+            gsHandled = true;
+        }, { passive: true });
+        canvas.addEventListener('touchend', function(e) {
+            // 轻触（未滑动）且游戏结束时 → 重新开始
+            if (gsActive && !gsHandled && isGameOver) restartAction();
+            gsActive = false;
+            gsHandled = false;
+        }, { passive: true });
 
         // 开始游戏
         // 处理已缓存的图片（onload 不会再次触发），必须在所有 let 变量声明之后
