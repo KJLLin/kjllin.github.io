@@ -150,7 +150,7 @@ pre, code, .mono, .tile, .score-val {
 .new-game-btn:active { transform: scale(0.98); }
 
 /* ========== Board ========== */
-.board-wrapper { position: relative; width: 100%; aspect-ratio: 1; }
+.board-wrapper { position: relative; width: 100%; aspect-ratio: 1; touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
 .board {
   position: absolute; inset: 0;
   background: var(--board-bg);
