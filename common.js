@@ -280,6 +280,10 @@
     if (msg.includes('Invalid login credentials')) return '邮箱或密码错误';
     if (msg.includes('Email not confirmed')) return '邮箱未验证';
     if (msg.includes('already registered') || msg.includes('already exists')) return '该邮箱已被注册';
+    // 检测注册功能是否被关闭（Supabase 控制台可禁用注册）
+    if (/sign\s*ups?\s*(are\s*)?not\s*allowed|sign\s*ups?\s*(are\s*)?disabled|sign\s*up\s*(is\s*)?disabled|registration\s*(is\s*)?disabled|signups?\s*not\s*enabled/i.test(msg)) {
+      return '暂时关闭注册功能，请联系管理员：LinLyndon153@163.com';
+    }
     if (msg.includes('429')) return '请求频繁，请稍后重试';
     if (msg.includes('JWT') || msg.includes('expired')) return '登录已过期，请重新登录';
     return msg;
