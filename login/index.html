@@ -136,6 +136,16 @@
     .btn:active{transform:scale(.98)}
     .btn:disabled{opacity:.55;pointer-events:none;filter:grayscale(30%)}
 
+    /* 表单内联错误提示 */
+    .form-error{
+      display:none;margin:12px 0 0;padding:12px 14px;border-radius:var(--radius-sm, 8px);
+      background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.25);
+      color:var(--text-secondary);font-size:13.5px;line-height:1.6;
+      align-items:flex-start;gap:8px;
+    }
+    .form-error.show{display:flex}
+    .form-error i{color:#ff9500;margin-top:2px;flex-shrink:0}
+
     .sep{display:flex;align-items:center;margin:24px 0 16px;color:var(--text-tertiary);font-size:12px}
     .sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--border)}
     .sep span{margin:0 14px}
@@ -273,6 +283,7 @@
         </div>
         <div class="captcha-row" id="captchaRegisterContainer"></div>
         <button class="btn" id="regBtn">创建账号</button>
+        <div class="form-error" id="regError"><i class="fas fa-circle-info"></i><span id="regErrorText"></span></div>
       </div>
 
       <!-- 更多登录方式面板 -->
@@ -324,6 +335,7 @@
       if(msg.includes('Invalid login credentials'))return'邮箱或密码错误';
       if(msg.includes('Email not confirmed'))return'邮箱未验证';
       if(msg.includes('already registered')||msg.includes('already exists'))return'该邮箱已被注册';
+      if(/sign\s*ups?\s*(are\s*)?not\s*allowed|sign\s*ups?\s*(are\s*)?disabled|sign\s*up\s*(is\s*)?disabled|registration\s*(is\s*)?disabled|signups?\s*not\s*enabled/i.test(msg))return'暂时关闭注册功能，请联系管理员：LinLyndon153@163.com';
       if(msg.includes('429'))return'请求频繁，请稍后重试';
       return msg;
     }
@@ -504,6 +516,8 @@
     let regLocked=false;
     $('#regBtn').addEventListener('click',async()=>{
       if(regLocked)return;
+      // 清除之前的错误提示
+      const _errEl=$('#regError');if(_errEl)_errEl.classList.remove('show');
       if(!sb){toast('网络错误，请刷新后重试');return}
       const nick=$('#regNick').value.trim(),email=$('#regEmail').value.trim(),pwd=$('#regPwd').value;
       if(!nick||!email||!pwd){toast('请填写完整信息');return}
@@ -522,7 +536,16 @@
           options: { captchaToken: ct.register, data: { nick } }
         });
         if(error){
-          toast(KJ.formatSupabaseError(error));
+          const errMsg = KJ.formatSupabaseError(error);
+          // 注册关闭：显示持久内联提示 + toast
+          if(errMsg.includes('暂时关闭注册功能')){
+            const errEl=$('#regError'),errText=$('#regErrorText');
+            if(errEl&&errText){errText.textContent=errMsg;errEl.classList.add('show');}
+            toast(errMsg);
+            regLocked=false;btn.disabled=false;btn.textContent='创建账号';
+            return;
+          }
+          toast(errMsg);
           regLocked=false;btn.disabled=false;btn.textContent='创建账号';
           if(error.message&&error.message.includes('captcha'))resetCaptcha('register');
           return;
