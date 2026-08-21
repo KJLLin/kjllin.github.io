@@ -256,6 +256,36 @@
     });
   }
 
+  // ====================== 导航栏滚动材质（Apple: 滚动时变实） ======================
+  /**
+   * 监听页面滚动，给导航栏添加 scrolled 状态：
+   * 滚动超过阈值后，玻璃材质变实 + 阴影加深，替代硬分割线。
+   */
+  function setupNavScrollEffect() {
+    var menuBar = document.querySelector('.menu-bar');
+    if (!menuBar || menuBar._kjNavScrollBound) return;
+    menuBar._kjNavScrollBound = true;
+
+    var lastState = false;
+    function update() {
+      var scrolled = (window.scrollY || document.documentElement.scrollTop) > 12;
+      if (scrolled !== lastState) {
+        lastState = scrolled;
+        menuBar.classList.toggle('scrolled', scrolled);
+      }
+    }
+    // 使用 rAF 节流，避免滚动性能抖动
+    var ticking = false;
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(function() { update(); ticking = false; });
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+  }
+
   // ====================== 开放重定向防护 ======================
   /**
    * 安全重定向 URL 校验
@@ -420,6 +450,9 @@
     
     // 如果页面没有导航栏，静默退出
     if (!logoutBtn && !userTag) return;
+
+    // 导航栏滚动材质效果（Apple: 滚动时材质变实，而非硬分割线）
+    setupNavScrollEffect();
 
     // 创建 Supabase 客户端（如果未传入）
     if (!sb && global.supabase) {
