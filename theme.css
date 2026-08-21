@@ -89,15 +89,17 @@ html {
   --color-danger: #ff3b30;        --color-danger-bg: rgba(255, 59, 48, 0.10);
   --color-info: #0071e3;          --color-info-bg: rgba(0, 113, 227, 0.10);
 
-  /* ══════════ Apple Spring Curves ══════════ */
-  /* 临界阻尼 (damping 1.0, response 0.3s) — 默认 UI 动效，无 overshoot */
-  --spring-default: cubic-bezier(0.23, 0.01, 0.0, 1.0);
-  /* 欠阻尼 (damping 0.8, response 0.35s) — 动量驱动交互，轻微 bounce */
-  --spring-bounce: cubic-bezier(0.25, 1.1, 0.35, 1.15);
-  /* Material arrival — 材质到达/离开 */
-  --spring-material: cubic-bezier(0.0, 0.0, 0.2, 1.0);
-  /* Decelerate (scroll-like) — 减速停止 */
-  --spring-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  /* ══════════ Apple Spring Curves ══════════
+     Apple 用「阻尼比 + 响应时间」描述弹簧，而非固定时长：
+     - damping 1.0 = 临界阻尼，无 overshoot（默认 UI）
+     - damping ~0.8 = 欠阻尼，轻微 bounce（仅动量驱动交互）
+     CSS 用 cubic-bezier 近似这些弹簧曲线。 */
+  --spring-default: cubic-bezier(0.22, 0.03, 0.06, 1.0);   /* damping 1.0, response ~0.35s — 临界阻尼 */
+  --spring-snappy: cubic-bezier(0.16, 0.01, 0.06, 1.0);    /* damping 1.0, response ~0.25s — 更快的临界阻尼 */
+  --spring-smooth: cubic-bezier(0.3, 0.01, 0.05, 1.0);     /* damping 1.0, response ~0.5s — 更柔和的临界阻尼 */
+  --spring-bounce: cubic-bezier(0.24, 1.08, 0.32, 1.18);   /* damping ~0.8, response 0.35s — 轻微 bounce */
+  --spring-material: cubic-bezier(0.0, 0.0, 0.2, 1.0);     /* Material arrival — 材质到达/离开 */
+  --spring-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);  /* Decelerate (scroll-like) — 减速停止 */
   /* 传统 ease-out (兼容保留) */
   --ease-out: var(--spring-default);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -436,6 +438,60 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 .anim-7{animation-delay:0.28s} .anim-8{animation-delay:0.32s} .anim-9{animation-delay:0.36s}
 .anim-10{animation-delay:0.40s}
 
+/* ══════════ Spring Motion Utilities (Apple: 弹簧入场) ══════════
+   全站统一的弹簧入场动画工具类。
+   原则：默认临界阻尼（无 overshoot），仅动量交互用 bounce。 */
+.spring-fade {
+  animation: springFade var(--duration-normal) var(--spring-default) both;
+}
+.spring-up {
+  animation: springUp var(--duration-slow) var(--spring-default) both;
+}
+.spring-down {
+  animation: springDown var(--duration-slow) var(--spring-default) both;
+}
+.spring-scale {
+  animation: springScale var(--duration-normal) var(--spring-default) both;
+}
+.spring-slide-left {
+  animation: springSlideLeft var(--duration-slow) var(--spring-default) both;
+}
+.spring-slide-right {
+  animation: springSlideRight var(--duration-slow) var(--spring-default) both;
+}
+/* 动量驱动（bounce）— 仅用于手势/滚动释放等带速度的交互 */
+.spring-bounce-up {
+  animation: springUp var(--duration-slow) var(--spring-bounce) both;
+}
+.spring-bounce-scale {
+  animation: springScale var(--duration-slow) var(--spring-bounce) both;
+}
+
+@keyframes springFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes springUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes springDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes springScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes springSlideLeft {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes springSlideRight {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* ══════════ Material Depth System (Apple: 越大越深) ══════════ */
 
 /* ── 小表面：按钮、标签、chip — 轻模糊 ── */
@@ -488,12 +544,13 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   padding: 20px;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-fast);
+  will-change: transform;
 }
 .card:hover {
   border-color: var(--color-border-hover);
   box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 /* Glass card — 中等表面材质 */
@@ -907,6 +964,14 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
   border: 1px solid var(--color-border);
   border-top: 1px solid var(--color-border-glass);
   box-shadow: var(--glass-shadow);
+  transition: background var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-fast), transform var(--transition-base);
+}
+/* 滚动后：材质变实 + 阴影加深（Apple 滚动边缘效果，替代硬分割线） */
+.menu-bar.scrolled {
+  background: var(--color-bg-glass-solid);
+  border-color: var(--color-border-hover);
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-1px);
 }
 .menu-logo {
   font-size: 18px; font-weight: 700; color: var(--color-accent);
