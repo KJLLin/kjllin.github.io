@@ -1,2 +1,0 @@
-[{"id":"db108c70-a705-447f-8c52-c0f5aeaef8c0","sender_id":"02853d91-b527-4b7a-a793-55e2c8351f1d","recipient_id":"506f1a10-9946-4a5d-9679-77dbe44fe4f7","text":"你好","read":false,"created_at":"2026-06-20T08:21:40.104716+00:00"}, 
- {"id":"99ca0e6d-d88f-477c-9720-c2cc5f5f4096","sender_id":"02853d91-b527-4b7a-a793-55e2c8351f1d","recipient_id":"506f1a10-9946-4a5d-9679-77dbe44fe4f7","text":"正在加载遮罩不要自动强制关闭 ，这样不容易发现问题。我觉得网页和supabase服务器交互这一块还有些问题，请深度仔细检查修复","read":false,"created_at":"2026-06-24T06:40:44.168802+00:00"}]
