@@ -361,6 +361,16 @@
 
     // ====================== 认证模块 ======================
     let currentUser = null;
+    let isAdmin = false; // 管理员可查看/管理所有用户的文件
+
+    // 查询当前用户是否为管理员
+    async function fetchIsAdmin(userId) {
+      if (!sb || !userId) return false;
+      try {
+        const { data } = await sb.from('users').select('is_admin').eq('id', userId).maybeSingle();
+        return data?.is_admin === true;
+      } catch(e) { return false; }
+    }
 
     function showAuthPage() {
       _initDone = true;
@@ -380,7 +390,11 @@
       const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
       var tag = $('#userTag');
       if (tag) { tag.textContent = nick; tag.title = nick; }
-      loadAndRender();
+      // 查询管理员权限后再加载文件（管理员可管理所有文件）
+      fetchIsAdmin(user.id).then(function(admin) {
+        isAdmin = admin;
+        loadAndRender();
+      }).catch(function() { isAdmin = false; loadAndRender(); });
     }
 
     // 退出
@@ -444,18 +458,47 @@
     async function listFiles() {
       if (!sb) return [];
       try {
-        const { data, error } = await sb.storage.from(BUCKET_NAME).list('', {
+        // 普通用户只列出自己的目录；管理员列出所有用户目录
+        const prefix = isAdmin ? '' : (currentUser?.id ? currentUser.id + '/' : '');
+        const { data, error } = await sb.storage.from(BUCKET_NAME).list(prefix, {
           sortBy: { column: 'created_at', order: 'desc' }
         });
         if (error) throw error;
         _storageOk = true;
-        return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder').map(f => ({
+
+        // 管理员：递归列出所有用户目录下的文件
+        let items = data || [];
+        if (isAdmin) {
+          const allFiles = [];
+          for (const entry of items) {
+            if (entry.id) {
+              // 是文件（根目录遗留文件）
+              allFiles.push({ name: entry.name, id: entry.id, metadata: entry.metadata, created_at: entry.created_at, updated_at: entry.updated_at, owner: entry.owner || '' });
+            } else {
+              // 是用户目录，递归列出
+              try {
+                const { data: subFiles } = await sb.storage.from(BUCKET_NAME).list(entry.name, {
+                  sortBy: { column: 'created_at', order: 'desc' }
+                });
+                for (const f of (subFiles || [])) {
+                  if (f.id) {
+                    allFiles.push({ name: entry.name + '/' + f.name, id: f.id, metadata: f.metadata, created_at: f.created_at, updated_at: f.updated_at, owner: entry.name });
+                  }
+                }
+              } catch(e) { /* 跳过无法访问的目录 */ }
+            }
+          }
+          items = allFiles;
+        }
+
+        return items.filter(f => f.name !== '.emptyFolderPlaceholder' && f.id).map(f => ({
           name: f.name,
           id: f.id || f.name,
           size: f.metadata?.size || 0,
           type: f.metadata?.mimetype || '',
           created: f.created_at,
-          updated: f.updated_at || f.created_at
+          updated: f.updated_at || f.created_at,
+          owner: f.owner || ''
         }));
       } catch(e) {
         console.warn('List files failed:', e.message);
@@ -480,7 +523,7 @@
       }
       if (!session) { KJ.toast('登录已过期，请重新登录'); return false; }
 
-      const path = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = currentUser.id + '/' + Date.now() + '_' + encodeURIComponent(file.name);
 
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
@@ -551,7 +594,8 @@
 
     async function clearAll() {
       if (!sb) return;
-      if (!confirm('确定要清空云盘中的所有文件吗？此操作不可恢复。')) return;
+      const msg = isAdmin ? '确定要清空云盘中所有用户的文件吗？此操作不可恢复。' : '确定要清空你的所有文件吗？此操作不可恢复。';
+      if (!confirm(msg)) return;
       const files = await listFiles();
       if (files.length === 0) { KJ.toast('没有可删除的文件'); return; }
       const paths = files.map(f => f.name);
@@ -609,9 +653,22 @@
       }
     }
 
+    // 解析存储路径为显示文件名（路径格式：{userId}/{timestamp}_{encodedName}）
+    function parseDisplayName(fullName) {
+      let name = fullName;
+      // 去掉用户目录前缀
+      const slash = name.indexOf('/');
+      if (slash !== -1) name = name.substring(slash + 1);
+      // 去掉时间戳前缀
+      name = name.replace(/^\d+_/, '');
+      // 解码中文等 URL 编码字符
+      try { name = decodeURIComponent(name); } catch(e) {}
+      return name;
+    }
+
     function renderFiles() {
       const query = $('#searchBox').value.toLowerCase().trim();
-      const filtered = query ? cachedFiles.filter(f => f.name.replace(/^\d+_/, '').toLowerCase().includes(query)) : cachedFiles;
+      const filtered = query ? cachedFiles.filter(f => parseDisplayName(f.name).toLowerCase().includes(query)) : cachedFiles;
       const list = $('#fileList');
       const empty = $('#emptyState');
 
@@ -631,13 +688,16 @@
         empty.style.display = 'none';
         list.innerHTML = filtered.map((f, i) => {
           const url = getPublicUrl(f.name);
-          const displayName = KJ.escapeHtml(f.name.replace(/^\d+_/, ''));
+          const displayName = KJ.escapeHtml(parseDisplayName(f.name));
+          // 管理员视图：显示上传者目录（截取 UUID 前8位）
+          const ownerLabel = (isAdmin && f.owner) ? `<div class="file-meta">上传者: ${KJ.escapeHtml(f.owner.substring(0, 8))}…</div>` : '';
           return `
           <div class="file-item mica" style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both">
-            <div class="file-icon">${getFileIcon(f.type, f.name)}</div>
+            <div class="file-icon">${getFileIcon(f.type, parseDisplayName(f.name))}</div>
             <div class="file-info">
               <div class="file-name" title="${displayName}">${displayName}</div>
               <div class="file-meta">${formatSize(f.size)} · ${formatDate(f.updated || f.created)}</div>
+              ${ownerLabel}
             </div>
             <div class="file-actions">
               <button class="file-btn" data-action="preview" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
@@ -718,7 +778,7 @@
 
     // ====================== 删除 ======================
     async function deleteFile(name) {
-      if (!confirm(`确定删除 "${name.replace(/^\d+_/, '')}" 吗？`)) return;
+      if (!confirm(`确定删除 "${parseDisplayName(name)}" 吗？`)) return;
       const ok = await deleteCloudFile(name);
       if (ok) {
         KJ.toast('已删除');
