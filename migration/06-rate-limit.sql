@@ -41,8 +41,10 @@ BEGIN
   END IF;
 
   EXECUTE format(
-    'SELECT count(*) FROM %I WHERE %I = $1 AND %I > now() - $2::interval',
-    TG_TABLE_NAME, CASE WHEN TG_TABLE_NAME = 'private_messages' THEN 'sender_id' ELSE 'user_id' END, time_col
+    'SELECT count(*) FROM %I.%I WHERE %I = $1 AND %I > now() - $2::interval',
+    TG_TABLE_SCHEMA, TG_TABLE_NAME,
+    CASE WHEN TG_TABLE_NAME = 'private_messages' THEN 'sender_id' ELSE 'user_id' END,
+    time_col
   ) INTO n USING uid, win;
 
   IF n >= max_ops THEN

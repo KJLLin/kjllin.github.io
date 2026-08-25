@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; frame-ancestors 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; frame-ancestors 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -135,6 +135,25 @@
     .storage-info { margin-left: auto; font-size: 12px; color: var(--text-tertiary); white-space: nowrap; }
     .storage-bar { width: 80px; height: 4px; border-radius: 2px; background: var(--border-mica); margin-top: 4px; overflow: hidden; }
     .storage-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s var(--win-ease); }
+
+    /* ====================== 空间切换（公共/私有） ====================== */
+    .space-tabs {
+      display: flex; gap: 4px; padding: 4px; border-radius: var(--radius-md);
+      margin: 0 auto 20px; width: max-content;
+      animation: slideUp 0.6s var(--win-ease) 0.15s both;
+    }
+    .space-tab {
+      padding: 9px 26px; border-radius: var(--radius-sm); border: none;
+      background: transparent; color: var(--text-secondary);
+      font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      transition: all var(--transition-fast);
+    }
+    .space-tab.active { background: var(--accent); color: #fff; box-shadow: 0 2px 10px var(--accent-glow); }
+    .space-tab:not(.active):hover { background: var(--bg-mica-hover); color: var(--text-primary); }
+    .space-tab:active { transform: scale(0.96); }
+    @media (max-width: 520px) { .space-tab { flex: 1; padding: 9px 12px; } .space-tabs { width: 100%; } }
+
     /* 上传进度条 */
     .upload-progress-wrap { margin-top: 12px; display: none; }
     .upload-progress-wrap.active { display: block; }
@@ -312,7 +331,12 @@
     <div class="page-header">
       <div class="header-icon"><i class="fas fa-cloud"></i></div>
       <h1 class="header-title">资源云盘</h1>
-      <p class="header-sub">云端存储 · 随时随地访问你的文件</p>
+      <p class="header-sub" id="headerSub">云端存储 · 随时随地访问你的文件</p>
+    </div>
+
+    <div class="space-tabs mica" id="spaceTabs">
+      <button class="space-tab active" data-space="public" type="button"><i class="fas fa-globe"></i> 公共空间</button>
+      <button class="space-tab" data-space="private" type="button"><i class="fas fa-lock"></i> 私有空间</button>
     </div>
 
     <div class="toolbar mica">
@@ -371,7 +395,17 @@
 
 
     // ====================== Supabase 初始化 ======================
-    const BUCKET_NAME = 'cloud-drive';
+    // 公共空间：cloud-drive（公开桶，文件可通过公开 URL 访问）
+    // 私有空间：cloud-drive-private（私有桶，预览/下载需限时签名 URL）
+    let currentSpace = 'public';
+    function bucketName() { return currentSpace === 'private' ? 'cloud-drive-private' : 'cloud-drive'; }
+    function isPrivateSpace() { return currentSpace === 'private'; }
+    function spaceLabel() { return isPrivateSpace() ? '私有空间' : '公共空间'; }
+    function updateSpaceUI() {
+      $('#headerSub').textContent = isPrivateSpace()
+        ? '私有空间 · 文件不公开，仅自己可见（下载链接限时有效）'
+        : '云端存储 · 随时随地访问你的文件';
+    }
     var sb = KJ.createSupabase();
     KJ.initMessageBanner(sb);
 
@@ -476,7 +510,8 @@
       try {
         // 普通用户只列出自己的目录；管理员列出所有用户目录
         const prefix = isAdmin ? '' : (currentUser?.id ? currentUser.id + '/' : '');
-        const { data, error } = await sb.storage.from(BUCKET_NAME).list(prefix, {
+        const bucket = sb.storage.from(bucketName());
+        const { data, error } = await bucket.list(prefix, {
           sortBy: { column: 'created_at', order: 'desc' }
         });
         if (error) throw error;
@@ -493,7 +528,7 @@
             } else {
               // 是用户目录，递归列出
               try {
-                const { data: subFiles } = await sb.storage.from(BUCKET_NAME).list(entry.name, {
+                const { data: subFiles } = await bucket.list(entry.name, {
                   sortBy: { column: 'created_at', order: 'desc' }
                 });
                 for (const f of (subFiles || [])) {
@@ -582,7 +617,7 @@
           resolve(false);
         });
 
-        xhr.open('POST', KJ.SUPABASE_URL + '/storage/v1/object/' + BUCKET_NAME + '/' + path);
+        xhr.open('POST', KJ.SUPABASE_URL + '/storage/v1/object/' + bucketName() + '/' + path);
         xhr.setRequestHeader('Authorization', 'Bearer ' + session?.access_token);
         xhr.setRequestHeader('Cache-Control', 'max-age=3600');
         xhr.send(file);
@@ -593,7 +628,7 @@
       if (!sb) return false;
       if (!currentUser) { KJ.toast('请先登录'); return false; }
       try {
-        const { error } = await sb.storage.from(BUCKET_NAME).remove([name]);
+        const { error } = await sb.storage.from(bucketName()).remove([name]);
         if (error) throw error;
         return true;
       } catch(e) {
@@ -605,18 +640,34 @@
 
     function getPublicUrl(name) {
       if (!sb) return '';
-      return sb.storage.from(BUCKET_NAME).getPublicUrl(name).data.publicUrl;
+      return sb.storage.from(bucketName()).getPublicUrl(name).data.publicUrl;
+    }
+
+    // 获取文件访问 URL：公共空间用公开 URL；私有空间用 5 分钟限时签名 URL
+    async function getFileUrl(name) {
+      if (!isPrivateSpace()) return getPublicUrl(name);
+      try {
+        const { data, error } = await sb.storage.from(bucketName()).createSignedUrl(name, 300);
+        if (error) throw error;
+        return data.signedUrl;
+      } catch(e) {
+        console.warn('Signed URL failed:', e.message);
+        KJ.toast('获取文件链接失败，请稍后重试');
+        return '';
+      }
     }
 
     async function clearAll() {
       if (!sb) return;
-      const msg = isAdmin ? '确定要清空云盘中所有用户的文件吗？此操作不可恢复。' : '确定要清空你的所有文件吗？此操作不可恢复。';
+      const msg = isAdmin
+        ? `确定要清空${spaceLabel()}中所有用户的文件吗？此操作不可恢复。`
+        : `确定要清空你在${spaceLabel()}的所有文件吗？此操作不可恢复。`;
       if (!confirm(msg)) return;
       const files = await listFiles();
       if (files.length === 0) { KJ.toast('没有可删除的文件'); return; }
       const paths = files.map(f => f.name);
       try {
-        const { error } = await sb.storage.from(BUCKET_NAME).remove(paths);
+        const { error } = await sb.storage.from(bucketName()).remove(paths);
         if (error) throw error;
         KJ.toast('已清空 ' + paths.length + ' 个文件');
         await loadAndRender();
@@ -724,12 +775,11 @@
 
       if (filtered.length === 0) {
         list.innerHTML = '';
-        empty.querySelector('.empty-text').textContent = query ? '没有匹配的文件' : '暂无文件，上传你的第一个文件吧';
+        empty.querySelector('.empty-text').textContent = query ? '没有匹配的文件' : (isPrivateSpace() ? '私有空间暂无文件，上传的文件不会公开' : '暂无文件，上传你的第一个文件吧');
         empty.style.display = 'block';
       } else {
         empty.style.display = 'none';
         list.innerHTML = filtered.map((f, i) => {
-          const url = getPublicUrl(f.name);
           const displayName = KJ.escapeHtml(parseDisplayName(f.name));
           // 管理员视图：显示上传者目录（截取 UUID 前8位）
           const ownerLabel = (isAdmin && f.owner) ? `<div class="file-meta">上传者: ${KJ.escapeHtml(f.owner.substring(0, 8))}…</div>` : '';
@@ -742,8 +792,8 @@
               ${ownerLabel}
             </div>
             <div class="file-actions">
-              <button class="file-btn" data-action="preview" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
-              <button class="file-btn" data-action="download" data-url="${KJ.escapeHtml(url)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
+              <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
+              <button class="file-btn" data-action="download" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
               <button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
             </div>
           </div>`;
@@ -880,15 +930,15 @@
       document.body.removeChild(a);
     }
 
-    // 文件列表事件委托
+    // 文件列表事件委托（预览/下载先取访问 URL：私有空间需签名）
     $('#fileList').addEventListener('click', function(e) {
       const btn = e.target.closest('button');
       if (!btn) return;
       const action = btn.dataset.action;
       if (action === 'preview') {
-        previewFile(btn.dataset.url, btn.dataset.name, btn.dataset.type);
+        getFileUrl(btn.dataset.path).then(url => { if (url) previewFile(url, btn.dataset.name, btn.dataset.type); });
       } else if (action === 'download') {
-        downloadFile(btn.dataset.url, btn.dataset.name);
+        getFileUrl(btn.dataset.path).then(url => { if (url) downloadFile(url, btn.dataset.name); });
       } else if (action === 'delete') {
         deleteFile(btn.dataset.name);
       }
@@ -902,6 +952,20 @@
     $('#fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
     $('#refreshBtn').addEventListener('click', () => loadAndRender());
     $('#searchBox').addEventListener('input', renderFiles);
+
+    // 空间切换（公共/私有）
+    $('#spaceTabs').addEventListener('click', function(e) {
+      const tab = e.target.closest('.space-tab');
+      if (!tab) return;
+      const space = tab.dataset.space;
+      if (space === currentSpace) return;
+      currentSpace = space;
+      document.querySelectorAll('.space-tab').forEach(t => t.classList.toggle('active', t.dataset.space === space));
+      $('#searchBox').value = '';
+      updateSpaceUI();
+      loadAndRender();
+    });
+    updateSpaceUI();
     $('#previewClose').addEventListener('click', () => $('#previewOverlay').classList.add('hidden'));
     $('#previewOverlay').addEventListener('click', function(e) {
       if (e.target === this) this.classList.add('hidden');

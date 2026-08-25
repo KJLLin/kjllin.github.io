@@ -413,8 +413,8 @@
   </div>
   <script src="/common.js"></script>
   <script>
-    var _t1=setTimeout(function(){document.getElementById('loaderText').textContent='正在加载... (网络较慢)';},5000);
-    var _t2=setTimeout(function(){document.getElementById('loaderText').textContent='加载时间较长，请检查网络连接';},10000);
+    var _t1=setTimeout(function(){var t=document.getElementById('loaderText');if(t)t.textContent='正在加载... (网络较慢)';},5000);
+    var _t2=setTimeout(function(){var t=document.getElementById('loaderText');if(t)t.textContent='加载时间较长，请检查网络连接';},10000);
     var _t3=setTimeout(function(){
       var l=document.getElementById('loader');
       if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300);}

@@ -1,10 +1,9 @@
-// room-cleaner：每分钟清理过期的石头剪刀布联机房间
-// 部署：supabase functions deploy room-cleaner
+// room-cleaner：清理过期的石头剪刀布联机房间（HTTP 手动触发）
+// 部署：POST /v1/projects/{ref}/functions/deploy?slug=room-cleaner (multipart, metadata: verify_jwt=false)
 // 环境变量：SUPABASE_SERVICE_ROLE_KEY（Dashboard → Edge Functions → Secrets）
 //
-// 已知线上报错排查要点：
-// 1. Deno.cron 需要 Edge Function 以 scheduled 触发器方式部署（旧版 CLI 不支持，需升级 supabase CLI）
-// 2. 若 SUPABASE_SERVICE_ROLE_KEY 未配置，会在启动时打印警告且不注册 cron
+// 定时清理已改用数据库 pg_cron（见 migration/07），比 Edge Function cron 更可靠
+// （Deno.cron 与 Deno.serve 共存会导致 worker 启动报错，此前的线上报错即源于此）。
 
 const PROJECT_URL = "https://vzqspcuxnwpakofwumat.supabase.co";
 const SERVICE_ROLE_KEY = (() => {
@@ -45,7 +44,7 @@ async function cleanExpiredRooms(): Promise<{ closed: number }> {
 }
 
 // HTTP 端点：支持手动触发（便于测试与排查）
-Deno.serve(async (req: Request) => {
+Deno.serve(async () => {
   try {
     const result = await cleanExpiredRooms();
     return new Response(JSON.stringify({ success: true, ...result }), {
@@ -57,14 +56,5 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ success: false, error: e instanceof Error ? e.message : "internal_error" }),
       { headers: { "Content-Type": "application/json" }, status: 500 }
     );
-  }
-});
-
-// 定时任务：每分钟执行一次
-Deno.cron("clean-expired-rps-rooms", "* * * * *", async () => {
-  try {
-    await cleanExpiredRooms();
-  } catch (e) {
-    console.error("room-cleaner cron error:", e);
   }
 });

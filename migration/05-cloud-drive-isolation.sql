@@ -1,5 +1,6 @@
 -- =====================================================
 -- KJLLin 云盘存储按用户路径隔离 + 管理员放行（SEC-002）
+-- ⚠️ 此脚本已在线上执行（策略名与线上完全一致，本文件为线上真实状态的存档）
 -- 对应前端：cloud/index.html（上传路径 {userId}/{timestamp}_{文件名}）
 -- 前置：已执行 04-fix-storage-rls.sql（本脚本会替换其中的宽松策略）
 -- =====================================================
@@ -13,8 +14,8 @@ DROP POLICY IF EXISTS "Allow owner delete" ON storage.objects;
 -- 2. 读取（list API）：仅能列出自己目录下的文件；管理员可列出全部
 --    说明：cloud-drive 为 public bucket，公开 URL 下载不走 RLS；
 --    此策略仅约束 Storage list API，实现"列表按用户隔离"。
-DROP POLICY IF EXISTS "cloud-drive scoped list" ON storage.objects;
-CREATE POLICY "cloud-drive scoped list" ON storage.objects
+DROP POLICY IF EXISTS "cloud_read_own_or_admin" ON storage.objects;
+CREATE POLICY "cloud_read_own_or_admin" ON storage.objects
   FOR SELECT TO authenticated
   USING (
     bucket_id = 'cloud-drive'
@@ -28,32 +29,22 @@ CREATE POLICY "cloud-drive scoped list" ON storage.objects
   );
 
 -- 3. 上传：仅认证用户，且路径第一级目录必须是自己的 uid
-DROP POLICY IF EXISTS "cloud-drive user upload" ON storage.objects;
-CREATE POLICY "cloud-drive user upload" ON storage.objects
+DROP POLICY IF EXISTS "cloud_insert_own" ON storage.objects;
+CREATE POLICY "cloud_insert_own" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'cloud-drive'
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- 4. 更新：文件所有者或管理员
-DROP POLICY IF EXISTS "cloud-drive owner or admin update" ON storage.objects;
-CREATE POLICY "cloud-drive owner or admin update" ON storage.objects
+-- 4. 更新：自己目录或管理员
+DROP POLICY IF EXISTS "cloud_update_own_or_admin" ON storage.objects;
+CREATE POLICY "cloud_update_own_or_admin" ON storage.objects
   FOR UPDATE TO authenticated
   USING (
     bucket_id = 'cloud-drive'
     AND (
-      owner = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM public.users u
-        WHERE u.id = auth.uid() AND u.is_admin = true
-      )
-    )
-  )
-  WITH CHECK (
-    bucket_id = 'cloud-drive'
-    AND (
-      owner = auth.uid()
+      (storage.foldername(name))[1] = auth.uid()::text
       OR EXISTS (
         SELECT 1 FROM public.users u
         WHERE u.id = auth.uid() AND u.is_admin = true
@@ -61,14 +52,14 @@ CREATE POLICY "cloud-drive owner or admin update" ON storage.objects
     )
   );
 
--- 5. 删除：文件所有者或管理员（管理员可管理所有用户文件）
-DROP POLICY IF EXISTS "cloud-drive owner or admin delete" ON storage.objects;
-CREATE POLICY "cloud-drive owner or admin delete" ON storage.objects
+-- 5. 删除：自己目录或管理员（管理员可管理所有用户文件）
+DROP POLICY IF EXISTS "cloud_delete_own_or_admin" ON storage.objects;
+CREATE POLICY "cloud_delete_own_or_admin" ON storage.objects
   FOR DELETE TO authenticated
   USING (
     bucket_id = 'cloud-drive'
     AND (
-      owner = auth.uid()
+      (storage.foldername(name))[1] = auth.uid()::text
       OR EXISTS (
         SELECT 1 FROM public.users u
         WHERE u.id = auth.uid() AND u.is_admin = true

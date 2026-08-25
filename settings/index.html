@@ -27,10 +27,11 @@
     .user-summary{display:flex;align-items:center;gap:16px;padding:20px;border-radius:var(--radius-lg);margin-bottom:28px;animation:appleFadeUp 0.5s var(--spring-default) 0.08s both}
     .user-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:24px;font-weight:700;flex-shrink:0;box-shadow:0 4px 16px var(--color-accent-glow)}
     .user-info{flex:1;min-width:0}
-    .user-info .name{font-size:18px;font-weight:600;color:var(--color-text-primary)}
+    .user-info .name{font-size:18px;font-weight:600;color:var(--color-text-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .user-info .email{font-size:13px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis}
     .user-info .status{font-size:12px;color:var(--color-success);margin-top:4px;display:flex;align-items:center;gap:4px}
     .user-info .status .dot{width:6px;height:6px;border-radius:50%;background:var(--color-success)}
+    .admin-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:var(--radius-full);background:var(--color-accent-glow);color:var(--color-accent);font-size:12px;font-weight:600;letter-spacing:0.5px}
 
     /* ── 登录提示 ── */
     .login-prompt{text-align:center;padding:48px 24px;border-radius:var(--radius-lg);animation:appleFadeUp 0.5s var(--spring-default) 0.08s both}
@@ -141,7 +142,7 @@
       <div class="user-summary card-glass anim-1" id="userSummary">
         <div class="user-avatar" id="avatarEl">U</div>
         <div class="user-info">
-          <div class="name" id="nameEl">--</div>
+          <div class="name"><span id="nameEl">--</span><span class="admin-badge" id="adminBadge" style="display:none"><i class="fas fa-shield-halved"></i> 管理员</span></div>
           <div class="email" id="emailEl">--</div>
           <div class="status"><span class="dot"></span> 已登录</div>
         </div>
@@ -236,6 +237,11 @@
         $('#avatarEl').textContent=nick.charAt(0).toUpperCase();
         $('#nameEl').textContent=nick;
         $('#emailEl').textContent=user.email||'';
+        // 管理员标识：查询 users 表 is_admin 字段
+        try{
+          var ra=await sb.from('users').select('is_admin').eq('id',user.id).limit(1);
+          if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';}
+        }catch(e){}
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 

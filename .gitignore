@@ -9,3 +9,8 @@ supabase/supabase/.temp/
 migration/backup/
 supabase/DEPLOY.md
 *.env
+
+# Dev tooling (never commit)
+.sbq.py
+.sbdeploy.py
+.sbdeploy2.py
