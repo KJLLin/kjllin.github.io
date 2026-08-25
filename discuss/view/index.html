@@ -187,6 +187,24 @@
     .post-card .post-meta .dot {
       width: 3px; height: 3px; border-radius: 50%; background: var(--text-tertiary);
     }
+    .post-card .post-meta .like-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 13px; color: var(--text-tertiary); font-family: inherit;
+      padding: 4px 10px; border-radius: var(--radius-full);
+      transition: all var(--transition-fast);
+    }
+    .post-card .post-meta .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
+    .post-card .post-meta .like-btn .like-count { font-weight: 600; }
+    .post-card .post-meta .follow-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; padding: 3px 12px; border-radius: var(--radius-full);
+      border: 1px solid var(--border-mica-hover); background: transparent;
+      color: var(--accent); cursor: pointer; font-family: inherit; line-height: 1.5;
+      transition: all var(--transition-fast); white-space: nowrap;
+    }
+    .post-card .post-meta .follow-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .post-card .post-meta .follow-btn.following { border-color: transparent; background: var(--accent-glow); }
     .post-card .divider {
       border: none; border-top: 1px solid var(--border-mica);
       margin: 0 0 24px 0;
@@ -631,7 +649,7 @@
       return html;
     }
 
-    function renderPost(post) {
+    function renderPost(post, liked, following) {
       // 更新标题
       document.title = (post.title || '无标题') + ' · KJLLin';
 
@@ -649,6 +667,17 @@
       html += '<span class="author">' + KJ.escapeHtml(post.nick || '匿名') + '</span>';
       html += '<span class="dot"></span>';
       html += '<span>' + formatDate(post.created_at) + '</span>';
+      // 点赞按钮（心形 + posts.likes_count）
+      html += '<span class="dot"></span>';
+      html += '<button class="like-btn' + (liked ? ' liked' : '') + '" id="likeBtn" data-id="' + post.id + '" title="点赞">' +
+        '<i class="' + (liked ? 'fas' : 'far') + ' fa-heart"' + (liked ? ' style="color:var(--color-danger)"' : '') + '></i>' +
+        '<span class="like-count">' + (post.likes_count || 0) + '</span>' +
+      '</button>';
+      // 关注作者（登录且非本人）
+      if (currentUser && post.user_id && currentUser.id !== post.user_id) {
+        html += '<span class="dot"></span>';
+        html += '<button class="follow-btn' + (following ? ' following' : '') + '" id="followBtn" data-author="' + post.user_id + '">' + (following ? '已关注' : '＋ 关注') + '</button>';
+      }
       if (currentUser && currentUser.id === post.user_id) {
         html += '<span class="dot"></span>';
         html += '<a href="/discuss/edit/?id=' + post.id + '" style="color:var(--accent);text-decoration:none;font-size:13px"><i class="fas fa-pen-to-square"></i> 编辑</a>';
@@ -729,6 +758,78 @@
     // ====================== 核心：加载帖子 ======================
     let currentUser = null;
 
+    // ====================== 点赞 / 关注交互 ======================
+    function applyLikeUI(btn, liked, count) {
+      var icon = btn.querySelector('i');
+      var countEl = btn.querySelector('.like-count');
+      if (icon) {
+        icon.className = (liked ? 'fas' : 'far') + ' fa-heart';
+        icon.style.color = liked ? 'var(--color-danger)' : '';
+      }
+      if (countEl) countEl.textContent = count;
+      btn.classList.toggle('liked', liked);
+    }
+
+    function applyFollowUI(btn, following) {
+      btn.classList.toggle('following', following);
+      btn.textContent = following ? '已关注' : '＋ 关注';
+    }
+
+    function bindPostInteractions(sb, post) {
+      var likeBtn = document.getElementById('likeBtn');
+      var followBtn = document.getElementById('followBtn');
+
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async function() {
+          var uid = currentUser && currentUser.id;
+          if (!uid) { KJ.toast('请先登录'); return; }
+          if (!KJ.rateLimit('discuss_like', 800, 1, '操作过于频繁，请稍后再试')) return;
+          var liked = likeBtn.classList.contains('liked');
+          var countEl = likeBtn.querySelector('.like-count');
+          var count = parseInt(countEl ? countEl.textContent : '0', 10) || 0;
+          // 乐观更新（渲染前已 maybeSingle 查询是否已赞，避免唯一约束冲突）
+          applyLikeUI(likeBtn, !liked, liked ? count - 1 : count + 1);
+          try {
+            var res = liked
+              ? await sb.from('post_likes').delete().eq('post_id', post.id).eq('user_id', uid)
+              : await sb.from('post_likes').insert({ post_id: post.id, user_id: uid });
+            if (res.error) throw res.error;
+          } catch(e) {
+            // 失败回滚（RLS 拒绝 / 唯一冲突等）并刷新服务端计数
+            applyLikeUI(likeBtn, liked, count);
+            KJ.toast('操作失败');
+            try {
+              var fresh = await sb.from('posts').select('likes_count').eq('id', post.id).single();
+              if (fresh && fresh.data) {
+                var c = likeBtn.querySelector('.like-count');
+                if (c) c.textContent = fresh.data.likes_count || 0;
+              }
+            } catch(_) {}
+          }
+        });
+      }
+
+      if (followBtn) {
+        followBtn.addEventListener('click', async function() {
+          var uid = currentUser && currentUser.id;
+          if (!uid) { KJ.toast('请先登录'); return; }
+          if (!KJ.rateLimit('discuss_follow', 800, 1, '操作过于频繁，请稍后再试')) return;
+          var following = followBtn.classList.contains('following');
+          // 乐观更新
+          applyFollowUI(followBtn, !following);
+          try {
+            var res = following
+              ? await sb.from('user_follows').delete().eq('follower_id', uid).eq('followed_id', post.user_id)
+              : await sb.from('user_follows').insert({ follower_id: uid, followed_id: post.user_id });
+            if (res.error) throw res.error;
+          } catch(e) {
+            applyFollowUI(followBtn, following);
+            KJ.toast('操作失败');
+          }
+        });
+      }
+    }
+
     async function loadPost() {
       const params = new URLSearchParams(window.location.search);
       const postId = params.get('id');
@@ -769,7 +870,25 @@
           return;
         }
 
-        renderPost(data);
+        // 登录时查询我的点赞 / 关注状态（maybeSingle：无行时返回 null 不报错）
+        var liked = false;
+        var following = false;
+        var uid = currentUser && currentUser.id;
+        if (uid && data.user_id) {
+          try {
+            var stateRes = await Promise.all([
+              sb.from('post_likes').select('post_id').eq('post_id', postId).eq('user_id', uid).maybeSingle(),
+              sb.from('user_follows').select('followed_id').eq('follower_id', uid).eq('followed_id', data.user_id).maybeSingle()
+            ]);
+            liked = !!(stateRes[0] && stateRes[0].data);
+            following = !!(stateRes[1] && stateRes[1].data);
+          } catch(e) {
+            console.warn('Load like/follow state error:', e);
+          }
+        }
+
+        renderPost(data, liked, following);
+        bindPostInteractions(sb, data);
       } catch(e) {
         showError('加载帖子时发生错误');
         console.warn('Load post error:', e);

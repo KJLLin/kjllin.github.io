@@ -444,12 +444,10 @@
       try {
         var { data: { session } } = await supabase.auth.getSession();
         if (!session || !session.user) { KJ.toast('请先登录以同步游戏纪录'); return; }
-        var userId = session.user.id;
-
-        var { error: insErr } = await supabase.from('game_scores').insert({
-          user_id: userId, game: getGameName(), score: Math.round(finalScore * 100)
+        var { error: submitErr } = await supabase.rpc('submit_game_score', {
+          p_game: getGameName(), p_score: Math.round(finalScore * 100)
         });
-        if (insErr) { KJ.toast('云端同步失败: ' + (insErr.message || '请检查网络')); return; }
+        if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
 
         var { data: best } = await supabase
           .from('game_scores').select('score').eq('game', getGameName())

@@ -128,10 +128,10 @@ const ConvList = {
       // 批量加载用户信息
       const ids = S.conversations.map(c => c.partnerId);
       if (ids.length) {
-        const { data: users, error: usersError } = await sb.from('users').select('id, nick, email').in('id', ids);
+        const { data: users, error: usersError } = await sb.from('users').select('id, nick, email, is_admin').in('id', ids);
         if (usersError) console.warn('加载用户信息失败:', usersError);
         if (users) {
-          for (const u of users) S.partners[u.id] = { nick: u.nick, email: u.email };
+          for (const u of users) S.partners[u.id] = { nick: u.nick, email: u.email, is_admin: u.is_admin === true };
         }
       }
 
@@ -205,6 +205,8 @@ const ConvList = {
     const p = S.partners[c.partnerId];
     const rawName = p?.nick || p?.email || c.partnerId;
     const name = U.escape(rawName);
+    // 管理员徽章（名字本身已 escape）
+    const adminBadge = p?.is_admin ? '<span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '';
     // 头像取首字符（用 Array.from 兼容 emoji 等代理对字符），先取字符再 escape
     const avatar = U.escape(Array.from(rawName)[0] || '?');
     const text = U.escape((c.latestText || '').substring(0, 40));
@@ -215,7 +217,7 @@ const ConvList = {
         <div class="conv-avatar">${avatar}</div>
         <div class="conv-body">
           <div class="conv-top">
-            <span class="conv-name">${name}</span>
+            <span class="conv-name">${name}${adminBadge}</span>
             <span class="conv-time">${time}</span>
           </div>
           <div class="conv-preview">${text}${badge}</div>
@@ -240,8 +242,8 @@ const ConvList = {
         unread: partnerId !== S.selectedId ? 1 : 0,
       });
       // 加载新用户信息
-      const { data } = await sb.from('users').select('id, nick, email').eq('id', partnerId).limit(1);
-      if (data?.length) S.partners[partnerId] = { nick: data[0].nick, email: data[0].email };
+      const { data } = await sb.from('users').select('id, nick, email, is_admin').eq('id', partnerId).limit(1);
+      if (data?.length) S.partners[partnerId] = { nick: data[0].nick, email: data[0].email, is_admin: data[0].is_admin === true };
     }
     this.render();
     // 保持选中状态高亮
@@ -303,7 +305,10 @@ const ChatView = {
     }
 
     const p = S.partners[partnerId];
-    $('#chatPartnerName').textContent = p ? `与 ${p.nick || p.email} 的对话` : '对话';
+    // 名字本身需 escape；对方为管理员时在名字后追加徽章
+    $('#chatPartnerName').innerHTML = p
+      ? `与 ${U.escape(p.nick || p.email || partnerId)} 的对话${p.is_admin ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : ''}`
+      : '对话';
 
     // 加载消息：降序取最新 200 条，再反转为时间正序渲染
     const { data } = await sb
@@ -432,7 +437,7 @@ const Search = {
     try {
       const { data, error } = await sb
         .from('users')
-        .select('id, nick, email')
+        .select('id, nick, email, is_admin')
         .ilike('email', `%${trimmed}%`)
         .neq('id', S.user.id)
         .limit(5);
@@ -452,10 +457,10 @@ const Search = {
 
       let html = '';
       for (const u of data) {
-        html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
+        html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}" data-admin="${u.is_admin === true ? '1' : ''}">
         <span class="search-avatar">${U.escape(Array.from(u.nick || u.email || '')[0] || '?')}</span>
         <div class="search-info">
-          <span class="search-nick">${U.escape(u.nick || '未设置昵称')}</span>
+          <span class="search-nick">${U.escape(u.nick || '未设置昵称')}${u.is_admin === true ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : ''}</span>
           <span class="search-email">${U.escape(u.email)}</span>
         </div>
       </div>`;
@@ -471,9 +476,9 @@ const Search = {
     }
   },
 
-  select(userId, nick, email) {
+  select(userId, nick, email, isAdmin) {
     // 添加/更新 partner 信息
-    S.partners[userId] = { nick, email };
+    S.partners[userId] = { nick, email, is_admin: isAdmin === true };
     $('#searchResults').classList.add('hidden');
     $('#searchResults').innerHTML = '';
     $('#searchInput').value = '';
@@ -557,7 +562,7 @@ function bindEvents() {
   $('#searchResults').addEventListener('click', (e) => {
     const item = e.target.closest('.search-item');
     if (item) {
-      Search.select(item.dataset.id, item.dataset.nick, item.dataset.email);
+      Search.select(item.dataset.id, item.dataset.nick, item.dataset.email, item.dataset.admin === '1');
     }
   });
 

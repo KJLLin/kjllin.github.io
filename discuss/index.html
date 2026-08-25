@@ -200,6 +200,41 @@
     }
     .auth-area .user-info .nick { font-weight: 600; color: var(--accent); }
     .auth-btns { display: flex; gap: 8px; align-items: center; }
+
+    /* ====================== 工具栏（搜索 / 只看关注） ====================== */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px; border-radius: var(--radius-lg); margin-bottom: 20px;
+      animation: fadeUp 0.5s var(--win-ease) 0.05s both;
+    }
+    .search-box { position: relative; flex: 1; min-width: 220px; }
+    .search-box .search-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: var(--text-tertiary); pointer-events: none;
+    }
+    .search-box input {
+      width: 100%; padding: 9px 14px 9px 34px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica);
+      background: var(--bg-mica-hover); color: var(--text-primary);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .search-box input::placeholder { color: var(--text-tertiary); }
+    .search-box input::-webkit-search-cancel-button { cursor: pointer; }
+    .filter-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 8px 14px; border-radius: var(--radius-full);
+      border: 1px solid var(--border-mica); background: transparent;
+      color: var(--text-secondary); cursor: pointer; font-family: inherit;
+      transition: all var(--transition-fast); white-space: nowrap;
+    }
+    .filter-chip:hover { border-color: var(--border-mica-hover); color: var(--accent); }
+    .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
     .login-prompt {
       text-align: center; padding: 48px 20px; border-radius: var(--radius-lg);
       margin-bottom: 24px;
@@ -252,11 +287,30 @@
       word-break: break-word;
     }
     .post-card .post-actions { display: flex; gap: 6px; flex-shrink: 0; }
-    .post-card .post-meta {
-      font-size: 12px; color: var(--text-tertiary); margin-bottom: 14px;
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    .post-card .post-footer {
+      font-size: 12px; color: var(--text-tertiary); margin-top: 14px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
-    .post-card .post-meta .author { font-weight: 600; color: var(--accent); }
+    .post-card .post-footer .author { font-weight: 600; color: var(--accent); }
+    .post-card .post-footer .footer-spacer { flex: 1; }
+    .post-card .like-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 12px; color: var(--text-tertiary); font-family: inherit;
+      padding: 4px 10px; border-radius: var(--radius-full);
+      transition: all var(--transition-fast);
+    }
+    .post-card .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
+    .post-card .like-btn .like-count { font-weight: 600; }
+    .follow-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; padding: 3px 12px; border-radius: var(--radius-full);
+      border: 1px solid var(--border-mica-hover); background: transparent;
+      color: var(--accent); cursor: pointer; font-family: inherit; line-height: 1.5;
+      transition: all var(--transition-fast); white-space: nowrap;
+    }
+    .follow-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .follow-btn.following { border-color: transparent; background: var(--accent-glow); }
     .post-card .post-content {
       font-size: 14px; color: var(--text-secondary); line-height: 1.75;
       word-break: break-word;
@@ -325,6 +379,34 @@
       font-size: 15px; animation: fadeUp 0.5s var(--win-ease) 0.1s both;
     }
 
+    /* ====================== 分页控件（洛谷风格数字页码 × Apple 材质） ====================== */
+    .pagination {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 16px; border-radius: var(--radius-lg); margin-top: 20px;
+      animation: fadeUp 0.4s var(--win-ease) both; flex-wrap: wrap;
+    }
+    .page-btn {
+      min-width: 32px; height: 32px; padding: 0 8px; border-radius: var(--radius-sm);
+      border: 1px solid transparent; background: transparent;
+      color: var(--text-secondary); cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;
+      transition: transform 80ms cubic-bezier(0.23,0.01,0,1), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    }
+    .page-btn:hover:not(:disabled):not(.active) { background: var(--bg-mica-hover); color: var(--accent); }
+    .page-btn:active:not(:disabled) { transform: scale(0.92); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* 当前页：accent 实底（Apple segmented 高亮范式） */
+    .page-btn.active {
+      background: var(--accent); color: #fff; font-weight: 600;
+      box-shadow: 0 2px 8px var(--accent-glow); cursor: default;
+    }
+    .page-btn.nav-btn { padding: 0 10px; }
+    .page-ellipsis {
+      min-width: 24px; text-align: center; color: var(--text-tertiary);
+      font-size: 13px; user-select: none; letter-spacing: 1px;
+    }
+    .page-total { font-size: 12px; color: var(--text-tertiary); margin-left: 10px; white-space: nowrap; }
+
     /* ====================== 帖子骨架屏（数据加载阶段占位） ====================== */
     .sk-card {
       display: flex; align-items: center; gap: 14px;
@@ -387,6 +469,9 @@
       .page-title h1 { font-size: 24px; }
       .post-card { padding: 18px; }
       .auth-area { padding: 12px 16px; flex-direction: column; align-items: flex-start; }
+      .toolbar { padding: 10px 12px; }
+      .search-box { min-width: 100%; }
+      .pagination { flex-wrap: wrap; gap: 8px; }
       .bg-mica-glow-1, .bg-mica-glow-2 { animation: none; }
     }
     @media (max-width: 520px) {
@@ -468,6 +553,15 @@
       <div class="auth-btns" id="authBtns"></div>
     </div>
 
+    <!-- ==================== 工具栏：搜索 / 只看关注 ==================== -->
+    <div class="toolbar mica" id="toolbar">
+      <div class="search-box">
+        <i class="fas fa-magnifying-glass search-icon"></i>
+        <input type="search" id="searchInput" placeholder="搜索标题或内容..." autocomplete="off" enterkeyhint="search" aria-label="搜索讨论">
+      </div>
+      <button class="filter-chip" id="followFilterChip" title="只显示已关注用户的帖子"><i class="fas fa-user-check"></i> 只看关注</button>
+    </div>
+
     <!-- ==================== 登录提示（未登录时显示） ==================== -->
     <div class="login-prompt mica" id="loginPrompt">
       <div class="icon"><i class="fas fa-lock"></i></div>
@@ -476,9 +570,12 @@
     </div>
 
     <!-- ==================== 帖子列表 ==================== -->
-    <div class="post-list" id="postList">
-      <div class="post-empty" id="postEmpty" style="display:none"><i class="fas fa-inbox"></i> 暂无讨论</div>
-    </div>
+    <div class="post-list" id="postList"></div>
+    <!-- 空态提示（列表外层兄弟节点：避免被列表 innerHTML 重写销毁） -->
+    <div class="post-empty" id="postEmpty" style="display:none"><i class="fas fa-inbox"></i> 暂无讨论</div>
+
+    <!-- ==================== 分页控件 ==================== -->
+    <div class="pagination mica" id="pagination" style="display:none"></div>
 
     <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
   </div>
@@ -662,21 +759,75 @@
         try { await sb.auth.signOut(); } catch(e) { KJ.toast('退出登录失败，请重试'); return; }
         currentUser = null;
         updateAuthUI(null);
+        resetInteractionState();
         KJ.toast('已退出登录');
         loadPosts();
       }
 
-      // ====================== 帖子列表 ======================
+      // 登出 / 会话失效时清理点赞、关注与过滤状态
+      function resetInteractionState() {
+        myLikes = new Set();
+        myFollows = new Set();
+        onlyFollowing = false;
+        currentPage = 1;
+        if (followFilterChip) followFilterChip.classList.remove('active');
+      }
+
+      // ====================== 帖子列表（搜索 / 只看关注 / 分页 / 点赞 / 关注） ======================
       var _postsLoading = false;
+      var PAGE_SIZE = 20;
+      var searchQuery = '';        // 清洗后的搜索词
+      var currentPage = 1;         // 当前页码（1 起）
+      var onlyFollowing = false;   // 只看关注过滤
+      var myLikes = new Set();     // 我点赞过的帖子 id
+      var myFollows = new Set();   // 我关注过的用户 id
+      var _totalPages = 0;
+      var _searchTimer = null;
+
+      // 搜索词清洗：去除会破坏 PostgREST or 语法的字符
+      function sanitizeSearchQuery(raw) {
+        return String(raw || '').replace(/[,()%`]/g, ' ').trim();
+      }
+
+      // 登录后批量拉取我的点赞 / 关注关系（渲染卡片与"只看关注"过滤依赖）
+      async function loadMyInteractions() {
+        myLikes = new Set();
+        myFollows = new Set();
+        var uid = currentUser && currentUser.id;
+        if (!uid || !sb) return;
+        try {
+          var results = await Promise.all([
+            sb.from('post_likes').select('post_id').eq('user_id', uid),
+            sb.from('user_follows').select('followed_id').eq('follower_id', uid)
+          ]);
+          if (results[0] && results[0].data) {
+            results[0].data.forEach(function(r) { if (r.post_id) myLikes.add(r.post_id); });
+          }
+          if (results[1] && results[1].data) {
+            results[1].data.forEach(function(r) { if (r.followed_id) myFollows.add(r.followed_id); });
+          }
+        } catch(e) {
+          console.warn('Load interactions error:', e);
+        }
+      }
+
+      // 搜索与关注过滤共用同一查询构建（count 与数据查询分别实例化，不可复用同一 builder）
+      function buildPostsQuery(opts) {
+        var q = sb.from('posts').select('*', opts || undefined);
+        if (searchQuery) {
+          q = q.or('title.ilike.%' + searchQuery + ',content.ilike.%' + searchQuery);
+        }
+        if (onlyFollowing) {
+          q = q.in('user_id', Array.from(myFollows));
+        }
+        return q;
+      }
+
       // 帖子骨架屏：数据加载阶段占位（loader 遮罩负责 SDK/会话阶段，移除后由骨架接替）
       function renderPostsSkeleton() {
         var list = document.getElementById('postList');
         var empty = document.getElementById('postEmpty');
-        if (empty) {
-          empty.style.display = 'none';
-          // 骨架渲染可能伴随列表重写，确保错误/空态提示元素仍挂在列表内
-          if (empty.parentElement !== list) list.appendChild(empty);
-        }
+        if (empty) empty.style.display = 'none';
         var widths = ['62%', '48%', '70%', '55%', '40%'];
         var html = '';
         for (var i = 0; i < 5; i++) {
@@ -703,33 +854,62 @@
 
         // SDK/会话阶段结束：关闭全屏 loader，由骨架屏接替数据加载阶段
         renderPostsSkeleton();
+        updatePaginationState();
         _closeLoader();
         if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
 
         try {
           if (!sb) {
-            empty.textContent = '讨论服务暂不可用';
-            empty.style.display = '';
+            if (empty) { empty.textContent = '讨论服务暂不可用'; empty.style.display = ''; }
+            renderPagination(0);
             return;
           }
 
-          const { data, error } = await sb
-            .from('posts')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-          if (error) throw error;
-
-          if (!data || data.length === 0) {
+          // 只看关注：未关注任何人时直接空态，避免 in() 空列表请求
+          if (onlyFollowing && myFollows.size === 0) {
             list.innerHTML = '';
-            list.appendChild(empty);
-            empty.style.display = '';
+            if (empty) {
+              empty.innerHTML = '<i class="fas fa-user-check"></i> 你还没有关注任何用户';
+              empty.style.display = '';
+            }
+            renderPagination(0);
             return;
           }
 
-          empty.style.display = 'none';
-          list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + data.length + ' 篇讨论</div>' + data.map((p, i) => {
+          var data = [];
+          var totalCount = 0;
+          // 页码越界（如末页帖子被删空）时修正页码后自动重查一次
+          for (var attempt = 0; attempt < 2; attempt++) {
+            var res = await Promise.all([
+              buildPostsQuery({ count: 'exact', head: true }),
+              buildPostsQuery()
+                .order('created_at', { ascending: false })
+                .range((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE - 1)
+            ]);
+            if (res[0].error) throw res[0].error;
+            if (res[1].error) throw res[1].error;
+            totalCount = res[0].count || 0;
+            data = res[1].data || [];
+            var totalPages = Math.ceil(totalCount / PAGE_SIZE);
+            if (data.length === 0 && totalCount > 0 && currentPage > totalPages) {
+              currentPage = Math.max(1, totalPages);
+              continue;
+            }
+            break;
+          }
+
+          if (data.length === 0) {
+            list.innerHTML = '';
+            if (empty) {
+              empty.innerHTML = '<i class="fas fa-inbox"></i> ' + (searchQuery ? '未找到相关讨论' : '暂无讨论');
+              empty.style.display = '';
+            }
+            renderPagination(totalCount);
+            return;
+          }
+
+          if (empty) empty.style.display = 'none';
+          list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇讨论</div>' + data.map((p, i) => {
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
@@ -737,18 +917,32 @@
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
+            const liked = myLikes.has(p.id);
+            const likesCount = p.likes_count || 0;
+            const showFollow = currentUser && !isOwner && p.user_id;
+            const following = showFollow && myFollows.has(p.user_id);
 
             return '<div class="post-card mica">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
-                '<div class="post-meta">' +
-                  '<span class="author"><i class="fas fa-user"></i> ' + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
-                  '<span>' + formatDate(p.created_at) + '</span>' +
-                '</div>' +
               '</div>' +
               actions +
-              '</div>';
+              '<div class="post-footer">' +
+                '<span class="author"><i class="fas fa-user"></i> ' + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
+                (showFollow
+                  ? '<button class="follow-btn' + (following ? ' following' : '') + '" data-author="' + p.user_id + '">' + (following ? '已关注' : '＋ 关注') + '</button>'
+                  : '') +
+                '<span>' + formatDate(p.created_at) + '</span>' +
+                '<span class="footer-spacer"></span>' +
+                '<button class="like-btn' + (liked ? ' liked' : '') + '" data-id="' + p.id + '" title="点赞">' +
+                  '<i class="' + (liked ? 'fas' : 'far') + ' fa-heart"' + (liked ? ' style="color:var(--color-danger)"' : '') + '></i>' +
+                  '<span class="like-count">' + likesCount + '</span>' +
+                '</button>' +
+              '</div>' +
+            '</div>';
           }).join('');
+
+          renderPagination(totalCount);
 
           // 绑定删除
           list.querySelectorAll('.del-post-btn').forEach(btn => {
@@ -766,6 +960,10 @@
             });
           });
 
+          // 绑定点赞 / 关注
+          bindLikeButtons(list);
+          bindFollowButtons(list);
+
         } catch(e) {
           console.warn('Load posts error:', e);
           empty.textContent = '加载讨论失败，请刷新页面重试';
@@ -777,7 +975,200 @@
           if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
           if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
           _postsLoading = false;
+          updatePaginationState();
         }
+      }
+
+      // ====================== 分页控件（洛谷风格数字页码） ======================
+      // 事件委托：页码/前后翻页统一处理
+      function bindPagination() {
+        var pag = document.getElementById('pagination');
+        if (!pag || pag._pagBound) return;
+        pag._pagBound = true;
+        pag.addEventListener('click', function(e) {
+          var btn = e.target.closest('.page-btn');
+          if (!btn || btn.disabled || btn.classList.contains('active')) return;
+          var p = parseInt(btn.dataset.page, 10);
+          if (!p || p < 1 || p > Math.max(_totalPages, 1) || _postsLoading) return;
+          if (p === currentPage) return;
+          currentPage = p;
+          loadPosts();
+        });
+      }
+
+      // 生成页码序列：总页数 ≤7 全显；否则 1 … c-1 c c+1 … 末页
+      function pageSequence(total, current) {
+        var seq = [];
+        if (total <= 7) {
+          for (var i = 1; i <= total; i++) seq.push(i);
+          return seq;
+        }
+        seq.push(1);
+        var lo = Math.max(2, current - 1);
+        var hi = Math.min(total - 1, current + 1);
+        if (lo > 2) seq.push('...');
+        for (var j = lo; j <= hi; j++) seq.push(j);
+        if (hi < total - 1) seq.push('...');
+        seq.push(total);
+        return seq;
+      }
+
+      function renderPagination(totalCount) {
+        _totalPages = totalCount > 0 ? Math.ceil(totalCount / PAGE_SIZE) : 0;
+        var pag = document.getElementById('pagination');
+        if (!pag) return;
+        pag.style.display = '';
+        var html = '<button class="page-btn nav-btn" data-page="' + (currentPage - 1) + '" id="prevPageBtn" aria-label="上一页"><i class="fas fa-chevron-left"></i></button>';
+        var seq = _totalPages > 0 ? pageSequence(_totalPages, currentPage) : [];
+        for (var i = 0; i < seq.length; i++) {
+          var it = seq[i];
+          html += it === '...'
+            ? '<span class="page-ellipsis">…</span>'
+            : '<button class="page-btn' + (it === currentPage ? ' active' : '') + '" data-page="' + it + '">' + it + '</button>';
+        }
+        html += '<button class="page-btn nav-btn" data-page="' + (currentPage + 1) + '" id="nextPageBtn" aria-label="下一页"><i class="fas fa-chevron-right"></i></button>';
+        html += '<span class="page-total">共 ' + _totalPages + ' 页</span>';
+        pag.innerHTML = html;
+        bindPagination();
+        updatePaginationState();
+      }
+
+      function updatePaginationState() {
+        var pag = document.getElementById('pagination');
+        if (!pag || pag.style.display === 'none') return;
+        var prev = document.getElementById('prevPageBtn');
+        var next = document.getElementById('nextPageBtn');
+        // count=0 时隐藏翻页
+        if (_totalPages === 0) {
+          if (prev) prev.style.display = 'none';
+          if (next) next.style.display = 'none';
+          return;
+        }
+        if (prev) { prev.style.display = ''; prev.disabled = _postsLoading || currentPage <= 1; }
+        if (next) { next.style.display = ''; next.disabled = _postsLoading || currentPage >= _totalPages; }
+      }
+
+      // ====================== 点赞 ======================
+      function applyLikeUI(btn, liked, count) {
+        var icon = btn.querySelector('i');
+        var countEl = btn.querySelector('.like-count');
+        if (icon) {
+          icon.className = (liked ? 'fas' : 'far') + ' fa-heart';
+          icon.style.color = liked ? 'var(--color-danger)' : '';
+        }
+        if (countEl) countEl.textContent = count;
+        btn.classList.toggle('liked', liked);
+      }
+
+      async function refreshPostLikeCount(postId, btn) {
+        try {
+          var res = await sb.from('posts').select('likes_count').eq('id', postId).single();
+          if (res && res.data) {
+            var countEl = btn.querySelector('.like-count');
+            if (countEl) countEl.textContent = res.data.likes_count || 0;
+          }
+        } catch(e) {}
+      }
+
+      function bindLikeButtons(scope) {
+        scope.querySelectorAll('.like-btn').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            if (!sb) { KJ.toast('服务暂不可用'); return; }
+            var uid = currentUser && currentUser.id;
+            if (!uid) { KJ.toast('请先登录'); return; }
+            if (!KJ.rateLimit('discuss_like', 800, 1, '操作过于频繁，请稍后再试')) return;
+            var postId = this.dataset.id;
+            var liked = myLikes.has(postId);
+            var countEl = this.querySelector('.like-count');
+            var count = parseInt(countEl ? countEl.textContent : '0', 10) || 0;
+            // 乐观更新（先查后写：myLikes 即"是否已赞"依据，避免唯一约束冲突）
+            if (liked) myLikes.delete(postId); else myLikes.add(postId);
+            applyLikeUI(this, !liked, liked ? count - 1 : count + 1);
+            try {
+              var res = liked
+                ? await sb.from('post_likes').delete().eq('post_id', postId).eq('user_id', uid)
+                : await sb.from('post_likes').insert({ post_id: postId, user_id: uid });
+              if (res.error) throw res.error;
+            } catch(e) {
+              // 失败回滚（RLS 拒绝 / 唯一冲突等）并刷新服务端计数
+              if (liked) myLikes.add(postId); else myLikes.delete(postId);
+              applyLikeUI(this, liked, count);
+              KJ.toast('操作失败');
+              refreshPostLikeCount(postId, this);
+            }
+          });
+        });
+      }
+
+      // ====================== 关注用户 ======================
+      function updateFollowUI(authorId, following) {
+        document.querySelectorAll('.follow-btn[data-author="' + authorId + '"]').forEach(function(btn) {
+          btn.classList.toggle('following', following);
+          btn.textContent = following ? '已关注' : '＋ 关注';
+        });
+      }
+
+      function bindFollowButtons(scope) {
+        scope.querySelectorAll('.follow-btn').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            if (!sb) { KJ.toast('服务暂不可用'); return; }
+            var uid = currentUser && currentUser.id;
+            if (!uid) { KJ.toast('请先登录'); return; }
+            if (!KJ.rateLimit('discuss_follow', 800, 1, '操作过于频繁，请稍后再试')) return;
+            var authorId = this.dataset.author;
+            var following = myFollows.has(authorId);
+            // 乐观更新（同作者的按钮同步刷新）
+            if (following) myFollows.delete(authorId); else myFollows.add(authorId);
+            updateFollowUI(authorId, !following);
+            try {
+              var res = following
+                ? await sb.from('user_follows').delete().eq('follower_id', uid).eq('followed_id', authorId)
+                : await sb.from('user_follows').insert({ follower_id: uid, followed_id: authorId });
+              if (res.error) throw res.error;
+            } catch(e) {
+              if (following) myFollows.add(authorId); else myFollows.delete(authorId);
+              updateFollowUI(authorId, following);
+              KJ.toast('操作失败');
+            }
+          });
+        });
+      }
+
+      // ====================== 搜索 / 只看关注 ======================
+      var searchInput = document.getElementById('searchInput');
+      var followFilterChip = document.getElementById('followFilterChip');
+
+      function triggerSearch() {
+        var q = sanitizeSearchQuery(searchInput.value);
+        if (q === searchQuery) return;
+        searchQuery = q;
+        currentPage = 1;
+        loadPosts();
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          if (_searchTimer) clearTimeout(_searchTimer);
+          _searchTimer = setTimeout(triggerSearch, 300);
+        });
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (_searchTimer) { clearTimeout(_searchTimer); _searchTimer = null; }
+            triggerSearch();
+          }
+        });
+      }
+
+      if (followFilterChip) {
+        followFilterChip.addEventListener('click', function() {
+          var uid = currentUser && currentUser.id;
+          if (!uid) { KJ.toast('请先登录'); return; }
+          onlyFollowing = !onlyFollowing;
+          followFilterChip.classList.toggle('active', onlyFollowing);
+          currentPage = 1;
+          loadPosts();
+        });
       }
 
       // ====================== 认证监听 ======================
@@ -790,6 +1181,7 @@
             }
           } else if (event === 'SIGNED_OUT') {
             updateAuthUI(null);
+            resetInteractionState();
             loadPosts();
           } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
             if (session?.user) currentUser = session.user;
@@ -816,12 +1208,14 @@
         var storedUser = getStoredUser();
         if (storedUser) updateAuthUI(storedUser);
 
-        sb.auth.getSession().then(({ data: { session } }) => {
+        sb.auth.getSession().then(async ({ data: { session } }) => {
           if (session?.user) {
             updateAuthUI(session.user);
           } else {
             updateAuthUI(null);
           }
+          // 登录后先拉取点赞/关注关系（列表卡片渲染依赖 myLikes / myFollows）
+          await loadMyInteractions();
           loadPosts();
         }).catch(function() {
           updateAuthUI(null);

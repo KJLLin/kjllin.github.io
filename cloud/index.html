@@ -154,6 +154,37 @@
     .space-tab:active { transform: scale(0.96); }
     @media (max-width: 520px) { .space-tab { flex: 1; padding: 9px 12px; } .space-tabs { width: 100%; } }
 
+    /* ====================== 管理员私有空间管理条 ====================== */
+    .admin-manage-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 18px; border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      animation: slideUp 0.6s var(--win-ease) 0.18s both;
+    }
+    .manage-label { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .manage-email-input {
+      flex: 1; min-width: 180px; padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary);
+      font-size: 14px; font-family: inherit; transition: border-color var(--transition-fast);
+    }
+    .manage-email-input:focus { border-color: var(--accent); }
+    .manage-email-input::placeholder { color: var(--text-tertiary); }
+    .admin-target-banner {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 18px; border-radius: var(--radius-md);
+      margin-bottom: 14px; font-size: 13px; color: var(--accent);
+      animation: slideUp 0.4s var(--win-ease) both;
+    }
+    .admin-target-banner .banner-actions { margin-left: auto; }
+    @media (max-width: 520px) {
+      .admin-manage-bar { flex-direction: column; align-items: stretch; }
+      .manage-email-input { min-width: auto; }
+      .admin-target-banner .banner-actions { margin-left: 0; }
+    }
+
+    /* 管理员徽章（标题旁） */
+    .admin-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 12px; border-radius: var(--radius-full); background: var(--accent-glow); color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.5px; vertical-align: middle; margin-left: 10px; }
+
     /* 上传进度条 */
     .upload-progress-wrap { margin-top: 12px; display: none; }
     .upload-progress-wrap.active { display: block; }
@@ -330,13 +361,21 @@
     <div class="drive-content hidden" id="driveContent">
     <div class="page-header">
       <div class="header-icon"><i class="fas fa-cloud"></i></div>
-      <h1 class="header-title">资源云盘</h1>
+      <h1 class="header-title">资源云盘 <span class="admin-badge" id="adminBadge" style="display:none"><i class="fas fa-shield-halved"></i> 管理员</span></h1>
       <p class="header-sub" id="headerSub">云端存储 · 随时随地访问你的文件</p>
     </div>
 
     <div class="space-tabs mica" id="spaceTabs">
       <button class="space-tab active" data-space="public" type="button"><i class="fas fa-globe"></i> 公共空间</button>
       <button class="space-tab" data-space="private" type="button"><i class="fas fa-lock"></i> 私有空间</button>
+    </div>
+
+    <!-- 管理员私有空间管理条（私有空间 + 管理员可见） -->
+    <div class="admin-manage-bar mica hidden" id="adminManageBar">
+      <span class="manage-label"><i class="fas fa-user-gear"></i> 输入用户邮箱可管理其私有文件</span>
+      <input type="email" class="manage-email-input" id="adminEmailInput" placeholder="user@example.com" autocomplete="off">
+      <button class="btn btn-primary" id="adminEmailViewBtn" type="button"><i class="fas fa-magnifying-glass"></i> 查看</button>
+      <button class="btn btn-outline" id="adminEmailClearBtn" type="button"><i class="fas fa-eraser"></i> 清除</button>
     </div>
 
     <div class="toolbar mica">
@@ -362,6 +401,9 @@
       </div>
       <div class="upload-progress-bar"><div class="upload-progress-fill" id="uploadProgressFill"></div></div>
     </div>
+
+    <!-- 管理员正在管理某用户私有空间的横幅 -->
+    <div class="admin-target-banner mica hidden" id="adminTargetBanner"></div>
 
     <div style="position:relative">
       <div class="file-list" id="fileList"></div>
@@ -412,6 +454,7 @@
     // ====================== 认证模块 ======================
     let currentUser = null;
     let isAdmin = false; // 管理员可查看/管理所有用户的文件
+    let adminTarget = null; // 管理员私有空间管理目标用户 {id, nick}
 
     // 查询当前用户是否为管理员
     async function fetchIsAdmin(userId) {
@@ -443,8 +486,18 @@
       // 查询管理员权限后再加载文件（管理员可管理所有文件）
       fetchIsAdmin(user.id).then(function(admin) {
         isAdmin = admin;
+        // 管理员徽章显隐
+        const badge = document.getElementById('adminBadge');
+        if (badge) badge.style.display = admin ? 'inline-flex' : 'none';
+        updateAdminManageUI();
         loadAndRender();
-      }).catch(function() { isAdmin = false; loadAndRender(); });
+      }).catch(function() {
+        isAdmin = false;
+        const badge = document.getElementById('adminBadge');
+        if (badge) badge.style.display = 'none';
+        updateAdminManageUI();
+        loadAndRender();
+      });
     }
 
     // 退出
@@ -505,11 +558,13 @@
     // ====================== 文件管理 ======================
     let _storageOk = true;
 
-    async function listFiles() {
+    async function listFiles(_retry) {
       if (!sb) return [];
       try {
-        // 普通用户只列出自己的目录；管理员列出所有用户目录
-        const prefix = isAdmin ? '' : (currentUser?.id ? currentUser.id + '/' : '');
+        // 公共空间：所有用户共享全桶视图（cloud_read_all），递归列出所有用户目录
+        // 私有空间：普通用户仅列自己的目录；管理员递归全部（指定 adminTarget 时仅列该用户目录）
+        const scanAll = !isPrivateSpace() || (isAdmin && !adminTarget);
+        const prefix = scanAll ? '' : (adminTarget ? adminTarget.id + '/' : (currentUser?.id ? currentUser.id + '/' : ''));
         const bucket = sb.storage.from(bucketName());
         const { data, error } = await bucket.list(prefix, {
           sortBy: { column: 'created_at', order: 'desc' }
@@ -517,13 +572,14 @@
         if (error) throw error;
         _storageOk = true;
 
-        // 管理员：递归列出所有用户目录下的文件
         let items = data || [];
-        if (isAdmin) {
+        let basePrefix = prefix;
+        if (scanAll) {
+          // 递归列出所有用户目录下的文件（公共空间所有用户；私有空间管理员）
           const allFiles = [];
           for (const entry of items) {
             if (entry.id) {
-              // 是文件（根目录遗留文件）
+              // 是文件（根目录遗留文件，owner 为空）
               allFiles.push({ name: entry.name, id: entry.id, metadata: entry.metadata, created_at: entry.created_at, updated_at: entry.updated_at, owner: entry.owner || '' });
             } else {
               // 是用户目录，递归列出
@@ -540,18 +596,29 @@
             }
           }
           items = allFiles;
+          basePrefix = '';
         }
 
-        return items.filter(f => f.name !== '.emptyFolderPlaceholder' && f.id).map(f => ({
-          name: f.name,
-          id: f.id || f.name,
-          size: f.metadata?.size || 0,
-          type: f.metadata?.mimetype || '',
-          created: f.created_at,
-          updated: f.updated_at || f.created_at,
-          owner: f.owner || ''
-        }));
+        return items.filter(f => f.name !== '.emptyFolderPlaceholder' && f.id).map(f => {
+          // 非递归路径下补全完整路径（userId/文件名），owner 从 path 第一段解析
+          const fullName = (basePrefix && f.name.indexOf('/') === -1) ? basePrefix + f.name : f.name;
+          const ownerSeg = fullName.indexOf('/') === -1 ? '' : fullName.split('/')[0];
+          return {
+            name: fullName,
+            id: f.id || fullName,
+            size: f.metadata?.size || 0,
+            type: f.metadata?.mimetype || '',
+            created: f.created_at,
+            updated: f.updated_at || f.created_at,
+            owner: f.owner || ownerSeg
+          };
+        });
       } catch(e) {
+        // 首次失败可能因 access token 过期/轮换被拒（PGRST301）：强制刷新会话后重试一次
+        if (!_retry) {
+          try { await sb.auth.refreshSession(); } catch(_) {}
+          return listFiles(true);
+        }
         console.warn('List files failed:', e.message);
         if (_storageOk) {
           _storageOk = false;
@@ -664,8 +731,10 @@
         : `确定要清空你在${spaceLabel()}的所有文件吗？此操作不可恢复。`;
       if (!confirm(msg)) return;
       const files = await listFiles();
-      if (files.length === 0) { KJ.toast('没有可删除的文件'); return; }
-      const paths = files.map(f => f.name);
+      // 仅删除当前用户自己的文件（管理员要清空所有人文件请逐个删除，不提供批量）
+      const mine = files.filter(f => f.owner === (currentUser?.id || ''));
+      if (mine.length === 0) { KJ.toast('没有可删除的文件'); return; }
+      const paths = mine.map(f => f.name);
       try {
         const { error } = await sb.storage.from(bucketName()).remove(paths);
         if (error) throw error;
@@ -707,6 +776,37 @@
 
     // ====================== 渲染 ======================
     let cachedFiles = [];
+
+    // 上传者信息缓存：userId → {nick, email, is_admin}
+    const ownerCache = {};
+
+    // 批量查询上传者信息（跳过已缓存项）；返回是否有新增缓存
+    async function fetchOwnerInfo(userIds) {
+      if (!sb) return false;
+      const ids = [...new Set(userIds)].filter(id => id && !ownerCache[id]);
+      if (ids.length === 0) return false;
+      try {
+        const { data, error } = await sb.from('users').select('id,nick,email,is_admin').in('id', ids);
+        if (error) throw error;
+        for (const u of (data || [])) {
+          ownerCache[u.id] = { nick: u.nick || '', email: u.email || '', is_admin: u.is_admin === true };
+        }
+        return (data || []).length > 0;
+      } catch(e) {
+        console.warn('Fetch owner info failed:', e.message);
+        return false;
+      }
+    }
+
+    // 上传者显示名：昵称 → 邮箱前缀 → id 前 8 位
+    function ownerDisplayName(ownerId) {
+      const info = ownerCache[ownerId];
+      if (info) {
+        if (info.nick) return KJ.escapeHtml(info.nick);
+        if (info.email) return KJ.escapeHtml(info.email.split('@')[0]);
+      }
+      return KJ.escapeHtml(ownerId.substring(0, 8)) + '…';
+    }
 
     // 文件列表骨架屏（数据加载阶段占位）
     function renderFilesSkeleton() {
@@ -779,10 +879,18 @@
         empty.style.display = 'block';
       } else {
         empty.style.display = 'none';
+        // 上传者标签：公共空间所有用户可见；私有空间保持管理员视图
+        const showOwnerMeta = !isPrivateSpace() || isAdmin;
         list.innerHTML = filtered.map((f, i) => {
           const displayName = KJ.escapeHtml(parseDisplayName(f.name));
-          // 管理员视图：显示上传者目录（截取 UUID 前8位）
-          const ownerLabel = (isAdmin && f.owner) ? `<div class="file-meta">上传者: ${KJ.escapeHtml(f.owner.substring(0, 8))}…</div>` : '';
+          // 上传者：优先昵称/邮箱前缀（ownerCache），无缓存回退 id 前8位；管理员上传者加盾牌
+          let ownerLabel = '';
+          if (showOwnerMeta && f.owner) {
+            const shield = ownerCache[f.owner]?.is_admin ? '<i class="fas fa-shield-halved"></i> ' : '';
+            ownerLabel = `<div class="file-meta">${shield}上传者: ${ownerDisplayName(f.owner)}</div>`;
+          }
+          // 删除按钮：仅管理员或文件所有者可见（RLS 服务端已强制，此处为 UI 层隐藏）
+          const canDelete = isAdmin || (f.owner && f.owner === currentUser?.id);
           return `
           <div class="file-item mica" style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both">
             <div class="file-icon">${getFileIcon(f.type, parseDisplayName(f.name))}</div>
@@ -794,10 +902,17 @@
             <div class="file-actions">
               <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
               <button class="file-btn" data-action="download" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
-              <button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>
+              ${canDelete ? `<button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>`;
         }).join('');
+        // 异步补全上传者信息（先渲染列表，owner 信息到达后更新，不阻塞）
+        if (showOwnerMeta) {
+          const owners = filtered.map(f => f.owner).filter(Boolean);
+          if (owners.length > 0) {
+            fetchOwnerInfo(owners).then(updated => { if (updated) renderFiles(); });
+          }
+        }
       }
       updateStorage();
     }
@@ -815,7 +930,9 @@
     }
 
     function updateStorage() {
-      const total = cachedFiles.reduce((s, f) => s + (f.size || 0), 0);
+      // 普通用户只统计自己的文件（公共空间全桶可见，仅计 owner 为自己的）；管理员显示全量
+      const scoped = isAdmin ? cachedFiles : cachedFiles.filter(f => f.owner === currentUser?.id);
+      const total = scoped.reduce((s, f) => s + (f.size || 0), 0);
       const MAX = 50 * 1024 * 1024;
       const pct = Math.min(100, Math.round((total / MAX) * 100));
       $('#storageText').textContent = total ? `已用 ${formatSize(total)}` : '已用 --';
@@ -953,6 +1070,55 @@
     $('#refreshBtn').addEventListener('click', () => loadAndRender());
     $('#searchBox').addEventListener('input', renderFiles);
 
+    // ====================== 管理员私有空间邮箱管理 ======================
+    function updateAdminManageUI() {
+      const bar = document.getElementById('adminManageBar');
+      const banner = document.getElementById('adminTargetBanner');
+      if (!bar || !banner) return;
+      const showBar = isPrivateSpace() && isAdmin;
+      bar.classList.toggle('hidden', !showBar);
+      const active = showBar && adminTarget;
+      banner.classList.toggle('hidden', !active);
+      if (active) {
+        const nick = adminTarget.nick || adminTarget.id.substring(0, 8);
+        banner.innerHTML = '<i class="fas fa-user-gear"></i> 正在管理用户 ' + KJ.escapeHtml(nick) + ' 的私有空间' +
+          '<span class="banner-actions"><button class="btn btn-outline" id="adminTargetExitBtn" type="button" style="padding:6px 14px;font-size:13px"><i class="fas fa-xmark"></i> 退出管理</button></span>';
+        const exitBtn = document.getElementById('adminTargetExitBtn');
+        if (exitBtn) exitBtn.addEventListener('click', adminClearTarget);
+      }
+    }
+
+    async function adminViewUser() {
+      const input = document.getElementById('adminEmailInput');
+      const email = (input?.value || '').trim();
+      if (!email) { KJ.toast('请输入用户邮箱'); return; }
+      try {
+        const { data, error } = await sb.from('users').select('id,nick').eq('email', email).maybeSingle();
+        if (error) throw error;
+        if (!data) { KJ.toast('未找到该用户'); return; }
+        adminTarget = { id: data.id, nick: data.nick || '' };
+        $('#searchBox').value = '';
+        updateAdminManageUI();
+        loadAndRender();
+      } catch(e) {
+        KJ.toast('查询用户失败: ' + (e.message || '请稍后重试'));
+      }
+    }
+
+    function adminClearTarget() {
+      adminTarget = null;
+      const input = document.getElementById('adminEmailInput');
+      if (input) input.value = '';
+      updateAdminManageUI();
+      loadAndRender();
+    }
+
+    document.getElementById('adminEmailViewBtn').addEventListener('click', adminViewUser);
+    document.getElementById('adminEmailClearBtn').addEventListener('click', adminClearTarget);
+    document.getElementById('adminEmailInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') adminViewUser();
+    });
+
     // 空间切换（公共/私有）
     $('#spaceTabs').addEventListener('click', function(e) {
       const tab = e.target.closest('.space-tab');
@@ -963,6 +1129,7 @@
       document.querySelectorAll('.space-tab').forEach(t => t.classList.toggle('active', t.dataset.space === space));
       $('#searchBox').value = '';
       updateSpaceUI();
+      updateAdminManageUI();
       loadAndRender();
     });
     updateSpaceUI();
@@ -1011,38 +1178,29 @@
       });
     });
 
-    // ====================== 大文件人机验证（>5MB + 防绕过） ======================
+    // ====================== 大文件人机验证（>5MB + 防绕过 + 服务端票据） ======================
     let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
-    async function cloudVerifyCaptcha(token){
-      try{
-        const res=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{
-          method:'POST',
-          headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({token})
-        });
-        const d=await res.json();
-        if(d&&d.success)return true;
-      }catch(e){}
-      // 验证失败 → 重置
-      KJ.toast('验证失败，请重试');
-      _cloudCaptchaToken='';try{hcaptcha.reset('captchaCloud')}catch(_){}
-      return false;
-    }
-    window.onCloudCaptcha = async function(t) {
+    // hCaptcha 回调：存 token 并交由调用方（upload-ticket 接口做服务端 siteverify）
+    window.onCloudCaptcha = function(t) {
       _cloudCaptchaToken = t;
-      const ok = await cloudVerifyCaptcha(t);
-      if (ok && _captchaResolve) { _captchaResolve(true); _captchaResolve = null; }
+      if (_captchaResolve) { _captchaResolve(t); _captchaResolve = null; }
     };
     window.onCloudCaptchaExpired = function() { _cloudCaptchaToken = ''; };
 
     function requireCaptcha(targetFile) {
       return new Promise((resolve) => {
         _captchaTarget = targetFile;
-        if (_cloudCaptchaToken) { _cloudCaptchaToken = ''; resolve(true); return; }
+        if (_cloudCaptchaToken) { const t = _cloudCaptchaToken; _cloudCaptchaToken = ''; resolve(t); return; }
         _captchaResolve = resolve;
         $('#captchaModal').classList.remove('hidden');
         try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
       });
+    }
+
+    function resetCloudCaptcha() {
+      _cloudCaptchaToken = '';
+      $('#captchaModal').classList.add('hidden');
+      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
     }
     $('#captchaCancelBtn').addEventListener('click', () => {
       $('#captchaModal').classList.add('hidden');
@@ -1074,17 +1232,38 @@
       }
     }, 3000);
 
-    // 修改 handleFiles 函数，添加大文件验证
+    // 修改 handleFiles 函数：大文件（>5MB）上传前需通过服务端 upload-ticket 接口
+    // 获取票据（接口内部完成 hCaptcha siteverify；数据库触发器强制校验票据）
     const _origHandleFiles = handleFiles;
     handleFiles = async function(fileList) {
       const files = Array.from(fileList);
       const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024);
       if (largeFiles.length > 0) {
-        const ok = await requireCaptcha(largeFiles[0].name);
-        if (!ok) { KJ.toast('验证取消'); return; }
-        _cloudCaptchaToken = '';
-        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
-        $('#captchaModal').classList.add('hidden');
+        const token = await requireCaptcha(largeFiles[0].name);
+        if (!token) { KJ.toast('验证取消'); return; }
+        let ticketOk = false;
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          const res = await fetch(KJ.SUPABASE_URL + '/functions/v1/upload-ticket', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': KJ.SUPABASE_KEY,
+              'Authorization': 'Bearer ' + (session?.access_token || '')
+            },
+            body: JSON.stringify({ token: token, files: largeFiles.length })
+          });
+          const d = await res.json();
+          if (d && d.success) {
+            ticketOk = true;
+          } else {
+            KJ.toast((d && d.error) || '验证失败，请重试');
+          }
+        } catch(e) {
+          KJ.toast('验证失败，请重试');
+        }
+        resetCloudCaptcha();
+        if (!ticketOk) return;
       }
       return _origHandleFiles(fileList);
     };

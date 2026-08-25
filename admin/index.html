@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; frame-ancestors 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f5f5f7">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <title>管理后台 · KJLLin</title>
+  <meta name="description" content="KJLLin 管理后台 - 用户功能权限管理">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ── 布局 ── */
+    .container{max-width:740px;margin:0 auto;padding:80px 16px 40px;position:relative;z-index:1;padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+
+    /* ── 页面标题 ── */
+    .page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.6s var(--ease-out) forwards}
+    .page-header .icon{font-size:48px;margin-bottom:8px;display:block;color:var(--color-accent)}
+    .page-header h1{font-size:28px;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.3px}
+    .page-header .subtitle{font-size:14px;color:var(--color-text-tertiary);margin-top:4px}
+
+    /* ── 卡片动画 ── */
+    .card-anim{animation:fadeUp 0.6s var(--ease-out) both}
+    .card-anim:nth-child(1){animation-delay:0.05s}
+    .card-anim:nth-child(2){animation-delay:0.12s}
+    .card-anim:nth-child(3){animation-delay:0.18s}
+
+    /* ── 卡片标题 ── */
+    .card-header{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--color-text-primary);margin-bottom:16px}
+
+    /* ── 认证门控 ── */
+    .gate-card{text-align:center;padding:48px 24px}
+    .gate-card .g-icon{font-size:48px;color:var(--color-danger);margin-bottom:14px}
+    .gate-card .g-title{font-size:20px;font-weight:600;color:var(--color-text-primary);margin-bottom:8px}
+    .gate-card .g-msg{font-size:13px;color:var(--color-text-tertiary);margin-bottom:18px}
+    .gate-card .g-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+    /* ── 统计 ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .stat-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition:all var(--transition-fast)}
+    .stat-item:hover{background:var(--color-bg-active)}
+    .stat-item .si-icon{font-size:20px;margin-bottom:6px}
+    .stat-item .si-label{font-size:11px;color:var(--color-text-tertiary);margin-bottom:3px}
+    .stat-item .si-value{font-size:18px;font-weight:700;color:var(--color-text-primary)}
+    .stat-item .si-icon i.c-accent{color:var(--color-accent)}
+    .stat-item .si-icon i.c-danger{color:var(--color-danger)}
+
+    /* ── 搜索 ── */
+    .search-row{display:flex;align-items:center;gap:10px}
+    .search-box{flex:1;position:relative}
+    .search-box i.fa-magnifying-glass{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--color-text-tertiary);font-size:14px;pointer-events:none}
+    .search-input{width:100%;padding:10px 14px 10px 38px;background:var(--color-bg-input);border:1px solid var(--color-border);border-radius:var(--radius-full);color:var(--color-text-primary);font-family:var(--font-sans);font-size:14px;transition:all var(--transition-fast)}
+    .search-input:focus{outline:none;border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow);background:var(--color-bg-raised)}
+    .search-input::placeholder{color:var(--color-text-tertiary)}
+    .search-hint{font-size:11px;color:var(--color-text-tertiary);margin-top:10px;display:flex;align-items:center;gap:5px}
+
+    /* ── 用户卡片 ── */
+    .user-list{display:flex;flex-direction:column;gap:12px}
+    .user-card{padding:18px;animation:fadeUp 0.5s var(--ease-out) both}
+    .user-card:nth-child(1){animation-delay:0.05s}
+    .user-card:nth-child(2){animation-delay:0.10s}
+    .user-card:nth-child(3){animation-delay:0.15s}
+    .user-card:nth-child(4){animation-delay:0.20s}
+    .user-card:nth-child(5){animation-delay:0.25s}
+    .uc-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+    .uc-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:19px;font-weight:700;flex-shrink:0;box-shadow:0 4px 16px var(--color-accent-glow)}
+    .uc-info{flex:1;min-width:0}
+    .uc-name{font-size:16px;font-weight:600;color:var(--color-text-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;word-break:break-all}
+    .uc-email{font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin-top:2px;word-break:break-all}
+    .uc-meta{font-size:11px;color:var(--color-text-tertiary);margin-top:4px}
+    .admin-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:var(--radius-full);background:var(--color-accent-glow);color:var(--color-accent);font-size:11px;font-weight:600;letter-spacing:0.5px;flex-shrink:0}
+    .self-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:var(--radius-full);background:var(--color-warning-bg);color:var(--color-warning);font-size:11px;font-weight:600;flex-shrink:0}
+
+    /* ── 功能开关（chip 风格，参考 theme-chip）── */
+    .uc-toggles{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--color-border)}
+    .feat-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--radius-full);border:1.5px solid var(--color-border);background:transparent;color:var(--color-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-sans);white-space:nowrap;transition:all var(--transition-fast)}
+    .feat-chip:hover{border-color:var(--color-danger);color:var(--color-danger);background:var(--color-danger-bg)}
+    .feat-chip:active{transform:scale(0.95);transition:transform var(--duration-instant) var(--spring-default)}
+    /* banned 状态 = banned_features 含该 key（功能被禁用，红色） */
+    .feat-chip.banned{background:var(--color-danger);color:var(--color-text-on-accent);border-color:var(--color-danger);box-shadow:0 2px 8px var(--color-danger-bg)}
+    .save-btn{margin-left:auto;padding:6px 18px;border-radius:var(--radius-full);border:none;background:var(--color-accent);color:var(--color-text-on-accent);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);box-shadow:0 2px 8px var(--color-accent-glow);transition:all var(--transition-fast);flex-shrink:0}
+    .save-btn:hover{background:var(--color-accent-hover)}
+    .save-btn:active{transform:scale(0.96)}
+    .save-btn:disabled{opacity:0.55;cursor:default}
+
+    .list-empty{text-align:center;color:var(--color-text-tertiary);font-size:13px;padding:32px 0}
+
+    /* ── 按钮 ── */
+    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-outline:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-glow)}
+    .btn-primary-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-accent);border-radius:var(--radius-full);background:transparent;color:var(--color-accent);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-primary-outline:hover{background:var(--color-accent-glow)}
+
+    /* ── 响应式（520px 断点）── */
+    @media(max-width:520px){
+      .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom,0px))}
+      .page-header h1{font-size:22px}
+      .page-header .icon{font-size:40px}
+      .stats-grid{gap:8px}
+      .stat-item{padding:12px 6px}
+      .stat-item .si-value{font-size:15px}
+      .stat-item .si-label{font-size:10px}
+      .search-row{flex-wrap:wrap}
+      .user-card{padding:16px 14px}
+      /* 卡片纵向堆叠：头像信息居中 */
+      .uc-head{flex-direction:column;text-align:center;gap:10px}
+      .uc-name{justify-content:center}
+      /* 开关换行铺满 */
+      .uc-toggles{gap:6px}
+      .feat-chip{flex:1 1 calc(50% - 6px);justify-content:center;padding:6px 8px}
+      .save-btn{flex:1 1 100%;margin-left:0;margin-top:4px;padding:8px}
+      .gate-card{padding:36px 16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-base"></div>
+  <!-- ================== 全局导航栏 ================== -->
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/settings/" class="menu-item active"><i class="fas fa-gear"></i> 设置</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <nav aria-label="breadcrumb" style="margin-bottom:6px">
+        <a href="/settings/" style="color:var(--color-accent);text-decoration:none;font-size:13px;font-weight:500"><i class="fas fa-arrow-left"></i> 返回设置</a>
+        <span style="color:var(--color-text-tertiary);font-size:13px;margin:0 6px">›</span>
+        <span style="color:var(--color-text-secondary);font-size:13px">管理后台</span>
+      </nav>
+      <span class="icon"><i class="fas fa-shield-halved"></i></span><h1>管理后台</h1>
+      <div class="subtitle">用户功能权限管理</div>
+    </div>
+
+    <!-- 认证门控：非管理员可见 -->
+    <div id="gateCard" class="card card-glass gate-card card-anim">
+      <div class="g-icon" id="gateIcon"><i class="fas fa-circle-notch fa-spin"></i></div>
+      <div class="g-title" id="gateTitle">加载中...</div>
+      <div class="g-msg" id="gateMsg">正在验证管理员身份</div>
+      <div class="g-btns">
+        <a href="/" class="btn-primary-outline" id="gateHomeBtn" hidden><i class="fas fa-home"></i> 返回首页</a>
+        <a href="/login/?redirect=/admin/" class="btn-outline" id="gateLoginBtn" hidden><i class="fas fa-key"></i> 前往登录</a>
+      </div>
+    </div>
+
+    <!-- 管理后台内容：仅管理员可见 -->
+    <div id="adminContent" style="display:none">
+      <!-- 统计 -->
+      <div class="card card-glass card-anim" style="margin-bottom:12px">
+        <div class="card-header"><i class="fas fa-chart-simple"></i> 统计概览</div>
+        <div class="stats-grid">
+          <div class="stat-item"><div class="si-icon"><i class="fas fa-users c-accent"></i></div><div class="si-label">总用户数</div><div class="si-value" id="statTotal">--</div></div>
+          <div class="stat-item"><div class="si-icon"><i class="fas fa-shield-halved c-accent"></i></div><div class="si-label">管理员数</div><div class="si-value" id="statAdmins">--</div></div>
+          <div class="stat-item"><div class="si-icon"><i class="fas fa-ban c-danger"></i></div><div class="si-label">功能受限用户</div><div class="si-value" id="statBanned">--</div></div>
+        </div>
+      </div>
+
+      <!-- 搜索 -->
+      <div class="card card-glass card-anim" style="margin-bottom:12px">
+        <div class="search-row">
+          <div class="search-box">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="搜索昵称或邮箱..." autocomplete="off">
+          </div>
+        </div>
+        <div class="search-hint"><i class="fas fa-circle-info"></i> 点击开关切换功能（红色为已禁用），修改后需点击该行的「保存」</div>
+      </div>
+
+      <!-- 用户列表 -->
+      <div id="userList" class="user-list"></div>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+    (function(){
+    var $=function(s){return document.querySelector(s);};
+    var sb,user;
+    var users=[];        // 数据库中的用户数据
+    var draft={};        // uid -> 编辑中的 banned_features 数组
+    var query='';        // 当前搜索词（小写）
+    var loaded=false;
+
+    var FEATURES=[
+      {key:'chat',label:'站内信',icon:'fa-envelope'},
+      {key:'discuss',label:'讨论版',icon:'fa-comments'},
+      {key:'cloud',label:'云盘上传',icon:'fa-cloud-arrow-up'},
+      {key:'games',label:'游戏云分数',icon:'fa-gamepad'}
+    ];
+
+    try{sb=KJ.createSupabase();}catch(e){}
+    if(sb) KJ.initMessageBanner(sb);
+
+    function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{year:'numeric',month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
+    function esc(s){return KJ.escapeHtml(s);}
+
+    // ==================== 认证门控 ====================
+    function showGate(title,msg,opt){
+      opt=opt||{};
+      $('#gateIcon').innerHTML='<i class="fas fa-lock"></i>';
+      $('#gateTitle').textContent=title;
+      $('#gateMsg').textContent=msg;
+      $('#gateHomeBtn').hidden=!!opt.hideButtons;
+      $('#gateLoginBtn').hidden=!opt.showLogin;
+      $('#gateCard').style.display='';
+      $('#adminContent').style.display='none';
+    }
+
+    async function loadUser(){
+      if(!sb)return;
+      try{
+        var r=await sb.auth.getSession();
+        if(!r.data.session||!r.data.session.user){showGate('请先登录','仅管理员可访问本页面',{showLogin:true});return}
+        user=r.data.session.user;
+
+        var isAdmin=false;
+        try{
+          var ra=await sb.from('users').select('is_admin').eq('id',user.id).maybeSingle();
+          isAdmin=!!(ra.data&&ra.data.is_admin===true);
+        }catch(e){console.warn('Admin check failed:',e)}
+
+        if(!isAdmin){showGate('无权访问','该页面仅限管理员使用，你当前没有管理员权限');return}
+
+        $('#gateCard').style.display='none';
+        $('#adminContent').style.display='block';
+        loadUsers();
+      }catch(e){console.error('loadUser:',e);showGate('加载失败','网络异常，请刷新页面重试');}
+    }
+
+    // ==================== 数据加载 ====================
+    async function loadUsers(){
+      var el=$('#userList');
+      el.innerHTML='<div class="list-empty"><i class="fas fa-circle-notch fa-spin"></i> 正在加载用户...</div>';
+      try{
+        var r=await sb.from('users')
+          .select('id,nick,email,is_admin,banned_features,created_at,last_login_time')
+          .order('created_at',{ascending:false})
+          .limit(200);
+        if(r.error){el.innerHTML='<div class="list-empty">加载失败：'+esc(r.error.message||'未知错误')+'</div>';return}
+        users=r.data||[];
+        draft={};
+        loaded=true;
+        renderStats();
+        renderList();
+      }catch(e){console.error('loadUsers:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新页面重试</div>';}
+    }
+
+    // ==================== 统计 ====================
+    function renderStats(){
+      var admins=0,bannedCount=0;
+      for(var i=0;i<users.length;i++){
+        if(users[i].is_admin===true)admins++;
+        if(users[i].banned_features&&users[i].banned_features.length)bannedCount++;
+      }
+      $('#statTotal').textContent=users.length;
+      $('#statAdmins').textContent=admins;
+      $('#statBanned').textContent=bannedCount;
+    }
+
+    // ==================== 列表渲染 ====================
+    function findUser(uid){for(var i=0;i<users.length;i++){if(users[i].id===uid)return users[i];}return null;}
+    function normalizeBanned(arr){return Array.isArray(arr)?arr.slice():[];}
+    function currentBanned(uid){
+      if(draft.hasOwnProperty(uid))return draft[uid];
+      var u=findUser(uid);
+      return u?normalizeBanned(u.banned_features):[];
+    }
+    function isDirty(uid){
+      var u=findUser(uid);if(!u)return false;
+      return JSON.stringify(currentBanned(uid))!==JSON.stringify(normalizeBanned(u.banned_features));
+    }
+
+    function filteredUsers(){
+      if(!query)return users;
+      var out=[];
+      for(var i=0;i<users.length;i++){
+        var u=users[i];
+        var nick=(u.nick||'').toLowerCase(),email=(u.email||'').toLowerCase();
+        if(nick.indexOf(query)!==-1||email.indexOf(query)!==-1)out.push(u);
+      }
+      return out;
+    }
+
+    function renderList(){
+      var el=$('#userList');
+      var list=filteredUsers();
+      if(!list.length){
+        el.innerHTML=loaded?'<div class="list-empty"><i class="fas fa-magnifying-glass"></i> 未找到匹配的用户</div>':'';
+        return;
+      }
+      var html=[];
+      for(var i=0;i<list.length;i++)html.push(renderCard(list[i]));
+      el.innerHTML=html.join('');
+    }
+
+    function renderCard(u){
+      var banned=currentBanned(u.id);
+      var isSelf=user&&u.id===user.id;
+      var displayName=u.nick||u.email||u.id;
+
+      var chips='';
+      for(var i=0;i<FEATURES.length;i++){
+        var f=FEATURES[i];
+        var on=banned.indexOf(f.key)!==-1;
+        chips+='<button type="button" class="feat-chip'+(on?' banned':'')+'" data-uid="'+esc(u.id)+'" data-feat="'+f.key+'" title="'+(on?'已禁用，点击启用':'可用，点击禁用')+'"><i class="fas '+f.icon+'"></i>'+f.label+'</button>';
+      }
+
+      var badges='';
+      if(u.is_admin===true)badges+='<span class="admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>';
+      if(isSelf)badges+='<span class="self-tag"><i class="fas fa-user"></i> 这是你自己</span>';
+
+      return '<div class="card card-glass user-card" data-uid="'+esc(u.id)+'">'+
+        '<div class="uc-head">'+
+          '<div class="uc-avatar">'+esc((displayName||'?').charAt(0).toUpperCase())+'</div>'+
+          '<div class="uc-info">'+
+            '<div class="uc-name">'+esc(displayName)+badges+'</div>'+
+            '<div class="uc-email">'+esc(u.email||'--')+'</div>'+
+            '<div class="uc-meta">注册于 '+fmtDate(u.created_at)+(u.last_login_time?' · 最近登录 '+fmtDate(u.last_login_time):'')+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="uc-toggles">'+
+          chips+
+          '<button type="button" class="save-btn" data-uid="'+esc(u.id)+'"'+(isDirty(u.id)?'':' style="display:none"')+'><i class="fas fa-floppy-disk"></i> 保存</button>'+
+        '</div>'+
+      '</div>';
+    }
+
+    // 乐观更新某行的开关与保存按钮显示（不重建整卡片，避免打断点击）
+    function updateRowUi(uid){
+      var card=document.querySelector('.user-card[data-uid="'+uid+'"]');
+      if(!card)return;
+      var chips=card.querySelectorAll('.feat-chip');
+      var banned=currentBanned(uid);
+      for(var i=0;i<chips.length;i++){
+        chips[i].classList.toggle('banned',banned.indexOf(chips[i].dataset.feat)!==-1);
+        chips[i].title=banned.indexOf(chips[i].dataset.feat)!==-1?'已禁用，点击启用':'可用，点击禁用';
+      }
+      var btn=card.querySelector('.save-btn');
+      if(btn)btn.style.display=isDirty(uid)?'':'none';
+    }
+
+    function toggleFeat(uid,feat){
+      var arr=currentBanned(uid).slice();
+      var idx=arr.indexOf(feat);
+      if(idx===-1)arr.push(feat);else arr.splice(idx,1);
+      draft[uid]=arr;
+      updateRowUi(uid);
+    }
+
+    // ==================== 保存（每行保存按钮）====================
+    async function saveUser(uid){
+      if(!KJ.rateLimit('admin_save_'+uid,1500))return;
+      var u=findUser(uid);if(!u)return;
+      var next=currentBanned(uid).slice();
+      var card=document.querySelector('.user-card[data-uid="'+uid+'"]');
+      var btn=card?card.querySelector('.save-btn'):null;
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 保存中';}
+      try{
+        var r=await sb.from('users').update({banned_features:next}).eq('id',uid);
+        if(r.error){
+          // 失败回滚：丢弃草稿，恢复为数据库值
+          delete draft[uid];
+          updateRowUi(uid);
+          KJ.toast('保存失败');
+          console.warn('Admin save error:',r.error);
+          return;
+        }
+        u.banned_features=next;
+        delete draft[uid];
+        updateRowUi(uid);
+        renderStats();
+        KJ.toast('已保存');
+      }catch(e){
+        delete draft[uid];
+        updateRowUi(uid);
+        KJ.toast('保存失败');
+        console.warn('Admin save exception:',e);
+      }finally{
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-floppy-disk"></i> 保存';}
+      }
+    }
+
+    // ==================== 事件绑定 ====================
+    $('#userList').addEventListener('click',function(e){
+      var chip=e.target.closest('.feat-chip');
+      if(chip){toggleFeat(chip.dataset.uid,chip.dataset.feat);return}
+      var saveBtn=e.target.closest('.save-btn');
+      if(saveBtn){saveUser(saveBtn.dataset.uid);}
+    });
+
+    // 搜索（300ms 防抖，前端过滤 nick/email）
+    var searchTimer;
+    $('#searchInput').addEventListener('input',function(){
+      clearTimeout(searchTimer);
+      searchTimer=setTimeout(function(){
+        query=$('#searchInput').value.trim().toLowerCase();
+        renderList();
+      },300);
+    });
+
+    // ==================== 主题 / 导航 ====================
+    var themeBtn=$('#themeBtn');
+    function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}
+    themeBtn.addEventListener('click',function(){KJ.toggleTheme();updateThemeUI();});
+    KJ.onSystemThemeChange(updateThemeUI);updateThemeUI();
+
+    KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
+    KJ.initNav(null, { homeUrl: '/' });
+
+    if(!sb){showGate('网络错误','Supabase 初始化失败，请刷新后重试');return}
+
+    var authReady=false;
+    sb.auth.onAuthStateChange(function(event,session){
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(session&&session.user){loadUser();return}showGate('请先登录','仅管理员可访问本页面',{showLogin:true});}
+      else if(event==='SIGNED_OUT'){authReady=true;showGate('请先登录','仅管理员可访问本页面',{showLogin:true});}
+      else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(session&&session.user)loadUser();}
+    });
+    // 3 秒超时兜底：事件未触发时主动检查会话
+    setTimeout(function(){if(!authReady)loadUser();},3000);
+    setTimeout(function(){if(!authReady&&$('#gateTitle').textContent==='加载中...'){$('#gateTitle').textContent='加载超时';$('#gateMsg').textContent='网络较慢，请检查网络后刷新页面';}},8000);
+    })();
+  </script>
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>

@@ -56,6 +56,7 @@
     /* ── 图标颜色 ── */
     .s-icon-profile{background:rgba(0,113,227,0.12);color:var(--color-accent)}
     .s-icon-security{background:rgba(255,159,10,0.12);color:var(--color-warning)}
+    .s-icon-admin{background:rgba(0,113,227,0.12);color:var(--color-accent)}
     .s-icon-device{background:rgba(48,209,88,0.12);color:var(--color-success)}
     .s-icon-password{background:rgba(94,92,230,0.12);color:#5e5ce6}
     .s-icon-appearance{background:rgba(175,82,222,0.12);color:#af52de}
@@ -171,6 +172,11 @@
           <span class="s-body"><span class="s-title">设备管理</span><span class="s-desc">已登录设备、登录历史</span></span>
           <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
         </a>
+        <a href="/admin/" class="settings-item card-glass" id="adminEntry" style="display:none">
+          <span class="s-icon s-icon-admin"><i class="fas fa-shield-halved"></i></span>
+          <span class="s-body"><span class="s-title">管理后台</span><span class="s-desc">用户功能权限管理</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
       </div>
 
       <!-- 外观 -->
@@ -240,7 +246,7 @@
         // 管理员标识：查询 users 表 is_admin 字段
         try{
           var ra=await sb.from('users').select('is_admin').eq('id',user.id).limit(1);
-          if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';}
+          if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';var ae=$('#adminEntry');if(ae)ae.style.display='';}
         }catch(e){}
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }

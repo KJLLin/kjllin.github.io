@@ -440,10 +440,10 @@ pre, code, .mono, .tile, .score-val {
       if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
       const userId = session.user.id;
 
-      const { error: insErr } = await supabase.from('game_scores').insert({
-        user_id: userId, game: GAME_NAME, score: finalScore
+      const { error: submitErr } = await supabase.rpc('submit_game_score', {
+        p_game: GAME_NAME, p_score: finalScore
       });
-      if (insErr) { KJ.toast('云端同步失败: '+KJ.formatSupabaseError(insErr)); return; }
+      if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
 
       const { data: cloudBest } = await supabase
         .from('game_scores').select('score').eq('game', GAME_NAME)

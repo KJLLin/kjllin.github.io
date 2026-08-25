@@ -292,6 +292,18 @@ input, textarea, button { font-family: inherit; }
   flex-shrink: 0;
   margin-left: auto;
 }
+/* 管理员徽章 — 对话列表 / 聊天头部 / 搜索结果通用 */
+.chat-admin-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-glow);
+  color: var(--color-accent);
+  font-size: 11px; font-weight: 600;
+  margin-left: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
 
 /* 对话列表骨架屏（数据加载阶段占位） */
 .sk-conv {
