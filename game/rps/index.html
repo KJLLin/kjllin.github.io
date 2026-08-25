@@ -525,11 +525,19 @@ async function validateRoomInDB(code) {
 }
 
 async function joinRoomInDB(code) {
-  if (!sb || !myUserId) return false;
+  if (!sb || !myUserId) { KJ.toast('加入失败，请重试'); return false; }
   var { error } = await sb.from('rps_rooms')
     .update({ joined_by: myUserId, status: 'playing' })
     .ilike('code', code).eq('status', 'waiting');
-  return !error;
+  if (error) { KJ.toast('加入失败，请重试'); return false; }
+  // 回读校验：并发加入时后到者的 update 匹配 0 行，需确认真正写入的是自己
+  var { data: room } = await sb.from('rps_rooms')
+    .select('code,status,joined_by').ilike('code', code).maybeSingle();
+  if (!room || room.joined_by !== myUserId) {
+    KJ.toast('房间已被其他玩家加入');
+    return false;
+  }
+  return true;
 }
 
 async function closeRoomInDB(code) {
@@ -820,9 +828,21 @@ function genInviteToken() {
   return tok;
 }
 
+// 生成未占用的房间码：先查重，撞码则重新生成，最多重试 5 次
+async function genUniqueRoomCode(genFn) {
+  if (!sb) return genFn();
+  var code = genFn();
+  for (var i = 0; i < 5; i++) {
+    var { data } = await sb.from('rps_rooms').select('code').eq('code', code).maybeSingle();
+    if (!data) return code; // 未被占用
+    code = genFn();         // 撞码 → 重新生成
+  }
+  return code; // 兜底：仍撞码则交由插入环节报错
+}
+
 async function createRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  var code = genRoomCode();
+  var code = await genUniqueRoomCode(genRoomCode);
   if (!(await createRoomInDB(code, false, []))) { KJ.toast('创建房间失败，请重试'); return; }
   await setupOnlineRoom(code, true);
 }
@@ -836,7 +856,12 @@ async function joinRoom() {
     KJ.toast(valid.reason === 'expired' ? '房间已过期' : valid.reason === 'closed' ? '房间已关闭' : valid.reason === 'full' ? '房间已满' : '房间不存在或已过期');
     return;
   }
-  if (!(await joinRoomInDB(code))) { KJ.toast('加入失败，请重试'); return; }
+  // 不能加入自己创建的房间（避免 host 把自己写成 guest）
+  if (valid.room && valid.room.host_id === myUserId) {
+    KJ.toast('不能加入自己创建的房间');
+    return;
+  }
+  if (!(await joinRoomInDB(code))) return; // 失败原因已在 joinRoomInDB 内提示
   await setupOnlineRoom(code, false);
 }
 
@@ -846,7 +871,7 @@ var inviteConvLoaded = false;
 
 async function createInviteRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  var code = genInviteToken();
+  var code = await genUniqueRoomCode(genInviteToken);
   inviteRoomCode = code;
   inviteSentUsers = [];
 
@@ -1155,7 +1180,7 @@ function enterGameRoom(code, oppName) {
       enableChoices();
     });
     onlineChannel.on('broadcast', { event: 'leave' }, function() {
-      setStatus('waiting', '对手离开了，等待中...');
+      setStatus('waiting', '对手已离开，可等待新玩家加入');
       document.getElementById('onOppName').textContent = '等待中...';
       document.getElementById('onOppEmoji').innerHTML = PLACEHOLDER_ICON;
       document.getElementById('oppReadyHint').style.display = 'none';
@@ -1165,6 +1190,14 @@ function enterGameRoom(code, oppName) {
       document.getElementById('rematchBtn').style.display = 'none';
   document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
       enableChoices();
+      // ★ host 收到 guest 离开 → 重置数据库房间，否则 status/joined_by 残留导致房间被判满永久锁死
+      if (isHost && currentRoom) {
+        sb.from('rps_rooms')
+          .update({ status: 'waiting', joined_by: null, host_move: null, guest_move: null, round_status: 'waiting' })
+          .ilike('code', currentRoom).eq('host_id', myUserId)
+          .then(function(){}).catch(function(){});
+        KJ.toast('对手已离开，可等待新玩家加入');
+      }
     });
     onlineChannel.on('broadcast', { event: 'reset' }, function() { resetRoundState(); });
     onlineChannel.on('broadcast', { event: 'reject' }, function() {
@@ -1260,6 +1293,15 @@ async function setupOnlineRoom(code, _isHost) {
   document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
     if (onlineRoundTimer) { clearTimeout(onlineRoundTimer); onlineRoundTimer = null; }
     enableChoices();
+    // ★ host 收到 guest 离开 → 重置数据库房间，否则 status/joined_by 残留导致房间被判满永久锁死
+    if (isHost) {
+      sb.from('rps_rooms')
+        .update({ status: 'waiting', joined_by: null, host_move: null, guest_move: null, round_status: 'waiting' })
+        .ilike('code', code).eq('host_id', myUserId)
+        .then(function(){}).catch(function(){});
+      setStatus('waiting', '对手已离开，可等待新玩家加入');
+      KJ.toast('对手已离开，可等待新玩家加入');
+    }
   });
 
   onlineChannel.on('broadcast', { event: 'reset' }, function() { resetRoundState(); });

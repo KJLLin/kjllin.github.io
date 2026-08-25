@@ -61,7 +61,7 @@
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
         }
-        #gameInfo {
+        #gameInfo, #gameInfoSub {
             margin-top: 10px;
             font-size: 18px;
             text-align: center;
@@ -181,7 +181,7 @@
 
 	<div id="gameInfo">I wanna be Dinosaur!</div>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div id="gameInfo">分数: <span id="score">0</span> | 金币: <span id="coins">0</span></div>
+    <div id="gameInfoSub">分数: <span id="score">0</span> | 金币: <span id="coins">0</span></div>
     <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
 <div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
 <div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
@@ -226,13 +226,7 @@
         KJ.onSystemThemeChange(updateThemeUI);
         updateThemeUI();
 
-        // 退出登录
-        var logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) logoutBtn.addEventListener('click', async function() {
-          if (!confirm('确定退出登录？')) return;
-          try { if (sb) await sb.auth.signOut(); } catch(e) {}
-          window.location.href = '/';
-        });
+        // 退出登录：由 KJ.initNav 统一绑定，页面不再重复绑定（避免 confirm 弹两次）
     </script>
 
     <script>

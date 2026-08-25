@@ -324,6 +324,8 @@
 
     // 安全重定向校验（使用 common.js 统一实现）
     const redirect=KJ.safeRedirect(new URLSearchParams(location.search).get('redirect'));
+    // recovery 链接检测：Supabase 密码重置邮件会带 ?type=recovery&token=...（query 或 hash，需在 SDK 消费并清理 URL 前同步捕获）
+    const isRecovery=/type=recovery/.test(location.search+location.hash);
 
     function toast(msg){
       const e=document.querySelector('.toast');if(e)e.remove();
@@ -340,8 +342,14 @@
       return msg;
     }
 
-    // 已登录自动跳转
-    if(sb){sb.auth.getSession().then(({data:{session}})=>{if(session?.user)window.location.href=redirect})}
+    // 已登录自动跳转（recovery 链接除外：提示设置新密码并跳转修改密码页，带 redirect 以便改完跳回）
+    if(sb){sb.auth.getSession().then(({data:{session}})=>{
+      if(!session?.user)return;
+      if(isRecovery){
+        toast('请设置新密码');
+        setTimeout(function(){window.location.href='/settings/password/?recovery=1&redirect='+encodeURIComponent(redirect);},800);
+      }else{window.location.href=redirect}
+    })}
 
     // 预热 Auth 和 REST API
     KJ.warmUpServices();

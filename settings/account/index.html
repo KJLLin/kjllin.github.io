@@ -163,7 +163,7 @@
       <div class="card card-glass card-anim">
         <div class="card-header"><i class="fas fa-shield-halved"></i> 安全概览<a href="/settings/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
         <div class="security-grid">
-          <div class="security-item"><div class="si-icon"><i class="fas fa-key"></i></div><div class="si-label">密码强度</div><div class="si-value" id="pwdStrength">检测中</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-key"></i></div><div class="si-label">密码使用时长</div><div class="si-value" id="pwdStrength">检测中</div></div>
           <div class="security-item"><div class="si-icon"><i class="fas fa-envelope"></i></div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
           <div class="security-item"><div class="si-icon"><i class="fas fa-lock"></i></div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
           <div class="security-item"><div class="si-icon"><i class="fas fa-mobile-screen"></i></div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
@@ -224,7 +224,7 @@
     if(sb) KJ.initMessageBanner(sb);
 
     function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
-    async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var d=await r.json();var ip=d.ip||d.origin||'';if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
+    async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var ip;/* api.ip.sb/ip 返回纯文本，需用 text() 解析并 trim */if(apis[i].indexOf('api.ip.sb')!==-1){ip=(await r.text()).trim();}else{var d=await r.json();ip=d.ip||d.origin||'';}if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
 
     // 从 Supabase login_devices 读取最近登录历史
     async function renderLoginHistory(){
@@ -310,7 +310,7 @@
         renderGithubBinding();
 
         var days=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
-        var el=$('#pwdStrength');el.textContent=days>90?'建议修改':'正常';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
+        var el=$('#pwdStrength');el.textContent=days>90?days+' 天，建议修改密码':days+' 天';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 

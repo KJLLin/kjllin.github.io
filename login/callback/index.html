@@ -128,9 +128,11 @@
           var { data: { session } } = await sb.auth.getSession();
           
           if (session) {
+            // 从 URL 读取 redirect 参数（默认 '/'），登录成功后跳转到安全校验后的地址
+            var redirect = KJ.safeRedirect(new URLSearchParams(window.location.search).get('redirect'));
             setStatus('', '登录成功', '正在跳转...', false);
-            $('#actionArea').innerHTML = '<a href="/" class="btn">进入首页</a>';
-            setTimeout(function(){ window.location.href = '/'; }, 800);
+            $('#actionArea').innerHTML = '<a href="' + KJ.escapeHtml(redirect) + '" class="btn">进入首页</a>';
+            setTimeout(function(){ window.location.href = redirect; }, 800);
           } else {
             // 检查是否有 error 参数
             var params = new URLSearchParams(window.location.search);

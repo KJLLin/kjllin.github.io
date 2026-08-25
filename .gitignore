@@ -1,3 +1,11 @@
 supabase/.temp/
 supabase/supabase/.temp/
 .supabase_token
+
+# Editor temp files
+.trae-html-share-packages/
+
+# Sensitive (handover doc)
+migration/backup/
+supabase/DEPLOY.md
+*.env

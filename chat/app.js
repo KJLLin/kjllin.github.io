@@ -45,7 +45,8 @@ const U = {
   },
   // 将文本中的 URL 转为可点击链接（在 escape 之后调用）
   linkify(text) {
-    return text.replace(/(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="word-break:break-all">$1</a>');
+    // 排除 CJK 字符（汉字、CJK 标点、全角符号等），避免 URL 后紧跟的中文被并入链接
+    return text.replace(/(https?:\/\/[^\s<>"{}|\\^`[\]\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="word-break:break-all">$1</a>');
   },
 };
 
@@ -87,48 +88,81 @@ const Theme = {
 const ConvList = {
   async load() {
     if (!S.user) return;
-    // 加载屏蔽列表
-    const { data: blocks } = await sb.from('user_blocks').select('blocked_id').eq('blocker_id', S.user.id);
-    S.blockedList = blocks || [];
+    // 数据加载阶段：渲染骨架占位（render() 时替换，异常时由 finally 兜底移除）
+    this._renderSkeleton();
+    try {
+      // 加载屏蔽列表
+      const { data: blocks, error: blocksError } = await sb.from('user_blocks').select('blocked_id').eq('blocker_id', S.user.id);
+      if (blocksError) console.warn('加载屏蔽列表失败:', blocksError);
+      S.blockedList = blocks || [];
 
-    const { data } = await sb
-      .from('private_messages')
-      .select('id, sender_id, recipient_id, text, created_at, read')
-      .or(`sender_id.eq.${S.user.id},recipient_id.eq.${S.user.id}`)
-      .order('created_at', { ascending: false })
-      .limit(500);
+      const { data, error } = await sb
+        .from('private_messages')
+        .select('id, sender_id, recipient_id, text, created_at, read')
+        .or(`sender_id.eq.${S.user.id},recipient_id.eq.${S.user.id}`)
+        .order('created_at', { ascending: false })
+        .limit(500);
 
-    if (!data) { this.render(); return; }
+      if (error) { console.warn('加载对话列表失败:', error); this.render(); return; }
+      if (!data) { this.render(); return; }
 
-    const convMap = {};
-    for (const m of data) {
-      const pid = m.sender_id === S.user.id ? m.recipient_id : m.sender_id;
-      if (!convMap[pid]) {
-        convMap[pid] = { latestText: m.text, latestTime: m.created_at, unread: 0 };
+      const convMap = {};
+      for (const m of data) {
+        const pid = m.sender_id === S.user.id ? m.recipient_id : m.sender_id;
+        if (!convMap[pid]) {
+          convMap[pid] = { latestText: m.text, latestTime: m.created_at, unread: 0 };
+        }
+        if (m.recipient_id === S.user.id && !m.read) {
+          convMap[pid].unread++;
+        }
       }
-      if (m.recipient_id === S.user.id && !m.read) {
-        convMap[pid].unread++;
+
+      S.conversations = Object.entries(convMap).map(([pid, v]) => ({
+        partnerId: pid,
+        latestText: v.latestText,
+        latestTime: v.latestTime,
+        unread: v.unread,
+      }));
+      S.conversations.sort((a, b) => new Date(b.latestTime) - new Date(a.latestTime));
+
+      // 批量加载用户信息
+      const ids = S.conversations.map(c => c.partnerId);
+      if (ids.length) {
+        const { data: users, error: usersError } = await sb.from('users').select('id, nick, email').in('id', ids);
+        if (usersError) console.warn('加载用户信息失败:', usersError);
+        if (users) {
+          for (const u of users) S.partners[u.id] = { nick: u.nick, email: u.email };
+        }
       }
+
+      this.render();
+    } finally {
+      // 骨架屏兜底移除：正常路径 render() 已通过 innerHTML 替换，此处保证异常时也不残留
+      this._removeSkeleton();
     }
+  },
 
-    S.conversations = Object.entries(convMap).map(([pid, v]) => ({
-      partnerId: pid,
-      latestText: v.latestText,
-      latestTime: v.latestTime,
-      unread: v.unread,
-    }));
-    S.conversations.sort((a, b) => new Date(b.latestTime) - new Date(a.latestTime));
-
-    // 批量加载用户信息
-    const ids = S.conversations.map(c => c.partnerId);
-    if (ids.length) {
-      const { data: users } = await sb.from('users').select('id, nick, email').in('id', ids);
-      if (users) {
-        for (const u of users) S.partners[u.id] = { nick: u.nick, email: u.email };
-      }
+  // 对话列表骨架屏（数据加载阶段占位）
+  _renderSkeleton() {
+    const list = $('#convList');
+    if (!list) return;
+    const widths = [72, 58, 80, 64, 50];
+    let html = '';
+    for (let i = 0; i < 5; i++) {
+      html += `
+        <div class="sk-conv" aria-hidden="true">
+          <div class="sk-line sk-circle"></div>
+          <div class="sk-body">
+            <div class="sk-line sk-name" style="width:${widths[i]}%"></div>
+            <div class="sk-line sk-preview"></div>
+          </div>
+        </div>`;
     }
+    list.innerHTML = html;
+  },
 
-    this.render();
+  _removeSkeleton() {
+    document.querySelectorAll('#convList .sk-conv').forEach(el => el.remove());
   },
 
   render() {
@@ -169,13 +203,16 @@ const ConvList = {
 
   _renderItem(c, isBlocked = false) {
     const p = S.partners[c.partnerId];
-    const name = U.escape(p?.nick || p?.email || c.partnerId);
+    const rawName = p?.nick || p?.email || c.partnerId;
+    const name = U.escape(rawName);
+    // 头像取首字符（用 Array.from 兼容 emoji 等代理对字符），先取字符再 escape
+    const avatar = U.escape(Array.from(rawName)[0] || '?');
     const text = U.escape((c.latestText || '').substring(0, 40));
     const time = U.time(c.latestTime);
     const badge = c.unread > 0 ? `<span class="conv-badge">${c.unread > 99 ? '99+' : c.unread}</span>` : '';
     return `
       <div class="conv-item" data-id="${c.partnerId}">
-        <div class="conv-avatar">${name.charAt(0)}</div>
+        <div class="conv-avatar">${avatar}</div>
         <div class="conv-body">
           <div class="conv-top">
             <span class="conv-name">${name}</span>
@@ -219,30 +256,34 @@ const ConvList = {
 const BlockActions = {
   async blockUser(partnerId) {
     try {
-      await sb.from('user_blocks').upsert({ blocker_id: S.user.id, blocked_id: partnerId }, { onConflict: 'blocker_id,blocked_id' });
+      const { error } = await sb.from('user_blocks').upsert({ blocker_id: S.user.id, blocked_id: partnerId }, { onConflict: 'blocker_id,blocked_id' });
+      if (error) throw error;
       S.blockedList.push({ blocked_id: partnerId });
       if (S.selectedId === partnerId) { S.selectedId = null; $('#chatView').classList.add('hidden'); $('#chatPlaceholder').classList.remove('hidden'); }
       ConvList.render();
       Toast.success('已屏蔽该用户');
-    } catch(e) { Toast.error('操作失败'); }
+    } catch(e) { Toast.error('操作失败，请稍后重试'); }
   },
   async unblockUser(partnerId) {
     try {
-      await sb.from('user_blocks').delete().eq('blocker_id', S.user.id).eq('blocked_id', partnerId);
+      const { error } = await sb.from('user_blocks').delete().eq('blocker_id', S.user.id).eq('blocked_id', partnerId);
+      if (error) throw error;
       S.blockedList = S.blockedList.filter(b => b.blocked_id !== partnerId);
       ConvList.render();
       Toast.success('已取消屏蔽');
-    } catch(e) { Toast.error('操作失败'); }
+    } catch(e) { Toast.error('操作失败，请稍后重试'); }
   },
   async deleteConversation(partnerId) {
-    if (!confirm('确定删除与该用户的所有聊天记录？（仅你这边删除，对方不受影响）')) return;
+    // RLS 限制只能删除自己发送的消息（物理删除，双方均不可见），对方发送的消息会保留
+    if (!confirm('将永久删除你发送的消息（双方均不可见），对方发送的消息仍会保留。确定删除吗？')) return;
     try {
-      await sb.from('private_messages').delete().eq('sender_id', S.user.id).eq('recipient_id', partnerId);
+      const { error } = await sb.from('private_messages').delete().eq('sender_id', S.user.id).eq('recipient_id', partnerId);
+      if (error) throw error;
       S.conversations = S.conversations.filter(c => c.partnerId !== partnerId);
       if (S.selectedId === partnerId) { S.selectedId = null; $('#chatView').classList.add('hidden'); $('#chatPlaceholder').classList.remove('hidden'); }
       ConvList.render();
       Toast.success('聊天记录已删除');
-    } catch(e) { Toast.error('删除失败'); }
+    } catch(e) { Toast.error('删除失败，请稍后重试'); }
   },
 };
 
@@ -264,15 +305,15 @@ const ChatView = {
     const p = S.partners[partnerId];
     $('#chatPartnerName').textContent = p ? `与 ${p.nick || p.email} 的对话` : '对话';
 
-    // 加载消息
+    // 加载消息：降序取最新 200 条，再反转为时间正序渲染
     const { data } = await sb
       .from('private_messages')
       .select('*')
       .or(`and(sender_id.eq.${S.user.id},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${S.user.id})`)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(200);
 
-    S.messages = data || [];
+    S.messages = (data || []).reverse();
     this.render();
     this.scrollBottom();
     this.markRead(partnerId);
@@ -301,7 +342,7 @@ const ChatView = {
   append(msg) {
     const el = $('#msgList');
     const isMe = msg.sender_id === S.user.id;
-    const text = U.escape(msg.text);
+    const text = U.linkify(U.escape(msg.text));
     const time = U.time(msg.created_at);
     el.insertAdjacentHTML('beforeend', `
       <div class="msg-row ${isMe ? 'msg-me' : 'msg-them'} msg-new">
@@ -318,12 +359,14 @@ const ChatView = {
   },
 
   async markRead(partnerId) {
-    await sb
+    const { error } = await sb
       .from('private_messages')
       .update({ read: true })
       .eq('recipient_id', S.user.id)
       .eq('sender_id', partnerId)
       .eq('read', false);
+    // 失败时不更新未读数，避免假成功
+    if (error) { console.warn('标记已读失败:', error); return; }
     // 刷新对话列表中的未读数
     const conv = S.conversations.find(c => c.partnerId === partnerId);
     if (conv) { conv.unread = 0; ConvList.render(); }
@@ -354,8 +397,11 @@ const ChatView = {
       );
       // 立即更新 UI（乐观渲染，防止实时推送延迟）
       if (inserted) {
-        S.messages.push(inserted);
-        ChatView.append(inserted);
+        // 去重：实时推送可能先于 insert 响应到达，此时消息已在列表中
+        if (!S.messages.some(m => m.id === inserted.id)) {
+          S.messages.push(inserted);
+          ChatView.append(inserted);
+        }
         ConvList.refreshOne(S.selectedId, inserted.text, inserted.created_at);
       }
       input.value = '';
@@ -407,7 +453,7 @@ const Search = {
       let html = '';
       for (const u of data) {
         html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}">
-        <span class="search-avatar">${U.escape((u.nick || u.email || '').charAt(0))}</span>
+        <span class="search-avatar">${U.escape(Array.from(u.nick || u.email || '')[0] || '?')}</span>
         <div class="search-info">
           <span class="search-nick">${U.escape(u.nick || '未设置昵称')}</span>
           <span class="search-email">${U.escape(u.email)}</span>
@@ -665,6 +711,9 @@ async function init() {
 
     // 绑定事件
     bindEvents();
+
+    // 隐藏全局 loader（SDK/会话阶段结束），数据加载阶段由对话列表骨架屏接替
+    hideLoading();
 
     // 加载对话列表
     try {

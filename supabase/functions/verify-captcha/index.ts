@@ -2,43 +2,42 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const secret = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ?? ""; } catch { return ""; } })();
 
-serve(async (req) => {
-  const h = {
+// 可信域名白名单（SEC-004：替代 Access-Control-Allow-Origin: *）
+const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const h: Record<string, string> = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization"
+    "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+    Vary: "Origin",
   };
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    h["Access-Control-Allow-Origin"] = origin;
+  }
+  return h;
+}
+
+serve(async (req) => {
+  const h = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: h });
   try {
     const { token } = await req.json();
 
-    // 诊断：secret 状态
-    const diag = {
-      secret_set: !!secret,
-      secret_len: secret.length,
-      token_len: (token || "").length,
-      token_preview: (token || "").substring(0, 8) + "..."
-    };
-
+    // 不返回任何诊断信息（SEC-005：移除 secret_set/secret_len/token_preview 等泄露字段）
     if (!token || !secret) {
-      return new Response(JSON.stringify({ success: false, diag }), { headers: h });
+      return new Response(JSON.stringify({ success: false, error: "invalid_request" }), { headers: h });
     }
 
     const fd = new URLSearchParams({ secret, response: token });
-    const t0 = Date.now();
     const r = await fetch("https://api.hcaptcha.com/siteverify", { method: "POST", body: fd });
-    const elapsed = Date.now() - t0;
-    const raw = await r.text();
 
-    let parsed;
-    try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    let parsed: { success?: boolean };
+    try { parsed = await r.json(); } catch { parsed = { success: false }; }
 
-    return new Response(JSON.stringify({
-      ...parsed,
-      diag: { ...diag, hcaptcha_ms: elapsed, hcaptcha_status: r.status }
-    }), { headers: h });
-  } catch (e) {
-    return new Response(JSON.stringify({ success: false, error: e.message }), { headers: h });
+    return new Response(JSON.stringify({ success: !!parsed.success }), { headers: h });
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: "internal_error" }), { headers: h });
   }
 });

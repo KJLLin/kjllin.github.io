@@ -383,7 +383,11 @@
           <div class="info-label"><i class="fas fa-bullseye"></i> 进度</div>
           <div class="info-value" id="progress">0/25</div>
         </div>
-        
+        <div class="info-item">
+          <div class="info-label"><i class="fas fa-cloud"></i> 云端最佳</div>
+          <div class="info-value best" id="cloudBest">--</div>
+        </div>
+
       </div>
 
       <div class="grid-wrapper">
@@ -414,15 +418,20 @@
     const sizeBtns = document.querySelectorAll('.size-btn');
 
     // Supabase 云端同步
+    let gridSize = 5; // 提前声明：云端榜单按规格区分，需在此处即可用
     var supabase = KJ.createSupabase();
-    var GAME_NAME = 'schulte';
     var cloudBest = null;
+
+    // 云端榜单按规格区分（schulte_3 ~ schulte_7），避免不同规格混榜
+    function getGameName() {
+      return 'schulte_' + gridSize;
+    }
 
     async function loadCloudScores() {
       if (!supabase) return;
       try {
         var { data: best } = await supabase
-          .from('game_scores').select('score').eq('game', GAME_NAME)
+          .from('game_scores').select('score').eq('game', getGameName())
           .order('score', { ascending: true }).limit(1).maybeSingle();
         if (best) cloudBest = best.score / 100;
         updateCloudDisplay();
@@ -438,12 +447,12 @@
         var userId = session.user.id;
 
         var { error: insErr } = await supabase.from('game_scores').insert({
-          user_id: userId, game: GAME_NAME, score: Math.round(finalScore * 100)
+          user_id: userId, game: getGameName(), score: Math.round(finalScore * 100)
         });
         if (insErr) { KJ.toast('云端同步失败: ' + (insErr.message || '请检查网络')); return; }
 
         var { data: best } = await supabase
-          .from('game_scores').select('score').eq('game', GAME_NAME)
+          .from('game_scores').select('score').eq('game', getGameName())
           .order('score', { ascending: true }).limit(1).maybeSingle();
         if (best) cloudBest = best.score / 100;
       } catch(e) { console.warn('Cloud save failed:', e); }
@@ -455,7 +464,6 @@
       el.textContent = cloudBest !== null ? cloudBest.toFixed(2) + 's' : '--';
     }
 
-    let gridSize = 5;
     let numbers = [];
     let currentIndex = 0;
     let totalNumbers = 0;
@@ -623,6 +631,10 @@
         b.classList.toggle('active', parseInt(b.dataset.size) === size);
       });
       renderGrid();
+      // 规格切换后重新加载该规格对应的云端最佳成绩
+      cloudBest = null;
+      updateCloudDisplay();
+      loadCloudScores();
     }
 
     sizeBtns.forEach(btn => {

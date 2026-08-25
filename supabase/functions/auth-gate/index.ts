@@ -4,36 +4,46 @@ const PROJECT_URL = "https://vzqspcuxnwpakofwumat.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg";
 const HCAPTCHA_SECRET = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ?? ""; } catch { return ""; } })();
 
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization"
-};
+// 可信域名白名单（SEC-004：替代 Access-Control-Allow-Origin: *）
+const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const h: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+    Vary: "Origin",
+  };
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    h["Access-Control-Allow-Origin"] = origin;
+  }
+  return h;
+}
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
 
   try {
     const { email, password, captcha_token, action, nick } = await req.json();
 
     // === 1. 参数校验 ===
     if (!email || !password) {
-      return new Response(JSON.stringify({ success: false, error: "邮箱和密码不能为空" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "邮箱和密码不能为空" }), { headers: corsHeaders(req) });
     }
     if (!captcha_token) {
-      return new Response(JSON.stringify({ success: false, error: "缺少人机验证" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "缺少人机验证" }), { headers: corsHeaders(req) });
     }
     if (action !== "login" && action !== "register") {
-      return new Response(JSON.stringify({ success: false, error: "无效的操作" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "无效的操作" }), { headers: corsHeaders(req) });
     }
     if (password.length < 8) {
-      return new Response(JSON.stringify({ success: false, error: "密码至少8位" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "密码至少8位" }), { headers: corsHeaders(req) });
     }
 
     // === 2. 服务端强制验证 hCaptcha ===
     if (!HCAPTCHA_SECRET) {
-      return new Response(JSON.stringify({ success: false, error: "验证服务未配置" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "验证服务未配置" }), { headers: corsHeaders(req) });
     }
 
     const captchaRes = await fetch("https://api.hcaptcha.com/siteverify", {
@@ -47,7 +57,7 @@ serve(async (req: Request) => {
         success: false,
         error: "人机验证失败",
         codes: captchaData["error-codes"] || []
-      }), { headers: CORS });
+      }), { headers: corsHeaders(req) });
     }
 
     // === 3. 执行认证操作 ===
@@ -67,7 +77,7 @@ serve(async (req: Request) => {
         return new Response(JSON.stringify({
           success: false,
           error: formatAuthError(msg),
-        }), { headers: CORS });
+        }), { headers: corsHeaders(req) });
       }
 
       return new Response(JSON.stringify({
@@ -78,7 +88,7 @@ serve(async (req: Request) => {
           expires_in: tokenData.expires_in,
           user: tokenData.user
         }
-      }), { headers: CORS });
+      }), { headers: corsHeaders(req) });
     }
 
     // action === "register"
@@ -101,7 +111,7 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({
         success: false,
         error: formatAuthError(msg),
-      }), { headers: CORS });
+      }), { headers: corsHeaders(req) });
     }
 
     return new Response(JSON.stringify({
@@ -110,13 +120,13 @@ serve(async (req: Request) => {
         ? "注册成功，请查收验证邮件"
         : "注册成功",
       user: signUpData
-    }), { headers: CORS });
+    }), { headers: corsHeaders(req) });
 
   } catch (e) {
     return new Response(JSON.stringify({
       success: false,
       error: e.message || "服务内部错误"
-    }), { headers: CORS });
+    }), { headers: corsHeaders(req) });
   }
 });
 
