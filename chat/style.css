@@ -293,6 +293,23 @@ input, textarea, button { font-family: inherit; }
   margin-left: auto;
 }
 
+/* 对话列表骨架屏（数据加载阶段占位） */
+.sk-conv {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+}
+.sk-line {
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, rgba(120,120,128,0.10) 25%, rgba(120,120,128,0.22) 37%, rgba(120,120,128,0.10) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.sk-conv .sk-circle { width: 40px; height: 40px; border-radius: var(--radius-full); flex-shrink: 0; }
+.sk-conv .sk-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sk-conv .sk-name { height: 13px; }
+.sk-conv .sk-preview { height: 11px; width: 65%; }
+
 /* 对话项右侧菜单按钮 — 始终可见 */
 .conv-menu-trigger {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);

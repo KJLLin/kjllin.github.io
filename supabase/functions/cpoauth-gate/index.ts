@@ -15,11 +15,21 @@ const SUPABASE_SERVICE_ROLE_KEY = (() => {
   try { return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""; } catch { return ""; }
 })();
 
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+// 可信域名白名单（SEC-004：替代 Access-Control-Allow-Origin: *）
+const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+
+const corsHeaders = (req: Request): Record<string, string> => {
+  const origin = req.headers.get("origin") || "";
+  const h: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+    Vary: "Origin",
+  };
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    h["Access-Control-Allow-Origin"] = origin;
+  }
+  return h;
 };
 
 // ── CPOAuth API 调用 ─────────────────────────────────────────────
@@ -127,10 +137,10 @@ async function createSupabaseSession(email: string): Promise<string> {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: CORS });
+    return new Response(null, { headers: corsHeaders(req) });
   }
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ success: false, error: "仅支持 POST" }), { headers: CORS });
+    return new Response(JSON.stringify({ success: false, error: "仅支持 POST" }), { headers: corsHeaders(req) });
   }
 
   try {
@@ -139,19 +149,19 @@ serve(async (req: Request) => {
 
     // 前置校验
     if (!code || !code_verifier) {
-      return new Response(JSON.stringify({ success: false, error: "缺少授权码或 PKCE 参数" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "缺少授权码或 PKCE 参数" }), { headers: corsHeaders(req) });
     }
     if (!redirect_uri) {
-      return new Response(JSON.stringify({ success: false, error: "缺少 redirect_uri" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "缺少 redirect_uri" }), { headers: corsHeaders(req) });
     }
     if (action !== "login" && action !== "link") {
-      return new Response(JSON.stringify({ success: false, error: "无效 action" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "无效 action" }), { headers: corsHeaders(req) });
     }
     if (!CPOAUTH_CLIENT_SECRET) {
-      return new Response(JSON.stringify({ success: false, error: "服务未配置 CPOAuth Secret" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "服务未配置 CPOAuth Secret" }), { headers: corsHeaders(req) });
     }
     if (!SUPABASE_SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ success: false, error: "服务未配置 Service Role Key" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "服务未配置 Service Role Key" }), { headers: corsHeaders(req) });
     }
 
     // ── 1. 服务端换取 CPOAuth token（client_secret 不离开服务器） ──
@@ -164,23 +174,23 @@ serve(async (req: Request) => {
     const cpoauthEmail = (userInfo.email || "") as string;
 
     if (!cpoauthSub) {
-      return new Response(JSON.stringify({ success: false, error: "无法获取 CPOAuth 用户标识" }), { headers: CORS });
+      return new Response(JSON.stringify({ success: false, error: "无法获取 CPOAuth 用户标识" }), { headers: corsHeaders(req) });
     }
 
     // ── 3a. action=link: 绑定 CPOAuth 到 Supabase 账号 ──
     if (action === "link") {
       if (!supabase_token) {
-        return new Response(JSON.stringify({ success: false, error: "请先登录本站账号" }), { headers: CORS });
+        return new Response(JSON.stringify({ success: false, error: "请先登录本站账号" }), { headers: corsHeaders(req) });
       }
       const supabaseUser = await verifySupabaseUser(supabase_token);
       if (!supabaseUser) {
-        return new Response(JSON.stringify({ success: false, error: "本站会话已过期，请重新登录" }), { headers: CORS });
+        return new Response(JSON.stringify({ success: false, error: "本站会话已过期，请重新登录" }), { headers: corsHeaders(req) });
       }
 
       // 防账号抢占：检查 cpoauth_sub 是否已被其他人绑定
       const existing = await findUserByCpoauthSub(cpoauthSub);
       if (existing && existing.id !== supabaseUser.id) {
-        return new Response(JSON.stringify({ success: false, error: "该 CPOAuth 账号已被其他用户绑定" }), { headers: CORS });
+        return new Response(JSON.stringify({ success: false, error: "该 CPOAuth 账号已被其他用户绑定" }), { headers: corsHeaders(req) });
       }
 
       const ok = await updateUser(supabaseUser.id, {
@@ -189,14 +199,14 @@ serve(async (req: Request) => {
         cpoauth_username: cpoauthUsername,
       });
       if (!ok) {
-        return new Response(JSON.stringify({ success: false, error: "绑定写入失败，请稍后重试" }), { headers: CORS });
+        return new Response(JSON.stringify({ success: false, error: "绑定写入失败，请稍后重试" }), { headers: corsHeaders(req) });
       }
 
       return new Response(JSON.stringify({
         success: true,
         message: "CPOAuth 绑定成功",
         cpoauth_user: { sub: cpoauthSub, username: cpoauthUsername, email: cpoauthEmail },
-      }), { headers: CORS });
+      }), { headers: corsHeaders(req) });
     }
 
     // ── 3b. action=login: 查找绑定 → 创建 Supabase 会话 ──
@@ -208,7 +218,7 @@ serve(async (req: Request) => {
         error: "cpoauth_not_bound",
         message: "该 CPOAuth 账号尚未绑定本站账号。请先用邮箱密码登录后，在账号安全中心绑定 CPOAuth。",
         cpoauth_user: { sub: cpoauthSub, username: cpoauthUsername, email: cpoauthEmail },
-      }), { headers: CORS });
+      }), { headers: corsHeaders(req) });
     }
 
     // 使用 Supabase Admin API 创建登录会话（magiclink 方式）
@@ -219,11 +229,11 @@ serve(async (req: Request) => {
       action_link: actionLink,
       message: "登录成功，正在跳转...",
       cpoauth_user: { sub: cpoauthSub, username: cpoauthUsername, email: cpoauthEmail },
-    }), { headers: CORS });
+    }), { headers: corsHeaders(req) });
 
   } catch (e) {
     console.error("cpoauth-gate error:", e);
     const message = e instanceof Error ? e.message : "服务内部错误";
-    return new Response(JSON.stringify({ success: false, error: message }), { headers: CORS });
+    return new Response(JSON.stringify({ success: false, error: message }), { headers: corsHeaders(req) });
   }
 });

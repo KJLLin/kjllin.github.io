@@ -161,6 +161,22 @@
     .file-btn.del-btn:hover { background: rgba(231,76,60,0.15); color: var(--danger); }
     .file-btn:active { transform: scale(0.9); }
 
+    /* ====================== 文件列表骨架屏（数据加载阶段占位） ====================== */
+    .sk-file {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: var(--radius-md);
+    }
+    .sk-line {
+      border-radius: var(--radius-xs);
+      background: linear-gradient(90deg, rgba(120,120,128,0.10) 25%, rgba(120,120,128,0.22) 37%, rgba(120,120,128,0.10) 63%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .sk-file .sk-block { width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0; }
+    .sk-file .sk-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .sk-file .sk-name { height: 14px; }
+    .sk-file .sk-meta { height: 11px; width: 40%; }
+
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-tertiary); animation: slideUp 0.6s var(--win-ease) 0.3s both; }
     .empty-icon { font-size: 56px; margin-bottom: 12px; opacity: 0.5; }
     .empty-text { font-size: 15px; }
@@ -641,15 +657,41 @@
     // ====================== 渲染 ======================
     let cachedFiles = [];
 
+    // 文件列表骨架屏（数据加载阶段占位）
+    function renderFilesSkeleton() {
+      const list = $('#fileList');
+      const empty = $('#emptyState');
+      if (empty) empty.style.display = 'none';
+      const widths = [55, 40, 62, 48, 35];
+      let html = '';
+      for (let i = 0; i < 5; i++) {
+        html += '<div class="sk-file mica" aria-hidden="true">' +
+          '<div class="sk-line sk-block"></div>' +
+          '<div class="sk-info">' +
+            '<div class="sk-line sk-name" style="width:' + widths[i] + '%"></div>' +
+            '<div class="sk-line sk-meta"></div>' +
+          '</div>' +
+        '</div>';
+      }
+      list.innerHTML = html;
+    }
+    function removeFilesSkeleton() {
+      document.querySelectorAll('#fileList .sk-file').forEach(el => el.remove());
+    }
+
     async function loadAndRender() {
-      showLoading(true);
+      renderFilesSkeleton();
       try {
         cachedFiles = await listFiles();
         renderFiles();
       } catch(e) {
         console.warn('loadAndRender error:', e);
+        const empty = $('#emptyState');
+        empty.querySelector('.empty-text').textContent = '加载文件失败，请刷新重试';
+        empty.style.display = 'block';
       } finally {
         showLoading(false);
+        removeFilesSkeleton();
       }
     }
 

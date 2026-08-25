@@ -252,9 +252,10 @@
       for(var dk in dedup)unique.push(dedup[dk]);
       unique.sort(function(a,b){return new Date(b.time)-new Date(a.time);});
 
-      // 3d. 去掉当前设备
+      // 3d. 去掉当前设备（记录的 browser 字段含尾部版本号，如 "Chrome 10/11"，需去掉后再与当前 browser|os 比较）
       var historical=unique.filter(function(r){
-        return (r.browser||'')+'|'+(r.os||'')!==currentKey;
+        var rb=(r.browser||'').trim().replace(/\s+\S+$/,''); // 去掉尾部版本号，统一过滤键
+        return rb+'|'+(r.os||'')!==currentKey;
       });
 
       // 统计

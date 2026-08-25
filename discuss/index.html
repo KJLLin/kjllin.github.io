@@ -325,6 +325,23 @@
       font-size: 15px; animation: fadeUp 0.5s var(--win-ease) 0.1s both;
     }
 
+    /* ====================== 帖子骨架屏（数据加载阶段占位） ====================== */
+    .sk-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 24px; border-radius: var(--radius-lg);
+      animation: fadeUp 0.4s var(--win-ease) both;
+    }
+    .sk-line {
+      border-radius: var(--radius-xs);
+      background: linear-gradient(90deg, rgba(120,120,128,0.10) 25%, rgba(120,120,128,0.22) 37%, rgba(120,120,128,0.10) 63%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .sk-card .sk-circle { width: 40px; height: 40px; border-radius: var(--radius-full); flex-shrink: 0; }
+    .sk-card .sk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+    .sk-card .sk-title { height: 18px; }
+    .sk-card .sk-meta { height: 12px; width: 38%; }
+
     /* ====================== Toast 提示 ====================== */
     .toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
@@ -651,6 +668,31 @@
 
       // ====================== 帖子列表 ======================
       var _postsLoading = false;
+      // 帖子骨架屏：数据加载阶段占位（loader 遮罩负责 SDK/会话阶段，移除后由骨架接替）
+      function renderPostsSkeleton() {
+        var list = document.getElementById('postList');
+        var empty = document.getElementById('postEmpty');
+        if (empty) {
+          empty.style.display = 'none';
+          // 骨架渲染可能伴随列表重写，确保错误/空态提示元素仍挂在列表内
+          if (empty.parentElement !== list) list.appendChild(empty);
+        }
+        var widths = ['62%', '48%', '70%', '55%', '40%'];
+        var html = '';
+        for (var i = 0; i < 5; i++) {
+          html += '<div class="sk-card mica" aria-hidden="true">' +
+            '<div class="sk-line sk-circle"></div>' +
+            '<div class="sk-main">' +
+              '<div class="sk-line sk-title" style="width:' + widths[i] + '"></div>' +
+              '<div class="sk-line sk-meta"></div>' +
+            '</div>' +
+          '</div>';
+        }
+        list.insertAdjacentHTML('beforeend', html);
+      }
+      function removePostsSkeleton() {
+        document.querySelectorAll('#postList .sk-card').forEach(function(el) { el.remove(); });
+      }
       async function loadPosts() {
         // 防重入：已有加载任务进行中则跳过
         if (_postsLoading) return;
@@ -659,13 +701,18 @@
         const list = document.getElementById('postList');
         const empty = document.getElementById('postEmpty');
 
-        if (!sb) {
-          empty.textContent = '讨论服务暂不可用';
-          empty.style.display = '';
-          _postsLoading = false; return;
-        }
+        // SDK/会话阶段结束：关闭全屏 loader，由骨架屏接替数据加载阶段
+        renderPostsSkeleton();
+        _closeLoader();
+        if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
 
         try {
+          if (!sb) {
+            empty.textContent = '讨论服务暂不可用';
+            empty.style.display = '';
+            return;
+          }
+
           const { data, error } = await sb
             .from('posts')
             .select('*')
@@ -723,11 +770,14 @@
           console.warn('Load posts error:', e);
           empty.textContent = '加载讨论失败，请刷新页面重试';
           empty.style.display = '';
+        } finally {
+          // 所有路径（含空列表提前 return）都必须移除骨架、复位防重入锁并关闭遮罩
+          removePostsSkeleton();
+          var l = document.getElementById('loader');
+          if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
+          if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
+          _postsLoading = false;
         }
-        var l = document.getElementById('loader');
-        if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
-        if (_forceTimer) { clearTimeout(_forceTimer); _forceTimer = null; }
-        _postsLoading = false;
       }
 
       // ====================== 认证监听 ======================
@@ -781,9 +831,6 @@
         updateAuthUI(null);
         loadPosts();
       }
-      var l = document.getElementById('loader');
-      if (l) { l.style.opacity = '0'; setTimeout(function(){ l.remove(); }, 300); }
-      if (_forceTimer) clearTimeout(_forceTimer);
     })();
   </script>  <div id="toast" class="toast hidden"></div>
 </body>

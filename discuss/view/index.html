@@ -673,10 +673,17 @@
         wrapCodeBlocks(mdBody);
       }
 
-      // KaTeX 渲染
-      if (typeof renderMathInElement !== 'undefined') {
+      // 代码高亮（highlight.js）
+      if (mdBody && typeof hljs !== 'undefined') {
+        mdBody.querySelectorAll('pre code').forEach(code => {
+          try { hljs.highlightElement(code); } catch(e) {}
+        });
+      }
+
+      // KaTeX 渲染（仅限正文容器，避免误渲染标题/面包屑中的 $ 文本）
+      if (mdBody && typeof renderMathInElement !== 'undefined') {
         try {
-          renderMathInElement(document.body, {
+          renderMathInElement(mdBody, {
             delimiters: [
               { left: '$$', right: '$$', display: true },
               { left: '$', right: '$', display: false },

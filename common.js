@@ -348,12 +348,18 @@
   }
 
   // ====================== 设备记录 ======================
+  // 防重入：同一 client 60 秒内只记录一次（SIGNED_IN 事件与页面显式调用会先后触发，避免双写）
+  var _lastDeviceRecord = { sb: null, ts: 0 };
   /**
    * 记录登录设备到 Supabase + localStorage
    * @param {object} sb - Supabase 客户端实例
    */
   async function recordLoginDevice(sb) {
     if (!sb) return;
+    var nowMs = Date.now();
+    if (_lastDeviceRecord.sb === sb && nowMs - _lastDeviceRecord.ts < 60000) return;
+    _lastDeviceRecord.sb = sb;
+    _lastDeviceRecord.ts = nowMs;
     try {
       // 获取当前用户 ID
       var userId = null;
@@ -373,8 +379,13 @@
             var timer = setTimeout(function() { ctrl.abort(); }, 4000);
             var resp = await fetch(apis[ai], { signal: ctrl.signal });
             clearTimeout(timer);
-            var data = await resp.json();
-            ip = data.ip || data.origin || '';
+            // api.ip.sb/ip 返回纯文本，需用 text() 解析并 trim；其余两个 API 返回 JSON
+            if (apis[ai].indexOf('api.ip.sb') !== -1) {
+              ip = (await resp.text()).trim();
+            } else {
+              var data = await resp.json();
+              ip = data.ip || data.origin || '';
+            }
             if (ip && !ip.includes('<')) { ip = ip.replace(/^https?:\/\//, ''); break; }
           } catch(e) {}
         }
@@ -424,6 +435,26 @@
   }
 
   // ====================== 统一导航栏 Auth 初始化 ======================
+  // initNav 专用的模块级懒初始化单例 client（未传入 sb 时复用，避免每次调用都新建客户端）
+  var _navSb = null;
+  function getNavSupabase() {
+    if (_navSb) return _navSb;
+    if (!global.supabase) return null;
+    try {
+      _navSb = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+          persistSession: true,
+          storage: {
+            getItem: function(k) { return safeStorage.getItem(k); },
+            setItem: function(k, v) { safeStorage.setItem(k, v); },
+            removeItem: function(k) { safeStorage.removeItem(k); }
+          }
+        }
+      });
+    } catch(e) { _navSb = null; }
+    return _navSb;
+  }
+
   /**
    * 初始化顶部导航栏的登录状态：隐藏/显示登出按钮、填充用户名
    * 解决全站 14+ 页面重复编写 auth UI 代码的问题
@@ -454,21 +485,8 @@
     // 导航栏滚动材质效果（Apple: 滚动时材质变实，而非硬分割线）
     setupNavScrollEffect();
 
-    // 创建 Supabase 客户端（如果未传入）
-    if (!sb && global.supabase) {
-      try {
-        sb = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-          auth: {
-            persistSession: true,
-            storage: {
-              getItem: function(k) { return safeStorage.getItem(k); },
-              setItem: function(k,v) { safeStorage.setItem(k,v); },
-              removeItem: function(k) { safeStorage.removeItem(k); }
-            }
-          }
-        });
-      } catch(e) { sb = null; }
-    }
+    // 创建 Supabase 客户端（如果未传入；复用模块级懒初始化单例，而不是每次新建）
+    if (!sb) sb = getNavSupabase();
 
     function hideLogout() {
       if (logoutBtn) logoutBtn.style.display = 'none';
