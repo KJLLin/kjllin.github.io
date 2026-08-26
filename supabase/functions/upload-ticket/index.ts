@@ -46,20 +46,6 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: false, error: "仅支持 POST" }), { headers: h });
   }
 
-  // 诊断探针（临时，上线需移除）——无需登录即可回显 secret 指纹
-  try {
-    const _raw = await req.clone().text();
-    if (_raw.includes("__probe")) {
-      const _s = HCAPTCHA_SECRET || "";
-      try {
-        const _enc = new TextEncoder().encode(_s);
-        const _buf = await crypto.subtle.digest("SHA-256", _enc);
-        const _hh = Array.from(new Uint8Array(_buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-        return new Response(JSON.stringify({ debug: { secret_len: _s.length, secret_head: _s.slice(0, 6), secret_sha256: _hh, svc_len: (SERVICE_ROLE_KEY || "").length } }), { headers: h });
-      } catch { return new Response(JSON.stringify({ debug: "digest_err", secret_len: _s.length }), { headers: h }); }
-    }
-  } catch {}
-
   try {
     const { token, files } = await req.json();
 
@@ -85,29 +71,12 @@ serve(async (req: Request) => {
     const errCodes = parsed["error-codes"] || [];
     const expired = errCodes.includes("timeout-or-duplicate");
     if (parsed.success !== true) {
-      const toks = String(token);
-      // 解码 token（JWT，P1_ 为版本前缀）以定位其归属 sitekey —— 用于裁决 sitekey-secret-mismatch
-      let tokSite = "";
-      try {
-        const base = toks.replace(/^P1_/, "");
-        const [h, p] = base.split(".");
-        if (p) {
-          const buf = atob(p.replace(/-/g, "+").replace(/_/g, "/"));
-          const payload = JSON.parse(buf);
-          tokSite = JSON.stringify(payload).slice(0, 300);
-        }
-      } catch {}
       return new Response(
         JSON.stringify({
           success: false,
           error: expired ? "验证已过期，请重新完成验证" : "人机验证未通过",
           ...(expired ? { expired: true } : {}),
           ...(errCodes.length ? { codes: errCodes } : {}),
-          // 诊断辅助：仅暴露 token 长度/前缀/解码后的 payload 摘要，便于定位
-          token_len: toks.length,
-          token_head: toks.slice(0, 6),
-          token_payload: tokSite,
-          debug: HCAPTCHA_SECRET ? "secret_set" : "secret_missing",
         }),
         { headers: h },
       );
