@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://*.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co https://github.com; object-src 'none'; frame-ancestors 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://*.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co https://github.com; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -256,8 +256,9 @@
 
       <div class="panel active" id="loginPanel">
         <div class="field">
-          <label>邮箱地址</label>
-          <input type="email" id="loginEmail" placeholder="name@example.com" autocomplete="email">
+          <label>邮箱 / 手机号</label>
+          <input type="text" id="loginEmail" inputmode="email" placeholder="邮箱或手机号" autocomplete="email">
+          <div class="forgot-row" style="justify-content:flex-start"><span style="color:var(--text-tertiary);font-size:11px">手机号登录仅适用于已由管理员绑定手机号的账号</span></div>
         </div>
         <div class="field">
           <label>密码</label>
@@ -461,15 +462,29 @@
     // 仅清除 token 不重置 UI
     function clearCaptchaToken(key){ct[key]=''}
 
-    // ====================== 登录（Supabase Attack Protection 服务端验证 CAPTCHA） ======================
+    // ====================== 登录（邮箱 或 手机号+密码；Supabase 服务端验证 CAPTCHA） ======================
+    // 手机号校验/规范化：中国大陆手机默认补 +86（E.164）
+    function looksLikePhone(v){return /^\+?\d[\d\s\-()]*$/.test((v||'').trim());}
+    function normalizePhone(v){
+      const p=String(v||'').replace(/[\s\-()]/g,'');
+      if(!p)return'';
+      if(p.startsWith('+'))return p;
+      if(/^1[3-9]\d{9}$/.test(p))return'+86'+p;
+      return p;
+    }
     let loginLocked=false;
     $('#loginBtn').addEventListener('click',async()=>{
       if(loginLocked)return;
       if(!sb){toast('网络错误，请刷新后重试');return}
-      const email=$('#loginEmail').value.trim(),pwd=$('#loginPwd').value;
-      if(!email||!pwd){toast('请填写邮箱和密码');return}
+      const identifier=$('#loginEmail').value.trim(),pwd=$('#loginPwd').value;
+      if(!identifier||!pwd){toast('请填写手机号/邮箱和密码');return}
       if(typeof hcaptcha==='undefined'){toast('验证组件加载中，请刷新后重试');return}
       if(!ct.login){toast('请完成人机验证');return}
+
+      const byPhone=looksLikePhone(identifier);
+      // 邮箱必须包含 @ 才走邮箱登录；否则当作手机号
+      const cred=identifier.indexOf('@')>-1 ? {email:identifier} : (byPhone?{phone:normalizePhone(identifier)}:null);
+      if(!cred){toast('请输入正确的邮箱或手机号');return}
 
       loginLocked=true;
       const btn=$('#loginBtn');
@@ -477,7 +492,7 @@
 
       try{
         const { data, error } = await sb.auth.signInWithPassword({ 
-          email, password: pwd,
+          ...cred, password: pwd,
           options: { captchaToken: ct.login }
         });
         if(error){
@@ -489,7 +504,12 @@
         // 确保 users 表有该用户行（非阻塞）
         try{
           const{data:u}=await sb.from('users').select('id').eq('id',data.session.user.id).maybeSingle();
-          if(!u)await sb.from('users').insert({id:data.session.user.id,nick:data.session.user.user_metadata?.nick||email.split('@')[0],email,is_admin:false,status:'active',created_at:new Date().toISOString()});
+          if(!u){
+            const meta=data.session.user.user_metadata||{};
+            const row={id:data.session.user.id,nick:(meta.nick||(byPhone?'用户':'')).substring(0,20)||('用户'+identifier.slice(-4)),is_admin:false,status:'active',created_at:new Date().toISOString()};
+            if(byPhone)row.phone=normalizePhone(identifier);else row.email=identifier;
+            await sb.from('users').insert(row);
+          }
         }catch(e){console.warn('Users table sync skipped:',e)}
         KJ.recordLoginDevice(sb);
         window.location.href=redirect;
@@ -508,6 +528,7 @@
       if(forgotLocked)return;
       const email=$('#loginEmail').value.trim();
       if(!email){toast('请先输入邮箱地址');return}
+      if(looksLikePhone(email)){toast('请使用已注册的邮箱找回密码');return}
       forgotLocked=true;
       try{
         const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/login/'});

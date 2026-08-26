@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://*.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; frame-ancestors 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://*.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -426,7 +426,7 @@
   <div id="captchaModal" class="overlay hidden" style="z-index:250">
     <div class="preview-card" style="max-width:380px;text-align:center">
       <h3 style="margin-bottom:12px">文件超过5MB，请完成验证</h3>
-      <div class="h-captcha" id="captchaCloud" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-callback="onCloudCaptcha" data-expired-callback="onCloudCaptchaExpired"></div>
+      <div id="captchaCloud"></div>
       <button class="btn btn-outline" id="captchaCancelBtn" style="margin-top:12px">取消</button>
     </div>
   </div>
@@ -1175,59 +1175,52 @@
       });
     });
 
-    // ====================== 大文件人机验证（>5MB + 防绕过 + 服务端票据） ======================
-    let _cloudCaptchaToken = '', _captchaResolve = null, _captchaTarget = null;
-    // hCaptcha 回调：存 token 并交由调用方（upload-ticket 接口做服务端 siteverify）
-    window.onCloudCaptcha = function(t) {
-      _cloudCaptchaToken = t;
-      if (_captchaResolve) { _captchaResolve(t); _captchaResolve = null; }
-    };
-    window.onCloudCaptchaExpired = function() { _cloudCaptchaToken = ''; };
+    // ====================== 大文件人机验证（>5MB；服务端 siteverify 强制校验，防绕过） ======================
+    let _cloudCaptchaToken='', _captchaResolve=null, _captchaTarget=null, _cloudWidgetId=null;
+    const CLOUD_SITEKEY='abe0d880-7704-481a-b892-9b982f7c5890';
 
-    function requireCaptcha(targetFile) {
-      return new Promise((resolve) => {
-        _captchaTarget = targetFile;
-        if (_cloudCaptchaToken) { const t = _cloudCaptchaToken; _cloudCaptchaToken = ''; resolve(t); return; }
-        _captchaResolve = resolve;
+    // 显式渲染 hCaptcha 到 #captchaCloud。
+    // 不在页面加载时用 class="h-captcha" 自动渲染：隐藏容器内自动渲染的 widget 可能为空/0尺寸，
+    // 导致弹窗打开后“无反应”。改为打开弹窗时才渲染，widget 可靠可见可交互。
+    function ensureCloudWidget(){
+      const cont=document.getElementById('captchaCloud');
+      if(!cont)return false;
+      if(_cloudWidgetId!==null)return true;
+      if(typeof hcaptcha==='undefined')return false;
+      try{
+        cont.innerHTML='';
+        _cloudWidgetId=hcaptcha.render(cont,{
+          sitekey:CLOUD_SITEKEY,
+          size:'normal',
+          callback:function(t){_cloudCaptchaToken=t;if(_captchaResolve){_captchaResolve(t);_captchaResolve=null;}},
+          'expired-callback':function(){_cloudCaptchaToken='';}
+        });
+        return true;
+      }catch(e){_cloudWidgetId=null;return false;}
+    }
+
+    function requireCaptcha(targetFile){
+      return new Promise((resolve)=>{
+        _captchaTarget=targetFile;
+        if(_cloudCaptchaToken){const t=_cloudCaptchaToken;_cloudCaptchaToken='';resolve(t);return;}
+        _captchaResolve=resolve;
         $('#captchaModal').classList.remove('hidden');
-        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
+        // api.js 为异步加载，未就绪则轮询等待渲染完成
+        (function tryWidget(){ if(!ensureCloudWidget())setTimeout(tryWidget,400); })();
       });
     }
 
-    function resetCloudCaptcha() {
-      _cloudCaptchaToken = '';
+    function resetCloudCaptcha(){
+      _cloudCaptchaToken='';
       $('#captchaModal').classList.add('hidden');
-      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
+      if(_cloudWidgetId!==null){try{if(typeof hcaptcha!=='undefined')hcaptcha.reset(_cloudWidgetId)}catch(_){}}
     }
-    $('#captchaCancelBtn').addEventListener('click', () => {
+    $('#captchaCancelBtn').addEventListener('click',()=>{
       $('#captchaModal').classList.add('hidden');
-      if (_captchaResolve) { _captchaResolve(false); _captchaResolve = null; }
-      _cloudCaptchaToken = '';
-      try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
+      if(_captchaResolve){_captchaResolve(false);_captchaResolve=null;}
+      _cloudCaptchaToken='';
+      if(_cloudWidgetId!==null){try{if(typeof hcaptcha!=='undefined')hcaptcha.reset(_cloudWidgetId)}catch(_){}}
     });
-
-    // 防绕过：定时检查 console + devtools 检测
-    let _antiBypass = Date.now();
-    (function antiBypassCheck() {
-      const now = Date.now();
-      // 检测debugger断点
-      if (now - _antiBypass > 2000) { _cloudCaptchaToken = ''; }
-      _antiBypass = now;
-      // 检测devtools
-      const threshold = 160;
-      if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
-        _cloudCaptchaToken = '';
-      }
-    })();
-    setInterval(() => {
-      _antiBypass = Date.now();
-      const threshold = 160;
-      if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
-        _cloudCaptchaToken = '';
-        $('#captchaModal').classList.add('hidden');
-        try { if (typeof hcaptcha !== 'undefined') hcaptcha.reset('captchaCloud'); } catch(_) {}
-      }
-    }, 3000);
 
     // 修改 handleFiles 函数：大文件（>5MB）上传前需通过服务端 upload-ticket 接口
     // 获取票据（接口内部完成 hCaptcha siteverify；数据库触发器强制校验票据）

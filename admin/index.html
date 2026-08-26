@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; frame-ancestors 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -89,6 +89,12 @@
     .save-btn:disabled{opacity:0.55;cursor:default}
 
     .list-empty{text-align:center;color:var(--color-text-tertiary);font-size:13px;padding:32px 0}
+
+    /* ── 手机号账号管理 ── */
+    .phone-section-title{font-size:12px;color:var(--color-text-secondary);margin-bottom:8px}
+    .phone-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+    .phone-grid .save-btn{height:40px;display:inline-flex;align-items:center;justify-content:center}
+    @media(max-width:520px){.phone-grid{grid-template-columns:1fr}}
 
     /* ── 按钮 ── */
     .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
@@ -190,6 +196,30 @@
         <div class="search-hint"><i class="fas fa-circle-info"></i> 点击开关切换功能（红色为已禁用），修改后需点击该行的「保存」</div>
       </div>
 
+      <!-- 手机号账号管理（仅管理员，通过 admin-phone 函数执行） -->
+      <div class="card card-glass card-anim" style="margin-bottom:12px" id="phoneCard">
+        <div class="card-header"><i class="fas fa-mobile-screen"></i> 手机号账号管理</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div class="phone-section-title">① 创建手机号账号（新用户，可用手机号+密码登录，不支持自行用手机号注册）</div>
+            <div class="phone-grid">
+              <input id="phoneRegNick" class="search-input" placeholder="昵称" autocomplete="off">
+              <input id="phoneRegPhone" class="search-input" placeholder="手机号（如 13800000000）" autocomplete="off">
+              <input id="phoneRegPwd" class="search-input" type="password" placeholder="密码（至少8位）" autocomplete="new-password">
+              <button type="button" class="save-btn" id="phoneRegBtn"><i class="fas fa-user-plus"></i> 创建账号</button>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--color-border);padding-top:12px">
+            <div class="phone-section-title">② 为已有账号绑定手机号（绑定后该用户可用手机号+密码登录）</div>
+            <div class="phone-grid">
+              <select id="phoneBindUser" class="search-input"></select>
+              <input id="phoneBindPhone" class="search-input" placeholder="手机号（如 13800000000）" autocomplete="off">
+              <button type="button" class="save-btn" id="phoneBindBtn"><i class="fas fa-link"></i> 绑定</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 用户列表 -->
       <div id="userList" class="user-list"></div>
     </div>
@@ -257,7 +287,7 @@
       el.innerHTML='<div class="list-empty"><i class="fas fa-circle-notch fa-spin"></i> 正在加载用户...</div>';
       try{
         var r=await sb.from('users')
-          .select('id,nick,email,is_admin,banned_features,created_at,last_login_time')
+          .select('id,nick,email,phone,is_admin,banned_features,created_at,last_login_time')
           .order('created_at',{ascending:false})
           .limit(200);
         if(r.error){el.innerHTML='<div class="list-empty">加载失败：'+esc(r.error.message||'未知错误')+'</div>';return}
@@ -266,6 +296,7 @@
         loaded=true;
         renderStats();
         renderList();
+        populateBindSelect();
       }catch(e){console.error('loadUsers:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新页面重试</div>';}
     }
 
@@ -299,8 +330,8 @@
       var out=[];
       for(var i=0;i<users.length;i++){
         var u=users[i];
-        var nick=(u.nick||'').toLowerCase(),email=(u.email||'').toLowerCase();
-        if(nick.indexOf(query)!==-1||email.indexOf(query)!==-1)out.push(u);
+        var nick=(u.nick||'').toLowerCase(),email=(u.email||'').toLowerCase(),phone=(u.phone||'').toLowerCase();
+        if(nick.indexOf(query)!==-1||email.indexOf(query)!==-1||phone.indexOf(query)!==-1)out.push(u);
       }
       return out;
     }
@@ -338,7 +369,7 @@
           '<div class="uc-avatar">'+esc((displayName||'?').charAt(0).toUpperCase())+'</div>'+
           '<div class="uc-info">'+
             '<div class="uc-name">'+esc(displayName)+badges+'</div>'+
-            '<div class="uc-email">'+esc(u.email||'--')+'</div>'+
+            '<div class="uc-email">'+esc(u.email||'--')+(u.phone?' · '+esc(u.phone):'')+'</div>'+
             '<div class="uc-meta">注册于 '+fmtDate(u.created_at)+(u.last_login_time?' · 最近登录 '+fmtDate(u.last_login_time):'')+'</div>'+
           '</div>'+
         '</div>'+
@@ -403,6 +434,67 @@
         if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-floppy-disk"></i> 保存';}
       }
     }
+
+    // ==================== 手机号账号管理（调用 admin-phone 函数，仅管理员可用） ====================
+    function populateBindSelect(){
+      var sel=$('#phoneBindUser');if(!sel)return;
+      var html='<option value="">请选择用户...</option>';
+      for(var i=0;i<users.length;i++){
+        var u=users[i];
+        var label=(u.nick||'--')+(u.email?' · '+u.email:'')+(u.phone?' · '+u.phone:'');
+        html+='<option value="'+esc(u.id)+'">'+esc(label)+'</option>';
+      }
+      sel.innerHTML=html;
+    }
+    async function callAdminPhone(body){
+      if(!sb){throw new Error('网络异常，请刷新重试');}
+      var r=await sb.auth.getSession();
+      var atk=r.data.session&&r.data.session.access_token||'';
+      var res=await fetch(KJ.SUPABASE_URL+'/functions/v1/admin-phone',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':KJ.SUPABASE_KEY,'Authorization':'Bearer '+atk},
+        body:JSON.stringify(body)
+      });
+      var d=null;try{d=await res.json()}catch(_){}
+      if(!d||!d.success){throw new Error((d&&d.error)||('HTTP '+res.status));}
+      return d;
+    }
+    function normPhone(v){var p=String(v||'').replace(/[\s\-()]/g,'');if(p.startsWith('+'))return p;return p;}
+    // ① 创建手机号账号
+    var _phoneLocked=false;
+    $('#phoneRegBtn').addEventListener('click',async function(){
+      if(_phoneLocked)return;
+      var nick=$('#phoneRegNick').value.trim(),phone=normPhone($('#phoneRegPhone').value),pwd=$('#phoneRegPwd').value;
+      if(!nick||!phone||!pwd){KJ.toast('请填写完整的昵称、手机号和密码');return}
+      if(!/^\+?\d{7,15}$/.test(phone)){KJ.toast('手机号格式不正确');return}
+      if(pwd.length<8){KJ.toast('密码至少8位');return}
+      _phoneLocked=true;
+      var btn=$('#phoneRegBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 创建中';
+      try{
+        var d=await callAdminPhone({action:'register',nick:nick,phone:phone,password:pwd});
+        KJ.toast(d.message||'账号已创建');
+        $('#phoneRegNick').value='';$('#phoneRegPhone').value='';$('#phoneRegPwd').value='';
+        await loadUsers();
+      }catch(e){KJ.toast('创建失败：'+(e.message||'未知错误'));}
+      finally{_phoneLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-user-plus"></i> 创建账号';}
+    });
+    // ② 为已有账号绑定手机号
+    var _bindLocked=false;
+    $('#phoneBindBtn').addEventListener('click',async function(){
+      if(_bindLocked)return;
+      var userId=$('#phoneBindUser').value,phone=normPhone($('#phoneBindPhone').value);
+      if(!userId){KJ.toast('请选择要绑定的用户');return}
+      if(!/^\+?\d{7,15}$/.test(phone)){KJ.toast('手机号格式不正确');return}
+      _bindLocked=true;
+      var btn=$('#phoneBindBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 绑定中';
+      try{
+        var d=await callAdminPhone({action:'bind',user_id:userId,phone:phone});
+        KJ.toast(d.message||'绑定成功');
+        $('#phoneBindPhone').value='';
+        await loadUsers();
+      }catch(e){KJ.toast('绑定失败：'+(e.message||'未知错误'));}
+      finally{_bindLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-link"></i> 绑定';}
+    });
 
     // ==================== 事件绑定 ====================
     $('#userList').addEventListener('click',function(e){
