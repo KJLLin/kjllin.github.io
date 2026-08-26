@@ -76,6 +76,7 @@ serve(async (req: Request) => {
           success: false,
           error: expired ? "验证已过期，请重新完成验证" : "人机验证未通过",
           ...(expired ? { expired: true } : {}),
+          ...(errCodes.length ? { codes: errCodes } : {}),
         }),
         { headers: h },
       );

@@ -77,6 +77,7 @@
 9. 统一 settings/admin 页导航栏与主站一致；修复个人主页/通知页顶部遮挡
 10. 导航栏"个人主页"菜单项直接显示用户昵称（去掉 userTag 昵称位）；移除 chat/cloud/game 页各自覆盖 userTag 的旧代码；chat/style.css 删除重复导航样式块，统一由 theme.css 提供
 11. 修复云盘 >5MB 上传"人机验证已通过却提示验证失败"：upload-ticket Edge Function 缺失 `serve` import 启动即崩溃（线上 OPTIONS 即 500）；补 import + expired 透传，前端安全解析非 JSON 响应
+12. **CSP 按 hCaptcha 官方要求放行 `https://*.hcaptcha.com`**（script-src/connect-src/frame-src）——此前仅放行 `hcaptcha.com` 与 `newassets.hcaptcha.com`，动态子域（如 `<hash>.w.hcaptcha.com`）被拦截导致 token 无法通过 siteverify（现象：勾选完成但仍报"人机验证未通过"）；涉及 cloud/discuss/new/discuss/edit/login 四页；upload-ticket 失败响应透传 `codes`（hCaptcha error-codes）便于诊断
 
 ## 部署
 
