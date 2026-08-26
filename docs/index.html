@@ -681,7 +681,9 @@ var sidebarStructure = [
   ]],
   [ '社交功能', [
     ['chat', '站内信', 'envelope'],
-    ['discuss', '讨论版', 'comments']
+    ['discuss', '讨论版', 'comments'],
+    ['notifications', '通知中心', 'bell'],
+    ['profile', '个人主页', 'circle-user']
   ]],
   [ '云盘', [
     ['cloud', '资源云盘', 'cloud-upload-alt']
@@ -752,6 +754,8 @@ var docs = {
       + '<a class="feature-card" href="/chat"><div class="fc-icon"><i class="fas fa-envelope"></i></div><h4>站内信</h4><p>私密对话，支持在线状态与实时通知</p></a>'
       + '<a class="feature-card" href="/cloud/"><div class="fc-icon"><i class="fas fa-cloud"></i></div><h4>资源云盘</h4><p>上传、分享文件，支持批量下载</p></a>'
       + '<a class="feature-card" href="/discuss/"><div class="fc-icon"><i class="fas fa-comments"></i></div><h4>讨论版</h4><p>发帖交流，支持 Markdown 与代码高亮</p></a>'
+      + '<a class="feature-card" href="/notifications/"><div class="fc-icon"><i class="fas fa-bell"></i></div><h4>通知中心</h4><p>站内信、点赞、关注动态集中提醒</p></a>'
+      + '<a class="feature-card" href="/u/"><div class="fc-icon"><i class="fas fa-circle-user"></i></div><h4>个人主页</h4><p>独立网址的专属展示页，分享给好友</p></a>'
       + '</div>'
       + '<h2 id="start">开始使用<a href="#start" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
@@ -898,6 +902,7 @@ var docs = {
       + '</ol>'
       + '<h2 id="notify">消息通知<a href="#notify" class="anchor-icon">#</a></h2>'
       + '<p>当收到新消息时，全站顶部会显示红色通知横幅。点击即可跳转到对话。</p>'
+      + '<p>同时，顶部导航栏的<strong>通知铃铛</strong>会出现未读徽标，新私信也会进入通知中心统一管理。详见<a href="#/notifications">通知中心</a>文档。</p>'
       + '<h2 id="block">屏蔽与删除<a href="#block" class="anchor-icon">#</a></h2>'
       + '<p>右键点击对话列表中的用户，可以屏蔽该用户或删除聊天记录。屏蔽后对方无法再给你发消息。</p>'
       + '<h2 id="invite">游戏邀请<a href="#invite" class="anchor-icon">#</a></h2>'
@@ -907,8 +912,8 @@ var docs = {
     title: '讨论版',
     category: '社交功能',
     meta: '公共交流空间，支持 Markdown 与代码高亮',
-    toc: [['浏览帖子', 'browse'], ['发布帖子', 'post'], ['Markdown 支持', 'markdown']],
-    content: '<p>讨论版是用户交流的公共空间，支持发帖、回复，内容支持 Markdown 格式和代码高亮。</p>'
+    toc: [['浏览帖子', 'browse'], ['发布帖子', 'post'], ['点赞与关注', 'social'], ['阅读模式', 'reading'], ['Markdown 支持', 'markdown']],
+    content: '<p>讨论版是用户交流的公共空间，支持发帖、回复、点赞与关注，内容支持 Markdown 格式和代码高亮。</p>'
       + '<h2 id="browse">浏览帖子<a href="#browse" class="anchor-icon">#</a></h2>'
       + '<p>讨论版首页展示最新帖子，支持分页浏览。点击帖子标题进入详情页查看完整内容和回复。</p>'
       + '<h2 id="post">发布帖子<a href="#post" class="anchor-icon">#</a></h2>'
@@ -917,15 +922,51 @@ var docs = {
       + '<li><span class="step-content">输入标题和内容（支持 Markdown 格式）。</span></li>'
       + '<li><span class="step-content">完成 hCaptcha 验证后发布。</span></li>'
       + '</ol>'
+      + '<h2 id="social">点赞与关注<a href="#social" class="anchor-icon">#</a></h2>'
+      + '<p>在<strong>帖子详情页</strong>可以点赞喜欢的帖子；再次点击可取消点赞。点赞计数由系统实时维护。</p>'
+      + '<p>点击帖子作者昵称可进入其<strong>个人主页</strong>，在主页上可以关注对方，关注后对方的新动态会通过通知提醒你。</p>'
+      + '<h2 id="reading">阅读模式<a href="#reading" class="anchor-icon">#</a></h2>'
+      + '<p>帖子详情页提供沉浸式阅读模式：浅色主题下为纯白背景，深色主题下为近纯黑背景，减少阅读干扰。可在详情页切换开启。</p>'
       + '<h2 id="markdown">Markdown 支持<a href="#markdown" class="anchor-icon">#</a></h2>'
       + '<p>支持标题、粗体、斜体、链接、图片、代码块、表格等标准 Markdown 语法。代码块支持语法高亮。</p>'
+  },
+  'notifications': {
+    title: '通知中心',
+    category: '社交功能',
+    meta: '集中查看站内信、点赞、关注和系统通知',
+    toc: [['通知类型', 'types'], ['通知铃铛', 'bell'], ['通知管理', 'manage']],
+    content: '<p><a href="/notifications/">通知中心</a>集中展示你的所有站内通知，不错过任何动态。</p>'
+      + '<h2 id="types">通知类型<a href="#types" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>站内信</strong> — 收到新私信时提醒</li><li><strong>点赞</strong> — 你的帖子被点赞时提醒</li><li><strong>关注</strong> — 有用户关注你时提醒</li><li><strong>系统</strong> — 平台公告与管理员消息</li></ul>'
+      + '<h2 id="bell">通知铃铛<a href="#bell" class="anchor-icon">#</a></h2>'
+      + '<p>登录后，顶部导航栏会显示通知铃铛图标。有未读通知时铃铛上会出现红色数字徽标，并实时更新。点击铃铛即可进入通知中心。</p>'
+      + '<h2 id="manage">通知管理<a href="#manage" class="anchor-icon">#</a></h2>'
+      + '<ul><li>点击通知可跳转到对应的对话、帖子或用户主页</li><li>可单条或批量将通知标记为已读</li><li>已读通知会保留 30 天，之后由系统自动清理</li></ul>'
+      + '<div class="admonition admonition--tip"><span class="admonition-icon"><i class="fas fa-lightbulb"></i></span><div class="admonition-content"><span class="admonition-heading">提示</span><p>收到新私信时，全站任何页面顶部都会出现红色提醒横幅。若暂时不想被打扰，可点击横幅上的关闭按钮，只有再次收到新消息时才会重新提醒。</p></div></div>'
+  },
+  'profile': {
+    title: '个人主页',
+    category: '社交功能',
+    meta: '每位用户的专属展示页，含资料、帖子与社交信息',
+    toc: [['访问个人主页', 'access'], ['主页内容', 'content'], ['编辑资料', 'edit']],
+    content: '<p>每位用户都有一个独立的个人主页，展示公开资料和动态。</p>'
+      + '<h2 id="access">访问个人主页<a href="#access" class="anchor-icon">#</a></h2>'
+      + '<ul><li>登录后，点击顶部导航栏中显示为你<strong>昵称</strong>的菜单项即可进入自己的主页</li><li>在讨论版帖子、通知中心等处点击其他用户的昵称，可访问对方的主页</li><li>每个主页都有独立网址（<code>/u/?id=用户ID</code>），可直接分享给好友</li></ul>'
+      + '<h2 id="content">主页内容<a href="#content" class="anchor-icon">#</a></h2>'
+      + '<ul><li>昵称、头像等公开资料（邮箱等敏感信息不会公开）</li><li>发布过的帖子</li><li>关注与粉丝情况</li></ul>'
+      + '<h2 id="edit">编辑资料<a href="#edit" class="anchor-icon">#</a></h2>'
+      + '<p>在 <a href="/settings/profile/">资料设置</a> 页面可以修改昵称、头像等个人信息，保存后主页会同步更新。</p>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">注意</span><p>未登录时导航栏显示为「个人主页」，点击后会先进入登录页面。昵称过长时菜单栏中会自动截断显示，鼠标悬停可查看全名。</p></div></div>'
   },
   'cloud': {
     title: '资源云盘',
     category: '云盘',
     meta: '文件上传、管理和分享功能',
-    toc: [['上传文件', 'upload'], ['文件管理', 'manage']],
-    content: '<p>资源云盘提供文件上传、管理和分享功能。</p>'
+    toc: [['公共空间与私有空间', 'spaces'], ['上传文件', 'upload'], ['文件管理', 'manage']],
+    content: '<p>资源云盘提供文件上传、管理和分享功能，分为<strong>公共空间</strong>和<strong>私有空间</strong>两个独立区域。</p>'
+      + '<h2 id="spaces">公共空间与私有空间<a href="#spaces" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>公共空间</strong> — 文件可通过公开 URL 访问，适合分享</li><li><strong>私有空间</strong> — 文件仅自己可见，预览和下载链接限时有效，隐私无忧</li></ul>'
+      + '<p>在云盘页面顶部可切换当前空间，两个空间的文件互相隔离。</p>'
       + '<h2 id="upload">上传文件<a href="#upload" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
       + '<li><span class="step-content">点击「上传文件」按钮选择本地文件。</span></li>'
@@ -1005,11 +1046,16 @@ var docs = {
     toc: [['2026 年 8 月', '2026-08'], ['2026 年 7 月', '2026-07']],
     content: '<h2 id="2026-08">2026 年 8 月<a href="#2026-08" class="anchor-icon">#</a></h2>'
       + '<ul>'
+      + '<li><strong>通知系统：</strong>新增通知中心与导航栏通知铃铛，站内信、点赞、关注动态自动生成通知，未读实时提醒，已读通知保留 30 天。</li>'
+      + '<li><strong>个人主页：</strong>每位用户拥有独立主页（<code>/u/?id=用户ID</code>），展示公开资料、帖子与关注信息；导航栏「个人主页」入口登录后直接显示昵称。</li>'
+      + '<li><strong>社交功能：</strong>讨论版支持帖子点赞（详情页操作）与用户关注；帖子详情新增沉浸式阅读模式。</li>'
+      + '<li><strong>云盘：</strong>新增私有空间，文件仅自己可见，下载链接限时有效。</li>'
       + '<li><strong>石头剪刀布：</strong>新增双人联机对战，支持房间号和邀请卡片两种方式。服务端防作弊判断胜负。房间有效期 15 分钟。</li>'
       + '<li><strong>站内信：</strong>消息中的链接自动转为可点击格式，支持游戏邀请卡片。</li>'
-      + '<li><strong>全站安全：</strong>CSP 安全策略加固，hCaptcha 兼容性优化。</li>'
+      + '<li><strong>全站导航：</strong>统一各页面顶部菜单栏，登录后菜单项显示昵称，修复多页顶部内容遮挡问题。</li>'
+      + '<li><strong>全站安全：</strong>CSP 安全策略加固，hCaptcha 兼容性优化，数据库越权访问加固。</li>'
       + '<li><strong>讨论版：</strong>修复颜色适配问题。</li>'
-      + '<li><strong>帮助文档：</strong>全新文档中心上线，采用 Docusaurus 风格设计。</li>'
+      + '<li><strong>帮助文档：</strong>全新文档中心上线，采用 Docusaurus 风格设计；同步补充通知中心、个人主页等新功能文档。</li>'
       + '</ul>'
       + '<h2 id="2026-07">2026 年 7 月<a href="#2026-07" class="anchor-icon">#</a></h2>'
       + '<ul>'
