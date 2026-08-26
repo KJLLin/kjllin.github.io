@@ -17,6 +17,11 @@
   };
 
   // ====================== Supabase 客户端 ======================
+  // 全站共享的主客户端实例：createSupabase 创建后登记，
+  // initNav 未显式传入 sb 时复用它，避免双客户端并发刷新 refresh token
+  // （双实例会用同一个 refresh token 竞争轮换，导致会话被误判登出）
+  var _primaryClient = null;
+
   /**
    * 创建 Supabase 客户端（安全存储）
    * @returns {object|null} Supabase client 或 null
@@ -24,6 +29,7 @@
   function createSupabase() {
     try {
       if (!global.supabase) return null;
+      if (_primaryClient) return _primaryClient;
       var client = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: {
           persistSession: true,
@@ -44,6 +50,7 @@
         }
         if (event === 'SIGNED_OUT') _recorded = false;
       });
+      _primaryClient = client;
       return client;
     } catch(e) {
       console.warn('Supabase init failed:', e);
@@ -439,6 +446,8 @@
   var _navSb = null;
   function getNavSupabase() {
     if (_navSb) return _navSb;
+    // 页面已通过 createSupabase() 创建过客户端则直接复用（避免双实例）
+    if (_primaryClient) return _primaryClient;
     if (!global.supabase) return null;
     try {
       _navSb = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -501,9 +510,12 @@
       if (logoutBtn) logoutBtn.style.display = '';
     }
 
-    function setUserTag(nick) {
+    function setUserTag(user, nickOverride) {
+      var nick = nickOverride || getDisplayNick(user);
       if (userTag && nick) {
-        userTag.innerHTML = '<a href="/settings/" class="menu-item"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</a>';
+        // 点击用户名进入个人主页（每个用户独立网址）
+        var href = (user && user.id) ? '/u/?id=' + encodeURIComponent(user.id) : '/u/';
+        userTag.innerHTML = '<a href="' + href + '" class="menu-item"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</a>';
         userTag.title = nick;
       }
     }
@@ -522,7 +534,7 @@
     var storedUser = getStoredUser(sb);
     if (storedUser) {
       showLogout();
-      setUserTag(getDisplayNick(storedUser));
+      setUserTag(storedUser);
     } else {
       hideLogout();
     }
@@ -532,7 +544,7 @@
       sb.auth.onAuthStateChange(function(event, session) {
         if (session && session.user) {
           showLogout();
-          setUserTag(getDisplayNick(session.user));
+          setUserTag(session.user);
           // CPOAuth 等第三方登录可能没有 user_metadata.nick — 尝试从 identities 获取
           if (!session.user.user_metadata?.nick && !session.user.email) {
             sb.auth.getUserIdentities().then(function(idResp) {
@@ -542,7 +554,7 @@
                   || identities[0].identity_data?.full_name
                   || identities[0].identity_data?.name
                   || identities[0].identity_data?.email?.split('@')[0];
-                if (idName) setUserTag(idName);
+                if (idName) setUserTag(session.user, idName);
               }
             }).catch(function() {});
           }
@@ -553,7 +565,7 @@
       sb.auth.getSession().then(function(r) {
         if (r?.data?.session?.user) {
           showLogout();
-          setUserTag(getDisplayNick(r.data.session.user));
+          setUserTag(r.data.session.user);
         } else {
           hideLogout();
         }
@@ -562,8 +574,9 @@
       });
     }
 
-    // 初始化站内信横幅
+    // 初始化站内信横幅 + 通知铃铛
     if (sb) initMessageBanner(sb);
+    if (sb) initNotificationBell(sb);
   }
 
   /**
@@ -622,7 +635,17 @@
    * @param {object} [opts]
    * @param {string} [opts.chatPath='/chat'] - 站内信页面路径
    */
-  var _bannerState = { dismissed: false, channel: null, currentUnread: 0, sb: null };
+  var _bannerState = { channel: null, currentUnread: 0, sb: null };
+  var BANNER_WATERMARK_KEY = 'kj_pm_banner_watermark';
+
+  /**
+   * 读取横幅"未读水位"：用户叉掉横幅时记录当时的未读数，
+   * 只有未读数超过该水位（出现了新的未读消息）才会再次提醒
+   */
+  function getBannerWatermark() {
+    var v = parseInt(safeStorage.getItem(BANNER_WATERMARK_KEY) || '0', 10);
+    return (isNaN(v) || v < 0) ? 0 : v;
+  }
 
   function initMessageBanner(sb, opts) {
     opts = opts || {};
@@ -632,7 +655,6 @@
     if (global.location.pathname.indexOf(chatPath) === 0) return;
 
     _bannerState.sb = sb;
-    _bannerState.dismissed = false;
 
     // 初始检查未读消息
     checkAndShowBanner(sb, chatPath);
@@ -675,7 +697,6 @@
    * 检查未读消息并显示/更新横幅
    */
   async function checkAndShowBanner(sb, chatPath) {
-    if (_bannerState.dismissed) return;
     if (global.location.pathname.indexOf(chatPath) === 0) return;
 
     try {
@@ -686,16 +707,22 @@
         .from('private_messages')
         .select('*', { count: 'exact', head: true })
         .eq('recipient_id', uid)
-        .eq('read', false);
+        .or('read.eq.false,read.is.null');
 
       if (error) { removeBanner(); return; }
 
       var unread = count || 0;
       _bannerState.currentUnread = unread;
 
-      if (unread > 0) {
+      if (unread === 0) {
+        // 未读清零时重置水位
+        if (getBannerWatermark() !== 0) safeStorage.setItem(BANNER_WATERMARK_KEY, '0');
+        removeBanner();
+      } else if (unread > getBannerWatermark()) {
+        // 有超过水位的新未读 → 显示/更新横幅
         showBanner(unread, chatPath);
       } else {
+        // 用户已叉掉，且没有新的未读 → 不再出现
         removeBanner();
       }
     } catch(e) {
@@ -772,10 +799,11 @@
   }
 
   /**
-   * 关闭横幅（session 内不再显示）
+   * 关闭横幅：记录当前未读数水位，
+   * 之后只有出现比水位更多的新未读消息时才会再次提醒
    */
   function dismissBanner() {
-    _bannerState.dismissed = true;
+    safeStorage.setItem(BANNER_WATERMARK_KEY, String(_bannerState.currentUnread || 0));
     removeBanner();
   }
 
@@ -798,6 +826,119 @@
     } else {
       document.body.style.paddingTop = '';
     }
+  }
+
+  // ====================== 通知系统：导航栏铃铛 ======================
+  // 由 initNav 自动初始化：注入铃铛图标 + 未读徽标，
+  // 订阅 notifications 表 Realtime INSERT 事件实时刷新
+  var _notifState = { channel: null, sb: null };
+
+  function injectBellStyle() {
+    if (document.getElementById('kj-bell-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kj-bell-style';
+    style.textContent =
+      '.kj-nav-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;' +
+      'min-width:34px;height:34px;border-radius:50%;color:inherit;text-decoration:none;' +
+      'font-size:15px;transition:background .2s;cursor:pointer}' +
+      '.kj-nav-bell:hover{background:var(--color-bg-glass-hover,rgba(0,0,0,.06))}' +
+      '.kj-nav-bell .kj-bell-badge{position:absolute;top:1px;right:0;min-width:16px;height:16px;' +
+      'padding:0 4px;border-radius:8px;background:var(--color-danger,#ff3b30);color:#fff;' +
+      'font-size:10px;font-weight:600;line-height:16px;text-align:center;box-sizing:border-box;' +
+      'pointer-events:none}';
+    document.head.appendChild(style);
+  }
+
+  function refreshBellBadge(sb) {
+    var bell = document.getElementById('kj-nav-bell');
+    if (!bell) return;
+    sb.auth.getSession().then(function(r) {
+      var user = r?.data?.session?.user;
+      var badge = bell.querySelector('.kj-bell-badge');
+      if (!user) {
+        bell.style.display = 'none';
+        if (badge) badge.style.display = 'none';
+        return;
+      }
+      bell.style.display = '';
+      sb.from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+        .then(function(res) {
+          if (res.error || !badge) return;
+          var n = res.count || 0;
+          if (n > 0) {
+            badge.textContent = n > 99 ? '99+' : n;
+            badge.style.display = '';
+          } else {
+            badge.style.display = 'none';
+          }
+        }).catch(function() {});
+    }).catch(function() {});
+  }
+
+  function subscribeNotifications(sb) {
+    try {
+      if (_notifState.channel) {
+        try { sb.removeChannel(_notifState.channel); } catch(_) {}
+        _notifState.channel = null;
+      }
+      sb.auth.getSession().then(function(r) {
+        var user = r?.data?.session?.user;
+        if (!user) return;
+        _notifState.channel = sb.channel('kj_notif_' + user.id)
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + user.id },
+            function() { refreshBellBadge(sb); })
+          .subscribe();
+      }).catch(function() {});
+    } catch(e) {
+      console.warn('Notification bell subscribe failed:', e);
+    }
+  }
+
+  function initNotificationBell(sb) {
+    if (!sb) return;
+    _notifState.sb = sb;
+    injectBellStyle();
+
+    // 注入铃铛到导航栏（userTag 之前，一次性）
+    var userTag = document.querySelector('#userTag');
+    if (userTag && userTag.parentNode && !document.getElementById('kj-nav-bell')) {
+      var bell = document.createElement('a');
+      bell.id = 'kj-nav-bell';
+      bell.className = 'kj-nav-bell';
+      bell.href = '/notifications/';
+      bell.title = '通知';
+      bell.setAttribute('aria-label', '通知');
+      bell.style.display = 'none'; // 登录确认后再显示
+      bell.innerHTML = '<i class="far fa-bell"></i><span class="kj-bell-badge" style="display:none"></span>';
+      userTag.parentNode.insertBefore(bell, userTag);
+    }
+
+    // 移动端下拉菜单注入"通知"入口（一次性）
+    var mobileMenu = document.getElementById('mobileMenu');
+    if (mobileMenu && !mobileMenu.querySelector('a[href="/notifications/"]')) {
+      var a = document.createElement('a');
+      a.href = '/notifications/';
+      a.className = 'menu-item';
+      a.innerHTML = '<i class="fas fa-bell"></i> 通知';
+      mobileMenu.insertBefore(a, mobileMenu.firstChild);
+    }
+
+    refreshBellBadge(sb);
+    subscribeNotifications(sb);
+
+    // 登录态变化时刷新铃铛（登出隐藏 / 登录显示）
+    try {
+      sb.auth.onAuthStateChange(function(event) {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+          refreshBellBadge(sb);
+          if (event === 'SIGNED_IN') subscribeNotifications(sb);
+        }
+      });
+    } catch(e) {}
   }
 
   // ====================== 客户端频率限制（防止操作过于频繁） ======================
@@ -859,6 +1000,7 @@
     parseUA: parseUA,
     initMessageBanner: initMessageBanner,
     dismissMessageBanner: dismissBanner,
+    initNotificationBell: initNotificationBell,
     rateLimit: rateLimit,
     initNav: initNav
   };

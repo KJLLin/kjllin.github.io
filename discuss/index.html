@@ -302,6 +302,8 @@
     }
     .post-card .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
     .post-card .like-btn .like-count { font-weight: 600; }
+    .post-card .like-btn.like-static { cursor: default; }
+    .post-card .like-btn.like-static:hover { background: transparent; color: var(--text-tertiary); }
     .follow-btn {
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 11px; padding: 3px 12px; border-radius: var(--radius-full);
@@ -522,7 +524,7 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
       <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
@@ -534,7 +536,7 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
 
@@ -764,22 +766,20 @@
         loadPosts();
       }
 
-      // 登出 / 会话失效时清理点赞、关注与过滤状态
+      // 登出 / 会话失效时清理关注与过滤状态
       function resetInteractionState() {
-        myLikes = new Set();
         myFollows = new Set();
         onlyFollowing = false;
         currentPage = 1;
         if (followFilterChip) followFilterChip.classList.remove('active');
       }
 
-      // ====================== 帖子列表（搜索 / 只看关注 / 分页 / 点赞 / 关注） ======================
+      // ====================== 帖子列表（搜索 / 只看关注 / 分页 / 关注） ======================
       var _postsLoading = false;
       var PAGE_SIZE = 20;
       var searchQuery = '';        // 清洗后的搜索词
       var currentPage = 1;         // 当前页码（1 起）
       var onlyFollowing = false;   // 只看关注过滤
-      var myLikes = new Set();     // 我点赞过的帖子 id
       var myFollows = new Set();   // 我关注过的用户 id
       var _totalPages = 0;
       var _searchTimer = null;
@@ -789,22 +789,17 @@
         return String(raw || '').replace(/[,()%`]/g, ' ').trim();
       }
 
-      // 登录后批量拉取我的点赞 / 关注关系（渲染卡片与"只看关注"过滤依赖）
+      // 登录后批量拉取我的关注关系（卡片关注按钮与"只看关注"过滤依赖）
       async function loadMyInteractions() {
-        myLikes = new Set();
         myFollows = new Set();
         var uid = currentUser && currentUser.id;
         if (!uid || !sb) return;
         try {
           var results = await Promise.all([
-            sb.from('post_likes').select('post_id').eq('user_id', uid),
             sb.from('user_follows').select('followed_id').eq('follower_id', uid)
           ]);
           if (results[0] && results[0].data) {
-            results[0].data.forEach(function(r) { if (r.post_id) myLikes.add(r.post_id); });
-          }
-          if (results[1] && results[1].data) {
-            results[1].data.forEach(function(r) { if (r.followed_id) myFollows.add(r.followed_id); });
+            results[0].data.forEach(function(r) { if (r.followed_id) myFollows.add(r.followed_id); });
           }
         } catch(e) {
           console.warn('Load interactions error:', e);
@@ -917,7 +912,6 @@
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
-            const liked = myLikes.has(p.id);
             const likesCount = p.likes_count || 0;
             const showFollow = currentUser && !isOwner && p.user_id;
             const following = showFollow && myFollows.has(p.user_id);
@@ -934,10 +928,10 @@
                   : '') +
                 '<span>' + formatDate(p.created_at) + '</span>' +
                 '<span class="footer-spacer"></span>' +
-                '<button class="like-btn' + (liked ? ' liked' : '') + '" data-id="' + p.id + '" title="点赞">' +
-                  '<i class="' + (liked ? 'fas' : 'far') + ' fa-heart"' + (liked ? ' style="color:var(--color-danger)"' : '') + '></i>' +
+                '<span class="like-btn like-static" title="点赞数（进入帖子详情可点赞）">' +
+                  '<i class="fas fa-heart" style="color:var(--color-danger)"></i>' +
                   '<span class="like-count">' + likesCount + '</span>' +
-                '</button>' +
+                '</span>' +
               '</div>' +
             '</div>';
           }).join('');
@@ -960,8 +954,7 @@
             });
           });
 
-          // 绑定点赞 / 关注
-          bindLikeButtons(list);
+          // 绑定关注（点赞已移至详情页）
           bindFollowButtons(list);
 
         } catch(e) {
@@ -1046,58 +1039,6 @@
         }
         if (prev) { prev.style.display = ''; prev.disabled = _postsLoading || currentPage <= 1; }
         if (next) { next.style.display = ''; next.disabled = _postsLoading || currentPage >= _totalPages; }
-      }
-
-      // ====================== 点赞 ======================
-      function applyLikeUI(btn, liked, count) {
-        var icon = btn.querySelector('i');
-        var countEl = btn.querySelector('.like-count');
-        if (icon) {
-          icon.className = (liked ? 'fas' : 'far') + ' fa-heart';
-          icon.style.color = liked ? 'var(--color-danger)' : '';
-        }
-        if (countEl) countEl.textContent = count;
-        btn.classList.toggle('liked', liked);
-      }
-
-      async function refreshPostLikeCount(postId, btn) {
-        try {
-          var res = await sb.from('posts').select('likes_count').eq('id', postId).single();
-          if (res && res.data) {
-            var countEl = btn.querySelector('.like-count');
-            if (countEl) countEl.textContent = res.data.likes_count || 0;
-          }
-        } catch(e) {}
-      }
-
-      function bindLikeButtons(scope) {
-        scope.querySelectorAll('.like-btn').forEach(function(btn) {
-          btn.addEventListener('click', async function() {
-            if (!sb) { KJ.toast('服务暂不可用'); return; }
-            var uid = currentUser && currentUser.id;
-            if (!uid) { KJ.toast('请先登录'); return; }
-            if (!KJ.rateLimit('discuss_like', 800, 1, '操作过于频繁，请稍后再试')) return;
-            var postId = this.dataset.id;
-            var liked = myLikes.has(postId);
-            var countEl = this.querySelector('.like-count');
-            var count = parseInt(countEl ? countEl.textContent : '0', 10) || 0;
-            // 乐观更新（先查后写：myLikes 即"是否已赞"依据，避免唯一约束冲突）
-            if (liked) myLikes.delete(postId); else myLikes.add(postId);
-            applyLikeUI(this, !liked, liked ? count - 1 : count + 1);
-            try {
-              var res = liked
-                ? await sb.from('post_likes').delete().eq('post_id', postId).eq('user_id', uid)
-                : await sb.from('post_likes').insert({ post_id: postId, user_id: uid });
-              if (res.error) throw res.error;
-            } catch(e) {
-              // 失败回滚（RLS 拒绝 / 唯一冲突等）并刷新服务端计数
-              if (liked) myLikes.add(postId); else myLikes.delete(postId);
-              applyLikeUI(this, liked, count);
-              KJ.toast('操作失败');
-              refreshPostLikeCount(postId, this);
-            }
-          });
-        });
       }
 
       // ====================== 关注用户 ======================
@@ -1214,7 +1155,7 @@
           } else {
             updateAuthUI(null);
           }
-          // 登录后先拉取点赞/关注关系（列表卡片渲染依赖 myLikes / myFollows）
+          // 登录后先拉取关注关系（列表卡片关注按钮与"只看关注"过滤依赖 myFollows）
           await loadMyInteractions();
           loadPosts();
         }).catch(function() {

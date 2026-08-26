@@ -364,14 +364,17 @@ const ChatView = {
   },
 
   async markRead(partnerId) {
-    const { error } = await sb
+    const { data, error } = await sb
       .from('private_messages')
       .update({ read: true })
       .eq('recipient_id', S.user.id)
       .eq('sender_id', partnerId)
-      .eq('read', false);
+      .or('read.eq.false,read.is.null')
+      .select('id');
     // 失败时不更新未读数，避免假成功
     if (error) { console.warn('标记已读失败:', error); return; }
+    // RLS 静默过滤（0 行受影响）也视为失败，不本地清零
+    if (!data || data.length === 0) { console.warn('标记已读：没有消息被更新'); return; }
     // 刷新对话列表中的未读数
     const conv = S.conversations.find(c => c.partnerId === partnerId);
     if (conv) { conv.unread = 0; ConvList.render(); }

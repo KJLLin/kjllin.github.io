@@ -83,7 +83,7 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
       <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
@@ -95,7 +95,7 @@
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
       <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
-      <a href="/settings/" class="menu-item"><i class="fas fa-gear"></i> 设置</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
 
@@ -200,7 +200,10 @@
       try{
         var cr=await fetch(KJ.SUPABASE_URL+'/functions/v1/verify-captcha',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:captchaToken})});
         var cd=await cr.json();
-        if(!cd||!cd.success){toast('人机验证未通过，请重试');captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
+        if(!cd||!cd.success){
+          // hCaptcha token 约 2 分钟过期且一次性，明确提示重新验证
+          toast(cd&&cd.expired?'人机验证已过期，请重新勾选验证':'人机验证未通过，请重试');
+          captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
       }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
       try{
         var{error}=await sb.from('posts').update({title,content,updated_at:new Date().toISOString()}).eq('id',postId).eq('user_id',currentUser.id);

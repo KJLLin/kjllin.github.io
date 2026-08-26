@@ -322,8 +322,13 @@
 
     var authReady=false, _loaded=false;
     sb.auth.onAuthStateChange(function(event,session){
-      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){authReady=true;if(!_loaded&&session&&session.user){_loaded=true;loadUser();return}showLoginPrompt();}
-      else if(event==='SIGNED_OUT'){authReady=true;showLoginPrompt();}
+      if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){
+        authReady=true;
+        // 已加载成功（如 3 秒兜底先跑过 loadUser）时，后到的会话事件不能把 UI 切回未登录
+        if(session&&session.user){if(!_loaded){_loaded=true;loadUser();}return}
+        if(!_loaded){_loaded=true;showLoginPrompt();}
+      }
+      else if(event==='SIGNED_OUT'){authReady=true;_loaded=true;showLoginPrompt();}
       else if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED'){if(!_loaded&&session&&session.user){_loaded=true;loadUser();}}
     });
 

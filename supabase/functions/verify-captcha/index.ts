@@ -33,10 +33,14 @@ serve(async (req) => {
     const fd = new URLSearchParams({ secret, response: token });
     const r = await fetch("https://api.hcaptcha.com/siteverify", { method: "POST", body: fd });
 
-    let parsed: { success?: boolean };
+    let parsed: { success?: boolean; "error-codes"?: string[] };
     try { parsed = await r.json(); } catch { parsed = { success: false }; }
 
-    return new Response(JSON.stringify({ success: !!parsed.success }), { headers: h });
+    // 区分"token 过期/重复使用"（timeout-or-duplicate）与其他失败，
+    // 让前端能提示用户重新勾选，而不是笼统的"未通过"
+    const errCodes = parsed["error-codes"] || [];
+    const expired = errCodes.includes("timeout-or-duplicate");
+    return new Response(JSON.stringify({ success: !!parsed.success, ...(expired ? { expired: true } : {}) }), { headers: h });
   } catch {
     return new Response(JSON.stringify({ success: false, error: "internal_error" }), { headers: h });
   }
