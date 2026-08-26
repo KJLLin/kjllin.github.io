@@ -78,6 +78,7 @@
 10. 导航栏"个人主页"菜单项直接显示用户昵称（去掉 userTag 昵称位）；移除 chat/cloud/game 页各自覆盖 userTag 的旧代码；chat/style.css 删除重复导航样式块，统一由 theme.css 提供
 11. 修复云盘 >5MB 上传"人机验证已通过却提示验证失败"：upload-ticket Edge Function 缺失 `serve` import 启动即崩溃（线上 OPTIONS 即 500）；补 import + expired 透传，前端安全解析非 JSON 响应
 12. **CSP 按 hCaptcha 官方要求放行 `https://*.hcaptcha.com`**（script-src/connect-src/frame-src）——此前仅放行 `hcaptcha.com` 与 `newassets.hcaptcha.com`，动态子域（如 `<hash>.w.hcaptcha.com`）被拦截导致 token 无法通过 siteverify（现象：勾选完成但仍报"人机验证未通过"）；涉及 cloud/discuss/new/discuss/edit/login 四页；upload-ticket 失败响应透传 `codes`（hCaptcha error-codes）便于诊断
+13. **根治"人机验证未通过"：Edge Function 的 `HCAPTCHA_SECRET` 与 Supabase Auth 的 `security_captcha_secret` 不一致**（secret 轮换后只更新了 Auth 配置）。sitekey 已确认注册于 kjllin.github.io（`checksiteconfig` 验证），Auth secret 为有效 hCaptcha secret（siteverify 校验通过），已将函数的 `HCAPTCHA_SECRET` 同步为 Auth secret（SHA-256 哈希比对确认写入成功）并重新部署 upload-ticket/verify-captcha。**注意：Management API 的 secrets 接口返回的是值的哈希而非明文**（曾因此误判 secret 有效性）；hCaptcha secret 轮换时需同时更新：Auth 配置（Dashboard → Authentication → Captcha）+ 项目 secrets 的 `HCAPTCHA_SECRET`
 
 ## 部署
 
