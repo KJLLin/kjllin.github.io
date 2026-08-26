@@ -25,7 +25,7 @@
 ## common.js（全站共享，`window.KJ`）
 
 - `createSupabase()`：创建/复用全站唯一客户端实例（**页面变量切勿命名为 `supabase`**——`var` 声明会覆盖 SDK 全局工厂，曾导致舒尔特页导航/登出/横幅全部失效）
-- `initNav(sb, opts)`：统一导航栏——登录态、用户名（点击跳个人主页 `/u/?id=<uid>`）、登出、未读横幅、**通知铃铛**（自动注入 `#userTag` 前，Realtime 订阅未读数）
+- `initNav(sb, opts)`：统一导航栏——登录态、**昵称直接显示在"个人主页"菜单项**（超 12 字截断，点击跳 `/u/?id=<uid>`；未登录恢复"个人主页"文案且 `#userTag` 显示登录按钮）、登出、未读横幅、**通知铃铛**（自动注入 `#userTag` 前，Realtime 订阅未读数）。页面切勿自行填充 `#userTag`（chat/cloud/game 曾各自覆盖导致与主页不一致）
 - `initMessageBanner(sb)`：未读站内信横幅，**水位机制**——叉掉时记录未读数（localStorage `kj_pm_banner_watermark`），只有新未读超过水位才再次提醒，未读清零自动重置
 - `rateLimit / toast / escapeHtml / formatDate / applyTheme / safeRedirect / formatSupabaseError` 等工具
 
@@ -75,6 +75,7 @@
 7. 讨论版：点赞移至详情页、详情阅读模式（浅色纯白/深色近纯黑）
 8. 越权加固：users 敏感列锁死、posts 所有权校验、users_select 收紧、匿名公开资料视图
 9. 统一 settings/admin 页导航栏与主站一致；修复个人主页/通知页顶部遮挡
+10. 导航栏"个人主页"菜单项直接显示用户昵称（去掉 userTag 昵称位）；移除 chat/cloud/game 页各自覆盖 userTag 的旧代码；chat/style.css 删除重复导航样式块，统一由 theme.css 提供
 
 ## 部署
 

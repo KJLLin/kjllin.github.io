@@ -447,54 +447,9 @@
     themeBtn.addEventListener('click', toggleTheme);
     KJ.onSystemThemeChange(updateThemeUI);
     
-    // 登录状态检查
-    var sb = null;
-    (function() {
-      sb = KJ.createSupabase();
-      KJ.initMessageBanner(sb);
-
-      function getStoredUser() {
-        try {
-          var now = Date.now();
-          for (var i = 0; i < localStorage.length; i++) {
-            var key = localStorage.key(i);
-            if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
-              var val = JSON.parse(localStorage.getItem(key));
-              if (val && val.user && val.expires_at) {
-                if (val.expires_at * 1000 > now) return val.user;
-                try { localStorage.removeItem(key); } catch(e) {}
-              }
-            }
-          }
-        } catch(e) {}
-        return null;
-      }
-
-      function updateUserTag(user) {
-        var tag = $('#userTag');
-        if (!tag) return;
-        if (user) {
-          var nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-          tag.textContent = nick;
-          tag.title = nick;
-        } else {
-          tag.textContent = '';
-          tag.title = '';
-        }
-      }
-
-      updateUserTag(getStoredUser());
-
-      if (sb) {
-        sb.auth.onAuthStateChange(function(event, session) {
-          updateUserTag(session?.user || null);
-          if (event === 'SIGNED_OUT') updateUserTag(null);
-        });
-        sb.auth.getSession().then(function(r) {
-          updateUserTag(r?.data?.session?.user || null);
-        }).catch(function() {});
-      }
-    })();
+    // 登录状态检查（导航栏昵称/登录按钮由 KJ.initNav 统一处理）
+    var sb = KJ.createSupabase();
+    KJ.initMessageBanner(sb);
 
     $('#searchBox').addEventListener('input', filterGames);
     window.addEventListener('scroll', handleScroll);

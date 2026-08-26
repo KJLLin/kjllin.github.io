@@ -499,8 +499,10 @@
 
     function hideLogout() {
       if (logoutBtn) logoutBtn.style.display = 'none';
-      // 未登录时在 userTag 位置显示登录按钮
+      // 未登录：菜单项恢复默认"个人主页"文案，userTag 位置显示登录按钮
+      setProfileMenuItem(null);
       if (userTag) {
+        userTag.style.display = '';
         var currentPath = encodeURIComponent(global.location.pathname + global.location.search);
         userTag.innerHTML = '<a href="/login/?redirect=' + currentPath + '" class="menu-item" style="color:var(--color-accent);font-weight:600"><i class="fas fa-key"></i> 登录</a>';
       }
@@ -510,13 +512,32 @@
       if (logoutBtn) logoutBtn.style.display = '';
     }
 
+    // 将导航栏"个人主页"菜单项（桌面 + 移动下拉）显示为用户昵称；user 为空时恢复默认文案
+    function setProfileMenuItem(user, nickOverride) {
+      var items = document.querySelectorAll('a.menu-item[href^="/u/"]');
+      if (!items.length) return;
+      var nick = user ? (nickOverride || getDisplayNick(user)) : '';
+      for (var i = 0; i < items.length; i++) {
+        var a = items[i];
+        if (user && nick) {
+          var display = nick.length > 12 ? nick.slice(0, 12) + '…' : nick;
+          a.href = user.id ? '/u/?id=' + encodeURIComponent(user.id) : '/u/';
+          a.innerHTML = '<i class="fas fa-circle-user"></i> ' + escapeHtml(display);
+          a.title = nick;
+        } else {
+          a.href = '/u/';
+          a.innerHTML = '<i class="fas fa-circle-user"></i> 个人主页';
+          a.removeAttribute('title');
+        }
+      }
+    }
+
     function setUserTag(user, nickOverride) {
-      var nick = nickOverride || getDisplayNick(user);
-      if (userTag && nick) {
-        // 点击用户名进入个人主页（每个用户独立网址）
-        var href = (user && user.id) ? '/u/?id=' + encodeURIComponent(user.id) : '/u/';
-        userTag.innerHTML = '<a href="' + href + '" class="menu-item"><i class="fas fa-user"></i> ' + escapeHtml(nick) + '</a>';
-        userTag.title = nick;
+      // 昵称直接显示在"个人主页"菜单项中，userTag 不再单独显示昵称
+      setProfileMenuItem(user, nickOverride);
+      if (userTag) {
+        userTag.innerHTML = '';
+        userTag.style.display = 'none';
       }
     }
 

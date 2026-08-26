@@ -480,9 +480,6 @@
       currentUser = user;
       $('#authPage').classList.add('hidden');
       $('#driveContent').classList.remove('hidden');
-      const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
-      var tag = $('#userTag');
-      if (tag) { tag.textContent = nick; tag.title = nick; }
       // 查询管理员权限后再加载文件（管理员可管理所有文件）
       fetchIsAdmin(user.id).then(function(admin) {
         isAdmin = admin;

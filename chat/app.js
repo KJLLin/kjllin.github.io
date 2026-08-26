@@ -714,9 +714,6 @@ async function init() {
       console.warn('Failed to fetch user profile:', e);
     }
 
-    // 显示用户信息
-    $('#userTag').textContent = S.user.nick || S.user.email;
-
     // 绑定事件
     bindEvents();
 
