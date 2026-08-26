@@ -41,11 +41,21 @@ serve(async (req) => {
     const errCodes = parsed["error-codes"] || [];
     const expired = errCodes.includes("timeout-or-duplicate");
     // codes 仅透传 siteverify 的 error-codes，不含 secret/token 明文（SEC-005 仍满足）
+    let dbg = {};
+    try {
+      // 诊断（临时）：暴露 secret 的 SHA-256 指纹 + 明文长度/前缀，仅用于定位，上线后需移除
+      const _s = secret || "";
+      const _enc = new TextEncoder().encode(_s);
+      const _buf = await crypto.subtle.digest("SHA-256", _enc);
+      const _h = Array.from(new Uint8Array(_buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      dbg = { secret_len: _s.length, secret_head: _s.slice(0, 6), secret_sha256: _h };
+    } catch {}
     return new Response(
       JSON.stringify({
         success: !!parsed.success,
         ...(expired ? { expired: true } : {}),
         ...(errCodes.length ? { codes: errCodes } : {}),
+        ...dbg,
       }),
       { headers: h },
     );
