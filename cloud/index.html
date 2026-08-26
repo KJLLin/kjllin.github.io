@@ -1256,10 +1256,15 @@
             ticketOk = true;
           } else {
             // 服务端透传 expired（timeout-or-duplicate）时提示重新勾选
-            KJ.toast((d && d.error) || '验证服务暂时不可用，请稍后重试');
+            var errMsg = (d && d.error) || ('HTTP ' + res.status + ' ' + (res.statusText || ''));
+            var errCodes = (d && d.codes && d.codes.length) ? ('\n[错误码] ' + d.codes.join(', ')) : '';
+            var errRaw = (d && d.raw) ? ('\n[原始] ' + d.raw) : '';
+            console.error('[upload-ticket] 验证失败:', errMsg, errCodes, 'status=' + res.status, 'body=', JSON.stringify(d));
+            KJ.toast(errMsg + errCodes + errRaw);
           }
         } catch(e) {
-          KJ.toast('验证失败，请重试');
+          console.error('[upload-ticket] 请求异常:', e);
+          KJ.toast('验证服务请求异常，请重试');
         }
         resetCloudCaptcha();
         if (!ticketOk) return;
