@@ -293,9 +293,9 @@
     </div>
   </div>
   <script>
-    // 加载超时兜底
-    var _t1=setTimeout(function(){document.getElementById('loaderText').textContent='正在加载... (网络较慢)';},5000);
-    var _t2=setTimeout(function(){document.getElementById('loaderText').textContent='加载时间较长，请检查网络连接';},10000);
+    // 加载超时兜底（loader 可能已被移除，需空值防护）
+    var _t1=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='正在加载... (网络较慢)';},5000);
+    var _t2=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='加载时间较长，请检查网络连接';},10000);
     var _t3=setTimeout(function(){
       var l=document.getElementById('loader');
       if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
