@@ -812,7 +812,8 @@
    * 如果页面使用 fixed/sticky 导航栏，需要下移
    */
   function adjustPagePadding(add) {
-    var nav = document.querySelector('.kj-nav, nav.glass-nav, header.glass-nav, .site-nav');
+    // .top-menu 是全站统一的 fixed 导航栏（theme.css），横幅出现时一并下移避免遮挡
+    var nav = document.querySelector('.top-menu, .kj-nav, nav.glass-nav, header.glass-nav, .site-nav');
     if (nav && nav.style) {
       if (add) {
         nav.style.top = '44px';
