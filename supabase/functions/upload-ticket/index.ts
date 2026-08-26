@@ -5,6 +5,8 @@
 // 部署：POST /v1/projects/{ref}/functions/deploy?slug=upload-ticket (metadata: verify_jwt=true)
 // 环境变量：HCAPTCHA_SECRET、SUPABASE_SERVICE_ROLE_KEY
 
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+
 const PROJECT_URL = "https://vzqspcuxnwpakofwumat.supabase.co";
 const HCAPTCHA_SECRET = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ?? ""; } catch { return ""; } })();
 const SERVICE_ROLE_KEY = (() => { try { return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""; } catch { return ""; } })();
@@ -59,15 +61,24 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: "请先登录" }), { headers: h });
     }
 
-    // 服务端验证 hCaptcha
+    // 服务端验证 hCaptcha（透传 timeout-or-duplicate，前端提示重新勾选）
     const r = await fetch("https://api.hcaptcha.com/siteverify", {
       method: "POST",
       body: new URLSearchParams({ secret: HCAPTCHA_SECRET, response: String(token) }),
     });
-    let ok = false;
-    try { ok = (await r.json()).success === true; } catch { ok = false; }
-    if (!ok) {
-      return new Response(JSON.stringify({ success: false, error: "人机验证未通过" }), { headers: h });
+    let parsed: { success?: boolean; "error-codes"?: string[] };
+    try { parsed = await r.json(); } catch { parsed = { success: false }; }
+    const errCodes = parsed["error-codes"] || [];
+    const expired = errCodes.includes("timeout-or-duplicate");
+    if (parsed.success !== true) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: expired ? "验证已过期，请重新完成验证" : "人机验证未通过",
+          ...(expired ? { expired: true } : {}),
+        }),
+        { headers: h },
+      );
     }
 
     // 签发票据（files_allowed：本批大文件数量，单次批量上限 10）

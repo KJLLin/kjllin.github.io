@@ -52,7 +52,7 @@
 ## Edge Functions
 
 - `verify-captcha`（verify_jwt=false）：hCaptcha 服务端验证；**透传 `expired` 标记**（timeout-or-duplicate），前端据此提示"验证已过期请重新勾选"
-- `upload-ticket`（verify_jwt=true）：大文件上传票据签发
+- `upload-ticket`（verify_jwt=true）：大文件上传票据签发；**修复：曾缺失 `serve` import 导致函数启动即崩溃**（OPTIONS 500、所有票据请求失败，前端报"验证失败"），并同样透传 `expired` 标记
 - `auth-gate` / `cpoauth-gate` / `room-cleaner`
 
 部署方式（Management API，token 走 `sbp_...`）：
@@ -76,6 +76,7 @@
 8. 越权加固：users 敏感列锁死、posts 所有权校验、users_select 收紧、匿名公开资料视图
 9. 统一 settings/admin 页导航栏与主站一致；修复个人主页/通知页顶部遮挡
 10. 导航栏"个人主页"菜单项直接显示用户昵称（去掉 userTag 昵称位）；移除 chat/cloud/game 页各自覆盖 userTag 的旧代码；chat/style.css 删除重复导航样式块，统一由 theme.css 提供
+11. 修复云盘 >5MB 上传"人机验证已通过却提示验证失败"：upload-ticket Edge Function 缺失 `serve` import 启动即崩溃（线上 OPTIONS 即 500）；补 import + expired 透传，前端安全解析非 JSON 响应
 
 ## 部署
 

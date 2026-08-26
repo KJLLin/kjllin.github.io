@@ -1250,11 +1250,13 @@
             },
             body: JSON.stringify({ token: token, files: largeFiles.length })
           });
-          const d = await res.json();
+          let d = null;
+          try { d = await res.json(); } catch(_) {}
           if (d && d.success) {
             ticketOk = true;
           } else {
-            KJ.toast((d && d.error) || '验证失败，请重试');
+            // 服务端透传 expired（timeout-or-duplicate）时提示重新勾选
+            KJ.toast((d && d.error) || '验证服务暂时不可用，请稍后重试');
           }
         } catch(e) {
           KJ.toast('验证失败，请重试');
