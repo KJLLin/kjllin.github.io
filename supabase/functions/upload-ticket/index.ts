@@ -71,12 +71,17 @@ serve(async (req: Request) => {
     const errCodes = parsed["error-codes"] || [];
     const expired = errCodes.includes("timeout-or-duplicate");
     if (parsed.success !== true) {
+      const toks = String(token);
       return new Response(
         JSON.stringify({
           success: false,
           error: expired ? "验证已过期，请重新完成验证" : "人机验证未通过",
           ...(expired ? { expired: true } : {}),
           ...(errCodes.length ? { codes: errCodes } : {}),
+          // 诊断辅助：仅暴露 token 长度与前缀，便于定位（不含完整 token/secret）
+          token_len: toks.length,
+          token_head: toks.slice(0, 6),
+          debug: HCAPTCHA_SECRET ? "secret_set" : "secret_missing",
         }),
         { headers: h },
       );

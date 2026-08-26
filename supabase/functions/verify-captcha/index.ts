@@ -40,7 +40,15 @@ serve(async (req) => {
     // 让前端能提示用户重新勾选，而不是笼统的"未通过"
     const errCodes = parsed["error-codes"] || [];
     const expired = errCodes.includes("timeout-or-duplicate");
-    return new Response(JSON.stringify({ success: !!parsed.success, ...(expired ? { expired: true } : {}) }), { headers: h });
+    // codes 仅透传 siteverify 的 error-codes，不含 secret/token 明文（SEC-005 仍满足）
+    return new Response(
+      JSON.stringify({
+        success: !!parsed.success,
+        ...(expired ? { expired: true } : {}),
+        ...(errCodes.length ? { codes: errCodes } : {}),
+      }),
+      { headers: h },
+    );
   } catch {
     return new Response(JSON.stringify({ success: false, error: "internal_error" }), { headers: h });
   }
