@@ -318,6 +318,8 @@
             try {
               var u = new URL(link, location.origin);
               if (u.origin === location.origin) { location.href = u.pathname + u.search; return; }
+              // 站外链接（如公告外链）：新标签页打开
+              window.open(link, '_blank', 'noopener,noreferrer');
             } catch(_) {}
           }
         });

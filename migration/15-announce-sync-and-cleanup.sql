@@ -41,10 +41,10 @@ DECLARE
 BEGIN
   v_title := COALESCE(NULLIF(NEW.title, ''), '系统公告');
 
-  -- 发布（或发布时即启用）：广播
+  -- 发布（或发布时即启用）：广播，link 携带公告配置的外链（可跳站外）
   IF (TG_OP = 'INSERT' AND NEW.active) THEN
     INSERT INTO public.notifications (user_id, type, title, link, announce_id, read)
-    SELECT u.id, 'announce', v_title, '/notifications/', NEW.id, false
+    SELECT u.id, 'announce', v_title, COALESCE(NEW.link, '/notifications/'), NEW.id, false
       FROM public.users u
      WHERE NOT EXISTS (
        SELECT 1 FROM public.notifications np
@@ -58,9 +58,9 @@ BEGIN
       DELETE FROM public.notifications WHERE announce_id = NEW.id;
       RETURN NEW;
     ELSIF NEW.active AND NOT OLD.active THEN
-      -- 恢复启用：补齐通知
+      -- 恢复启用：补齐通知（link 携带公告配置的外链）
       INSERT INTO public.notifications (user_id, type, title, link, announce_id, read)
-      SELECT u.id, 'announce', v_title, '/notifications/', NEW.id, false
+      SELECT u.id, 'announce', v_title, COALESCE(NEW.link, '/notifications/'), NEW.id, false
         FROM public.users u
        WHERE NOT EXISTS (
          SELECT 1 FROM public.notifications np
@@ -100,10 +100,10 @@ CREATE TRIGGER trg_sync_announce_delete
 DO $$
 DECLARE r RECORD; v_title TEXT;
 BEGIN
-  FOR r IN SELECT id, title FROM public.announcements WHERE active IS TRUE LOOP
+  FOR r IN SELECT id, title, link FROM public.announcements WHERE active IS TRUE LOOP
     v_title := COALESCE(NULLIF(r.title, ''), '系统公告');
     INSERT INTO public.notifications (user_id, type, title, link, announce_id, read)
-    SELECT u.id, 'announce', v_title, '/notifications/', r.id, false
+    SELECT u.id, 'announce', v_title, COALESCE(r.link, '/notifications/'), r.id, false
       FROM public.users u
      WHERE NOT EXISTS (
        SELECT 1 FROM public.notifications np
