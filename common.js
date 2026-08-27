@@ -1048,8 +1048,8 @@
     style.textContent =
       '#kj-announce-bar{position:fixed;top:0;left:0;right:0;z-index:10001;height:44px;' +
       'display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box;' +
-      'background:var(--color-accent,#0a84ff);color:#fff;font-size:13px;overflow:hidden;' +
-      'box-shadow:0 1px 6px rgba(0,0,0,.12)}' +
+      'background:linear-gradient(90deg,var(--color-warning,#ff9f0a) 0%,#ff6b1a 100%);color:#fff;font-size:13px;overflow:hidden;' +
+      'box-shadow:0 1px 10px rgba(255,140,20,.35)}' +
       '#kj-announce-bar .kj-announce-icon{flex-shrink:0}' +
       '#kj-announce-bar .kj-announce-body{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '#kj-announce-bar .kj-announce-body b{font-weight:600;margin-right:4px}' +
