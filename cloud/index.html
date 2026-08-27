@@ -790,7 +790,7 @@
       if (!size) return false;               // 大小未知则放行
       const t = type || '';
       if (t.indexOf('image/') === 0) return false;   // 图片走缩略图，不设限
-      if (t.indexOf('video/') === 0 || t.indexOf('audio/') === 0) return size > 80 * 1024 * 1024;
+      if (t.indexOf('video/') === 0 || t.indexOf('audio/') === 0) return size > 5 * 1024 * 1024;
       return size > 2 * 1024 * 1024;                 // 文本/json/html/css/md 等
     }
 
