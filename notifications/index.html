@@ -89,6 +89,16 @@
       transition: all var(--transition-fast); flex-shrink: 0;
     }
     .notif-del:hover { background: rgba(255,59,48,0.12); color: var(--danger); }
+    .notif-announce { background: var(--accent-glow); border: 1px solid var(--color-border); }
+    .ann-badge {
+      display: inline-block; vertical-align: 2px; margin-right: 6px;
+      padding: 1px 8px; border-radius: var(--radius-full);
+      background: var(--color-accent); color: #fff; font-size: 11px; font-weight: 600;
+    }
+    .notif-announce .notif-title a { color: inherit; text-decoration: none; }
+    .notif-announce .notif-title a:hover { text-decoration: underline; }
+    .ann-content { margin-top: 4px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; word-break: break-word; white-space: pre-wrap; }
+    .notif-sep { height: 1px; background: var(--color-border); margin: 4px 0; }
 
     .empty-state { text-align: center; padding: 56px 20px; color: var(--text-tertiary); background: var(--bg-mica); border-radius: var(--radius-md); }
     .empty-state i { font-size: 34px; margin-bottom: 12px; display: block; opacity: 0.5; }
@@ -151,6 +161,7 @@
       var loaded = 0;
       var hasMore = false;
       var _marking = false;
+      var announces = [];
 
       // 主题
       var themeBtn = $('#themeBtn');
@@ -221,10 +232,39 @@
         '</div>';
       }
 
+      // 全站公告卡片（置顶展示，非站内通知，无删除/已读）
+      function announceHtml(a, i) {
+        var linkAttr = a.link ? ' href="' + esc(a.link) + '" target="_blank" rel="noopener noreferrer"' : 'href="javascript:void(0)"';
+        var titleOpen = a.link ? '<a' + linkAttr + '>' : '<span>';
+        var titleClose = a.link ? '</a>' : '</span>';
+        return '<div class="notif-item notif-announce" data-announce="1" style="animation-delay:' + (0.02 + i * 0.02).toFixed(2) + 's" role="note">' +
+          '<div class="notif-icon system"><i class="fas fa-bullhorn"></i></div>' +
+          '<div class="notif-body">' +
+            '<div class="notif-title"><span class="ann-badge">公告</span>' + titleOpen + esc(a.title || '系统公告') + titleClose + '</div>' +
+            (a.content ? '<div class="ann-content">' + esc(a.content) + '</div>' : '') +
+            '<div class="notif-time"><i class="fas fa-bullhorn"></i> 公告 · ' + fmtDate(a.created_at) + '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      // 拉取启用的全站公告（置顶展示）
+      async function loadAnnouncements() {
+        if (!sb) return;
+        try {
+          var r = await sb.from('announcements')
+            .select('id,title,content,link,created_at')
+            .eq('active', true)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (!r.error) announces = r.data || [];
+        } catch(e) { announces = []; }
+      }
+
       async function loadNotifications(append) {
         if (!sb || !currentUser) return;
         var listEl = $('#notifList');
         try {
+          if (!append) await loadAnnouncements();
           var res = await sb.from('notifications')
             .select('*')
             .eq('user_id', currentUser.id)
@@ -236,11 +276,12 @@
           hasMore = items.length === PAGE_SIZE;
 
           if (!append) {
-            if (items.length === 0) {
+            var announceHtmls = announces.map(announceHtml).join('');
+            if (items.length === 0 && announces.length === 0) {
               listEl.innerHTML = '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both"><i class="fas fa-bell-slash"></i>暂无通知<br><span style="font-size:12px">站内信、点赞和关注动态会出现在这里</span></div>';
             } else {
               listEl.className = 'notif-list';
-              listEl.innerHTML = items.map(notifHtml).join('');
+              listEl.innerHTML = (announceHtmls ? announceHtmls + '<div class="notif-sep"></div>' : '') + items.map(notifHtml).join('');
             }
           } else if (items.length > 0) {
             listEl.insertAdjacentHTML('beforeend', items.map(notifHtml).join(''));
@@ -283,6 +324,8 @@
           }
           var item = e.target.closest('.notif-item');
           if (!item) return;
+          // 公告卡片：非站内通知，不处理已读/删除，内部链接自行跳转
+          if (item.dataset.announce === '1') return;
           // 标记已读后跳转
           if (item.dataset.read !== '1') {
             item.classList.add('read');

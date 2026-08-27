@@ -904,7 +904,7 @@
       renderFilesSkeleton();
       try {
         cachedFiles = await listFiles();
-        renderFiles();
+        renderFiles(true);   // 仅首次加载播放进场动画
       } catch(e) {
         console.warn('loadAndRender error:', e);
         const empty = $('#emptyState');
@@ -928,7 +928,9 @@
       return decodeName(name);
     }
 
-    function renderFiles() {
+    // animate：仅首次数据加载（骨架屏切换）时播放进场动画，
+    // 后续搜索/上传者信息/空间切换等重渲染不再重播，避免动画反复快速执行
+    function renderFiles(animate) {
       const query = $('#searchBox').value.toLowerCase().trim();
       const filtered = query ? cachedFiles.filter(f => parseDisplayName(f.name).toLowerCase().includes(query)) : cachedFiles;
       const list = $('#fileList');
@@ -961,7 +963,7 @@
           // 删除按钮：仅管理员或文件所有者可见（RLS 服务端已强制，此处为 UI 层隐藏）
           const canDelete = isAdmin || (f.owner && f.owner === currentUser?.id);
           return `
-          <div class="file-item mica" style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both">
+          <div class="file-item mica" ${animate ? `style="animation:slideUp 0.4s var(--win-ease) ${i * 0.04}s both"` : ''}>
             <div class="file-icon">${getFileIcon(f.type, parseDisplayName(f.name))}</div>
             <div class="file-info">
               <div class="file-name" title="${displayName}">${displayName}</div>
@@ -980,7 +982,7 @@
         if (showOwnerMeta) {
           const owners = filtered.map(f => f.owner).filter(Boolean);
           if (owners.length > 0) {
-            fetchOwnerInfo(owners).then(updated => { if (updated) renderFiles(); });
+            fetchOwnerInfo(owners).then(updated => { if (updated) renderFiles(false); });
           }
         }
       }
@@ -1218,7 +1220,7 @@
     $('#uploadBtn').addEventListener('click', () => $('#fileInput').click());
     $('#fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
     $('#refreshBtn').addEventListener('click', () => loadAndRender());
-    $('#searchBox').addEventListener('input', renderFiles);
+    $('#searchBox').addEventListener('input', function(){ renderFiles(false); });
 
     // ====================== 管理员私有空间邮箱管理 ======================
     function updateAdminManageUI() {
