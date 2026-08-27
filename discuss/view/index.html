@@ -655,6 +655,13 @@
           ALLOWED_ATTR: ['href','title','target','rel','src','alt','width','height','class','id','type','checked','disabled'],
           ALLOW_DATA_ATTR: false
         });
+        // 安全加固：为所有新窗口链接统一补 rel="noopener noreferrer"（防 tab-nabbing）
+        html = html.replace(/<a\s+[^>]*?target=(?:"_blank"|'_blank')[^>]*>/gi, function(tag) {
+          if (/\srel=/i.test(tag)) {
+            return tag.replace(/(\srel=["'])[^"']*(["'])/i, '$1noopener noreferrer$2');
+          }
+          return tag.replace(/\s*>$/, ' rel="noopener noreferrer">');
+        });
       } catch(e) {
         html = '<p style="color:var(--danger);">Markdown 渲染失败</p><pre>' + KJ.escapeHtml(raw) + '</pre>';
       }

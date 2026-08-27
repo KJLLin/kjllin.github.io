@@ -28,6 +28,15 @@
     .form-group input{width:100%;padding:10px 14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-input);color:var(--color-text-primary);font-size:15px;font-family:var(--font-sans);outline:none;transition:all var(--transition-fast)}
     .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow)}
     .form-group input::placeholder{color:var(--color-text-tertiary)}
+    .pw-wrap{position:relative}
+    .pw-wrap input{padding-right:40px}
+    .pw-wrap .pw-toggle{
+      position:absolute;right:8px;top:12px;
+      border:none;background:transparent;color:var(--color-text-tertiary);
+      cursor:pointer;padding:6px;font-size:14px;line-height:1;
+      transition:color var(--transition-fast);
+    }
+    .pw-wrap .pw-toggle:hover{color:var(--color-accent)}
     .form-hint{font-size:12px;color:var(--color-text-tertiary);margin-top:6px}
     /* ── 密码强度指示器 ── */
     .pw-strength-bar{height:4px;border-radius:2px;margin-top:8px;background:var(--color-border);overflow:hidden}
@@ -95,8 +104,8 @@
     <div id="formContent" style="display:none">
       <div class="card-glass-form">
         <h2><i class="fas fa-lock"></i> 修改登录密码</h2>
-        <div class="form-group"><label>当前密码</label><input type="password" id="currentPassword" placeholder="输入当前密码" autocomplete="current-password"></div>
-        <div class="form-group"><label>新密码</label><input type="password" id="newPassword" placeholder="至少 8 位，含字母与数字" autocomplete="new-password">
+        <div class="form-group"><label>当前密码</label><div class="pw-wrap"><input type="password" id="currentPassword" placeholder="输入当前密码" autocomplete="current-password"><button type="button" class="pw-toggle" data-target="currentPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div></div>
+        <div class="form-group"><label>新密码</label><div class="pw-wrap"><input type="password" id="newPassword" placeholder="至少 8 位，含字母与数字" autocomplete="new-password"><button type="button" class="pw-toggle" data-target="newPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div>
           <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
           <div class="pw-strength-text" id="pwStrengthText"></div>
           <div class="pw-rules" id="pwRules">
@@ -107,7 +116,7 @@
             <span class="pw-rule" data-rule="special"><i class="fas fa-circle"></i> 特殊字符</span>
           </div>
         </div>
-        <div class="form-group"><label>确认新密码</label><input type="password" id="confirmPassword" placeholder="再次输入新密码" autocomplete="new-password"></div>
+        <div class="form-group"><label>确认新密码</label><div class="pw-wrap"><input type="password" id="confirmPassword" placeholder="再次输入新密码" autocomplete="new-password"><button type="button" class="pw-toggle" data-target="confirmPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div></div>
         <div class="form-actions">
           <button class="btn-submit" id="submitBtn">更新密码</button>
           <a href="/settings/" class="btn-cancel">取消</a>
@@ -209,6 +218,15 @@
       if(!this.value){this.style.borderColor='';return}
       if(this.value===np){this.style.borderColor='var(--color-success)';}
       else{this.style.borderColor='var(--color-danger)';}
+    });
+
+    // ── 密码显示/隐藏切换 ──
+    document.querySelectorAll('.pw-toggle').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var target=document.getElementById(btn.dataset.target);if(!target)return;
+        if(target.type==='password'){target.type='text';btn.innerHTML='<i class="fas fa-eye-slash"></i>';btn.setAttribute('aria-label','隐藏密码');}
+        else{target.type='password';btn.innerHTML='<i class="fas fa-eye"></i>';btn.setAttribute('aria-label','显示密码');}
+      });
     });
 
     setTimeout(function(){if($('#loginPrompt').style.display!=='none'){$('#loginMsg').textContent='加载超时，请检查网络';$('#loginLink').hidden=false;$('#loginLink').textContent='刷新页面';$('#loginLink').href='javascript:location.reload()';}},8000);

@@ -1070,7 +1070,7 @@
       '<span class="kj-announce-body"><b>' + escapeHtml(announce.title || '公告') + '</b>' +
         (announce.content ? escapeHtml(announce.content) : '') + '</span>' +
       (announce.link
-        ? '<a class="kj-announce-link" href="' + announce.link + '" target="_blank" rel="noopener noreferrer">查看详情</a>'
+        ? '<a class="kj-announce-link" href="' + escapeHtml(announce.link) + '" target="_blank" rel="noopener noreferrer">查看详情</a>'
         : '') +
       '<button class="kj-announce-close" aria-label="关闭公告" title="关闭">&#10005;</button>';
     bar.querySelector('.kj-announce-close').addEventListener('click', function() {

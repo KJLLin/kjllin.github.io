@@ -119,6 +119,17 @@
     }
     .field input::placeholder{color:var(--text-tertiary);opacity:.6}
 
+    /* 密码显示/隐藏切换 */
+    .pw-wrap{position:relative}
+    .pw-wrap input{padding-right:42px}
+    .pw-wrap .pw-toggle{
+      position:absolute;right:8px;top:50%;transform:translateY(-50%);
+      border:none;background:transparent;color:var(--text-tertiary);
+      cursor:pointer;padding:8px;font-size:15px;line-height:1;
+      transition:color .2s ease;
+    }
+    .pw-wrap .pw-toggle:hover{color:var(--accent)}
+
     .captcha-row{display:flex;justify-content:center;margin-bottom:20px;min-height:78px}
 
     .forgot-row{text-align:right;margin-top:2px}
@@ -262,7 +273,10 @@
         </div>
         <div class="field">
           <label>密码</label>
-          <input type="password" id="loginPwd" placeholder="输入密码" autocomplete="current-password">
+          <div class="pw-wrap">
+            <input type="password" id="loginPwd" placeholder="输入密码" autocomplete="current-password">
+            <button type="button" class="pw-toggle" data-target="loginPwd" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button>
+          </div>
           <div class="forgot-row"><a href="javascript:void(0)" id="forgotPwdLink">忘记密码？</a></div>
         </div>
         <div class="captcha-row" id="captchaLoginContainer"></div>
@@ -280,7 +294,10 @@
         </div>
         <div class="field">
           <label>密码 (至少8位)</label>
-          <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
+          <div class="pw-wrap">
+            <input type="password" id="regPwd" placeholder="至少8位字符" autocomplete="new-password">
+            <button type="button" class="pw-toggle" data-target="regPwd" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button>
+          </div>
         </div>
         <div class="captcha-row" id="captchaRegisterContainer"></div>
         <button class="btn" id="regBtn">创建账号</button>
@@ -603,6 +620,23 @@
     });
     KJ.onSystemThemeChange(updateThemeUI);
     updateThemeUI();
+
+    // 密码显示/隐藏切换
+    document.querySelectorAll('.pw-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+        if (target.type === 'password') {
+          target.type = 'text';
+          btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+          btn.setAttribute('aria-label', '隐藏密码');
+        } else {
+          target.type = 'password';
+          btn.innerHTML = '<i class="fas fa-eye"></i>';
+          btn.setAttribute('aria-label', '显示密码');
+        }
+      });
+    });
 
     // 隐藏加载遮罩，显示登录表单，渲染初始 captcha
     (function(){
