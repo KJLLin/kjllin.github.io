@@ -203,7 +203,7 @@ const ConvList = {
 
   _renderItem(c, isBlocked = false) {
     const p = S.partners[c.partnerId];
-    const rawName = p?.nick || p?.email || c.partnerId;
+    const rawName = p?.nick || p?.email || p?.phone || c.partnerId;
     const name = U.escape(rawName);
     // 管理员徽章（名字本身已 escape）
     const adminBadge = p?.is_admin ? '<span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '';
@@ -307,7 +307,7 @@ const ChatView = {
     const p = S.partners[partnerId];
     // 名字本身需 escape；对方为管理员时在名字后追加徽章
     $('#chatPartnerName').innerHTML = p
-      ? `与 ${U.escape(p.nick || p.email || partnerId)} 的对话${p.is_admin ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : ''}`
+      ? `与 ${U.escape(p.nick || p.email || p.phone || partnerId)} 的对话${p.is_admin ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : ''}`
       : '对话';
 
     // 加载消息：降序取最新 200 条，再反转为时间正序渲染
@@ -427,7 +427,7 @@ const ChatView = {
   },
 };
 
-// ====================== 搜索用户 ======================
+// ====================== 搜索用户（邮箱模糊 / 昵称精确 / 手机号精确） ======================
 const Search = {
   async input(term) {
     const el = $('#searchResults');
@@ -437,13 +437,35 @@ const Search = {
     if (S.searchLock) return;
     S.searchLock = true;
 
+    // 规范化手机号：中国大陆 11 位手机号补 +86（与 users.phone 存储格式一致）
+    const normPhone = (v) => {
+      const p = String(v || '').replace(/[\s\-()]/g, '');
+      if (!p || p.startsWith('+')) return p;
+      return /^1[3-9]\d{9}$/.test(p) ? '+86' + p : p;
+    };
+    // 过滤条件值特殊字符用双引号包裹，避免破坏 PostgREST or() 语法
+    const pgVal = (v) => /[,.:) ]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+
     try {
-      const { data, error } = await sb
+      let query = sb
         .from('users')
-        .select('id, nick, email, is_admin')
-        .ilike('email', `%${trimmed}%`)
+        .select('id, nick, email, phone, is_admin')
         .neq('id', S.user.id)
-        .limit(5);
+        .limit(8);
+
+      if (trimmed.indexOf('@') > -1) {
+        // 邮箱：保留模糊匹配
+        query = query.ilike('email', `%${trimmed}%`);
+      } else {
+        // 昵称 / 手机号：需输入完整后精确匹配
+        const conds = [];
+        const np = normPhone(trimmed);
+        if (np) conds.push('phone.eq.' + pgVal(np));
+        conds.push('nick.eq.' + pgVal(trimmed));
+        query = query.or(conds.join(','));
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Search error:', error);
@@ -460,11 +482,12 @@ const Search = {
 
       let html = '';
       for (const u of data) {
-        html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email)}" data-admin="${u.is_admin === true ? '1' : ''}">
-        <span class="search-avatar">${U.escape(Array.from(u.nick || u.email || '')[0] || '?')}</span>
+        const tag = u.email || u.phone || '';
+        html += `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(u.nick || '')}" data-email="${U.escape(u.email || '')}" data-phone="${U.escape(u.phone || '')}" data-admin="${u.is_admin === true ? '1' : ''}">
+        <span class="search-avatar">${U.escape(Array.from(u.nick || u.email || u.phone || '')[0] || '?')}</span>
         <div class="search-info">
           <span class="search-nick">${U.escape(u.nick || '未设置昵称')}${u.is_admin === true ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : ''}</span>
-          <span class="search-email">${U.escape(u.email)}</span>
+          <span class="search-email">${U.escape(tag)}</span>
         </div>
       </div>`;
       }
@@ -479,9 +502,9 @@ const Search = {
     }
   },
 
-  select(userId, nick, email, isAdmin) {
+  select(userId, nick, email, phone, isAdmin) {
     // 添加/更新 partner 信息
-    S.partners[userId] = { nick, email, is_admin: isAdmin === true };
+    S.partners[userId] = { nick, email, phone, is_admin: isAdmin === true };
     $('#searchResults').classList.add('hidden');
     $('#searchResults').innerHTML = '';
     $('#searchInput').value = '';
@@ -565,7 +588,7 @@ function bindEvents() {
   $('#searchResults').addEventListener('click', (e) => {
     const item = e.target.closest('.search-item');
     if (item) {
-      Search.select(item.dataset.id, item.dataset.nick, item.dataset.email, item.dataset.admin === '1');
+      Search.select(item.dataset.id, item.dataset.nick, item.dataset.email, item.dataset.phone, item.dataset.admin === '1');
     }
   });
 
