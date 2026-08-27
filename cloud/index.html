@@ -1262,7 +1262,10 @@
         resetCloudCaptcha();
         if (!ticketOk) return;
       }
-      return _origHandleFiles(fileList);
+      // 传入一开始捕获的 File 数组快照，而不是 live FileList：
+      // change 回调里的 e.target.value='' 会立刻清空并失效原 FileList，
+      // 经人机验证的多次 await 后再 Array.from(fileList) 会得到空数组 → 静默不上传、无进度条。
+      return _origHandleFiles(files);
     };
 
     // ====================== 初始化 ======================
