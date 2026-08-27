@@ -636,15 +636,36 @@
       }
     }
 
-    // 存储对象名安全化：保留中文等可见字符，剔除存储不允许的字符。
-    // 注意不能用 encodeURIComponent 处理中文名——其产生的 %XX 会被 Storage 当作非法字符拒绝。
-    function sanitizeFileName(name) {
-      return String(name || '')
-        .normalize('NFKC')
-        .replace(/[/\\:*?"<>|%\u0000-\u001f\u007f]/g, '_') // 保留符号(含中文)删为安全下划线
-        .replace(/^\.+/g, '_')          // 避免隐藏占位符式开头
-        .replace(/[. _]+$/g, '')        // 去除结尾空格/点/下划线
-        .slice(0, 200);
+    // 存储对象名只允许 ASCII（字母/数字/下划线等）；中文等非 ASCII 字符（含 URL 编码的 %XX）
+    // 都会被存储端以 Invalid key 拒绝。因此把文件名可逆编码成只含十六进制+下划线的
+    // ASCII 安全串用于存储路径，展示时再用 decodeName 还原成中文等原名。
+    function encodeName(name) {
+      let out = '', s = String(name || '');
+      for (let i = 0; i < s.length; i++) {
+        const cp = s.codePointAt(i);
+        if (cp > 0xffff) i++; // 代理对，cp 已是完整码点
+        if (/[0-9a-fA-F]/.test(s[i])) out += s[i];
+        else out += '_' + cp.toString(16).toUpperCase() + '_';
+      }
+      return out.slice(0, 220);
+    }
+    // 仅含 十六进制+下划线 的才视为"已编码"并解码；其余（旧 ASCII 文件）原样返回
+    function decodeName(key) {
+      const s = String(key || '');
+      if (!/^[0-9a-fA-F_]+$/.test(s)) return s;
+      let out = '', i = 0;
+      while (i < s.length) {
+        if (s[i] === '_') {
+          const j = s.indexOf('_', i + 1);
+          if (j === -1 || j === i + 1) { out += s[i]; i++; }
+          else {
+            const h = s.slice(i + 1, j);
+            if (/^[0-9a-fA-F]{1,6}$/.test(h)) { out += String.fromCodePoint(parseInt(h, 16)); i = j + 1; }
+            else { out += s[i]; i++; }
+          }
+        } else { out += s[i]; i++; }
+      }
+      return out;
     }
 
     async function uploadFile(file) {
@@ -660,8 +681,8 @@
       }
       if (!session) { KJ.toast('登录已过期，请重新登录'); return false; }
 
-      // 对象名做安全化处理：保留中文等可见字符，剔除存储不允许的字符（含 %、控制符、保留符号）
-      const path = currentUser.id + '/' + Date.now() + '_' + sanitizeFileName(file.name);
+      // 对象名用 ASCII 安全编码（中文等非 ASCII 字符会因 Invalid key 被存储拒绝）
+      const path = currentUser.id + '/' + Date.now() + '_' + encodeName(file.name);
 
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
@@ -874,9 +895,8 @@
       if (slash !== -1) name = name.substring(slash + 1);
       // 去掉时间戳前缀
       name = name.replace(/^\d+_/, '');
-      // 解码中文等 URL 编码字符
-      try { name = decodeURIComponent(name); } catch(e) {}
-      return name;
+      // 还原 ASCII 安全编码：让中文等原名可显示；旧 ASCII 文件原样返回
+      return decodeName(name);
     }
 
     function renderFiles() {
