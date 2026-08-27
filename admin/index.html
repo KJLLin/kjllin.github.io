@@ -244,6 +244,25 @@
         </div>
       </div>
 
+      <!-- 全站公告管理 -->
+      <div class="card card-glass card-anim" style="margin-bottom:12px">
+        <div class="card-header"><i class="fas fa-bullhorn c-accent"></i> 全站公告</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="phone-grid">
+            <input id="annTitle" class="search-input" placeholder="公告标题" autocomplete="off">
+            <input id="annContent" class="search-input" placeholder="内容（可选，将展示在标题后）" autocomplete="off">
+          </div>
+          <div class="phone-grid">
+            <input id="annLink" class="search-input" placeholder="跳转链接（可选）" autocomplete="off">
+            <button type="button" class="save-btn" id="annAddBtn"><i class="fas fa-paper-plane"></i> 发布公告</button>
+          </div>
+          <div class="search-hint"><i class="fas fa-circle-info"></i> 发布后全站顶部横幅展示（仅最新一条生效）。可停用或删除。</div>
+        </div>
+
+        <div id="annList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
       <!-- 用户列表 -->
       <div id="userList" class="user-list"></div>
     </div>
@@ -301,8 +320,103 @@
 
         $('#gateCard').style.display='none';
         $('#adminContent').style.display='block';
+        bindAnnounce();
         loadUsers();
+        loadAnnouncements();
       }catch(e){console.error('loadUser:',e);showGate('加载失败','网络异常，请刷新页面重试');}
+    }
+
+    // ==================== 全站公告管理 ====================
+    var announcements=[];
+    async function loadAnnouncements(){
+      var el=$('#annList');
+      if(!el)return;
+      el.innerHTML='<div class="list-empty"><i class="fas fa-circle-notch fa-spin"></i> 加载公告...</div>';
+      try{
+        var r=await sb.from('announcements')
+          .select('id,title,content,link,active,created_at')
+          .order('created_at',{ascending:false})
+          .limit(50);
+        if(r.error){el.innerHTML='<div class="list-empty">加载失败：'+esc(r.error.message||'未知错误')+'</div>';return}
+        announcements=(r.data||[]);
+        renderAnnouncements();
+      }catch(e){console.error('loadAnnouncements:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新页面重试</div>';}
+    }
+
+    function renderAnnouncements(){
+      var el=$('#annList');
+      if(!el)return;
+      if(!announcements.length){el.innerHTML='<div class="list-empty">还没有发布过公告</div>';return}
+
+      // CSS：让多条公告可点击联动（复用 search-hint 样式）
+      if(!document.getElementById('ann-item-style')){
+        var st=document.createElement('style');st.id='ann-item-style';
+        st.textContent='.ann-row{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm);flex-wrap:wrap}.ann-row .ann-main{flex:1;min-width:0}.ann-row .ann-t{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ann-row .ann-m{font-size:11px;color:var(--text-tertiary)}.ann-row .ann-state{font-size:11px;padding:2px 8px;border-radius:var(--radius-full)}.ann-row .ann-state.on{background:rgba(0,200,150,.12);color:#0ac8a0}.ann-row .ann-state.off{background:rgba(255,150,50,.14);color:#ff9a3c}';
+        document.head.appendChild(st);
+      }
+
+      el.innerHTML=announcements.map(function(a){
+        var state=a.active
+          ? '<span class="ann-state on">展示中</span>'
+          : '<span class="ann-state off">已停用</span>';
+        var content=a.content?a.content.replace(/\s+/g,' ').slice(0,40)+'…':'';
+        return '<div class="ann-row">' +
+          '<div class="ann-main">' +
+            '<div class="ann-t">'+ esc(a.title||'(无标题)') +'</div>' +
+            (content?'<div class="ann-m" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(content)+'</div>':'') +
+            '<div class="ann-m">'+fmtDate(a.created_at)+'</div>' +
+          '</div>' +
+          state +
+          '<button type="button" class="save-btn" data-fn="toggle" data-id="' + a.id + '" data-active="' + (a.active?'1':'0') + '">' + (a.active?'停用':'启用') + '</button>' +
+          '<button type="button" class="save-btn" data-fn="del" data-id="' + a.id + '">删除</button>' +
+        '</div>';
+      }).join('');
+      el.querySelectorAll('[data-fn]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          if(!KJ.rateLimit('ann_'+btn.dataset.fn,800,1))return;
+          var id=btn.dataset.id;
+          if(btn.dataset.fn==='del'){
+            if(!confirm('确定删除该公告？'))return;
+            (async()=>{
+              try{var r=await sb.from('announcements').delete().eq('id',id);if(r.error)throw r.error;KJ.toast('已删除');loadAnnouncements();}catch(e){KJ.toast('删除失败：'+(e.message||'未知错误'))}
+            })();
+          }else{
+            var active=btn.dataset.active!=='1';
+            (async()=>{
+              try{var r=await sb.from('announcements').update({active:active}).eq('id',id);if(r.error)throw r.error;KJ.toast(active?'已启用':'已停用');loadAnnouncements();}catch(e){KJ.toast('操作失败：'+(e.message||'未知错误'))}
+            })();
+          }
+        });
+      });
+    }
+
+    function bindAnnounce(){
+      var addBtn=$('#annAddBtn');
+      if(!addBtn||addBtn._annBound)return;
+      addBtn._annBound=true;
+      addBtn.addEventListener('click',async function(){
+        if(!KJ.rateLimit('ann_add',2000,1,'操作过快，请稍后再试'))return;
+        var title=$('#annTitle').value.trim();
+        if(!title){KJ.toast('请输入公告标题');return}
+        $('#annAddBtn').disabled=true;var old=$('#annAddBtn').innerHTML;$('#annAddBtn').innerHTML='发布中...';
+        try{
+          var r=await sb.from('announcements').insert({
+            title:title,
+            content:$('#annContent').value.trim(),
+            link:$('#annLink').value.trim()||null,
+            created_by:user.id,
+            active:true
+          });
+          if(r.error)throw r.error;
+          $('#annTitle').value='';$('#annContent').value='';$('#annLink').value='';
+          KJ.toast('公告已发布，全站横幅已生效');
+          loadAnnouncements();
+        }catch(e){
+          KJ.toast('发布失败：'+(e.message||'未知错误'));
+        }finally{
+          $('#annAddBtn').disabled=false;$('#annAddBtn').innerHTML=old;
+        }
+      });
     }
 
     // ==================== 数据加载 ====================

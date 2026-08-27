@@ -43,6 +43,8 @@
 
     .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .page-title { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #deskNotifBtn.active { background: var(--color-accent); border-color: transparent; color: var(--color-text-on-accent); }
     .btn {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 8px 16px; border-radius: var(--radius-sm);
@@ -124,7 +126,10 @@
   <div class="container" id="main">
     <div class="page-head">
       <h1 class="page-title"><i class="fas fa-bell"></i> 通知</h1>
-      <button class="btn" id="markAllBtn" style="display:none"><i class="fas fa-check-double"></i> 全部已读</button>
+      <div class="head-actions">
+        <button class="btn" id="deskNotifBtn" title="在后台收到新通知时弹出系统桌面通知"><i class="far fa-bell"></i> 开启桌面通知</button>
+        <button class="btn" id="markAllBtn" style="display:none"><i class="fas fa-check-double"></i> 全部已读</button>
+      </div>
     </div>
     <div id="notifList">
       <div class="skeleton" aria-hidden="true"></div>
@@ -157,6 +162,39 @@
       KJ.initNav(sb, { homeUrl: '/' });
 
       function esc(s) { return KJ.escapeHtml(s); }
+
+      // 桌面通知开关
+      var deskNotifBtn = document.getElementById('deskNotifBtn');
+      function refreshDeskNotifBtn() {
+        if (!deskNotifBtn) return;
+        var on = KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled();
+        deskNotifBtn.classList.toggle('active', !!on);
+        deskNotifBtn.innerHTML = on
+          ? '<i class="fas fa-bell"></i> 已开启桌面通知'
+          : '<i class="far fa-bell"></i> 开启桌面通知';
+      }
+      if (deskNotifBtn) {
+        deskNotifBtn.addEventListener('click', async function() {
+          if (!KJ.rateLimit('desknotif', 1000, 1)) return;
+          if (KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled()) {
+            KJ.disableBrowserNotification();
+            refreshDeskNotifBtn();
+            return;
+          }
+          var r = await KJ.requestBrowserNotification();
+          if (r && r.ok) {
+            refreshDeskNotifBtn();
+            KJ.toast('已开启桌面通知');
+          } else if (r && r.reason === 'denied') {
+            refreshDeskNotifBtn();
+            KJ.toast('浏览器已拒绝通知权限，请在浏览器设置中允许');
+          } else {
+            refreshDeskNotifBtn();
+            KJ.toast('当前浏览器不支持桌面通知');
+          }
+        });
+        refreshDeskNotifBtn();
+      }
 
       var TYPE_META = {
         pm: { icon: 'fa-envelope', label: '站内信' },

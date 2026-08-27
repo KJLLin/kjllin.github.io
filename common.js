@@ -595,9 +595,10 @@
       });
     }
 
-    // 初始化站内信横幅 + 通知铃铛
+    // 初始化站内信横幅 + 通知铃铛 + 全站公告
     if (sb) initMessageBanner(sb);
     if (sb) initNotificationBell(sb);
+    if (sb) initAnnouncement(sb);
   }
 
   /**
@@ -912,7 +913,12 @@
         _notifState.channel = sb.channel('kj_notif_' + user.id)
           .on('postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + user.id },
-            function() { refreshBellBadge(sb); })
+            function(payload) {
+              refreshBellBadge(sb);
+              // 后台标签页时弹系统桌面通知
+              var n = payload.new || {};
+              showDesktopNotification('新的站内通知', n.title || '你收到一条新通知', n.link || '/notifications/');
+            })
           .subscribe();
       }).catch(function() {});
     } catch(e) {
@@ -961,6 +967,162 @@
         }
       });
     } catch(e) {}
+  }
+
+  // ====================== 浏览器原生通知（Notifications API） ======================
+  // 在浏览器支持且用户授权后，后台标签页有新通知时弹出系统桌面通知
+  var DESKTOP_NOTIF_KEY = 'kj_desktop_notif_on';
+
+  function isBrowserNotificationEnabled() {
+    try { return safeStorage.getItem(DESKTOP_NOTIF_KEY) === '1'; } catch(e) { return false; }
+  }
+
+  function browserNotifSupported() {
+    return typeof global.Notification !== 'undefined';
+  }
+
+  /**
+   * 请求浏览器通知权限并开启桌面通知。
+   * 必须在用户手势（点击）中调用，否则浏览器会忽略授权请求。
+   * @returns {Promise<{ok:boolean, reason?:string}>}
+   */
+  async function requestBrowserNotification() {
+    if (!browserNotifSupported()) return { ok: false, reason: 'unsupported' };
+    if (global.Notification.permission === 'granted') {
+      safeStorage.setItem(DESKTOP_NOTIF_KEY, '1');
+      return { ok: true, permission: 'granted' };
+    }
+    if (global.Notification.permission === 'denied') {
+      return { ok: false, reason: 'denied' };
+    }
+    try {
+      var p = await global.Notification.requestPermission();
+      if (p === 'granted') safeStorage.setItem(DESKTOP_NOTIF_KEY, '1');
+      else safeStorage.removeItem(DESKTOP_NOTIF_KEY);
+      return { ok: p === 'granted', permission: p };
+    } catch(e) {
+      return { ok: false, reason: 'error' };
+    }
+  }
+
+  function disableBrowserNotification() {
+    safeStorage.removeItem(DESKTOP_NOTIF_KEY);
+  }
+
+  /**
+   * 展示系统桌面通知（仅当已授权、开启，且当前页面在后台时触发，避免前台打扰）
+   */
+  function showDesktopNotification(title, body, link) {
+    try {
+      if (!browserNotifSupported()) return;
+      if (isBrowserNotificationEnabled() !== true) return;
+      if (global.Notification.permission !== 'granted') return;
+      // 页面处于前台（可见）时不在系统层打扰，可看到站内横幅/铃铛
+      if (document.visibilityState === 'visible') return;
+      var n = new global.Notification(String(title || '新通知'), {
+        body: String(body || ''),
+        icon: '/favicon.svg',
+        badge: '/favicon.svg',
+        tag: 'kj-desktop-notif'
+      });
+      if (link) {
+        n.onclick = function() {
+          try { if (global.parent && global.parent !== global) global.parent.focus(); else global.focus(); } catch(e) {}
+          try { global.location.href = link; } catch(e) {}
+          n.close();
+        };
+      }
+      // 自动关闭，避免占据通知中心
+      setTimeout(function() { try { n.close(); } catch(e) {} }, 15000);
+    } catch(e) {}
+  }
+
+  // ====================== 全站公告横幅 ======================
+  // 管理员通过后台发布的公告，全站（所有调用 initNav 的页面）顶部展示一次
+  var ANNOUNCEMENT_HIDE_KEY = 'kj_announcement_hidden';
+
+  function injectAnnounceStyle() {
+    if (document.getElementById('kj-announce-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kj-announce-style';
+    style.textContent =
+      '#kj-announce-bar{position:fixed;top:0;left:0;right:0;z-index:10001;height:44px;' +
+      'display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box;' +
+      'background:var(--color-accent,#0a84ff);color:#fff;font-size:13px;overflow:hidden;' +
+      'box-shadow:0 1px 6px rgba(0,0,0,.12)}' +
+      '#kj-announce-bar .kj-announce-icon{flex-shrink:0}' +
+      '#kj-announce-bar .kj-announce-body{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#kj-announce-bar .kj-announce-body b{font-weight:600;margin-right:4px}' +
+      '#kj-announce-bar a.kj-announce-link{color:#fff;font-weight:600;text-decoration:underline;flex-shrink:0}' +
+      '#kj-announce-bar .kj-announce-close{border:none;background:rgba(255,255,255,.22);color:#fff;' +
+      'width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;flex-shrink:0}' +
+      '#kj-announce-bar .kj-announce-close:hover{background:rgba(255,255,255,.35)}';
+    document.head.appendChild(style);
+  }
+
+  function showAnnounceBanner(announce) {
+    removeAnnounceBanner();
+    var bar = document.createElement('div');
+    bar.id = 'kj-announce-bar';
+    bar.setAttribute('role', 'banner');
+    bar.innerHTML =
+      '<i class="fas fa-bullhorn kj-announce-icon"></i>' +
+      '<span class="kj-announce-body"><b>' + escapeHtml(announce.title || '公告') + '</b>' +
+        (announce.content ? escapeHtml(announce.content) : '') + '</span>' +
+      (announce.link
+        ? '<a class="kj-announce-link" href="' + announce.link + '" target="_blank" rel="noopener noreferrer">查看详情</a>'
+        : '') +
+      '<button class="kj-announce-close" aria-label="关闭公告" title="关闭">&#10005;</button>';
+    bar.querySelector('.kj-announce-close').addEventListener('click', function() {
+      safeStorage.setItem(ANNOUNCEMENT_HIDE_KEY, announce.id);
+      removeAnnounceBanner();
+    });
+    document.body.insertBefore(bar, document.body.firstChild);
+    announceAdjustPadding(true);
+  }
+
+  function removeAnnounceBanner() {
+    var bar = document.getElementById('kj-announce-bar');
+    if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+    // 仅当没有站内信横幅时复位顶部偏移，避免二者同显时把导航顶歪
+    if (!document.getElementById('kj-msg-banner')) announceAdjustPadding(false);
+  }
+
+  // 公告出现/消失时把固定导航与页面顶部下移/复位 44px
+  function announceAdjustPadding(add) {
+    try {
+      var nav = document.querySelector('.top-menu, .kj-nav, nav.glass-nav, header.glass-nav, .site-nav');
+      var bodyPad = 44;
+      if (!document.getElementById('kj-msg-banner')) {
+        if (nav && nav.style) nav.style.top = add ? bodyPad + 'px' : '0px';
+        if (add && document.getElementById('kj-announce-bar')) {
+          document.body.style.paddingTop = bodyPad + 'px';
+        } else if (!add) {
+          document.body.style.paddingTop = '';
+        }
+      }
+    } catch(e) {}
+  }
+
+  /**
+   * 初始化全站公告：拉取最新一条启用中的公告并展示（已关闭则不再出现）。
+   * 由 initNav 在登录态初始化后调用；匿名访问者也可见。
+   */
+  function initAnnouncement(sb) {
+    if (!sb) return;
+    injectAnnounceStyle();
+    sb.from('announcements')
+      .select('id,title,content,link')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(function(res) {
+        if (res.error || !res.data || !res.data.length) return;
+        var a = res.data[0];
+        var hid = safeStorage.getItem(ANNOUNCEMENT_HIDE_KEY);
+        if (hid === a.id) return;
+        showAnnounceBanner(a);
+      }).catch(function() {});
   }
 
   // ====================== 客户端频率限制（防止操作过于频繁） ======================
@@ -1023,6 +1185,9 @@
     initMessageBanner: initMessageBanner,
     dismissMessageBanner: dismissBanner,
     initNotificationBell: initNotificationBell,
+    requestBrowserNotification: requestBrowserNotification,
+    disableBrowserNotification: disableBrowserNotification,
+    isBrowserNotificationEnabled: isBrowserNotificationEnabled,
     rateLimit: rateLimit,
     initNav: initNav
   };
