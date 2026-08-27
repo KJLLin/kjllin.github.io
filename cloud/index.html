@@ -765,6 +765,35 @@
       }
     }
 
+    // 预览 URL：图片走存储端缩略图（限制尺寸，避免加载超大原图）；其余类型返回原 URL
+    async function getPreviewUrl(name, type) {
+      const isImg = type && type.indexOf('image/') === 0;
+      if (!isImg) return getFileUrl(name);
+      const transform = { width: 1600, quality: 80, resize: 'contain' };
+      try {
+        if (!isPrivateSpace()) {
+          const { data } = sb.storage.from(bucketName()).getPublicUrl(name, { transform });
+          return data.publicUrl;
+        }
+        const { data, error } = await sb.storage.from(bucketName()).createSignedUrl(name, 300, { transform });
+        if (error) throw error;
+        return data.signedUrl;
+      } catch(e) {
+        console.warn('thumb url failed:', e.message);
+        return getFileUrl(name);
+      }
+    }
+
+    // 非图片的可预览类型，超过阈值则不允许预览（避免加载超大文件）
+    function previewTooLarge(type, size) {
+      size = Number(size) || 0;
+      if (!size) return false;               // 大小未知则放行
+      const t = type || '';
+      if (t.indexOf('image/') === 0) return false;   // 图片走缩略图，不设限
+      if (t.indexOf('video/') === 0 || t.indexOf('audio/') === 0) return size > 80 * 1024 * 1024;
+      return size > 2 * 1024 * 1024;                 // 文本/json/html/css/md 等
+    }
+
     async function clearAll() {
       if (!sb) return;
       const msg = isAdmin
@@ -940,7 +969,7 @@
               ${ownerLabel}
             </div>
             <div class="file-actions">
-              <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
+              <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" data-size="${Number(f.size)||0}" title="预览"><i class="fas fa-eye"></i></button>
               <button class="file-btn" data-action="download" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
               <button class="file-btn" data-action="share" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="发送给站内信好友"><i class="fas fa-paper-plane"></i></button>
               ${canDelete ? `<button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>` : ''}
@@ -1037,14 +1066,21 @@
     }
 
     // ====================== 预览 ======================
-    function previewFile(url, name, type) {
+    function previewFile(url, name, type, size) {
       $('#previewTitle').textContent = name;
       const content = $('#previewContent');
+      // 非图片且文件过大：不加载，提示下载
+      if (previewTooLarge(type, size)) {
+        content.innerHTML = `<p style="color:var(--text-tertiary)">文件较大，暂不支持在线预览</p><p style="margin-top:8px">你可以点击「下载」查看</p>`;
+        $('#previewOverlay').classList.remove('hidden');
+        return;
+      }
       if (type.startsWith('image/')) {
         content.innerHTML = '';
         const img = document.createElement('img');
         img.src = url;
         img.alt = name;
+        img.style.cssText = 'max-width:100%;max-height:calc(80vh - 120px);object-fit:contain;border-radius:12px';
         content.appendChild(img);
       } else if (type.startsWith('video/')) {
         content.innerHTML = '';
@@ -1094,7 +1130,8 @@
       if (!btn) return;
       const action = btn.dataset.action;
       if (action === 'preview') {
-        getFileUrl(btn.dataset.path).then(url => { if (url) previewFile(url, btn.dataset.name, btn.dataset.type); });
+        // 图片走缩略图(免加载超大原图)；其余类型过大时由预览内部拦截提示
+        getPreviewUrl(btn.dataset.path, btn.dataset.type).then(url => { if (url) previewFile(url, btn.dataset.name, btn.dataset.type, btn.dataset.size); });
       } else if (action === 'download') {
         getFileUrl(btn.dataset.path).then(url => { if (url) downloadFile(url, btn.dataset.name); });
       } else if (action === 'delete') {
