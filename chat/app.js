@@ -751,6 +751,15 @@ async function init() {
     // 订阅实时消息
     Realtime.subscribe();
 
+    // 支持 ?to= 直达对话（从个人主页「发私信」跳转过来）
+    try {
+      const to = new URLSearchParams(location.search).get('to');
+      if (to && S.user && to !== S.user.id) {
+        const { data: tUser } = await sb.from('users').select('id,nick,email,phone,is_admin').eq('id', to).maybeSingle();
+        if (tUser) Search.select(tUser.id, tUser.nick, tUser.email, tUser.phone, tUser.is_admin === true);
+      }
+    } catch(e) { console.warn('open ?to= failed:', e); }
+
   } catch(e) {
     console.error('Chat init failed:', e);
     Toast.error('加载失败，请刷新页面');

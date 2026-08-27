@@ -172,6 +172,18 @@
           <span class="s-body"><span class="s-title">设备管理</span><span class="s-desc">已登录设备、登录历史</span></span>
           <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
         </a>
+        <div class="settings-item card-glass" id="privacyRow" style="flex-wrap:wrap">
+          <span class="s-icon" style="background:rgba(0,200,150,0.12);color:#0ac8a0"><i class="fas fa-envelope-open-text"></i></span>
+          <span class="s-body" style="flex-basis:0">
+            <span class="s-title">私信接收设置</span>
+            <span class="s-desc">哪些人可以给你发送站内信</span>
+          </span>
+          <span class="theme-toggle-row" id="privacyChips" style="flex-basis:100%;justify-content:flex-start;margin:6px 0 0;flex-wrap:wrap">
+            <button class="theme-chip" data-privacy="admin"><i class="fas fa-shield-halved"></i> 仅限管理员</button>
+            <button class="theme-chip" data-privacy="follows"><i class="fas fa-user-group"></i> 关注的人与管理员</button>
+            <button class="theme-chip" data-privacy="everyone"><i class="fas fa-earth-asia"></i> 所有人（拉黑除外）</button>
+          </span>
+        </div>
         <a href="/admin/" class="settings-item card-glass" id="adminEntry" style="display:none">
           <span class="s-icon s-icon-admin"><i class="fas fa-shield-halved"></i></span>
           <span class="s-body"><span class="s-title">管理后台</span><span class="s-desc">用户功能权限管理</span></span>
@@ -248,6 +260,7 @@
           var ra=await sb.from('users').select('is_admin').eq('id',user.id).limit(1);
           if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';var ae=$('#adminEntry');if(ae)ae.style.display='';}
         }catch(e){}
+        loadPrivacy();
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 
@@ -266,6 +279,33 @@
         KJ.applyTheme('#f5f5f7','#0a0a0a');
         updateThemeChips();
         var tb=$('#themeBtn');if(tb)tb.innerHTML=KJ.getThemeIcon(t);
+      });
+    });
+
+    // 私信接收设置：加载当前值
+    async function loadPrivacy(){
+      try{
+        var r=await sb.from('users').select('message_privacy').eq('id',user.id).maybeSingle();
+        var val=(r.data&&r.data.message_privacy)||'everyone';
+        document.querySelectorAll('#privacyChips .theme-chip').forEach(function(c){
+          c.classList.toggle('active',c.dataset.privacy===val);
+        });
+      }catch(e){}
+    }
+    // 保存私信接收设置
+    document.querySelectorAll('#privacyChips .theme-chip').forEach(function(c){
+      c.addEventListener('click',async function(){
+        var val=c.dataset.privacy;
+        if(!sb||!user)return;
+        if(!KJ.rateLimit('privacy_save',800,1,'操作太快'))return;
+        try{
+          var r=await sb.from('users').update({message_privacy:val}).eq('id',user.id);
+          if(r.error)throw r.error;
+          document.querySelectorAll('#privacyChips .theme-chip').forEach(function(x){x.classList.toggle('active',x.dataset.privacy===val);});
+          KJ.toast('已更新私信接收设置');
+        }catch(e){
+          KJ.toast('保存失败：'+(e.message||'未知错误'));
+        }
       });
     });
 

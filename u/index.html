@@ -96,6 +96,40 @@
     }
     .stat-value { font-size: 22px; font-weight: 700; }
     .stat-label { margin-top: 4px; font-size: 12px; color: var(--text-tertiary); }
+    .stat-click { cursor: pointer; transition: all var(--transition-fast); }
+    .stat-click:hover { background: var(--bg-mica-hover); transform: translateY(-1px); }
+    .stat-click:active { transform: scale(0.97); }
+
+    /* ====================== 关注/粉丝 弹窗 ====================== */
+    .fmodal-overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: rgba(0,0,0,0.4);
+      display: grid; place-items: center; padding: 20px;
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    }
+    .fmodal {
+      width: min(420px, 100%); max-height: 76vh;
+      display: flex; flex-direction: column;
+      background: var(--color-bg); color: var(--color-text-primary);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+      overflow: hidden; animation: fadeUp 0.25s var(--win-ease) both;
+    }
+    .fmodal-head { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-mica); }
+    .fmodal-head h3 { flex: 1; font-size: 16px; font-weight: 600; }
+    .fmodal-close { border: none; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; width: 30px; height: 30px; border-radius: 8px; }
+    .fmodal-close:hover { background: var(--bg-mica-hover); }
+    .fmodal-list { overflow-y: auto; padding: 8px; }
+    .fuser { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); }
+    .fuser:hover { background: var(--bg-mica-hover); }
+    .fuser a.fu-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+    .fu-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #6e8efb); color: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 700; flex-shrink: 0; }
+    .fu-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fu-sub { font-size: 11px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fu-btn { padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition-fast); white-space: nowrap; }
+    .fu-btn:hover { background: var(--bg-mica-hover); }
+    .fu-btn.primary { border-color: transparent; background: var(--accent); color: #fff; }
+    .fu-btn.following { border-color: transparent; background: var(--accent-glow); color: var(--accent); }
+    .fmodal-empty { text-align: center; padding: 32px 12px; color: var(--text-tertiary); font-size: 13px; }
     @media (max-width: 560px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* ====================== 帖子列表 ====================== */
@@ -155,6 +189,17 @@
   <div class="container" id="main">
     <div class="skeleton" aria-hidden="true"></div>
     <div class="skeleton" aria-hidden="true" style="height:60px"></div>
+  </div>
+
+  <!-- 关注/粉丝 列表弹窗 -->
+  <div class="fmodal-overlay" id="followModal" style="display:none">
+    <div class="fmodal">
+      <div class="fmodal-head">
+        <h3 id="fmTitle">粉丝</h3>
+        <button class="fmodal-close" id="fmCloseBtn" aria-label="关闭"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="fmodal-list" id="fmList"><div class="fmodal-empty">加载中...</div></div>
+    </div>
   </div>
 
   <script src="/common.js"></script>
@@ -281,8 +326,8 @@
         html += '<div class="stat-grid">' +
           '<div class="stat-item"><div class="stat-value">' + posts.length + '</div><div class="stat-label">帖子</div></div>' +
           '<div class="stat-item"><div class="stat-value">' + likesReceived + '</div><div class="stat-label">获赞</div></div>' +
-          '<div class="stat-item"><div class="stat-value">' + followers + '</div><div class="stat-label">粉丝</div></div>' +
-          '<div class="stat-item"><div class="stat-value">' + followingCount + '</div><div class="stat-label">关注</div></div>' +
+          '<div class="stat-item stat-click" id="followersStat"><div class="stat-value">' + followers + '</div><div class="stat-label"><i class="fas fa-users"></i> 粉丝</div></div>' +
+          '<div class="stat-item stat-click" id="followingStat"><div class="stat-value">' + followingCount + '</div><div class="stat-label"><i class="fas fa-user-plus"></i> 关注</div></div>' +
         '</div>';
 
         // 帖子区
@@ -292,6 +337,7 @@
         $('#main').innerHTML = html;
 
         bindFollow(targetId, isSelf);
+        bindFollowStats(targetId);
         await loadPosts(targetId);
       }
 
@@ -353,6 +399,118 @@
             KJ.toast('操作失败，请重试');
           }
         });
+      }
+
+      // ====================== 粉丝 / 关注 弹窗 ======================
+      function bindFollowStats(targetId) {
+        var fs = document.getElementById('followersStat');
+        var fg = document.getElementById('followingStat');
+        // 关闭弹窗
+        var overlay = document.getElementById('followModal');
+        if (overlay) overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) overlay.style.display = 'none';
+        });
+        var closeBtn = document.getElementById('fmCloseBtn');
+        if (closeBtn) closeBtn.addEventListener('click', function() { overlay.style.display = 'none'; });
+        if (fs) fs.addEventListener('click', function() { openFollowModal('followers', targetId); });
+        if (fg) fg.addEventListener('click', function() { openFollowModal('following', targetId); });
+      }
+
+      async function openFollowModal(mode, targetId) {
+        var isFollowers = mode === 'followers';
+        var titleEl = document.getElementById('fmTitle');
+        var listEl = document.getElementById('fmList');
+        var overlay = document.getElementById('followModal');
+        if (!titleEl || !listEl || !overlay) return;
+        titleEl.textContent = isFollowers ? '粉丝' : '关注的人';
+        overlay.style.display = 'grid';
+        listEl.innerHTML = '<div class="fmodal-empty">加载中...</div>';
+
+        var field = isFollowers ? 'follower_id' : 'followed_id';
+        var queryField = isFollowers ? 'followed_id' : 'follower_id';
+        try {
+          var rows = await sb.from('user_follows').select(field).eq(queryField, targetId).limit(300);
+          if (rows.error) throw rows.error;
+          var ids = (rows.data || []).map(function(r) { return r[field]; });
+          if (ids.length === 0) {
+            listEl.innerHTML = '<div class="fmodal-empty">还没有' + (isFollowers ? '粉丝' : '关注的人') + '</div>';
+            return;
+          }
+          var uRes = await sb.from('profiles_public').select('id,nick,is_admin').in('id', ids);
+          if (uRes.error) throw uRes.error;
+          var users = uRes.data || [];
+          var byId = {};
+          users.forEach(function(u) { byId[u.id] = u; });
+
+          // 我的关注集合（用于管理「关注/取消关注」）
+          var followedSet = {};
+          if (currentUser) {
+            var mine = await sb.from('user_follows').select('followed_id').eq('follower_id', currentUser.id).in('followed_id', ids);
+            if (mine.data) mine.data.forEach(function(r) { followedSet[r.followed_id] = true; });
+          }
+
+          var html = '';
+          ids.forEach(function(id) {
+            var uv = byId[id];
+            if (!uv) return;
+            var nick = uv.nick || '用户';
+            var char = nick.charAt(0).toUpperCase();
+            html += '<div class="fuser">' +
+              '<a class="fu-main" href="/u/?id=' + encodeURIComponent(id) + '">' +
+                '<span class="fu-avatar">' + esc(char) + '</span>' +
+                '<span style="flex:1;min-width:0">' +
+                  '<div class="fu-name">' + esc(nick) +
+                    (uv.is_admin === true ? ' <i class="fas fa-shield-halved" style="font-size:10px;color:var(--accent)"></i>' : '') +
+                  '</div>' +
+                  '<div class="fu-sub">' + (isFollowers ? '关注了你' : '主页') + '</div>' +
+                '</span>' +
+              '</a>' +
+              '<a href="/chat/?to=' + encodeURIComponent(id) + '" class="fu-btn" title="站内信"><i class="fas fa-envelope"></i> 站内信</a>' +
+              (currentUser && currentUser.id !== id
+                ? '<button type="button" class="fu-btn' + (followedSet[id] ? ' following' : ' primary') + '" data-follow-user="' + id + '">' +
+                  (followedSet[id] ? '<i class="fas fa-check"></i> 已关注' : '<i class="fas fa-plus"></i> 关注') + '</button>'
+                : '') +
+            '</div>';
+          });
+          listEl.innerHTML = html;
+
+          // 关注 / 取消关注
+          listEl.querySelectorAll('[data-follow-user]').forEach(function(btn) {
+            btn.addEventListener('click', async function() {
+              if (!KJ.rateLimit('modal_follow', 800, 1)) return;
+              var uid = btn.getAttribute('data-follow-user');
+              var was = followedSet[uid];
+              followedSet[uid] = !was;
+              btn.classList.toggle('following', followedSet[uid]);
+              btn.classList.toggle('primary', !followedSet[uid]);
+              btn.innerHTML = followedSet[uid]
+                ? '<i class="fas fa-check"></i> 已关注'
+                : '<i class="fas fa-plus"></i> 关注';
+              try {
+                var res = followedSet[uid]
+                  ? await sb.from('user_follows').insert({ follower_id: currentUser.id, followed_id: uid })
+                  : await sb.from('user_follows').delete().eq('follower_id', currentUser.id).eq('followed_id', uid);
+                if (res.error) throw res.error;
+                // 若当前展示的是本人主页，刷新该用户粉丝数
+                if (profileUser && currentUser && profileUser.id === currentUser.id) {
+                  var c = await sb.from('user_follows').select('follower_id', { count: 'exact', head: true }).eq('followed_id', uid);
+                  var st = document.getElementById('followersStat');
+                  if (st && c.count !== null && c.count !== undefined) st.querySelector('.stat-value').textContent = c.count;
+                }
+              } catch(e) {
+                followedSet[uid] = was;
+                btn.classList.toggle('following', followedSet[uid]);
+                btn.classList.toggle('primary', !followedSet[uid]);
+                btn.innerHTML = followedSet[uid]
+                  ? '<i class="fas fa-check"></i> 已关注'
+                  : '<i class="fas fa-plus"></i> 关注';
+                KJ.toast('操作失败，请重试');
+              }
+            });
+          });
+        } catch(e) {
+          listEl.innerHTML = '<div class="fmodal-empty">加载失败，请重试</div>';
+        }
       }
 
       // ====================== 启动 ======================
