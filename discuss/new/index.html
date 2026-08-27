@@ -51,6 +51,14 @@
     .btn-secondary:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn:disabled{opacity:0.5;cursor:not-allowed}
 
+    .vis-row{display:flex;gap:8px;flex-wrap:wrap}
+    .vis-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-full);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit;transition:all var(--transition-fast)}
+    .vis-chip:hover{border-color:var(--accent);color:var(--accent)}
+    .vis-chip.active{border-color:transparent;background:var(--accent);color:#fff}
+    .vis-chip.active i{opacity:0.9}
+    .vis-chip.private.active{background:var(--color-accent);color:var(--color-text-on-accent)}
+    .vis-hint{font-size:12px;color:var(--text-tertiary);margin-top:6px}
+
     .EasyMDEContainer{margin-bottom:0}
     .EasyMDEContainer .CodeMirror{border-radius:var(--radius-sm);border:1px solid var(--border-mica)!important;background:var(--bg-mica)!important;color:var(--text-primary)!important;font-size:14px;line-height:1.7}
     .EasyMDEContainer .CodeMirror-cursor{border-left-color:var(--accent)!important}
@@ -115,6 +123,14 @@
       </div>
       <textarea id="postContent" style="display:none;"></textarea>
       <div id="editorContainer"></div>
+      <div class="form-group">
+        <label>可见范围</label>
+        <div class="vis-row" id="visRow">
+          <button type="button" class="vis-chip active" data-visibility="public"><i class="fas fa-earth-asia"></i> 公开</button>
+          <button type="button" class="vis-chip" data-visibility="private"><i class="fas fa-lock"></i> 私有</button>
+        </div>
+        <div class="vis-hint">私有讨论仅自己与管理员可见</div>
+      </div>
       <div class="captcha-row" id="captchaRow">
         <div class="h-captcha" id="captchaDiscuss" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-size="normal" data-callback="onCaptchaDiscuss" data-expired-callback="onCaptchaDiscussExpired"></div>
       </div>
@@ -159,6 +175,10 @@
 
     // Submit
     var _submitting=false;
+    var _visibility='public';
+    document.querySelectorAll('#visRow .vis-chip').forEach(function(c){
+      c.addEventListener('click',function(){document.querySelectorAll('#visRow .vis-chip').forEach(function(x){x.classList.toggle('active',x===c)});_visibility=c.dataset.visibility;});
+    });
     $('#submitBtn').addEventListener('click',async function(){
       if(_submitting)return;
       if(!KJ.rateLimit('discuss_post', 5000, 1, '发布过于频繁，请稍后再试')) return;
@@ -181,7 +201,7 @@
       }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='发布讨论';return}
       try{
         var nick=currentUser.user_metadata?.nick||currentUser.email?.split('@')[0]||'用户';
-        var{error}=await sb.from('posts').insert([{user_id:currentUser.id,nick,title,content}]);
+        var{error}=await sb.from('posts').insert([{user_id:currentUser.id,nick,title,content,visibility:_visibility}]);
         if(error)throw error;
         toast('讨论发布成功！');
         window.location.href='/discuss/';

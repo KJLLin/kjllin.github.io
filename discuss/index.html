@@ -286,6 +286,11 @@
       font-size: 19px; font-weight: 600; color: var(--text-primary); flex: 1;
       word-break: break-word;
     }
+    .vis-badge {
+      display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+      padding: 2px 8px; border-radius: var(--radius-full); background: var(--bg-mica-hover);
+      color: var(--text-tertiary); font-size: 11px; font-weight: 500; vertical-align: middle;
+    }
     .post-card .post-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .post-card .post-footer {
       font-size: 12px; color: var(--text-tertiary); margin-top: 14px;
@@ -919,6 +924,7 @@
             return '<div class="post-card mica">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
+                (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
               '</div>' +
               actions +
               '<div class="post-footer">' +
