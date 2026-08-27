@@ -431,6 +431,17 @@
     </div>
   </div>
 
+  <div id="shareModal" class="overlay hidden" style="z-index:260">
+    <div class="preview-card" style="max-width:420px">
+      <h3 style="margin-bottom:6px"><i class="fas fa-paper-plane"></i> 发送给站内信好友</h3>
+      <p id="shareFileTitle" style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;word-break:break-all"></p>
+      <input id="shareUserSearch" class="search-box-input" placeholder="搜索昵称/邮箱/手机号..." autocomplete="off" style="width:100%;padding:10px 14px;border:1px solid var(--border-mica);border-radius:var(--radius-full);background:var(--bg-mica);color:var(--text-primary);font-size:14px;margin-bottom:10px">
+      <div id="shareUserList" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+      <div id="shareEmpty" style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px">输入关键词搜索好友</div>
+      <button class="btn btn-outline" id="shareCancelBtn" style="margin-top:12px;width:100%">取消</button>
+    </div>
+  </div>
+
   <script src="/common.js"></script>
   <script>
     const $ = s => document.querySelector(s);
@@ -911,6 +922,7 @@
             <div class="file-actions">
               <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" title="预览"><i class="fas fa-eye"></i></button>
               <button class="file-btn" data-action="download" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
+              <button class="file-btn" data-action="share" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="发送给站内信好友"><i class="fas fa-paper-plane"></i></button>
               ${canDelete ? `<button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>`;
@@ -1067,10 +1079,82 @@
         getFileUrl(btn.dataset.path).then(url => { if (url) downloadFile(url, btn.dataset.name); });
       } else if (action === 'delete') {
         deleteFile(btn.dataset.name);
+      } else if (action === 'share') {
+        openShare(btn.dataset.path, btn.dataset.name);
       }
     });
 
-    // ====================== 事件 ======================
+    // ====================== 分享文件给站内信好友 ======================
+    let _sharePath = '', _shareName = '', _shareFriends = [];
+    async function buildShareUrl(path) {
+      // 公共空间：公开 URL；私有空间：1 小时限时签名 URL
+      if (!isPrivateSpace()) {
+        const { data } = sb.storage.from(bucketName()).getPublicUrl(path);
+        return data.publicUrl;
+      }
+      const { data } = await sb.storage.from(bucketName()).createSignedUrl(path, 3600);
+      return data && data.signedUrl ? data.signedUrl : '';
+    }
+    function renderShareFriends(query) {
+      const list = $('#shareUserList');
+      const empty = $('#shareEmpty');
+      const q = (query || '').trim().toLowerCase();
+      const shown = q
+        ? _shareFriends.filter(u => ((u.nick||'')+' '+(u.email||'')+' '+(u.phone||'')).toLowerCase().includes(q))
+        : _shareFriends;
+      if (!shown.length) { list.innerHTML = ''; empty.style.display=''; empty.textContent = q ? '未找到匹配的好友' : '暂无可联系的用户'; return; }
+      empty.style.display = 'none';
+      list.innerHTML = shown.map(u => {
+        const dn = KJ.escapeHtml(u.nick || u.email || u.phone || '用户');
+        const sub = KJ.escapeHtml(u.email || u.phone || '');
+        return `<button type="button" class="share-user-item" data-id="${u.id}" data-nick="${KJ.escapeHtml(u.nick || '')}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:none;border-radius:10px;background:transparent;color:var(--text-primary);font-size:14px;cursor:pointer;width:100%;text-align:left;transition:background .2s" onmouseover="this.style.background='var(--bg-mica-hover)'" onmouseout="this.style.background='transparent'">
+          <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;display:grid;place-items:center;font-size:14px;font-weight:600;flex-shrink:0">${KJ.escapeHtml((dn||'?').charAt(0).toUpperCase())}</span>
+          <span style="min-width:0;flex:1;display:flex;flex-direction:column"><span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dn}</span>${sub?`<span style="font-size:11px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub}</span>`:''}</span>
+          <i class="fas fa-paper-plane" style="color:var(--text-tertiary);font-size:12px"></i></button>`;
+      }).join('');
+    }
+    async function openShare(path, name) {
+      if (!sb || !currentUser) { KJ.toast('请先登录'); return; }
+      _sharePath = path; _shareName = name;
+      $('#shareFileTitle').textContent = '分享：' + name;
+      $('#shareUserSearch').value = '';
+      $('#shareModal').classList.remove('hidden');
+      renderShareFriends('');
+      // 后台拉取可联系用户（排除自己）
+      renderShareFriendsLoad();
+    }
+    async function renderShareFriendsLoad() {
+      try {
+        const { data } = await sb.from('users').select('id,nick,email,phone').neq('id', currentUser.id).limit(100);
+        if (Array.isArray(data)) _shareFriends = data;
+        renderShareFriends($('#shareUserSearch').value);
+      } catch(e) { console.warn('share friends load failed:', e); }
+    }
+    async function sendShareTo(uid) {
+      const btn = document.querySelector('.share-user-item[data-id="' + uid + '"]');
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+      try {
+        const url = await buildShareUrl(_sharePath);
+        const body = '📎 我在云盘分享了文件「' + _shareName + '」\n' + (url || '(获取链接失败)') + (url && isPrivateSpace() ? '\n（私有空间链接 1 小时内有效）' : '');
+        const { error } = await sb.from('private_messages').insert({
+          sender_id: currentUser.id,
+          recipient_id: uid,
+          text: body
+        });
+        if (error) throw error;
+        KJ.toast('已发送给好友');
+        $('#shareModal').classList.add('hidden');
+      } catch(e) {
+        KJ.toast('发送失败：' + (e.message || '未知错误'));
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+      }
+    }
+    $('#shareUserSearch').addEventListener('input', () => renderShareFriends($('#shareUserSearch').value));
+    $('#shareUserList').addEventListener('click', (e) => {
+      const it = e.target.closest('.share-user-item');
+      if (it) sendShareTo(it.dataset.id);
+    });
+    $('#shareCancelBtn').addEventListener('click', () => $('#shareModal').classList.add('hidden'));
 
 
     // 云盘事件

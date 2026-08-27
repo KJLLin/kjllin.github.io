@@ -176,6 +176,74 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: true, message: "绑定成功，该用户可用手机号+密码登录" }), { headers: h });
     }
 
+    if (action === "set-email") {
+      const userId = (body.user_id || "").toString();
+      const email = ((body.email || "").toString()).trim().toLowerCase();
+      if (!userId) {
+        return new Response(JSON.stringify({ success: false, error: "缺少目标用户" }), { headers: h });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return new Response(JSON.stringify({ success: false, error: "邮箱格式不正确" }), { headers: h });
+      }
+
+      const existing = await goTrue(`/users/${userId}`, { method: "GET" });
+      if (existing.data && !existing.data.id) {
+        return new Response(JSON.stringify({ success: false, error: "目标用户不存在" }), { headers: h });
+      }
+
+      const upd = await goTrue(`/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify({ email, email_confirm: true }),
+      });
+      if (!upd.data || !upd.data.id) {
+        const msg = upd.data?.msg || upd.data?.error_description || "邮箱更新失败";
+        const code = upd.data?.code || "";
+        return new Response(JSON.stringify({ success: false, error: formatErr(msg, code) }), { headers: h });
+      }
+
+      // 同步 users 表 email 列（按 id 定位）
+      await fetch(`${PROJECT_URL}/rest/v1/users?id=eq.${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      return new Response(JSON.stringify({ success: true, message: "邮箱已更新，可用新邮箱+密码登录" }), { headers: h });
+    }
+
+    if (action === "set-password") {
+      const userId = (body.user_id || "").toString();
+      const password = String(body.password || "");
+      if (!userId) {
+        return new Response(JSON.stringify({ success: false, error: "缺少目标用户" }), { headers: h });
+      }
+      if (password.length < 8) {
+        return new Response(JSON.stringify({ success: false, error: "密码至少8位" }), { headers: h });
+      }
+
+      const existing = await goTrue(`/users/${userId}`, { method: "GET" });
+      if (existing.data && !existing.data.id) {
+        return new Response(JSON.stringify({ success: false, error: "目标用户不存在" }), { headers: h });
+      }
+
+      const upd = await goTrue(`/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify({ password }),
+      });
+      if (!upd.data || !upd.data.id) {
+        const msg = upd.data?.msg || upd.data?.error_description || "密码重置失败";
+        const code = upd.data?.code || "";
+        return new Response(JSON.stringify({ success: false, error: formatErr(msg, code) }), { headers: h });
+      }
+
+      return new Response(JSON.stringify({ success: true, message: "密码已重置，请通知该用户使用新密码登录" }), { headers: h });
+    }
+
     return new Response(JSON.stringify({ success: false, error: "无效操作" }), { headers: h });
   } catch (e) {
     return new Response(JSON.stringify({ success: false, error: "服务内部错误" }), { headers: h });

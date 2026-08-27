@@ -198,8 +198,13 @@
 
       <!-- 手机号账号管理（仅管理员，通过 admin-phone 函数执行） -->
       <div class="card card-glass card-anim" style="margin-bottom:12px" id="phoneCard">
-        <div class="card-header"><i class="fas fa-mobile-screen"></i> 手机号账号管理</div>
+        <div class="card-header"><i class="fas fa-address-book"></i> 账号联系方式管理</div>
         <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div class="phone-section-title">选择要操作的用户（可搜索昵称/邮箱/手机号）</div>
+            <input id="bindUserSearch" class="search-input" placeholder="搜索昵称 / 邮箱 / 手机号..." autocomplete="off">
+          </div>
+
           <div>
             <div class="phone-section-title">① 创建手机号账号（新用户，可用手机号+密码登录，不支持自行用手机号注册）</div>
             <div class="phone-grid">
@@ -209,12 +214,31 @@
               <button type="button" class="save-btn" id="phoneRegBtn"><i class="fas fa-user-plus"></i> 创建账号</button>
             </div>
           </div>
+
           <div style="border-top:1px solid var(--color-border);padding-top:12px">
-            <div class="phone-section-title">② 为已有账号绑定手机号（绑定后该用户可用手机号+密码登录）</div>
+            <div class="phone-section-title">② 为已有账号绑定手机号（绑定后可用手机号+密码登录）</div>
             <div class="phone-grid">
               <select id="phoneBindUser" class="search-input"></select>
               <input id="phoneBindPhone" class="search-input" placeholder="手机号（如 13800000000）" autocomplete="off">
-              <button type="button" class="save-btn" id="phoneBindBtn"><i class="fas fa-link"></i> 绑定</button>
+              <button type="button" class="save-btn" id="phoneBindBtn"><i class="fas fa-link"></i> 绑定手机号</button>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--color-border);padding-top:12px">
+            <div class="phone-section-title">③ 为已有账号绑定 / 更换邮箱（更新后可用新邮箱+密码登录）</div>
+            <div class="phone-grid">
+              <select id="emailBindUser" class="search-input"></select>
+              <input id="emailBindEmail" class="search-input" placeholder="新邮箱（name@example.com）" autocomplete="off">
+              <button type="button" class="save-btn" id="emailBindBtn"><i class="fas fa-at"></i> 更新邮箱</button>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--color-border);padding-top:12px">
+            <div class="phone-section-title">④ 为已有账号设置初始密码（已由注册流程设定，如用户忘记密码可重置）</div>
+            <div class="phone-grid">
+              <select id="pwdBindUser" class="search-input"></select>
+              <input id="pwdBindNew" class="search-input" type="password" placeholder="新密码（至少8位）" autocomplete="new-password">
+              <button type="button" class="save-btn" id="pwdBindBtn"><i class="fas fa-key"></i> 重置密码</button>
             </div>
           </div>
         </div>
@@ -296,7 +320,7 @@
         loaded=true;
         renderStats();
         renderList();
-        populateBindSelect();
+        populateUserSelects('');
       }catch(e){console.error('loadUsers:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新页面重试</div>';}
     }
 
@@ -435,16 +459,33 @@
       }
     }
 
-    // ==================== 手机号账号管理（调用 admin-phone 函数，仅管理员可用） ====================
-    function populateBindSelect(){
-      var sel=$('#phoneBindUser');if(!sel)return;
-      var html='<option value="">请选择用户...</option>';
-      for(var i=0;i<users.length;i++){
-        var u=users[i];
-        var label=(u.nick||'--')+(u.email?' · '+u.email:'')+(u.phone?' · '+u.phone:'');
-        html+='<option value="'+esc(u.id)+'">'+esc(label)+'</option>';
+    // ==================== 账号联系方式管理（调用 admin-phone 函数，仅管理员可用） ====================
+    var bindUserQuery = '';
+    // 按搜索词填充三个用户下拉（手机号/token邮箱/重置密码）
+    function populateUserSelects(q){
+      bindUserQuery = (q || '').trim().toLowerCase();
+      var selIds = ['phoneBindUser','emailBindUser','pwdBindUser'];
+      var lists = {};
+      var opts = {};
+      var i,u;
+      for (i=0;i<selIds.length;i++){
+        lists[selIds[i]] = (users && users.length) ? '' : '<option value="">暂无用户</option>';
       }
-      sel.innerHTML=html;
+      for (i=0;i<(users||[]).length;i++){
+        u = users[i];
+        // 搜索过滤：昵称/邮箱/手机号
+        if (bindUserQuery){
+          var hay = ((u.nick||'')+' '+(u.email||'')+' '+(u.phone||'')).toLowerCase();
+          if (hay.indexOf(bindUserQuery) === -1) continue;
+        }
+        var label = (u.nick||'--')+(u.email?' · '+u.email:'')+(u.phone?' · '+u.phone:'');
+        var opt = '<option value="'+esc(u.id)+'">'+esc(label)+'</option>';
+        for (var s=0;s<selIds.length;s++) lists[selIds[s]] += opt;
+      }
+      for (var s=0;s<selIds.length;s++){
+        var sel = $('#'+selIds[s]);
+        if (sel) sel.innerHTML = (lists[selIds[s]] || '<option value="">无匹配用户</option>');
+      }
     }
     async function callAdminPhone(body){
       if(!sb){throw new Error('网络异常，请刷新重试');}
@@ -493,7 +534,47 @@
         $('#phoneBindPhone').value='';
         await loadUsers();
       }catch(e){KJ.toast('绑定失败：'+(e.message||'未知错误'));}
-      finally{_bindLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-link"></i> 绑定';}
+      finally{_bindLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-link"></i> 绑定手机号';}
+    });
+    // ③ 绑定 / 更换邮箱
+    var _emailLocked=false;
+    $('#emailBindBtn').addEventListener('click',async function(){
+      if(_emailLocked)return;
+      var userId=$('#emailBindUser').value,email=$('#emailBindEmail').value.trim();
+      if(!userId){KJ.toast('请选择目标用户');return}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){KJ.toast('邮箱格式不正确');return}
+      _emailLocked=true;
+      var btn=$('#emailBindBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 更新中';
+      try{
+        var d=await callAdminPhone({action:'set-email',user_id:userId,email:email});
+        KJ.toast(d.message||'邮箱已更新');
+        $('#emailBindEmail').value='';
+        await loadUsers();
+      }catch(e){KJ.toast('更新失败：'+(e.message||'未知错误'));}
+      finally{_emailLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-at"></i> 更新邮箱';}
+    });
+    // ④ 重置密码
+    var _pwdLocked=false;
+    $('#pwdBindBtn').addEventListener('click',async function(){
+      if(_pwdLocked)return;
+      var userId=$('#pwdBindUser').value,pwd=$('#pwdBindNew').value;
+      if(!userId){KJ.toast('请选择目标用户');return}
+      if(pwd.length<8){KJ.toast('密码至少8位');return}
+      if(!confirm('确定为该用户重置密码吗？'))return;
+      _pwdLocked=true;
+      var btn=$('#pwdBindBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 重置中';
+      try{
+        var d=await callAdminPhone({action:'set-password',user_id:userId,password:pwd});
+        KJ.toast(d.message||'密码已重置');
+        $('#pwdBindNew').value='';
+      }catch(e){KJ.toast('重置失败：'+(e.message||'未知错误'));}
+      finally{_pwdLocked=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-key"></i> 重置密码';}
+    });
+    // 用户搜索（防抖）
+    var _bindSearchTimer;
+    $('#bindUserSearch').addEventListener('input',function(){
+      clearTimeout(_bindSearchTimer);
+      _bindSearchTimer=setTimeout(function(){populateUserSelects($('#bindUserSearch').value);},200);
     });
 
     // ==================== 事件绑定 ====================
