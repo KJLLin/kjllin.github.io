@@ -150,6 +150,23 @@
     .post-item .pi-likes { font-size: 12px; color: var(--danger); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
     .post-item .pi-date { font-size: 12px; color: var(--text-tertiary); flex-shrink: 0; }
 
+    .profile-pager {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin-top: 18px; padding: 4px; flex-wrap: wrap;
+    }
+    .profile-pager .pg-btn {
+      min-width: 34px; height: 34px; padding: 0 10px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border-mica);
+      background: var(--bg-mica); color: var(--text-secondary);
+      font-size: 13px; font-family: inherit; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .profile-pager .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .profile-pager .pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .profile-pager .pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .profile-pager .pg-info { font-size: 12px; color: var(--text-tertiary); margin: 0 8px; white-space: nowrap; }
+
     .empty-state {
       text-align: center; padding: 48px 20px; color: var(--text-tertiary);
       background: var(--bg-mica); border-radius: var(--radius-md);
@@ -331,8 +348,9 @@
         '</div>';
 
         // 文章区
-        html += '<div class="section-title"><i class="fas fa-comments"></i> 最近发布的文章</div>';
+        html += '<div class="section-title"><i class="fas fa-book-open"></i> 发布的文章</div>';
         html += '<div id="postList"></div>';
+        html += '<div id="postPager"></div>';
 
         $('#main').innerHTML = html;
 
@@ -341,18 +359,38 @@
         await loadPosts(targetId);
       }
 
-      async function loadPosts(targetId) {
+      var _postPage = 1;
+      var _postPageSize = 10;
+      var _postTotal = 0;
+      var _postTargetId = null;
+      var _postLoading = false;
+
+      async function loadPosts(targetId, page) {
         var listEl = $('#postList');
+        var pagerEl = $('#postPager');
+        if (page !== undefined) _postPage = page;
+        if (targetId) { _postTargetId = targetId; _postPage = 1; }
+        if (_postLoading) return;
+        _postLoading = true;
         try {
+          var totalRes = await sb.from('posts')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', _postTargetId);
+          var totalPages = Math.max(1, Math.ceil((totalRes.count || 0) / _postPageSize));
+          // 分页越界修正
+          if (_postPage > totalPages) _postPage = totalPages;
+          _postTotal = totalRes.count || 0;
+
           var res = await sb.from('posts')
             .select('id,title,likes_count,created_at')
-            .eq('user_id', targetId)
+            .eq('user_id', _postTargetId)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .range((_postPage - 1) * _postPageSize, _postPage * _postPageSize - 1);
           if (res.error) throw res.error;
           var posts = res.data || [];
-          if (posts.length === 0) {
+          if (_postTotal === 0) {
             listEl.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i>还没有发布过文章</div>';
+            if (pagerEl) pagerEl.innerHTML = '';
             return;
           }
           var html = '';
@@ -364,9 +402,38 @@
             '</a>';
           });
           listEl.innerHTML = html;
+          renderPostPager(pagerEl, totalPages);
         } catch(e) {
           listEl.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>文章加载失败，请刷新重试</div>';
+          if (pagerEl) pagerEl.innerHTML = '';
+        } finally {
+          _postLoading = false;
         }
+      }
+
+      // 渲染文章分页控件（前后页 + 页码 + 总数）
+      function renderPostPager(pagerEl, totalPages) {
+        if (!pagerEl) return;
+        if (totalPages <= 1) { pagerEl.innerHTML = ''; return; }
+        var h = '<div class="profile-pager">' +
+          '<button type="button" class="pg-btn"' + (_postPage <= 1 ? ' disabled' : '') + ' data-pg="' + (_postPage - 1) + '" aria-label="上一页"><i class="fas fa-chevron-left"></i></button>';
+        var start = Math.max(1, _postPage - 2);
+        var end = Math.min(totalPages, start + 4);
+        start = Math.max(1, end - 4);
+        for (var p = start; p <= end; p++) {
+          h += '<button type="button" class="pg-btn' + (p === _postPage ? ' active' : '') + '" data-pg="' + p + '">' + p + '</button>';
+        }
+        h += '<button type="button" class="pg-btn"' + (_postPage >= totalPages ? ' disabled' : '') + ' data-pg="' + (_postPage + 1) + '" aria-label="下一页"><i class="fas fa-chevron-right"></i></button>';
+        h += '<span class="pg-info">共 ' + _postTotal + ' 篇</span>';
+        h += '</div>';
+        pagerEl.innerHTML = h;
+        pagerEl.querySelectorAll('.pg-btn[data-pg]').forEach(function(btn) {
+          if (btn.disabled) return;
+          btn.addEventListener('click', function() {
+            loadPosts(null, parseInt(btn.getAttribute('data-pg'), 10));
+            pagerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+        });
       }
 
       function bindFollow(targetId, isSelf) {
