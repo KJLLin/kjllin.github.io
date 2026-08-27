@@ -625,6 +625,17 @@
       }
     }
 
+    // 存储对象名安全化：保留中文等可见字符，剔除存储不允许的字符。
+    // 注意不能用 encodeURIComponent 处理中文名——其产生的 %XX 会被 Storage 当作非法字符拒绝。
+    function sanitizeFileName(name) {
+      return String(name || '')
+        .normalize('NFKC')
+        .replace(/[/\\:*?"<>|%\u0000-\u001f\u007f]/g, '_') // 保留符号(含中文)删为安全下划线
+        .replace(/^\.+/g, '_')          // 避免隐藏占位符式开头
+        .replace(/[. _]+$/g, '')        // 去除结尾空格/点/下划线
+        .slice(0, 200);
+    }
+
     async function uploadFile(file) {
       if (!sb) { KJ.toast('云存储不可用'); return false; }
       if (!currentUser) { KJ.toast('请先登录'); return false; }
@@ -638,7 +649,8 @@
       }
       if (!session) { KJ.toast('登录已过期，请重新登录'); return false; }
 
-      const path = currentUser.id + '/' + Date.now() + '_' + encodeURIComponent(file.name);
+      // 对象名做安全化处理：保留中文等可见字符，剔除存储不允许的字符（含 %、控制符、保留符号）
+      const path = currentUser.id + '/' + Date.now() + '_' + sanitizeFileName(file.name);
 
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
