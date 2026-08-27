@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
-  <meta name="description" content="KJLLin 讨论版 | 使用 Markdown 自由交流">
+  <meta name="description" content="KJLLin 文章广场 | 使用 Markdown 自由交流">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <title>讨论版 · KJLLin</title>
+  <title>文章广场 · KJLLin</title>
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -235,6 +235,22 @@
     }
     .filter-chip:hover { border-color: var(--border-mica-hover); color: var(--accent); }
     .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* 最新 / 热榜 排序页签（借鉴洛谷） */
+    .sort-tabs {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px;
+      padding: 4px; border-radius: var(--radius-lg);
+      background: var(--bg-mica-hover);
+      animation: fadeUp 0.5s var(--win-ease) 0.05s both;
+    }
+    .sort-tab {
+      border: none; background: transparent; color: var(--text-secondary);
+      font-size: 13px; padding: 7px 18px; border-radius: var(--radius-sm);
+      cursor: pointer; font-family: inherit; transition: all var(--transition-fast);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .sort-tab:hover { color: var(--accent); }
+    .sort-tab.active { background: var(--color-bg); color: var(--accent); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
     .login-prompt {
       text-align: center; padding: 48px 20px; border-radius: var(--radius-lg);
       margin-bottom: 24px;
@@ -267,7 +283,7 @@
     .btn-sm { font-size: 12px; padding: 6px 14px; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ====================== 帖子列表 ====================== */
+    /* ====================== 文章列表 ====================== */
     .post-list { display: flex; flex-direction: column; gap: 16px; }
     .post-card {
       padding: 24px; border-radius: var(--radius-lg);
@@ -414,7 +430,7 @@
     }
     .page-total { font-size: 12px; color: var(--text-tertiary); margin-left: 10px; white-space: nowrap; }
 
-    /* ====================== 帖子骨架屏（数据加载阶段占位） ====================== */
+    /* ====================== 文章骨架屏（数据加载阶段占位） ====================== */
     .sk-card {
       display: flex; align-items: center; gap: 14px;
       padding: 24px; border-radius: var(--radius-lg);
@@ -528,7 +544,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
@@ -540,7 +556,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
@@ -548,7 +564,7 @@
   <div class="container">
     <!-- ==================== 页面标题 ==================== -->
     <section class="page-title">
-      <h1><i class="fas fa-comments"></i> 讨论版</h1>
+      <h1><i class="fas fa-book-open"></i> 文章广场</h1>
       <p>使用 Markdown 格式自由交流，分享想法与问题</p>
     </section>
 
@@ -564,22 +580,28 @@
     <div class="toolbar mica" id="toolbar">
       <div class="search-box">
         <i class="fas fa-magnifying-glass search-icon"></i>
-        <input type="search" id="searchInput" placeholder="搜索标题或内容..." autocomplete="off" enterkeyhint="search" aria-label="搜索讨论">
+        <input type="search" id="searchInput" placeholder="搜索标题或内容..." autocomplete="off" enterkeyhint="search" aria-label="搜索文章">
       </div>
-      <button class="filter-chip" id="followFilterChip" title="只显示已关注用户的帖子"><i class="fas fa-user-check"></i> 只看关注</button>
+      <button class="filter-chip" id="followFilterChip" title="只显示已关注用户的文章"><i class="fas fa-user-check"></i> 只看关注</button>
+    </div>
+
+    <!-- ==================== 排序页签：最新 / 热榜 ==================== -->
+    <div class="sort-tabs" id="sortTabs">
+      <button type="button" class="sort-tab active" data-sort="latest"><i class="fas fa-clock"></i> 最新</button>
+      <button type="button" class="sort-tab" data-sort="hot"><i class="fas fa-fire"></i> 热榜</button>
     </div>
 
     <!-- ==================== 登录提示（未登录时显示） ==================== -->
     <div class="login-prompt mica" id="loginPrompt">
       <div class="icon"><i class="fas fa-lock"></i></div>
-      <div class="text">请登录后参与讨论</div>
+      <div class="text">请登录后参与文章广场</div>
       <div class="hint"><a href="/login/?redirect=/discuss/" style="color:var(--accent);text-decoration:none;font-weight:600">→ 前往登录</a></div>
     </div>
 
-    <!-- ==================== 帖子列表 ==================== -->
+    <!-- ==================== 文章列表 ==================== -->
     <div class="post-list" id="postList"></div>
     <!-- 空态提示（列表外层兄弟节点：避免被列表 innerHTML 重写销毁） -->
-    <div class="post-empty" id="postEmpty" style="display:none"><i class="fas fa-inbox"></i> 暂无讨论</div>
+    <div class="post-empty" id="postEmpty" style="display:none"><i class="fas fa-inbox"></i> 暂无文章</div>
 
     <!-- ==================== 分页控件 ==================== -->
     <div class="pagination mica" id="pagination" style="display:none"></div>
@@ -714,7 +736,7 @@
       window.removeEventListener('scroll', handleScroll);
     });
 
-    // ====================== 讨论版核心逻辑 ======================
+    // ====================== 文章广场核心逻辑 ======================
     (function() {
       var _closeLoader = function(){
         var l = document.getElementById('loader');
@@ -750,7 +772,7 @@
           const nick = user.user_metadata?.nick || user.email?.split('@')[0] || '用户';
           userInfo.innerHTML = '<span class="nick"><i class="fas fa-user"></i> ' + KJ.escapeHtml(nick) + '</span><span style="font-size:12px;color:var(--text-tertiary)">已登录</span>';
           authBtns.innerHTML =
-            '<a href="/discuss/new/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4"><i class="fas fa-pen-to-square"></i> 发帖</a>' +
+            '<a href="/discuss/new/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4"><i class="fas fa-pen-to-square"></i> 写文章</a>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtn">退出登录</button>';
           loginPrompt.style.display = 'none';
           document.getElementById('logoutBtn').addEventListener('click', doLogout);
@@ -779,12 +801,13 @@
         if (followFilterChip) followFilterChip.classList.remove('active');
       }
 
-      // ====================== 帖子列表（搜索 / 只看关注 / 分页 / 关注） ======================
+      // ====================== 文章列表（搜索 / 只看关注 / 分页 / 关注） ======================
       var _postsLoading = false;
       var PAGE_SIZE = 20;
       var searchQuery = '';        // 清洗后的搜索词
       var currentPage = 1;         // 当前页码（1 起）
       var onlyFollowing = false;   // 只看关注过滤
+      var sortBy = 'latest';       // 排序：latest 最新 / hot 热榜
       var myFollows = new Set();   // 我关注过的用户 id
       var _totalPages = 0;
       var _searchTimer = null;
@@ -823,7 +846,7 @@
         return q;
       }
 
-      // 帖子骨架屏：数据加载阶段占位（loader 遮罩负责 SDK/会话阶段，移除后由骨架接替）
+      // 文章骨架屏：数据加载阶段占位（loader 遮罩负责 SDK/会话阶段，移除后由骨架接替）
       function renderPostsSkeleton() {
         var list = document.getElementById('postList');
         var empty = document.getElementById('postEmpty');
@@ -860,7 +883,7 @@
 
         try {
           if (!sb) {
-            if (empty) { empty.textContent = '讨论服务暂不可用'; empty.style.display = ''; }
+            if (empty) { empty.textContent = '文章服务暂不可用'; empty.style.display = ''; }
             renderPagination(0);
             return;
           }
@@ -878,12 +901,12 @@
 
           var data = [];
           var totalCount = 0;
-          // 页码越界（如末页帖子被删空）时修正页码后自动重查一次
+          // 页码越界（如末页文章被删空）时修正页码后自动重查一次
           for (var attempt = 0; attempt < 2; attempt++) {
             var res = await Promise.all([
               buildPostsQuery({ count: 'exact', head: true }),
               buildPostsQuery()
-                .order('created_at', { ascending: false })
+                .order(sortBy === 'hot' ? 'likes_count' : 'created_at', { ascending: false })
                 .range((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE - 1)
             ]);
             if (res[0].error) throw res[0].error;
@@ -901,7 +924,7 @@
           if (data.length === 0) {
             list.innerHTML = '';
             if (empty) {
-              empty.innerHTML = '<i class="fas fa-inbox"></i> ' + (searchQuery ? '未找到相关讨论' : '暂无讨论');
+              empty.innerHTML = '<i class="fas fa-inbox"></i> ' + (searchQuery ? '未找到相关文章' : '暂无文章');
               empty.style.display = '';
             }
             renderPagination(totalCount);
@@ -909,7 +932,7 @@
           }
 
           if (empty) empty.style.display = 'none';
-          list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇讨论</div>' + data.map((p, i) => {
+          list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇文章</div>' + data.map((p, i) => {
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
@@ -934,7 +957,7 @@
                   : '') +
                 '<span>' + formatDate(p.created_at) + '</span>' +
                 '<span class="footer-spacer"></span>' +
-                '<span class="like-btn like-static" title="点赞数（进入帖子详情可点赞）">' +
+                '<span class="like-btn like-static" title="点赞数（进入文章详情可点赞）">' +
                   '<i class="fas fa-heart" style="color:var(--color-danger)"></i>' +
                   '<span class="like-count">' + likesCount + '</span>' +
                 '</span>' +
@@ -948,7 +971,7 @@
           list.querySelectorAll('.del-post-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
               if (!KJ.rateLimit('discuss_delete', 3000, 1, '删除过于频繁，请稍后再试')) return;
-              if (!confirm('确定删除此讨论？')) return;
+              if (!confirm('确定删除此文章？')) return;
               if (!sb) { KJ.toast('服务暂不可用'); return; }
               try {
                 var uid = currentUser?.id;
@@ -965,7 +988,7 @@
 
         } catch(e) {
           console.warn('Load posts error:', e);
-          empty.textContent = '加载讨论失败，请刷新页面重试';
+          empty.textContent = '加载文章失败，请刷新页面重试';
           empty.style.display = '';
         } finally {
           // 所有路径（含空列表提前 return）都必须移除骨架、复位防重入锁并关闭遮罩
@@ -1115,6 +1138,20 @@
           followFilterChip.classList.toggle('active', onlyFollowing);
           currentPage = 1;
           loadPosts();
+        });
+      }
+
+      // 最新 / 热榜 排序页签
+      var sortTabs = document.getElementById('sortTabs');
+      if (sortTabs) {
+        sortTabs.querySelectorAll('.sort-tab').forEach(function(tab) {
+          tab.addEventListener('click', function() {
+            if (tab.dataset.sort === sortBy) return;
+            sortBy = tab.dataset.sort;
+            sortTabs.querySelectorAll('.sort-tab').forEach(function(x) { x.classList.toggle('active', x === tab); });
+            currentPage = 1;
+            loadPosts();
+          });
         });
       }
 

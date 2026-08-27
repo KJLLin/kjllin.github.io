@@ -24,7 +24,7 @@ CREATE POLICY "users_insert" ON users FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "users_update_own" ON users FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "users_delete_own" ON users FOR DELETE USING (auth.uid() = id);
 
--- ==================== 2. posts 表（讨论版） ====================
+-- ==================== 2. posts 表（文章广场） ====================
 CREATE TABLE IF NOT EXISTS posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,

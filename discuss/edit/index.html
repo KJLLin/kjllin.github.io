@@ -9,8 +9,8 @@
   <meta name="theme-color" content="#f3f3f3">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <title>编辑帖子 · 讨论版 · KJLLin</title>
-  <meta name="description" content="编辑讨论 - KJLLin 讨论版">
+  <title>编辑文章 · 文章广场 · KJLLin</title>
+  <meta name="description" content="编辑文章 - KJLLin 文章广场">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
@@ -88,7 +88,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
@@ -100,32 +100,32 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
 
   <div class="container">
     <div class="page-header">
-      <a href="/discuss/" class="back-link"><i class="fas fa-arrow-left"></i> 返回讨论版</a>
-      <h1><i class="fas fa-pen-to-square"></i> 编辑讨论</h1>
+      <a href="/discuss/" class="back-link"><i class="fas fa-arrow-left"></i> 返回文章广场</a>
+      <h1><i class="fas fa-pen-to-square"></i> 编辑文章</h1>
     </div>
 
     <div class="loading-state mica" id="loadingState">
       <div class="spinner"></div>
-      <div style="color:var(--text-tertiary);font-size:14px">正在加载帖子...</div>
+      <div style="color:var(--text-tertiary);font-size:14px">正在加载文章...</div>
     </div>
 
     <div class="error-state mica" id="errorState" style="display:none">
       <div class="icon"><i class="fas fa-face-frown"></i></div>
       <div class="text" id="errorText"></div>
-      <a href="/discuss/" class="btn btn-primary" style="text-decoration:none;display:inline-block;line-height:1.4">返回讨论版</a>
+      <a href="/discuss/" class="btn btn-primary" style="text-decoration:none;display:inline-block;line-height:1.4">返回文章广场</a>
     </div>
 
     <div class="card mica" id="editForm" style="display:none">
       <div class="form-group">
-        <label>讨论标题</label>
-        <input type="text" id="postTitle" placeholder="输入讨论标题..." maxlength="100">
+        <label>文章标题</label>
+        <input type="text" id="postTitle" placeholder="输入文章标题..." maxlength="100">
       </div>
       <textarea id="postContent" style="display:none;"></textarea>
       <div id="editorContainer"></div>
@@ -135,14 +135,14 @@
           <button type="button" class="vis-chip active" data-visibility="public"><i class="fas fa-earth-asia"></i> 公开</button>
           <button type="button" class="vis-chip" data-visibility="private"><i class="fas fa-lock"></i> 私有</button>
         </div>
-        <div class="vis-hint">私有讨论仅自己与管理员可见</div>
+        <div class="vis-hint">私有文章仅自己与管理员可见</div>
       </div>
       <div class="captcha-row">
         <div class="h-captcha" id="captchaDiscuss" data-sitekey="abe0d880-7704-481a-b892-9b982f7c5890" data-size="normal" data-callback="onCaptchaDiscuss" data-expired-callback="onCaptchaDiscussExpired"></div>
       </div>
       <div class="btn-row">
         <a href="/discuss/" class="btn btn-secondary" style="text-decoration:none;line-height:1.4">取消</a>
-        <button class="btn btn-primary" id="submitBtn">更新讨论</button>
+        <button class="btn btn-primary" id="submitBtn">更新文章</button>
       </div>
     </div>
   </div>
@@ -170,7 +170,7 @@
 
     // Get post ID from URL
     postId=new URLSearchParams(location.search).get('id');
-    if(!postId){showError('缺少帖子 ID');}
+    if(!postId){showError('缺少文章 ID');}
 
     // EasyMDE
     var _emLoaded=false;
@@ -182,12 +182,12 @@
     function loadPost(user){
       if(_postLoaded)return;
       currentUser=user;
-      if(!postId){showError('缺少帖子 ID');return}
+      if(!postId){showError('缺少文章 ID');return}
       if(!sb||!currentUser){$('#loadingState').style.display='none';showError('请先登录');return}
       sb.from('posts').select('*').eq('id',postId).single().then(function(r){
-        if(r.error||!r.data){showError('帖子不存在或已被删除');return}
+        if(r.error||!r.data){showError('文章不存在或已被删除');return}
         var p=r.data;
-        if(p.user_id!==currentUser.id){showError('你只能编辑自己的帖子');return}
+        if(p.user_id!==currentUser.id){showError('你只能编辑自己的文章');return}
         _postLoaded=true;
         postData=p;
         $('#postTitle').value=p.title||'';
@@ -197,7 +197,7 @@
         $('#loadingState').style.display='none';
         $('#editForm').style.display='';
         loadEasyMDE(function(){initEditor(p.content||'')});
-      }).catch(function(){showError('加载帖子失败，请稍后重试')});
+      }).catch(function(){showError('加载文章失败，请稍后重试')});
     }
 
     // Submit
@@ -209,11 +209,11 @@
       if(_submitting)return;
       if(!KJ.rateLimit('discuss_edit', 5000, 1, '编辑过于频繁，请稍后再试')) return;
       if(!currentUser){toast('请先登录');return}
-      if(!postData){toast('帖子数据未加载');return}
+      if(!postData){toast('文章数据未加载');return}
       var title=$('#postTitle').value.trim(),content=easyMDE?easyMDE.value().trim():'';
-      if(!title){toast('请输入讨论标题');return}
-      if(!content){toast('请输入讨论内容');return}
-      if(content.length > 50000){toast('讨论内容过长，请限制在50000字以内');return}
+      if(!title){toast('请输入文章标题');return}
+      if(!content){toast('请输入文章内容');return}
+      if(content.length > 50000){toast('文章内容过长，请限制在50000字以内');return}
       if(typeof hcaptcha==='undefined'){toast('人机验证加载中，请稍后重试');return}
       if(!captchaToken){toast('请完成人机验证');return}
       _submitting=true;var btn=$('#submitBtn');btn.disabled=true;btn.textContent='更新中...';
@@ -223,8 +223,8 @@
         if(!cd||!cd.success){
           // hCaptcha token 约 2 分钟过期且一次性，明确提示重新验证
           toast(cd&&cd.expired?'人机验证已过期，请重新勾选验证':'人机验证未通过，请重试');
-          captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
-      }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='更新讨论';return}
+          captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='更新文章';return}
+      }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='更新文章';return}
       try{
         var{error}=await sb.from('posts').update({title,content,visibility:_visibility,updated_at:new Date().toISOString()}).eq('id',postId).eq('user_id',currentUser.id);
         if(error){
@@ -234,10 +234,10 @@
             if(err2)throw err2;
           }else{throw error}
         }
-        toast('讨论已更新！');
+        toast('文章已更新！');
         window.location.href='/discuss/view/?id='+postId;
       }catch(e){toast('更新失败：'+(e.message||'未知错误'));captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}}
-      finally{_submitting=false;btn.disabled=false;btn.textContent='更新讨论'}
+      finally{_submitting=false;btn.disabled=false;btn.textContent='更新文章'}
     });
 
     // Auth

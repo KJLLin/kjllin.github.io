@@ -7,7 +7,7 @@
 --      旧策略 WITH CHECK 中的自连接子查询损坏，多行时必报错）
 --   2. private_messages 内容保护触发器（收件人只能改 read 字段）
 --   3. users 敏感列保护触发器（非管理员不能改 is_admin/banned_features 等）
---   4. posts UPDATE 策略补 WITH CHECK（防转移帖子所有权）
+--   4. posts UPDATE 策略补 WITH CHECK（防转移文章所有权）
 --   5. notifications 通知表 + RLS + Realtime + 触发器（站内信/点赞/关注）
 --   6. users SELECT 策略收紧（需登录才能查用户表，防匿名爬取邮箱）
 --   7. pg_cron 定期清理过期已读通知
@@ -97,7 +97,7 @@ CREATE TRIGGER trg_users_protect_sensitive
   FOR EACH ROW EXECUTE FUNCTION public.users_protect_sensitive();
 
 -- ==================== 4. posts UPDATE 策略补 WITH CHECK ====================
--- 旧策略只有 USING，作者可把帖子的 user_id 改成他人（转移所有权）。
+-- 旧策略只有 USING，作者可把文章的 user_id 改成他人（转移所有权）。
 DROP POLICY IF EXISTS posts_update_own ON public.posts;
 CREATE POLICY posts_update_own ON public.posts
   FOR UPDATE
@@ -221,7 +221,7 @@ CREATE TRIGGER trg_notify_pm
   AFTER INSERT ON public.private_messages
   FOR EACH ROW EXECUTE FUNCTION public.notify_on_private_message();
 
--- 帖子点赞：通知帖子作者（取消点赞时删除对应未读通知，避免残留）
+-- 文章点赞：通知文章作者（取消点赞时删除对应未读通知，避免残留）
 CREATE OR REPLACE FUNCTION public.notify_on_post_like()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -244,7 +244,7 @@ BEGIN
     v_author,
     NEW.user_id,
     'like',
-    COALESCE(v_nick, '有人') || ' 赞了你的帖子《' || COALESCE(v_title, '无标题') || '》',
+    COALESCE(v_nick, '有人') || ' 赞了你的文章《' || COALESCE(v_title, '无标题') || '》',
     '/discuss/view/?id=' || NEW.post_id::text
   );
   RETURN NEW;

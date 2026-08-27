@@ -8,12 +8,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f3f3f3">
-  <meta name="description" content="讨论帖 · KJLLin">
+  <meta name="description" content="文章帖 · KJLLin">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
-  <title>帖子 · KJLLin</title>
+  <title>文章 · KJLLin</title>
 
   <!-- CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -166,7 +166,7 @@
     .back-link .arrow { font-size: 16px; transition: transform var(--transition-fast); }
     .back-link:hover .arrow { transform: translateX(-3px); }
 
-    /* ====================== 帖子卡片 ====================== */
+    /* ====================== 文章卡片 ====================== */
     /* 阅读模式：浅色下纯白纸面，深色下近纯黑，最大化正文对比度方便阅读 */
     .post-card {
       padding: 32px; border-radius: var(--radius-lg);
@@ -398,7 +398,7 @@
   <div id="loader">
     <div class="loader-content">
       <div class="loader-spin"></div>
-      <div class="loader-text">正在加载帖子...</div>
+      <div class="loader-text">正在加载文章...</div>
     </div>
   </div>
 
@@ -410,7 +410,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
@@ -422,7 +422,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item active"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item active"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
@@ -667,10 +667,10 @@
 
       // 构建面包屑
       const breadcrumb = '<div class="back-link-wrap">' +
-        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回文章广场</a>' +
         '</div>';
 
-      // 构建帖子卡片（阅读模式：纯白/近纯黑实底，不用 mica 玻璃材质）
+      // 构建文章卡片（阅读模式：纯白/近纯黑实底，不用 mica 玻璃材质）
       let html = breadcrumb;
       html += '<div class="post-card">';
       html += '<div class="post-header">';
@@ -744,34 +744,34 @@
     }
 
     function showNotFound() {
-      document.title = '找不到帖子 · KJLLin';
+      document.title = '找不到文章 · KJLLin';
       const breadcrumb = '<div class="back-link-wrap">' +
-        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回文章广场</a>' +
         '</div>';
       mainContainer.innerHTML = breadcrumb +
         '<div class="not-found mica">' +
         '<div class="icon"><i class="fas fa-inbox"></i></div>' +
-        '<h2>找不到这篇帖子</h2>' +
-        '<p>帖子可能已被删除，或者链接地址不正确</p>' +
-        '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
+        '<h2>找不到这篇文章</h2>' +
+        '<p>文章可能已被删除，或者链接地址不正确</p>' +
+        '<a href="/discuss/" class="btn">← 回到文章广场</a>' +
         '</div>';
     }
 
     function showError(msg) {
       document.title = '加载失败 · KJLLin';
       const breadcrumb = '<div class="back-link-wrap">' +
-        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回讨论版</a>' +
+        '<a href="/discuss/" class="back-link"><span class="arrow">←</span> 返回文章广场</a>' +
         '</div>';
       mainContainer.innerHTML = breadcrumb +
         '<div class="not-found mica">' +
         '<div class="icon"><i class="fas fa-triangle-exclamation"></i></div>' +
-        '<h2>加载帖子失败</h2>' +
+        '<h2>加载文章失败</h2>' +
         '<p>' + KJ.escapeHtml(msg || '未知错误') + '</p>' +
-        '<a href="/discuss/" class="btn">← 回到讨论版</a>' +
+        '<a href="/discuss/" class="btn">← 回到文章广场</a>' +
         '</div>';
     }
 
-    // ====================== 核心：加载帖子 ======================
+    // ====================== 核心：加载文章 ======================
     let currentUser = null;
 
     // ====================== 点赞 / 关注交互 ======================
@@ -862,7 +862,7 @@
         return;
       }
 
-      // 同时获取当前用户和帖子
+      // 同时获取当前用户和文章
       try {
         const [{ data: { session } }, { data, error }] = await Promise.all([
           sb.auth.getSession(),
@@ -875,7 +875,7 @@
             showNotFound();
           } else {
             // 不暴露原始 PostgreSQL 错误信息给用户
-            showError('帖子不存在或已删除');
+            showError('文章不存在或已删除');
             console.warn('Load post error:', error.code, error.message);
           }
           return;
@@ -906,7 +906,7 @@
         renderPost(data, liked, following);
         bindPostInteractions(sb, data);
       } catch(e) {
-        showError('加载帖子时发生错误');
+        showError('加载文章时发生错误');
         console.warn('Load post error:', e);
       }
     }

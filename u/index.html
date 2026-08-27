@@ -132,7 +132,7 @@
     .fmodal-empty { text-align: center; padding: 32px 12px; color: var(--text-tertiary); font-size: 13px; }
     @media (max-width: 560px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    /* ====================== 帖子列表 ====================== */
+    /* ====================== 文章列表 ====================== */
     .section-title {
       margin: 32px 0 14px; font-size: 17px; font-weight: 600;
       display: flex; align-items: center; gap: 8px;
@@ -169,7 +169,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item active"><i class="fas fa-circle-user"></i> 个人主页</a>
       <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
       <span id="userTag" class="menu-user-tag"></span>
@@ -181,7 +181,7 @@
       <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
       <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
       <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
-      <a href="/discuss/" class="menu-item"><i class="fas fa-comments"></i> 讨论</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
       <a href="/u/" class="menu-item active"><i class="fas fa-circle-user"></i> 个人主页</a>
     </div>
   </header>
@@ -271,7 +271,7 @@
         if (!pRes.data) { showNotFound('找不到该用户'); return; }
         profileUser = pRes.data;
 
-        // 统计：帖子数 / 获赞总数 / 粉丝 / 关注
+        // 统计：文章数 / 获赞总数 / 粉丝 / 关注
         var stats = await Promise.all([
           sb.from('posts').select('id,likes_count').eq('user_id', targetId),
           sb.from('user_follows').select('follower_id', { count: 'exact', head: true }).eq('followed_id', targetId),
@@ -324,14 +324,14 @@
 
         // 统计
         html += '<div class="stat-grid">' +
-          '<div class="stat-item"><div class="stat-value">' + posts.length + '</div><div class="stat-label">帖子</div></div>' +
+          '<div class="stat-item"><div class="stat-value">' + posts.length + '</div><div class="stat-label">文章</div></div>' +
           '<div class="stat-item"><div class="stat-value">' + likesReceived + '</div><div class="stat-label">获赞</div></div>' +
           '<div class="stat-item stat-click" id="followersStat"><div class="stat-value">' + followers + '</div><div class="stat-label"><i class="fas fa-users"></i> 粉丝</div></div>' +
           '<div class="stat-item stat-click" id="followingStat"><div class="stat-value">' + followingCount + '</div><div class="stat-label"><i class="fas fa-user-plus"></i> 关注</div></div>' +
         '</div>';
 
-        // 帖子区
-        html += '<div class="section-title"><i class="fas fa-comments"></i> 最近发布的讨论</div>';
+        // 文章区
+        html += '<div class="section-title"><i class="fas fa-comments"></i> 最近发布的文章</div>';
         html += '<div id="postList"></div>';
 
         $('#main').innerHTML = html;
@@ -352,7 +352,7 @@
           if (res.error) throw res.error;
           var posts = res.data || [];
           if (posts.length === 0) {
-            listEl.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i>还没有发布过讨论</div>';
+            listEl.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i>还没有发布过文章</div>';
             return;
           }
           var html = '';
@@ -365,7 +365,7 @@
           });
           listEl.innerHTML = html;
         } catch(e) {
-          listEl.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>帖子加载失败，请刷新重试</div>';
+          listEl.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>文章加载失败，请刷新重试</div>';
         }
       }
 

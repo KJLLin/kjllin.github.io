@@ -10,7 +10,7 @@
 /u/                     个人主页（每用户独立网址 /u/?id=<uuid>）
 /notifications/         通知中心（站内信/点赞/关注动态）
 /chat/                  站内信（私信）
-/discuss/               讨论版（列表/发帖/编辑/详情）
+/discuss/               文章广场（列表/写文章/编辑/详情）
 /cloud/                 资源云盘（公共空间 + 私有空间）
 /game/                  游戏中心（dino/snake/tfe/schulte/rps）
 /login/                 登录/注册（OAuth 回调 /login/callback/）
@@ -68,11 +68,11 @@
 
 1. 修复站内信已读无法记录（RLS WITH CHECK 损坏子查询）
 2. 修复设备管理页误报未登录（auth 事件与 3s 兜底竞态）
-3. 修复发帖页人机验证误报（hCaptcha token 过期透传）
+3. 修复写文章页人机验证误报（hCaptcha token 过期透传）
 4. 修复舒尔特云端同步（`var supabase` 覆盖 SDK 全局）
 5. 通知系统（表/触发器/铃铛/通知中心）
 6. 个人主页 `/u/`；全站导航"设置"入口改为个人主页
-7. 讨论版：点赞移至详情页、详情阅读模式（浅色纯白/深色近纯黑）
+7. 文章广场：点赞移至详情页、详情阅读模式（浅色纯白/深色近纯黑）
 8. 越权加固：users 敏感列锁死、posts 所有权校验、users_select 收紧、匿名公开资料视图
 9. 统一 settings/admin 页导航栏与主站一致；修复个人主页/通知页顶部遮挡
 10. 导航栏"个人主页"菜单项直接显示用户昵称（去掉 userTag 昵称位）；移除 chat/cloud/game 页各自覆盖 userTag 的旧代码；chat/style.css 删除重复导航样式块，统一由 theme.css 提供

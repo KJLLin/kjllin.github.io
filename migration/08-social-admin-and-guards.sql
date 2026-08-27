@@ -1,5 +1,5 @@
 -- =====================================================
--- KJLLin 大文件服务端验证 + 分数校验 + 管理员权限体系 + 讨论版社交功能
+-- KJLLin 大文件服务端验证 + 分数校验 + 管理员权限体系 + 文章广场社交功能
 -- 在 Supabase SQL Editor 中运行（幂等，可重复执行）
 -- =====================================================
 
@@ -18,7 +18,7 @@ ALTER TABLE public.upload_tickets ENABLE ROW LEVEL SECURITY;
 -- 无任何 policy：仅 service_role（Edge Function）与 SECURITY DEFINER 触发器可读写
 
 -- ==================== 2. 用户功能封禁（管理员后台） ====================
--- banned_features 取值：'chat'（站内信发送）/ 'discuss'（发帖/点赞/关注）
+-- banned_features 取值：'chat'（站内信发送）/ 'discuss'（写文章/点赞/关注）
 --                       'cloud'（云盘上传）/ 'games'（游戏云分数）
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS banned_features TEXT[] NOT NULL DEFAULT '{}';
 
@@ -159,7 +159,7 @@ $$;
 REVOKE ALL ON FUNCTION public.submit_game_score(TEXT, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.submit_game_score(TEXT, INTEGER) TO authenticated;
 
--- ==================== 5. 讨论版：点赞 ====================
+-- ==================== 5. 文章广场：点赞 ====================
 ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.post_likes (
@@ -204,7 +204,7 @@ CREATE TRIGGER trg_post_likes_count
   AFTER INSERT OR DELETE ON public.post_likes
   FOR EACH ROW EXECUTE FUNCTION public.sync_post_likes_count();
 
--- ==================== 6. 讨论版：关注用户 ====================
+-- ==================== 6. 文章广场：关注用户 ====================
 CREATE TABLE IF NOT EXISTS public.user_follows (
   follower_id UUID NOT NULL,
   followed_id UUID NOT NULL,
@@ -228,7 +228,7 @@ DROP POLICY IF EXISTS "uf_delete" ON public.user_follows;
 CREATE POLICY "uf_delete" ON public.user_follows FOR DELETE USING (auth.uid() = follower_id);
 
 -- ==================== 7. 功能封禁落到既有策略 ====================
--- 发帖封禁
+-- 写文章封禁
 DROP POLICY IF EXISTS "posts_insert" ON public.posts;
 CREATE POLICY "posts_insert" ON public.posts FOR INSERT WITH CHECK (
   auth.uid() = user_id
