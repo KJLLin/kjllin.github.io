@@ -113,13 +113,16 @@ BEGIN
 END $$;
 
 -- ==================== 6. 自动清理（pg_cron 每日） ====================
--- a. 已读超过 30 天的通知（含 pm/like/follow/announce 等）→ 删除
+-- a. 时间过长/已读的普通通知 → 删除：
+--    - 已读超过 30 天（含 pm/like/follow/announce 等）
+--    - 超过 90 天的通知（无论是否已读，如站内信等失去时效的冗余通知）
 SELECT cron.unschedule('clean-old-read-notifications')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'clean-old-read-notifications');
 SELECT cron.schedule(
   'clean-old-read-notifications',
   '17 3 * * *',
-  $$DELETE FROM public.notifications WHERE read = true AND created_at < now() - interval '30 days'$$
+  $$DELETE FROM public.notifications WHERE read = true AND created_at < now() - interval '30 days';
+    DELETE FROM public.notifications WHERE created_at < now() - interval '90 days';$$
 );
 
 -- b. 失效（已停用/已删除）公告的通知 → 无条件清掉（公告取消的兜底）
