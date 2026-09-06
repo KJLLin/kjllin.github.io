@@ -187,7 +187,7 @@ input, textarea, button { font-family: inherit; }
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0,113,227,0.15);
 }
-.conv-body { flex: 1; overflow: hidden; }
+.conv-body { flex: 1; overflow: hidden; padding-right: 30px; }
 .conv-top {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 3px;
@@ -262,6 +262,12 @@ input, textarea, button { font-family: inherit; }
 .conv-item:hover .conv-menu-trigger,
 .conv-menu-trigger:hover { opacity: 1; background: var(--color-bg-hover); color: var(--color-text-primary); }
 .conv-menu-trigger:active { transform: translateY(-50%) scale(0.9); transition: transform 80ms var(--spring-default); }
+
+/* 触屏设备：无 hover，菜单按钮须始终可见且满足 44px 触摸目标 */
+@media (hover: none) {
+  .conv-menu-trigger { opacity: 0.85; width: 44px; height: 44px; }
+  .conv-body { padding-right: 44px; }
+}
 
 /* ====================== 右侧聊天主区域 ====================== */
 .chat-main {

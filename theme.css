@@ -375,6 +375,24 @@ a, button, .btn, .menu-item, .card, [role="button"] {
   }
 }
 
+/* ====================== 表单自动填充 — 消除浏览器强插的黄色/蓝色底色 ======================
+   Chrome/Safari autofill 会用 box-shadow 内阴影实现背景色并锁定文字色，
+   通过过渡延迟 + 内阴影覆盖为主题输入底色，明暗模式均适配 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-raised) inset;
+  -webkit-text-fill-color: var(--color-text-primary);
+  caret-color: var(--color-text-primary);
+  transition: background-color 99999s ease-in-out 0s;
+}
+
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   body { padding-bottom: env(safe-area-inset-bottom); }
   .kj-toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
@@ -406,6 +424,8 @@ p, li, blockquote { text-wrap: pretty; }
 
 /* ====================== Apple Spring Animations ====================== */
 @keyframes appleFadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* 通用别名 — 多页引用（chat 菜单等），此前缺失导致动画失效 */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes appleFadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }

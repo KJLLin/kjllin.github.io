@@ -639,6 +639,12 @@ function bindEvents() {
     $('#convMenu').classList.add('hidden');
   });
 
+  // 列表滚动或窗口缩放时关闭菜单（fixed 菜单不跟随锚点，避免悬空错位）
+  const closeConvMenu = () => $('#convMenu').classList.add('hidden');
+  $('#convList').addEventListener('scroll', closeConvMenu, { passive: true });
+  $('#blockedList').addEventListener('scroll', closeConvMenu, { passive: true });
+  window.addEventListener('resize', closeConvMenu, { passive: true });
+
   // 菜单选项点击
   $('#convMenu').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -659,8 +665,20 @@ function bindEvents() {
     menu.querySelector('[data-action="block"]').style.display = isBlocked ? 'none' : '';
     menu.querySelector('[data-action="unblock"]').style.display = isBlocked ? '' : 'none';
     menu.classList.remove('hidden');
-    menu.style.left = Math.min(rect.right - 160, window.innerWidth - 170) + 'px';
-    menu.style.top = (rect.bottom + 4) + 'px';
+    // 先置于屏幕外完成布局测量，再按实测尺寸钳制到视口内
+    menu.style.left = '-9999px';
+    menu.style.top = '0px';
+    const mw = menu.offsetWidth, mh = menu.offsetHeight;
+    const margin = 8;
+    let left = Math.min(rect.right - mw, window.innerWidth - mw - margin);
+    left = Math.max(left, margin);
+    let top = rect.bottom + 4;
+    if (top + mh > window.innerHeight - margin) {
+      // 底部放不下时改为在锚点上方弹出
+      top = Math.max(rect.top - mh - 4, margin);
+    }
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
   };
 
   // 发送消息

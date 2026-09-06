@@ -84,12 +84,6 @@
         </div>
         <div class="conv-list blocked-list" id="blockedList" style="display:none"></div>
       </div>
-      <!-- 右键菜单 -->
-      <div class="conv-menu hidden" id="convMenu">
-        <div class="conv-menu-item" data-action="block"><i class="fas fa-ban"></i> 屏蔽用户</div>
-        <div class="conv-menu-item" data-action="unblock" style="display:none"><i class="fas fa-check-circle"></i> 取消屏蔽</div>
-        <div class="conv-menu-item danger" data-action="delete"><i class="fas fa-trash"></i> 删除聊天记录</div>
-      </div>
     </aside>
 
     <!-- 右侧：聊天窗口 -->
@@ -123,6 +117,13 @@
     </main>
 
   </div>
+</div>
+
+<!-- 右键/⋮菜单（置于 body 直属层级：sidebar 的 backdrop-filter 会改变 fixed 定位基准） -->
+<div class="conv-menu hidden" id="convMenu">
+  <div class="conv-menu-item" data-action="block"><i class="fas fa-ban"></i> 屏蔽用户</div>
+  <div class="conv-menu-item" data-action="unblock" style="display:none"><i class="fas fa-check-circle"></i> 取消屏蔽</div>
+  <div class="conv-menu-item danger" data-action="delete"><i class="fas fa-trash"></i> 删除聊天记录</div>
 </div>
 
 <script src="/common.js"></script>
