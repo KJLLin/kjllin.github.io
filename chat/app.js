@@ -454,17 +454,19 @@ const Search = {
         .limit(8);
 
       if (trimmed.indexOf('@') > -1) {
-        // 邮箱：必须输入 @ 前的内容（本地部分）才能匹配，且不区分大小写（ilike 原生忽略大小写）
+        // 邮箱：@ 前的内容（本地部分）须完整输入才能匹配，不区分大小写（ilike 忽略大小写）
         const atIdx = trimmed.indexOf('@');
         const local = trimmed.slice(0, atIdx).trim();
         const domain = trimmed.slice(atIdx + 1).trim();
         if (!local) {
           // 只输入了 @ 或 @域名：本地部分为空，无法定位用户
-          el.innerHTML = '<div class="search-empty">请输入 @ 前的内容搜索邮箱</div>';
+          el.innerHTML = '<div class="search-empty">请输入 @ 前完整内容搜索邮箱</div>';
           el.classList.remove('hidden');
           return;
         }
-        query = query.ilike('email', `%${local.toLowerCase()}%@%${domain.toLowerCase()}%`);
+        // 本地部分精确匹配（如 zhang.san 只命中 zhang.san@xxx），域名可选模糊（如 @xx 命中 @xx.com）
+        const pattern = local.toLowerCase() + '@%' + (domain ? domain.toLowerCase() + '%' : '');
+        query = query.ilike('email', pattern);
       } else {
         // 昵称 / 手机号：需输入完整后精确匹配
         const conds = [];
