@@ -394,6 +394,16 @@ a, button, .btn, .menu-item, .card, [role="button"] {
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
+/* ====================== 文本选区 — 强调色染色 ====================== */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+/* ====================== 排版精修 — 防孤行寡字（渐进增强，旧浏览器自动忽略） ====================== */
+h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
+p, li, blockquote { text-wrap: pretty; }
+
 /* ====================== Apple Spring Animations ====================== */
 @keyframes appleFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes appleFadeUp {

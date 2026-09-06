@@ -464,10 +464,10 @@ input, textarea, button { font-family: inherit; }
 .blocked-header.open i { transform: rotate(90deg); }
 .blocked-count { color: var(--color-text-tertiary); font-size: 11px; margin-left: auto; }
 
-/* ====================== 滚动条 ====================== */
-::-webkit-scrollbar { width: 4px; }
+/* ====================== 滚动条（与全站 theme.css 保持一致） ====================== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 /* ====================== 响应式：移动端 ====================== */
