@@ -468,11 +468,12 @@ const Search = {
         const pattern = local.toLowerCase() + '@%' + (domain ? domain.toLowerCase() + '%' : '');
         query = query.ilike('email', pattern);
       } else {
-        // 昵称 / 手机号：需输入完整后精确匹配
+        // 无 @：昵称/手机号精确匹配 + 邮箱本地部分完整匹配（如输入 zhang.san 命中 zhang.san@xx.com，不区分大小写）
         const conds = [];
         const np = normPhone(trimmed);
         if (np) conds.push('phone.eq.' + pgVal(np));
         conds.push('nick.eq.' + pgVal(trimmed));
+        conds.push('email.ilike.' + pgVal(trimmed.toLowerCase() + '@%'));
         query = query.or(conds.join(','));
       }
 

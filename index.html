@@ -504,9 +504,12 @@
 
     // ====================== 登录状态 + 未读站内信 ======================
     (function loadSupabaseSDK(retryIdx) {
+      // 锁定精确版本 + SRI 完整性校验，防 CDN 供应链篡改（两 CDN 分发字节不同，各自配哈希）
       var CDNS = [
-        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-        'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+        { url: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js',
+          sri: 'sha384-EyR2P0dlmjnEGcm9xcjdAn0VedZpRHEwDLP9oSS6wYMvzHBHkUrvgonveazJ/sSx' },
+        { url: 'https://unpkg.com/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js',
+          sri: 'sha384-wpYIjtxlMVT5ozjJ7qFSKtFgLdvF6Hbgq4TUt28jqLzRjJfIXStSdJ/YB5RVJ9GB' }
       ];
       if (retryIdx >= CDNS.length) {
         showError('Supabase SDK 加载失败(CDN不可达)');
@@ -515,7 +518,10 @@
         return;
       }
       var s = document.createElement('script');
-      s.src = CDNS[retryIdx];
+      s.src = CDNS[retryIdx].url;
+      s.integrity = CDNS[retryIdx].sri;
+      s.crossOrigin = 'anonymous';
+      s.onerror = function() { loadSupabaseSDK(retryIdx + 1); };
       s.onload = function() {
         try {
       var sb = KJ.createSupabase();
