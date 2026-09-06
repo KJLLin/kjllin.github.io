@@ -34,8 +34,9 @@
 
     /* ── 卡片标题 + 操作链接 ── */
     .card-header{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--color-text-primary);margin-bottom:16px}
-    .card-action{font-size:13px;font-weight:500;color:var(--color-accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px;transition:color var(--transition-fast)}
+    .card-action{font-size:13px;font-weight:500;color:var(--color-accent);text-decoration:none;margin-left:auto;display:flex;align-items:center;gap:4px;transition:color var(--transition-fast),transform var(--duration-instant) var(--spring-default)}
     .card-action:hover{color:var(--color-accent-hover)}
+    .card-action:active{transform:scale(0.96)}
 
     /* ── 个人资料头部 ── */
     .profile-header{display:flex;align-items:center;gap:16px}
@@ -51,6 +52,7 @@
     .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .security-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition:all var(--transition-fast)}
     .security-item:hover{background:var(--color-bg-active)}
+    .security-item:active{transform:scale(0.97);transition:transform var(--duration-instant) var(--spring-default)}
     .security-item .si-icon{font-size:22px;margin-bottom:6px}
     .security-item .si-label{font-size:11px;color:var(--color-text-tertiary);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px}
     .security-item .si-value{font-size:14px;font-weight:600;color:var(--color-text-primary)}
@@ -69,10 +71,12 @@
     .security-status.danger{background:var(--color-danger-bg);color:var(--color-danger)}.security-status.danger .dot{background:var(--color-danger)}
 
     /* ── 按钮 ── */
-    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast),transform var(--duration-instant) var(--spring-default)}
     .btn-outline:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-glow)}
-    .btn-danger-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-danger);border-radius:var(--radius-full);background:transparent;color:var(--color-danger);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition-fast)}
+    .btn-outline:active{transform:scale(0.96)}
+    .btn-danger-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-danger);border-radius:var(--radius-full);background:transparent;color:var(--color-danger);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition-fast),transform var(--duration-instant) var(--spring-default)}
     .btn-danger-outline:hover{background:var(--color-danger-bg)}
+    .btn-danger-outline:active{transform:scale(0.96)}
 
     /* ── 危险区域 ── */
     .danger-zone{border:1px dashed rgba(255,59,48,0.3);border-radius:var(--radius-xl);padding:24px;text-align:center;animation:fadeUp 0.6s var(--ease-out) 0.42s both}

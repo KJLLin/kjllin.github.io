@@ -54,6 +54,7 @@
     .vis-row{display:flex;gap:8px;flex-wrap:wrap}
     .vis-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-full);border:1px solid var(--border-mica);background:var(--bg-mica);color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit;transition:all var(--transition-fast)}
     .vis-chip:hover{border-color:var(--accent);color:var(--accent)}
+    .vis-chip:active{transform:scale(0.95);transition:transform var(--duration-instant) var(--spring-default)}
     .vis-chip.active{border-color:transparent;background:var(--accent);color:#fff}
     .vis-chip.active i{opacity:0.9}
     .vis-chip.private.active{background:var(--color-accent);color:var(--color-text-on-accent)}

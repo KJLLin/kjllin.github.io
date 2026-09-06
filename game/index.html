@@ -194,6 +194,12 @@
       background-color: var(--bg-mica-hover);
     }
     .game-card:hover .card-shine { left: 100%; }
+    /* Apple 按压反馈：物理弹簧瞬时缩小 */
+    .game-card:active {
+      transform: translateY(-2px) scale(0.98);
+      -webkit-transform: translateY(-2px) scale(0.98);
+      transition: transform var(--duration-instant) var(--spring-default);
+    }
 
     .card-icon {
       font-size: 42px; margin-bottom: 14px; position: relative; z-index: 2;

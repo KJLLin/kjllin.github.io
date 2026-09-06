@@ -243,7 +243,7 @@
       background: transparent; color: var(--danger); font-size: 12px;
       padding: 4px 10px; border: 1px solid transparent;
     }
-    .btn-danger:hover { border-color: var(--danger); background: rgba(232,17,35,0.06); }
+    .btn-danger:hover { border-color: var(--danger); background: var(--color-danger-bg); }
     .btn-sm { font-size: 12px; padding: 6px 14px; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -257,6 +257,11 @@
     }
     .post-card:hover {
       transform: translateY(-2px);
+    }
+    /* Apple 按压反馈 */
+    .post-card:active {
+      transform: translateY(0) scale(0.985);
+      transition: transform var(--duration-instant) var(--spring-default);
     }
     .post-card .post-header {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -286,6 +291,7 @@
       transition: all var(--transition-fast);
     }
     .post-card .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
+    .post-card .like-btn:active { transform: scale(0.9); transition: transform var(--duration-instant) var(--spring-default); }
     .post-card .like-btn .like-count { font-weight: 600; }
     .post-card .like-btn.like-static { cursor: default; }
     .post-card .like-btn.like-static:hover { background: transparent; color: var(--text-tertiary); }

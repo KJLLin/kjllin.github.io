@@ -55,15 +55,15 @@
       --shadow-scroll: var(--shadow-md);
       --scroll-bar: var(--scrollbar-thumb);
       --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
-      --snake-head: #0078d4;
-      --snake-body-from: #0078d4;
-      --snake-body-to: #00b7c3;
-      --food-color: #e74856;
-      --food-glow: rgba(231, 72, 86, 0.4);
+      --snake-head: #0071e3;
+      --snake-body-from: #0071e3;
+      --snake-body-to: #64d2ff;
+      --food-color: #ff3b30;
+      --food-glow: rgba(255, 59, 48, 0.4);
       --grid-line: rgba(0, 0, 0, 0.04);
       --overlay: rgba(0, 0, 0, 0.35);
       --canvas-bg: rgba(255, 255, 255, 0.7);
-      --particle-color: rgba(0, 120, 212, 0.12);
+      --particle-color: rgba(0, 113, 227, 0.12);
     }
     [data-theme="dark"]:root {
       --bg-body: var(--color-bg);
@@ -85,15 +85,15 @@
       --shadow-scroll: var(--shadow-md);
       --scroll-bar: var(--scrollbar-thumb);
       --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.4);
-      --snake-head: #60cdff;
-      --snake-body-from: #0099ff;
-      --snake-body-to: #00b7c3;
-      --food-color: #ff6b7a;
-      --food-glow: rgba(255, 107, 122, 0.5);
+      --snake-head: #0a84ff;
+      --snake-body-from: #0a84ff;
+      --snake-body-to: #64d2ff;
+      --food-color: #ff453a;
+      --food-glow: rgba(255, 69, 58, 0.5);
       --grid-line: rgba(255, 255, 255, 0.04);
       --overlay: rgba(0, 0, 0, 0.55);
       --canvas-bg: rgba(20, 20, 20, 0.75);
-      --particle-color: rgba(0, 120, 212, 0.08);
+      --particle-color: rgba(10, 132, 255, 0.08);
     }
 
     html, body {
@@ -378,7 +378,7 @@
       themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
       // 更新粒子颜色
       particles.forEach(p => {
-        p.color = state.dark ? 'rgba(0, 120, 212, 0.08)' : 'rgba(0, 120, 212, 0.12)';
+        p.color = state.dark ? 'rgba(10, 132, 255, 0.08)' : 'rgba(0, 113, 227, 0.12)';
       });
     }
     function toggleTheme() {
@@ -388,7 +388,7 @@
       themeBtn.innerHTML = KJ.getThemeIcon(state.mode);
       // 更新粒子颜色
       particles.forEach(p => {
-        p.color = state.dark ? 'rgba(0, 120, 212, 0.08)' : 'rgba(0, 120, 212, 0.12)';
+        p.color = state.dark ? 'rgba(10, 132, 255, 0.08)' : 'rgba(0, 113, 227, 0.12)';
       });
     }
 
@@ -412,7 +412,7 @@
           r: Math.random() * 2.5 + 0.8,
           vx: (Math.random() - 0.5) * 0.3,
           vy: (Math.random() - 0.5) * 0.3,
-          color: KJ.isActuallyDark() ? 'rgba(0, 120, 212, 0.08)' : 'rgba(0, 120, 212, 0.12)'
+          color: KJ.isActuallyDark() ? 'rgba(10, 132, 255, 0.08)' : 'rgba(0, 113, 227, 0.12)'
         });
       }
     }
@@ -776,9 +776,9 @@
       ctx.fill();
 
       // 蛇身渐变
-      const headColor = getComputedStyle(root).getPropertyValue('--snake-head').trim() || '#0078d4';
-      const bodyFrom = getComputedStyle(root).getPropertyValue('--snake-body-from').trim() || '#0078d4';
-      const bodyTo = getComputedStyle(root).getPropertyValue('--snake-body-to').trim() || '#00b7c3';
+      const headColor = getComputedStyle(root).getPropertyValue('--snake-head').trim() || '#0071e3';
+      const bodyFrom = getComputedStyle(root).getPropertyValue('--snake-body-from').trim() || '#0071e3';
+      const bodyTo = getComputedStyle(root).getPropertyValue('--snake-body-to').trim() || '#64d2ff';
 
       const pad = cellSize * 0.08;
       const radius = cellSize * 0.2;

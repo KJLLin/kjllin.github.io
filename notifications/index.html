@@ -85,9 +85,12 @@
     }
     .notif-del {
       border: none; background: transparent; color: var(--text-tertiary);
-      cursor: pointer; font-size: 13px; padding: 6px; border-radius: 6px;
+      cursor: pointer; font-size: 14px; padding: 0;
+      width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
       transition: all var(--transition-fast); flex-shrink: 0;
     }
+    .notif-del:active { transform: scale(0.88); transition: transform var(--duration-instant) var(--spring-default); }
     .notif-del:hover { background: rgba(255,59,48,0.12); color: var(--danger); }
     .notif-announce { background: linear-gradient(180deg, rgba(255,159,10,0.14), rgba(255,107,26,0.08)); border: 1px solid rgba(255,159,10,0.35); }
     .notif-announce .notif-icon.system { background: rgba(255,159,10,0.18); color: #ff9f0a; }

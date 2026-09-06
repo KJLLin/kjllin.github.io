@@ -14,13 +14,13 @@
   <meta name="description" content="KJLLin 帮助文档中心 - 游戏、社交、云盘使用指南">
   <style>
     :root {
-      --ifm-color-primary: #0066cc;
-      --ifm-color-primary-dark: #0059b3;
-      --ifm-color-primary-darker: #0054a8;
-      --ifm-color-primary-darkest: #00458a;
-      --ifm-color-primary-light: #0073e6;
-      --ifm-color-primary-lighter: #0078f0;
-      --ifm-color-primary-lightest: #0a85ff;
+      --ifm-color-primary: #0071e3;
+      --ifm-color-primary-dark: #0064d0;
+      --ifm-color-primary-darker: #005ec2;
+      --ifm-color-primary-darkest: #004e9f;
+      --ifm-color-primary-light: #0077ed;
+      --ifm-color-primary-lighter: #1a8aff;
+      --ifm-color-primary-lightest: #40a9ff;
       --ifm-code-background: var(--color-bg-glass-solid, #f6f8fa);
       --ifm-code-color: #e74c3c;
       --ifm-code-font-size: 90%;
@@ -44,14 +44,14 @@
       --doc-content-heading: var(--color-text-primary);
       --doc-toc-link: var(--color-text-tertiary);
       --doc-toc-active: var(--ifm-color-primary);
-      --doc-admonition-note-bg: rgba(0,102,204,0.06);
-      --doc-admonition-note-border: #0066cc;
-      --doc-admonition-tip-bg: rgba(0,168,107,0.06);
-      --doc-admonition-tip-border: #00a86b;
-      --doc-admonition-warning-bg: rgba(230,167,30,0.06);
-      --doc-admonition-warning-border: #e6a71e;
-      --doc-admonition-danger-bg: rgba(231,76,60,0.06);
-      --doc-admonition-danger-border: #e74c3c;
+      --doc-admonition-note-bg: rgba(0,113,227,0.06);
+      --doc-admonition-note-border: #0071e3;
+      --doc-admonition-tip-bg: rgba(48,209,88,0.08);
+      --doc-admonition-tip-border: #30d158;
+      --doc-admonition-warning-bg: rgba(255,159,10,0.08);
+      --doc-admonition-warning-border: #ff9f0a;
+      --doc-admonition-danger-bg: rgba(255,59,48,0.07);
+      --doc-admonition-danger-border: #ff3b30;
       --doc-blockquote-bg: rgba(0,0,0,0.02);
       --doc-blockquote-border: var(--ifm-color-primary);
       --doc-table-border: var(--color-border);
@@ -61,10 +61,10 @@
     [data-theme="dark"] {
       --ifm-code-background: rgba(255,255,255,0.06);
       --ifm-code-color: #ff6b6b;
-      --doc-admonition-note-bg: rgba(0,122,255,0.1);
-      --doc-admonition-tip-bg: rgba(0,168,107,0.1);
-      --doc-admonition-warning-bg: rgba(230,167,30,0.1);
-      --doc-admonition-danger-bg: rgba(231,76,60,0.1);
+      --doc-admonition-note-bg: rgba(10,132,255,0.12);
+      --doc-admonition-tip-bg: rgba(48,209,88,0.12);
+      --doc-admonition-warning-bg: rgba(255,159,10,0.12);
+      --doc-admonition-danger-bg: rgba(255,69,58,0.12);
       --doc-blockquote-bg: rgba(255,255,255,0.02);
       --doc-table-header-bg: rgba(255,255,255,0.04);
     }
@@ -143,7 +143,7 @@
     }
     .sidebar-category-items {
       overflow: hidden;
-      transition: max-height .3s ease, opacity .2s;
+      transition: max-height .3s var(--spring-smooth), opacity .2s var(--spring-default);
       max-height: 600px;
       opacity: 1;
     }
@@ -167,12 +167,12 @@
       cursor: pointer;
     }
     .sidebar-link:hover {
-      background: rgba(0,102,204,0.04);
+      background: var(--color-accent-glow);
       color: var(--color-text-primary);
     }
     .sidebar-link.active {
       color: var(--doc-sidebar-active);
-      background: rgba(0,102,204,0.08);
+      background: var(--color-accent-glow);
       border-left-color: var(--doc-sidebar-active);
       font-weight: 600;
     }
@@ -548,7 +548,7 @@
       border: none;
       font-size: 18px;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0,102,204,0.35);
+      box-shadow: 0 4px 16px rgba(0,113,227,0.35);
     }
 
     @media (max-width: 996px) {
@@ -562,7 +562,7 @@
         bottom: 0;
         z-index: 50;
         transform: translateX(-100%);
-        transition: transform .3s ease;
+        transition: transform .3s var(--spring-smooth);
         box-shadow: none;
       }
       .docs-sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.12); }
