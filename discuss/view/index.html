@@ -346,7 +346,7 @@
 
     /* ====================== 返回顶部 ====================== */
     #backTop {
-      position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
+      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
       border-radius: var(--radius-sm); border: none; font-size: 17px;
       cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
       transition: opacity var(--transition-fast), transform var(--transition-fast);

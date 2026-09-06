@@ -119,7 +119,7 @@
       color: var(--doc-sidebar-category);
       cursor: pointer;
       user-select: none;
-      transition: color .15s;
+      transition: color var(--transition-fast);
       border: none;
       background: none;
       width: 100%;
@@ -127,6 +127,7 @@
       font-family: inherit;
     }
     .sidebar-category-title:hover { color: var(--color-text-primary); }
+    .sidebar-category-title:active { transform: scale(0.98); transition: transform var(--duration-instant) var(--spring-default); }
     .sidebar-category-title::after {
       content: '';
       display: inline-block;
@@ -135,7 +136,7 @@
       border-bottom: 1.5px solid currentColor;
       transform: rotate(-45deg) translateY(-2px);
       margin-left: auto;
-      transition: transform .2s;
+      transition: transform var(--transition-fast);
       opacity: 0.5;
     }
     .sidebar-category.collapsed .sidebar-category-title::after {
@@ -161,7 +162,7 @@
       font-size: 13.5px;
       color: var(--doc-sidebar-link);
       text-decoration: none;
-      transition: all .15s;
+      transition: all var(--transition-fast);
       border-left: 3px solid transparent;
       line-height: 1.4;
       cursor: pointer;
@@ -240,7 +241,7 @@
       opacity: 0;
       font-size: 16px;
       color: var(--color-text-tertiary);
-      transition: opacity .15s;
+      transition: opacity var(--transition-fast);
     }
     .doc-body h2:hover .anchor-icon { opacity: 1; }
 
@@ -461,7 +462,7 @@
       padding: 20px;
       text-decoration: none;
       color: inherit;
-      transition: all .2s;
+      transition: all var(--transition-fast);
     }
     .feature-card:hover {
       transform: translateY(-2px);
@@ -511,7 +512,7 @@
       color: var(--doc-toc-link);
       text-decoration: none;
       border-left: 2px solid transparent;
-      transition: all .15s;
+      transition: all var(--transition-fast);
       line-height: 1.4;
       font-size: 12.5px;
     }
@@ -531,7 +532,7 @@
       background: rgba(0,0,0,0.5);
       z-index: 49;
       opacity: 0;
-      transition: opacity .3s;
+      transition: opacity .3s var(--spring-default);
       pointer-events: none;
     }
     .mobile-sidebar-backdrop.open { opacity: 1; pointer-events: auto; }

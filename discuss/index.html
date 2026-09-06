@@ -198,6 +198,7 @@
       transition: all var(--transition-fast); white-space: nowrap;
     }
     .filter-chip:hover { border-color: var(--border-mica-hover); color: var(--accent); }
+    .filter-chip:active { transform: scale(0.95); transition: transform var(--duration-instant) var(--spring-default); }
     .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
     /* 最新 / 热榜 排序页签（借鉴洛谷） */
@@ -214,6 +215,7 @@
       display: inline-flex; align-items: center; gap: 6px;
     }
     .sort-tab:hover { color: var(--accent); }
+    .sort-tab:active { transform: scale(0.96); transition: transform var(--duration-instant) var(--spring-default); }
     .sort-tab.active { background: var(--color-bg); color: var(--accent); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
     .login-prompt {
       text-align: center; padding: 48px 20px; border-radius: var(--radius-lg);
@@ -277,6 +279,18 @@
       color: var(--text-tertiary); font-size: 11px; font-weight: 500; vertical-align: middle;
     }
     .post-card .post-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    /* 文章编辑/删除图标按钮 — 40px 触控目标 + Apple 反馈 */
+    .post-card .del-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; padding: 0;
+      border: none; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-tertiary);
+      cursor: pointer; font-size: 13px; text-decoration: none;
+      transition: all var(--transition-fast);
+    }
+    .post-card .del-btn:hover { background: var(--accent-glow); color: var(--accent); }
+    .post-card .del-btn.del-post-btn:hover { background: var(--color-danger-bg); color: var(--color-danger); }
+    .post-card .del-btn:active { transform: scale(0.88); transition: transform var(--duration-instant) var(--spring-default); }
     .post-card .post-footer {
       font-size: 12px; color: var(--text-tertiary); margin-top: 14px;
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -379,7 +393,7 @@
       animation: fadeUp 0.4s var(--win-ease) both; flex-wrap: wrap;
     }
     .page-btn {
-      min-width: 32px; height: 32px; padding: 0 8px; border-radius: var(--radius-sm);
+      min-width: 36px; height: 36px; padding: 0 8px; border-radius: var(--radius-sm);
       border: 1px solid transparent; background: transparent;
       color: var(--text-secondary); cursor: pointer; font-family: inherit;
       font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;
@@ -434,7 +448,7 @@
 
     /* ====================== 返回顶部 ====================== */
     #backTop {
-      position: fixed; right: 24px; bottom: 24px; width: 46px; height: 46px;
+      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
       border-radius: var(--radius-sm); border: none; font-size: 17px;
       cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
       transition: opacity var(--transition-fast), transform var(--transition-fast);
@@ -906,8 +920,8 @@
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
-                '<a href="/discuss/edit/?id=' + p.id + '" class="del-btn edit-post-btn" title="编辑" style="text-decoration:none;display:flex;align-items:center;justify-content:center"><i class="fas fa-pen-to-square"></i></a>' +
-                '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除"><i class="fas fa-trash"></i></button>' +
+                '<a href="/discuss/edit/?id=' + p.id + '" class="del-btn edit-post-btn" title="编辑" aria-label="编辑文章"><i class="fas fa-pen-to-square"></i></a>' +
+                '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除" aria-label="删除文章"><i class="fas fa-trash"></i></button>' +
                 '</span>'
               : '';
             const likesCount = p.likes_count || 0;

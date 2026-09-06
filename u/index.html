@@ -127,6 +127,7 @@
     .fu-sub { font-size: 11px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fu-btn { padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition-fast); white-space: nowrap; }
     .fu-btn:hover { background: var(--bg-mica-hover); }
+    .fu-btn:active { transform: scale(0.94); transition: transform var(--duration-instant) var(--spring-default); }
     .fu-btn.primary { border-color: transparent; background: var(--accent); color: #fff; }
     .fu-btn.following { border-color: transparent; background: var(--accent-glow); color: var(--accent); }
     .fmodal-empty { text-align: center; padding: 32px 12px; color: var(--text-tertiary); font-size: 13px; }
@@ -163,6 +164,7 @@
       transition: all var(--transition-fast);
     }
     .profile-pager .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .profile-pager .pg-btn:active:not(:disabled) { transform: scale(0.92); transition: transform var(--duration-instant) var(--spring-default); }
     .profile-pager .pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
     .profile-pager .pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .profile-pager .pg-info { font-size: 12px; color: var(--text-tertiary); margin: 0 8px; white-space: nowrap; }

@@ -62,9 +62,10 @@
         .mode-tab {
             flex: 1; padding: 12px; border-radius: 14px; border: 1px solid var(--border);
             background: transparent; color: var(--text2); font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all .2s;
+            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .mode-tab:hover { border-color: var(--accent); color: var(--accent); }
+        .mode-tab:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .mode-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
         .choices { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
@@ -122,18 +123,20 @@
             font-family: 'Courier New', monospace;
         }
         .copy-btn {
-            width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+            width: 36px; height: 36px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--border);
             background: var(--bg-glass); color: var(--text2); cursor: pointer;
             display: flex; align-items: center; justify-content: center; font-size: 14px;
-            transition: all .15s;
+            transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .copy-btn:active { transform: scale(0.9); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .copy-btn.copied { background: var(--success); color: #fff; border-color: var(--success); }
 
         .btn {
             padding: 10px 24px; border-radius: 12px; border: none;
-            font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s;
+            font-size: 15px; font-weight: 600; cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
+        .btn:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .btn-primary { background: var(--accent); color: #fff; }
         .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
@@ -146,7 +149,7 @@
             padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border);
             font-size: 16px; text-align: center; background: var(--bg-glass); color: var(--text);
             width: 120px; letter-spacing: 4px; font-family: 'Courier New', monospace;
-            outline: none; transition: border-color .2s;
+            outline: none; transition: border-color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .input:focus { border-color: var(--accent); }
         .waiting-text { color: var(--text2); font-size: 14px; }
@@ -163,9 +166,10 @@
         .connect-tab {
             flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border);
             background: transparent; color: var(--text2); font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: all .2s;
+            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .connect-tab:hover { border-color: var(--accent); color: var(--accent); }
+        .connect-tab:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .connect-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
         .invite-section {
@@ -190,7 +194,7 @@
         .invite-results.show { display: block; }
         .invite-result-item {
             padding: 10px 14px; cursor: pointer; display: flex; align-items: center;
-            gap: 10px; font-size: 13px; transition: background .15s;
+            gap: 10px; font-size: 13px; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .invite-result-item:hover { background: var(--accent-glow-weak); }
         .invite-result-item .invite-avatar {
@@ -206,7 +210,7 @@
         .conv-list-inline { width: 100%; max-width: 300px; }
         .conv-list-inline .conv-item-inline {
             display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-            border-radius: 10px; cursor: pointer; transition: background .15s;
+            border-radius: 10px; cursor: pointer; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .conv-list-inline .conv-item-inline:hover { background: var(--accent-glow-weak); }
         .conv-list-inline .conv-item-inline.sent { opacity: 0.6; pointer-events: none; }
@@ -227,16 +231,17 @@
         .active-room-card {
             display: flex; align-items: center; gap: 10px; padding: 10px 14px;
             border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px;
-            cursor: pointer; transition: all .15s; background: var(--bg-glass);
+            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)); background: var(--bg-glass);
         }
         .active-room-card:hover { border-color: var(--accent); background: var(--accent-glow-weak); }
+        .active-room-card:active { transform: scale(0.98); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .active-room-card .room-type-icon { font-size: 18px; color: var(--accent); width: 32px; text-align: center; flex-shrink: 0; }
         .active-room-card .room-info { flex: 1; min-width: 0; }
         .active-room-card .room-info-title { font-size: 13px; font-weight: 600; color: var(--text); }
         .active-room-card .room-info-detail { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .active-room-card .room-status-badge { font-size: 11px; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
-        .room-status-badge.waiting { background: rgba(255,149,0,0.15); color: var(--warning); }
-        .room-status-badge.playing { background: rgba(52,199,89,0.15); color: var(--success); }
+        .room-status-badge.waiting { background: rgba(255,159,10,0.15); color: var(--warning); }
+        .room-status-badge.playing { background: rgba(48,209,88,0.15); color: var(--success); }
         .my-rooms-header { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .my-rooms-header .count { font-size: 11px; font-weight: 400; color: var(--text3); }
 

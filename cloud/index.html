@@ -200,6 +200,7 @@
     .file-list { display: flex; flex-direction: column; gap: 6px; animation: slideUp 0.6s var(--win-ease) 0.3s both; }
     .file-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); transition: all var(--transition-fast); cursor: default; }
     .file-item:hover { transform: translateX(4px); box-shadow: var(--shadow-hover); border-color: var(--border-mica-hover); }
+    .file-item:active { transform: translateX(2px) scale(0.99); transition: transform var(--duration-instant) var(--spring-default); }
     .file-icon { font-size: 28px; flex-shrink: 0; }
     .file-info { flex: 1; min-width: 0; }
     .file-name { font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
