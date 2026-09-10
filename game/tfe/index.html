@@ -151,7 +151,7 @@ pre, code, .mono, .tile, .score-val {
   white-space: nowrap; font-family: inherit;
 }
 .new-game-btn:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
-.new-game-btn:active { transform: scale(0.98); }
+.new-game-btn:active { transform: scale(0.98); transition: transform var(--duration-instant) var(--spring-default); }
 
 /* ========== Board ========== */
 .board-wrapper { position: relative; width: 100%; aspect-ratio: 1; touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
@@ -179,7 +179,7 @@ pre, code, .mono, .tile, .score-val {
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
   /* Smooth slide animation — position is driven by JS setting left/top */
-  transition: left 0.12s ease-in-out, top 0.12s ease-in-out;
+  transition: left 0.12s var(--spring-snappy), top 0.12s var(--spring-snappy);
   will-change: left, top;
   z-index: 1;
 }
@@ -231,7 +231,7 @@ pre, code, .mono, .tile, .score-val {
   cursor: pointer; transition: var(--transition-fast); font-family: inherit;
 }
 .overlay-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
-.overlay-btn:active { transform: scale(0.98); }
+.overlay-btn:active { transform: scale(0.98); transition: transform var(--duration-instant) var(--spring-default); }
 
 /* ========== Hint ========== */
 .hint { text-align: center; font-size: 12px; color: var(--text-tertiary); font-weight: 500; }

@@ -116,7 +116,8 @@
     }
     .fmodal-head { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-mica); }
     .fmodal-head h3 { flex: 1; font-size: 16px; font-weight: 600; }
-    .fmodal-close { border: none; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; width: 30px; height: 30px; border-radius: 8px; }
+    .fmodal-close { border: none; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; transition: all var(--transition-fast); }
+    .fmodal-close:active { transform: scale(0.88); transition: transform var(--duration-instant) var(--spring-default); }
     .fmodal-close:hover { background: var(--bg-mica-hover); }
     .fmodal-list { overflow-y: auto; padding: 8px; }
     .fuser { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); }
