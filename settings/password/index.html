@@ -25,7 +25,7 @@
     .card-glass-form h2{font-size:17px;font-weight:600;color:var(--color-text-primary);margin-bottom:24px;display:flex;align-items:center;gap:8px}
     .form-group{margin-bottom:20px}
     .form-group label{display:block;font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px}
-    .form-group input{width:100%;padding:10px 14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-input);color:var(--color-text-primary);font-size:15px;font-family:var(--font-sans);outline:none;transition:all var(--transition-fast)}
+    .form-group input{width:100%;padding:10px 14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-input);color:var(--color-text-primary);font-size:15px;font-family:var(--font-sans);outline:none;transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast)}
     .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow)}
     .form-group input::placeholder{color:var(--color-text-tertiary)}
     .pw-wrap{position:relative}
@@ -52,11 +52,11 @@
     .pw-rule.pass i{opacity:1}
     .pw-rule i{font-size:10px;opacity:0.4}
     .form-actions{margin-top:28px;display:flex;gap:12px}
-    .btn-submit{padding:10px 28px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast)}
+    .btn-submit{padding:10px 28px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default)}
     .btn-submit:hover:not(:disabled){background:var(--color-accent-hover);transform:translateY(-1px);box-shadow:0 4px 12px var(--color-accent-glow)}
     .btn-submit:active:not(:disabled){transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn-submit:disabled{opacity:0.5;cursor:not-allowed}
-    .btn-cancel{padding:10px 28px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:14px;cursor:pointer;text-decoration:none;text-align:center;transition:all var(--transition-fast)}
+    .btn-cancel{padding:10px 28px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:14px;cursor:pointer;text-decoration:none;text-align:center;transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast)}
     .btn-cancel:hover{border-color:var(--color-accent);color:var(--color-accent)}
     .btn-cancel:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
 
