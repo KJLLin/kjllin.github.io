@@ -173,7 +173,7 @@ html {
   color: var(--color-text-primary);
   display: grid; place-items: center;
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 .menu-btn:hover,
 .theme-btn:hover {
@@ -200,7 +200,7 @@ html {
   cursor: pointer;
   font-family: var(--font-sans);
   flex-shrink: 0; white-space: nowrap;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 .theme-chip-btn:hover {
   border-color: var(--color-accent);
@@ -682,7 +682,7 @@ p, li, blockquote { text-wrap: pretty; }
   background: var(--color-bg-input); color: var(--color-text-primary);
   border: 1px solid var(--color-border); border-radius: var(--radius-md);
   font-family: var(--font-sans); font-size: var(--text-base);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 .input:focus {
   outline: none;
@@ -701,7 +701,7 @@ p, li, blockquote { text-wrap: pretty; }
   padding: var(--space-3) var(--space-4);
   color: var(--color-text-primary);
   font-family: var(--font-sans); font-size: var(--text-base);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 .input-glass:focus {
   outline: none;
@@ -1012,7 +1012,7 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
   padding: 7px 14px; border-radius: var(--radius-sm);
   font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
   text-decoration: none; white-space: nowrap;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);
 }
 .menu-item:hover, .menu-item.active {
   color: var(--color-accent); background: var(--color-accent-glow);
@@ -1026,7 +1026,7 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
   font-size: 16px; cursor: pointer;
   background: var(--color-bg-hover); color: var(--color-text-secondary);
   display: grid; place-items: center;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 .menu-btn:hover { background: var(--color-accent-glow); color: var(--color-accent); }
 #themeBtn { border-radius: 50%; }
