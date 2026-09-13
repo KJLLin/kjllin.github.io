@@ -62,7 +62,7 @@
         .mode-tab {
             flex: 1; padding: 12px; border-radius: 14px; border: 1px solid var(--border);
             background: transparent; color: var(--text2); font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
+            cursor: pointer; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), border-color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), transform var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .mode-tab:hover { border-color: var(--accent); color: var(--accent); }
         .mode-tab:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
@@ -71,7 +71,7 @@
         .choices { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
         .choice-btn {
             width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--border);
-            background: var(--bg-glass); font-size: 32px; cursor: pointer; transition: all .2s var(--spring);
+            background: var(--bg-glass); font-size: 32px; cursor: pointer; transition: transform .2s var(--spring), background .2s var(--spring), border-color .2s var(--spring), box-shadow .2s var(--spring);
             display: flex; align-items: center; justify-content: center; color: var(--text);
         }
         .choice-btn:hover { transform: scale(1.1); border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,113,227,0.25); }
@@ -126,7 +126,7 @@
             width: 36px; height: 36px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--border);
             background: var(--bg-glass); color: var(--text2); cursor: pointer;
             display: flex; align-items: center; justify-content: center; font-size: 14px;
-            transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
+            transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), transform var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
         .copy-btn:active { transform: scale(0.9); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
@@ -134,7 +134,7 @@
 
         .btn {
             padding: 10px 24px; border-radius: 12px; border: none;
-            font-size: 15px; font-weight: 600; cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
+            font-size: 15px; font-weight: 600; cursor: pointer; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), box-shadow var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), transform var(--duration-instant) var(--spring-default);
         }
         .btn:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
         .btn-primary { background: var(--accent); color: #fff; }
@@ -166,7 +166,7 @@
         .connect-tab {
             flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border);
             background: transparent; color: var(--text2); font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
+            cursor: pointer; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), border-color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), transform var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1));
         }
         .connect-tab:hover { border-color: var(--accent); color: var(--accent); }
         .connect-tab:active { transform: scale(0.97); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
@@ -231,7 +231,7 @@
         .active-room-card {
             display: flex; align-items: center; gap: 10px; padding: 10px 14px;
             border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px;
-            cursor: pointer; transition: all var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)); background: var(--bg-glass);
+            cursor: pointer; transition: background var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), border-color var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)), transform var(--transition-fast, .15s cubic-bezier(0.22,0.03,0.06,1)); background: var(--bg-glass);
         }
         .active-room-card:hover { border-color: var(--accent); background: var(--accent-glow-weak); }
         .active-room-card:active { transform: scale(0.98); transition: transform var(--duration-instant, 80ms) var(--spring-default, cubic-bezier(0.22,0.03,0.06,1)); }
