@@ -31,7 +31,7 @@
 
     .form-group{margin-bottom:16px}
     .form-group label{display:block;font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px}
-    .form-group input{width:100%;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-bg-input);color:var(--color-text-primary);font-size:14px;font-family:var(--font-sans);outline:none;transition:all var(--transition-fast)}
+    .form-group input{width:100%;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-bg-input);color:var(--color-text-primary);font-size:14px;font-family:var(--font-sans);outline:none;transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast)}
     .form-group input:focus{border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow)}
     .form-group input:disabled{opacity:0.6;cursor:not-allowed}
     .form-hint{font-size:12px;color:var(--color-text-tertiary);margin-top:5px}
@@ -44,7 +44,7 @@
     .info-row .label{color:var(--color-text-secondary)}
     .info-row .value{font-family:var(--font-mono);font-size:13px;color:var(--color-text-primary)}
 
-    .btn-save{width:100%;padding:11px 24px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+    .btn-save{width:100%;padding:11px 24px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);display:inline-flex;align-items:center;justify-content:center;gap:6px}
     .btn-save:hover:not(:disabled){background:var(--color-accent-hover);transform:translateY(-1px);box-shadow:0 4px 12px var(--color-accent-glow)}
     .btn-save:active:not(:disabled){transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
     .btn-save:disabled{opacity:0.5;cursor:not-allowed}
