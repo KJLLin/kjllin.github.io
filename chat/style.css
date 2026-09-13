@@ -47,7 +47,7 @@ input, textarea, button { font-family: inherit; }
   padding: 10px 24px; border-radius: var(--radius-full);
   font-size: var(--text-sm); font-weight: 500;
   z-index: 9998; box-shadow: var(--shadow-lg);
-  transition: all var(--transition-base);
+  transition: opacity var(--transition-base), transform var(--transition-base);
   max-width: 90vw; text-align: center;
   pointer-events: none;
 }
@@ -105,7 +105,7 @@ input, textarea, button { font-family: inherit; }
   color: var(--color-text-primary);
   font-size: var(--text-sm);
   outline: none;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
   font-family: var(--font-mono);
 }
 .search-input:focus {
@@ -255,7 +255,7 @@ input, textarea, button { font-family: inherit; }
   background: transparent; color: var(--color-text-tertiary);
   font-size: 18px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   z-index: 5;
   opacity: 0.4;
 }
@@ -397,7 +397,7 @@ input, textarea, button { font-family: inherit; }
   resize: none; outline: none;
   line-height: 1.5;
   max-height: 120px;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 .msg-textarea:focus {
   border-color: var(--color-accent);
@@ -416,7 +416,7 @@ input, textarea, button { font-family: inherit; }
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);
   flex-shrink: 0;
   box-shadow: 0 2px 8px var(--color-accent-glow);
 }
