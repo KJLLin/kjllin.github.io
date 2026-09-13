@@ -73,7 +73,7 @@
       border: 1px solid var(--border-mica); background: var(--bg-mica);
       color: var(--text-primary); font-size: 13px; font-weight: 500;
       cursor: pointer; text-decoration: none; font-family: inherit;
-      transition: all var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);
     }
     .btn:hover { background: var(--bg-mica-hover); }
     .btn:active { transform: scale(0.97); }
@@ -96,7 +96,7 @@
     }
     .stat-value { font-size: 22px; font-weight: 700; }
     .stat-label { margin-top: 4px; font-size: 12px; color: var(--text-tertiary); }
-    .stat-click { cursor: pointer; transition: all var(--transition-fast); }
+    .stat-click { cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast); }
     .stat-click:hover { background: var(--bg-mica-hover); transform: translateY(-1px); }
     .stat-click:active { transform: scale(0.97); }
 
@@ -116,7 +116,7 @@
     }
     .fmodal-head { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-mica); }
     .fmodal-head h3 { flex: 1; font-size: 16px; font-weight: 600; }
-    .fmodal-close { border: none; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; transition: all var(--transition-fast); }
+    .fmodal-close { border: none; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast); }
     .fmodal-close:active { transform: scale(0.88); transition: transform var(--duration-instant) var(--spring-default); }
     .fmodal-close:hover { background: var(--bg-mica-hover); }
     .fmodal-list { overflow-y: auto; padding: 8px; }
@@ -126,7 +126,7 @@
     .fu-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #6e8efb); color: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 700; flex-shrink: 0; }
     .fu-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fu-sub { font-size: 11px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .fu-btn { padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary); font-size: 12px; cursor: pointer; font-family: inherit; transition: all var(--transition-fast); white-space: nowrap; }
+    .fu-btn { padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-mica); background: var(--bg-mica); color: var(--text-primary); font-size: 12px; cursor: pointer; font-family: inherit; transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast); white-space: nowrap; }
     .fu-btn:hover { background: var(--bg-mica-hover); }
     .fu-btn:active { transform: scale(0.94); transition: transform var(--duration-instant) var(--spring-default); }
     .fu-btn.primary { border-color: transparent; background: var(--accent); color: #fff; }
@@ -162,7 +162,7 @@
       background: var(--bg-mica); color: var(--text-secondary);
       font-size: 13px; font-family: inherit; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
-      transition: all var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
     }
     .profile-pager .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
     .profile-pager .pg-btn:active:not(:disabled) { transform: scale(0.92); transition: transform var(--duration-instant) var(--spring-default); }
