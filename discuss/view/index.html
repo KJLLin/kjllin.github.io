@@ -160,7 +160,7 @@
       font-size: 14px; color: var(--text-tertiary);
       text-decoration: none; font-weight: 500;
       padding: 6px 14px; border-radius: var(--radius-sm);
-      transition: all var(--transition-fast);
+      transition: color var(--transition-fast), background var(--transition-fast);
     }
     .back-link:hover { color: var(--accent); background: var(--accent-glow); }
     .back-link .arrow { font-size: 16px; transition: transform var(--transition-fast); }
@@ -204,7 +204,7 @@
       background: transparent; border: none; cursor: pointer;
       font-size: 13px; color: var(--text-tertiary); font-family: inherit;
       padding: 4px 10px; border-radius: var(--radius-full);
-      transition: all var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
     }
     .post-card .post-meta .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
     .post-card .post-meta .like-btn:active { transform: scale(0.9); transition: transform var(--duration-instant) var(--spring-default); }
@@ -214,7 +214,7 @@
       font-size: 11px; padding: 3px 12px; border-radius: var(--radius-full);
       border: 1px solid var(--border-mica-hover); background: transparent;
       color: var(--accent); cursor: pointer; font-family: inherit; line-height: 1.5;
-      transition: all var(--transition-fast); white-space: nowrap;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast); white-space: nowrap;
     }
     .post-card .post-meta .follow-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
     .post-card .post-meta .follow-btn:active { transform: scale(0.94); transition: transform var(--duration-instant) var(--spring-default); }
@@ -335,7 +335,7 @@
       display: inline-block; padding: 10px 24px; border-radius: var(--radius-sm);
       background: var(--accent); color: #fff; text-decoration: none;
       font-size: 14px; font-weight: 500;
-      transition: all var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);
     }
     .not-found .btn:hover { background: var(--accent-light); }
 
