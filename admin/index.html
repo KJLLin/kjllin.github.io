@@ -42,7 +42,7 @@
 
     /* ── 统计 ── */
     .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .stat-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition:all var(--transition-fast)}
+    .stat-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)}
     .stat-item:hover{background:var(--color-bg-active)}
     .stat-item:active{transform:scale(0.97);transition:transform var(--duration-instant) var(--spring-default)}
     .stat-item .si-icon{font-size:20px;margin-bottom:6px}
@@ -55,7 +55,7 @@
     .search-row{display:flex;align-items:center;gap:10px}
     .search-box{flex:1;position:relative}
     .search-box i.fa-magnifying-glass{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--color-text-tertiary);font-size:14px;pointer-events:none}
-    .search-input{width:100%;padding:10px 14px 10px 38px;background:var(--color-bg-input);border:1px solid var(--color-border);border-radius:var(--radius-full);color:var(--color-text-primary);font-family:var(--font-sans);font-size:14px;transition:all var(--transition-fast)}
+    .search-input{width:100%;padding:10px 14px 10px 38px;background:var(--color-bg-input);border:1px solid var(--color-border);border-radius:var(--radius-full);color:var(--color-text-primary);font-family:var(--font-sans);font-size:14px;transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast)}
     .search-input:focus{outline:none;border-color:var(--color-accent);box-shadow:0 0 0 4px var(--color-accent-glow);background:var(--color-bg-raised)}
     .search-input::placeholder{color:var(--color-text-tertiary)}
     .search-hint{font-size:11px;color:var(--color-text-tertiary);margin-top:10px;display:flex;align-items:center;gap:5px}
@@ -79,12 +79,12 @@
 
     /* ── 功能开关（chip 风格，参考 theme-chip）── */
     .uc-toggles{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--color-border)}
-    .feat-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--radius-full);border:1.5px solid var(--color-border);background:transparent;color:var(--color-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-sans);white-space:nowrap;transition:all var(--transition-fast)}
+    .feat-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--radius-full);border:1.5px solid var(--color-border);background:transparent;color:var(--color-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-sans);white-space:nowrap;transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)}
     .feat-chip:hover{border-color:var(--color-danger);color:var(--color-danger);background:var(--color-danger-bg)}
     .feat-chip:active{transform:scale(0.95);transition:transform var(--duration-instant) var(--spring-default)}
     /* banned 状态 = banned_features 含该 key（功能被禁用，红色） */
     .feat-chip.banned{background:var(--color-danger);color:var(--color-text-on-accent);border-color:var(--color-danger);box-shadow:0 2px 8px var(--color-danger-bg)}
-    .save-btn{margin-left:auto;padding:6px 18px;border-radius:var(--radius-full);border:none;background:var(--color-accent);color:var(--color-text-on-accent);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);box-shadow:0 2px 8px var(--color-accent-glow);transition:all var(--transition-fast);flex-shrink:0}
+    .save-btn{margin-left:auto;padding:6px 18px;border-radius:var(--radius-full);border:none;background:var(--color-accent);color:var(--color-text-on-accent);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);box-shadow:0 2px 8px var(--color-accent-glow);transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);flex-shrink:0}
     .save-btn:hover{background:var(--color-accent-hover)}
     .save-btn:active{transform:scale(0.96)}
     .save-btn:disabled{opacity:0.55;cursor:default}
@@ -98,10 +98,10 @@
     @media(max-width:520px){.phone-grid{grid-template-columns:1fr}}
 
     /* ── 按钮 ── */
-    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-border);border-radius:var(--radius-full);background:transparent;color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default)}
     .btn-outline:hover{border-color:var(--color-accent);color:var(--color-accent);background:var(--color-accent-glow)}
     .btn-outline:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
-    .btn-primary-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-accent);border-radius:var(--radius-full);background:transparent;color:var(--color-accent);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all var(--transition-fast)}
+    .btn-primary-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--color-accent);border-radius:var(--radius-full);background:transparent;color:var(--color-accent);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default)}
     .btn-primary-outline:hover{background:var(--color-accent-glow)}
     .btn-primary-outline:active{transform:scale(0.96);transition:transform var(--duration-instant) var(--spring-default)}
 
