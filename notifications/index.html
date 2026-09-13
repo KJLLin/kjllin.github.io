@@ -51,7 +51,7 @@
       border: 1px solid var(--border-mica); background: var(--bg-mica);
       color: var(--text-primary); font-size: 13px; font-weight: 500;
       cursor: pointer; text-decoration: none; font-family: inherit;
-      transition: all var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);
     }
     .btn:hover { background: var(--bg-mica-hover); }
     .btn:active { transform: scale(0.97); }
@@ -89,7 +89,7 @@
       cursor: pointer; font-size: 14px; padding: 0;
       width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
       border-radius: var(--radius-sm);
-      transition: all var(--transition-fast); flex-shrink: 0;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast); flex-shrink: 0;
     }
     .notif-del:active { transform: scale(0.88); transition: transform var(--duration-instant) var(--spring-default); }
     .notif-del:hover { background: rgba(255,59,48,0.12); color: var(--danger); }
