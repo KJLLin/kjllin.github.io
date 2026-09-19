@@ -201,7 +201,13 @@
           captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}_submitting=false;btn.disabled=false;btn.textContent='发布文章';return}
       }catch(_){toast('网络错误，请稍后重试');_submitting=false;btn.disabled=false;btn.textContent='发布文章';return}
       try{
+        // nick 仅作为发帖瞬间的回退快照写入；展示时以 users.nick 实时值为准
+        // 优先取 users 表昵称（权威来源），其次 auth 元数据，最后邮箱前缀
         var nick=currentUser.user_metadata?.nick||currentUser.email?.split('@')[0]||'用户';
+        try{
+          var ur=await sb.from('users').select('nick').eq('id',currentUser.id).maybeSingle();
+          if(ur&&ur.data&&ur.data.nick&&String(ur.data.nick).trim())nick=ur.data.nick;
+        }catch(_){}
         var{error}=await sb.from('posts').insert([{user_id:currentUser.id,nick,title,content,visibility:_visibility}]);
         if(error)throw error;
         toast('文章发布成功！');

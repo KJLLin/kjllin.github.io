@@ -818,6 +818,31 @@
         }
       }
 
+      // 批量拉取作者实时昵称，覆盖 posts.nick 快照
+      // posts.nick 是发帖时的历史快照，用户改名后不会同步；此处以 users.nick（经 profiles_public 视图）为准
+      async function fillLiveNicks(posts) {
+        if (!posts || !posts.length) return;
+        var ids = [];
+        for (var i = 0; i < posts.length; i++) {
+          var uid = posts[i].user_id;
+          if (uid && ids.indexOf(uid) === -1) ids.push(uid);
+        }
+        if (!ids.length) return;
+        try {
+          var r = await sb.from('profiles_public').select('id,nick').in('id', ids);
+          if (r.error || !r.data) return;
+          var byId = {};
+          for (var j = 0; j < r.data.length; j++) byId[r.data[j].id] = r.data[j].nick;
+          for (var k = 0; k < posts.length; k++) {
+            var live = byId[posts[k].user_id];
+            // 仅在拿到有效实时昵称时覆盖，查询失败则回退到快照，保证不会退化成「匿名」
+            if (live && String(live).trim()) posts[k].nick = live;
+          }
+        } catch(e) {
+          console.warn('fillLiveNicks error:', e);
+        }
+      }
+
       // 搜索与关注过滤共用同一查询构建（count 与数据查询分别实例化，不可复用同一 builder）
       function buildPostsQuery(opts) {
         var q = sb.from('posts').select('*', opts || undefined);
@@ -914,6 +939,9 @@
             renderPagination(totalCount);
             return;
           }
+
+          // 用实时昵称覆盖 posts.nick 快照（改名后文章广场同步显示新昵称）
+          await fillLiveNicks(data);
 
           if (empty) empty.style.display = 'none';
           list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇文章</div>' + data.map((p, i) => {
