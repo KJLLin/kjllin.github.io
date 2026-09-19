@@ -895,6 +895,19 @@
           return;
         }
 
+        // 用实时昵称覆盖 posts.nick 快照（改名后详情页同步显示新昵称，
+        // 保证与作者链接指向的 /u/ 个人主页显示一致）
+        if (data.user_id) {
+          try {
+            var nickRes = await sb.from('profiles_public')
+              .select('nick').eq('id', data.user_id).maybeSingle();
+            var liveNick = nickRes && nickRes.data && nickRes.data.nick;
+            if (liveNick && String(liveNick).trim()) data.nick = liveNick;
+          } catch(e) {
+            console.warn('Load author nick error:', e);
+          }
+        }
+
         // 登录时查询我的点赞 / 关注状态（maybeSingle：无行时返回 null 不报错）
         var liked = false;
         var following = false;
