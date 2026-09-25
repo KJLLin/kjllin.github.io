@@ -7,12 +7,18 @@ import os, sys, re
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-OLD_URL = "https://ayavdkodhdmcxfufnnxo.supabase.co"
-OLD_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5YXZka29kaGRtY3hmdWZubnhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQ2NTQsImV4cCI6MjA4OTA5MDY1NH0.gn1ORPwILwpJAmNOIXH0suqwetYVBOcBroM4PuaDhLc"
+# 旧项目的公开标识（非机密：URL 与 anon key 本就出现在前端源码中）。
+# 原文件曾把完整 anon key 硬编码在此，已改为从环境变量读取，避免仓库中出现明文 JWT。
+OLD_URL = os.environ.get("OLD_SUPABASE_URL", "https://ayavdkodhdmcxfufnnxo.supabase.co")
+OLD_KEY = os.environ.get("OLD_SUPABASE_ANON_KEY", "")
+if not OLD_KEY:
+    print("错误：请先设置环境变量 OLD_SUPABASE_ANON_KEY（旧项目的 anon key）")
+    sys.exit(1)
 
 if len(sys.argv) != 3:
     print("用法: python3 replace-supabase.py <新URL> <新AnonKey>")
     print(f"旧URL: {OLD_URL}")
+    print("环境变量: OLD_SUPABASE_ANON_KEY（必填，旧项目 anon key）")
     sys.exit(1)
 
 new_url = sys.argv[1].rstrip('/')
