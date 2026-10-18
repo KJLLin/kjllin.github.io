@@ -379,22 +379,16 @@
       var ua = parseUA();
       var ip = '获取中...';
       try {
-        var apis = ['https://api.ipify.org?format=json', 'https://api.ip.sb/ip', 'https://httpbin.org/ip'];
-        for (var ai = 0; ai < apis.length; ai++) {
-          try {
-            var ctrl = new AbortController();
-            var timer = setTimeout(function() { ctrl.abort(); }, 4000);
-            var resp = await fetch(apis[ai], { signal: ctrl.signal });
-            clearTimeout(timer);
-            // api.ip.sb/ip 返回纯文本，需用 text() 解析并 trim；其余两个 API 返回 JSON
-            if (apis[ai].indexOf('api.ip.sb') !== -1) {
-              ip = (await resp.text()).trim();
-            } else {
-              var data = await resp.json();
-              ip = data.ip || data.origin || '';
-            }
-            if (ip && !ip.includes('<')) { ip = ip.replace(/^https?:\/\//, ''); break; }
-          } catch(e) {}
+        // 经本站 Edge Function 获取真实 IP（SEC-006）
+        // 不再请求任何第三方 IP 查询服务，
+        // 避免把用户 IP 泄露给无关第三方，也减少对外部服务的依赖
+        var ctrl = new AbortController();
+        var timer = setTimeout(function() { ctrl.abort(); }, 4000);
+        var resp = await fetch(SUPABASE_URL + '/functions/v1/client-ip', { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (resp.ok) {
+          var data = await resp.json();
+          if (data && data.success && data.ip) ip = data.ip;
         }
       } catch(e) {}
 
