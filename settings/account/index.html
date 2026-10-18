@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.ip.sb https://httpbin.org https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -231,7 +231,21 @@
     if(sb) KJ.initMessageBanner(sb);
 
     function fmtDate(iso){if(!iso)return'--';var d=new Date(iso);return d.toLocaleDateString('zh-CN',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}
-    async function loadIP(){var apis=['https://api.ipify.org?format=json','https://api.ip.sb/ip','https://httpbin.org/ip'];for(var i=0;i<apis.length;i++){try{var c=new AbortController();var t=setTimeout(function(){c.abort();},4000);var r=await fetch(apis[i],{signal:c.signal});clearTimeout(t);var ip;/* api.ip.sb/ip 返回纯文本，需用 text() 解析并 trim */if(apis[i].indexOf('api.ip.sb')!==-1){ip=(await r.text()).trim();}else{var d=await r.json();ip=d.ip||d.origin||'';}if(ip&&!ip.includes('<'))return ip.replace(/^https?:\/\//,'');}catch(e){}}return'获取失败';}
+    async function loadIP(){
+      /* 经本站 Edge Function 获取真实 IP（SEC-006）
+         原实现请求第三方 IP 查询服务，会把用户 IP 泄露给第三方 */
+      try{
+        var c=new AbortController();
+        var t=setTimeout(function(){c.abort();},4000);
+        var r=await fetch(KJ.SUPABASE_URL+'/functions/v1/client-ip',{signal:c.signal});
+        clearTimeout(t);
+        if(r.ok){
+          var d=await r.json();
+          if(d&&d.success&&d.ip)return d.ip;
+        }
+      }catch(e){}
+      return'获取失败';
+    }
 
     // 从 Supabase login_devices 读取最近登录历史
     async function renderLoginHistory(){
