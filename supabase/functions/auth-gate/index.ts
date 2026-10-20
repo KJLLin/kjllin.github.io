@@ -5,7 +5,7 @@ const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const HCAPTCHA_SECRET = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ?? ""; } catch { return ""; } })();
 
 // 可信域名白名单（SEC-004：替代 Access-Control-Allow-Origin: *）
-const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+const ALLOWED_ORIGINS = ["https://kjllin.dpdns.org", "https://kjllin.github.io"];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";

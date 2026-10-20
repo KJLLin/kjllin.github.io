@@ -16,7 +16,7 @@ const SUPABASE_SERVICE_ROLE_KEY = (() => {
 })();
 
 // 可信域名白名单（SEC-004：替代 Access-Control-Allow-Origin: *）
-const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+const ALLOWED_ORIGINS = ["https://kjllin.dpdns.org", "https://kjllin.github.io"];
 
 const corsHeaders = (req: Request): Record<string, string> => {
   const origin = req.headers.get("origin") || "";

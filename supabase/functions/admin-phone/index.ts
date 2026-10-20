@@ -19,7 +19,7 @@ const PROJECT_URL = "https://vzqspcuxnwpakofwumat.supabase.co";
 const SERVICE_ROLE_KEY = (() => { try { return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""; } catch { return ""; } })();
 
 // 仅允许网站前端调用
-const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+const ALLOWED_ORIGINS = ["https://kjllin.dpdns.org", "https://kjllin.github.io"];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
