@@ -12,7 +12,7 @@ const HCAPTCHA_SECRET = (() => { try { return Deno.env.get("HCAPTCHA_SECRET") ??
 const SERVICE_ROLE_KEY = (() => { try { return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""; } catch { return ""; } })();
 
 // 可信域名白名单
-const ALLOWED_ORIGINS = ["https://kjllin.github.io"];
+const ALLOWED_ORIGINS = ["https://kjllin.dpdns.org", "https://kjllin.github.io"];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
