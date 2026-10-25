@@ -612,3 +612,59 @@ input, textarea, button { font-family: inherit; }
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+/* ====================== 站内信增强（第二批） ====================== */
+
+/* 会话工具栏：仅看未读 */
+.conv-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px 8px;
+  flex-shrink: 0;
+}
+.conv-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs, 12px);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.conv-filter:hover { background: var(--color-bg-hover); }
+.conv-filter.active {
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.conv-filter-count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+.conv-filter-count:empty { display: none; }
+
+/* 撤回按钮（自己 2 分钟内的消息，显示在时间/状态行内） */
+.msg-recall-inline {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  margin-left: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: .8;
+}
+.msg-recall-inline:hover { color: var(--color-danger, #e5484d); opacity: 1; }
