@@ -1345,7 +1345,7 @@ html[data-theme="dark"] .catalog-sheet {
   };
 
   var DEFAULT_LAYOUT = ['chat', 'notif', 'clock', 'game', 'cloud', 'discuss', 'news', 'profile', 'settings', 'docs'];
-  var ADDABLE = ['recentChats', 'recentPosts', 'games', 'announce'];
+  var ADDABLE = ['news', 'recentChats', 'recentPosts', 'games', 'announce'];
   var FIXED = ['chat', 'notif', 'clock'];
 
   var GAMES = [
@@ -1409,22 +1409,23 @@ html[data-theme="dark"] .catalog-sheet {
     } catch (e) {}
   }
 
-  // 新增栏目时，让已存在的布局自动补上一次（用户删掉后不会再补）
-  function withNewsOnce(order) {
+  // 新栏目上线时，给已有布局补上「资讯」。
+  // 只要用户没手动删过（kj_news_dismissed_v1）就一直补 —— 这样本地布局和
+  // 云端拉回来的老布局都能拿到，而用户主动移除后不会再被塞回来。
+  function ensureNewsIn(order) {
     try {
-      if (localStorage.getItem('kj_news_added_v1')) return order;
-      localStorage.setItem('kj_news_added_v1', '1');
-      if (order.indexOf('news') < 0) {
-        var i = order.indexOf('discuss');
-        order.splice(i >= 0 ? i + 1 : order.length, 0, 'news');
-      }
+      if (!Array.isArray(order)) return order;
+      if (order.indexOf('news') >= 0) return order;
+      if (localStorage.getItem('kj_news_dismissed_v1')) return order;
+      var i = order.indexOf('discuss');
+      order.splice(i >= 0 ? i + 1 : order.length, 0, 'news');
     } catch (e) {}
     return order;
   }
 
   function loadLayout() {
     var loc = readLocal();
-    return withNewsOnce(loc ? loc.order.slice() : DEFAULT_LAYOUT.slice());
+    return ensureNewsIn(loc ? loc.order.slice() : DEFAULT_LAYOUT.slice());
   }
 
   function setSyncHint(kind, text) {
@@ -1475,7 +1476,7 @@ html[data-theme="dark"] .catalog-sheet {
 
         if (!row) {
           // 云端还没有：把本地布局迁上去
-          var seed = loc && loc.order.length ? loc.order : DEFAULT_LAYOUT.slice();
+          var seed = ensureNewsIn(loc && loc.order.length ? loc.order.slice() : DEFAULT_LAYOUT.slice());
           pushLayout(sb, userId, seed.slice(), localTs || Date.now());
           return seed;
         }
@@ -1484,13 +1485,14 @@ html[data-theme="dark"] .catalog-sheet {
         var cloudTs = Number(row.client_ts) || 0;
 
         if (cloudOrder && cloudTs > localTs) {          // 云端更新 → 覆盖本机
+          ensureNewsIn(cloudOrder);
           writeLocal(cloudOrder, cloudTs);
           return cloudOrder;
         }
         if (loc && localTs > cloudTs) {                 // 本机更新 → 推上去
           pushLayout(sb, userId, loc.order.slice(), localTs);
         }
-        return loc && loc.order.length ? loc.order : (cloudOrder || DEFAULT_LAYOUT.slice());
+        return ensureNewsIn(loc && loc.order.length ? loc.order.slice() : (cloudOrder || DEFAULT_LAYOUT.slice()));
       })
       .catch(function() { return loadLayout(); });
   }
@@ -1717,6 +1719,7 @@ html[data-theme="dark"] .catalog-sheet {
 
   function removeWidget(id) {
     if (FIXED.indexOf(id) >= 0) return;
+    if (id === 'news') { try { localStorage.setItem('kj_news_dismissed_v1', '1'); } catch (e) {} }
     STATE.layout = STATE.layout.filter(function(x) { return x !== id; });
     saveLayout();
     renderGrid();
@@ -1765,6 +1768,7 @@ html[data-theme="dark"] .catalog-sheet {
       adds[i].addEventListener('click', function() {
         var id = this.getAttribute('data-add');
         if (STATE.layout.indexOf(id) >= 0) return;
+        if (id === 'news') { try { localStorage.removeItem('kj_news_dismissed_v1'); } catch (e) {} }
         STATE.layout.push(id);
         saveLayout();
         renderGrid();
