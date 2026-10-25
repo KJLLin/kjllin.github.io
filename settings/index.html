@@ -42,6 +42,65 @@
     .login-prompt a:hover{background:var(--color-accent-hover);transform:translateY(-1px);box-shadow:0 4px 14px var(--color-accent-glow)}
 
     /* ── 设置分组 ── */
+
+    /* ====================== 账户概览卡（2026-10 升级） ====================== */
+    .user-summary{
+      display:block;padding:0;overflow:hidden;position:relative;
+      border-radius:var(--radius-lg);margin-bottom:28px;
+    }
+    .summary-cover{
+      height:88px;
+      background:linear-gradient(135deg,#0a84ff 0%,#5e5ce6 48%,#bf5af2 100%);
+      position:relative;overflow:hidden;
+    }
+    .summary-cover::after{
+      content:'';position:absolute;inset:0;
+      background:radial-gradient(70% 130% at 18% 0%,rgba(255,255,255,.35),transparent 62%);
+    }
+    .summary-body{
+      display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+      padding:0 20px 16px;
+    }
+    .summary-body .user-avatar{
+      width:64px;height:64px;font-size:26px;margin-top:-28px;
+      border:3px solid var(--color-bg-glass-solid,#fff);
+      box-shadow:0 8px 22px rgba(0,0,0,.16);
+      position:relative;z-index:1;
+    }
+    .summary-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    .mini-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:7px 13px;border-radius:999px;
+      border:1px solid var(--color-border);
+      background:transparent;color:var(--color-text-secondary);
+      font-size:12px;font-weight:500;text-decoration:none;
+      transition:background .18s ease,color .18s ease,border-color .18s ease;
+      white-space:nowrap;
+    }
+    .mini-btn:hover{background:var(--color-bg-hover);color:var(--color-text-primary)}
+    .mini-btn.primary{
+      background:var(--color-accent);border-color:transparent;
+      color:var(--color-text-on-accent);
+    }
+    .summary-stats{
+      display:grid;grid-template-columns:repeat(3,1fr);
+      border-top:1px solid var(--color-border);
+    }
+    .sstat{padding:12px 8px;text-align:center}
+    .sstat + .sstat{border-left:1px solid var(--color-border)}
+    .sstat b{
+      display:block;font-size:18px;font-weight:700;
+      color:var(--color-text-primary);
+      font-variant-numeric:tabular-nums;
+    }
+    .sstat span{font-size:11px;color:var(--color-text-tertiary)}
+    @media (max-width:560px){
+      .summary-cover{height:72px}
+      .summary-body{padding:0 16px 14px;gap:12px}
+      .summary-body .user-avatar{width:56px;height:56px;font-size:22px;margin-top:-24px}
+      .summary-actions{margin-left:0;flex-basis:100%}
+    }
+
     .settings-group{margin-bottom:24px}
     .group-label{font-size:12px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;padding:0 4px;margin-bottom:8px}
     .settings-item{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:var(--radius-md);text-decoration:none;color:var(--color-text-primary);cursor:pointer;transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);position:relative;overflow:hidden}
@@ -143,11 +202,24 @@
     <div id="settingsContent" style="display:none">
       <!-- 用户概览 -->
       <div class="user-summary card-glass anim-1" id="userSummary">
-        <div class="user-avatar" id="avatarEl">U</div>
-        <div class="user-info">
-          <div class="name"><span id="nameEl">--</span><span class="admin-badge" id="adminBadge" style="display:none"><i class="fas fa-shield-halved"></i> 管理员</span></div>
-          <div class="email" id="emailEl">--</div>
-          <div class="status"><span class="dot"></span> 已登录</div>
+        <div class="summary-cover"></div>
+        <div class="summary-body">
+          <div class="user-avatar" id="avatarEl">U</div>
+          <div class="user-info">
+            <div class="name"><span id="nameEl">--</span><span class="admin-badge" id="adminBadge" style="display:none"><i class="fas fa-shield-halved"></i> 管理员</span></div>
+            <div class="email" id="emailEl">--</div>
+            <div class="status"><span class="dot"></span> 已登录</div>
+          </div>
+          <div class="summary-actions">
+            <a href="/u/" class="mini-btn"><i class="fas fa-circle-user"></i> 个人主页</a>
+            <a href="/chat/" class="mini-btn"><i class="fas fa-envelope"></i> 站内信</a>
+            <a href="/settings/profile/" class="mini-btn primary"><i class="fas fa-pen-to-square"></i> 编辑资料</a>
+          </div>
+        </div>
+        <div class="summary-stats">
+          <div class="sstat"><b id="statNotif">—</b><span>未读通知</span></div>
+          <div class="sstat"><b id="statDevices">—</b><span>登录设备</span></div>
+          <div class="sstat"><b id="statPosts">—</b><span>我的文章</span></div>
         </div>
       </div>
 
@@ -261,6 +333,25 @@
         try{
           var ra=await sb.from('users').select('is_admin').eq('id',user.id).limit(1);
           if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';var ae=$('#adminEntry');if(ae)ae.style.display='';}
+        }catch(e){}
+
+        // 概览统计（未读通知 / 登录设备 / 我的文章）
+        try{
+          var st = await Promise.allSettled([
+            sb.rpc('notif_stats'),
+            sb.from('login_devices').select('id',{count:'exact',head:true}).eq('user_id',user.id),
+            sb.from('posts').select('id',{count:'exact',head:true}).eq('user_id',user.id)
+          ]);
+          if(st[0].status==='fulfilled'&&st[0].value&&!st[0].value.error&&st[0].value.data&&st[0].value.data.length){
+            var un=Number(st[0].value.data[0].unread)||0;
+            var eN=$('#statNotif'); if(eN) eN.textContent=un;
+          }
+          if(st[1].status==='fulfilled'&&st[1].value&&typeof st[1].value.count==='number'){
+            var eD=$('#statDevices'); if(eD) eD.textContent=st[1].value.count;
+          }
+          if(st[2].status==='fulfilled'&&st[2].value&&typeof st[2].value.count==='number'){
+            var eP=$('#statPosts'); if(eP) eP.textContent=st[2].value.count;
+          }
         }catch(e){}
         loadPrivacy();
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}

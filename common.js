@@ -393,10 +393,21 @@
       } catch(e) {}
 
       // 写入 Supabase（包含 user_id 和 logged_in_at）
+      // 同一设备只保留最新一条：先删同设备旧记录再插入，
+      // 否则每次访问都会新增一行（历史上曾累积到 600+ 行，设备列表失去意义）
       var now = new Date().toISOString();
+      var browserLabel = ua.browser + (ua.osVer ? ' ' + ua.osVer : '');
+      try {
+        await sb.from('login_devices')
+          .delete()
+          .eq('user_id', userId)
+          .eq('browser', browserLabel)
+          .eq('os', ua.os);
+      } catch(_) {}
+
       var { error } = await sb.from('login_devices').insert({
         user_id: userId,
-        browser: ua.browser + (ua.osVer ? ' ' + ua.osVer : ''),
+        browser: browserLabel,
         os: ua.os,
         os_ver: ua.osVer || '',
         screen: ua.screen,
@@ -405,10 +416,14 @@
       });
       if (error) console.warn('Device record insert error:', error);
 
-      // 同时保留 localStorage 记录（离线回退）
+      // 同时保留 localStorage 记录（离线回退，同样按设备去重）
       try {
         var history = JSON.parse(localStorage.getItem('kjllin_login_history') || '[]');
-        history.push({ browser: ua.browser + (ua.osVer ? ' ' + ua.osVer : ''), os: ua.os, time: new Date().toISOString(), ip: ip });
+        var rec = { browser: browserLabel, os: ua.os, time: now, ip: ip };
+        history = history.filter(function(h) {
+          return !(h && h.browser === rec.browser && h.os === rec.os);
+        });
+        history.push(rec);
         if (history.length > 20) history = history.slice(-20);
         localStorage.setItem('kjllin_login_history', JSON.stringify(history));
       } catch(e) {}
