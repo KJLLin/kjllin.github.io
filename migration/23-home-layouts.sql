@@ -103,6 +103,12 @@ begin
     raise exception 'not authenticated' using errcode = '28000';
   end if;
 
+  -- 客户端时钟异常（远超服务端时间）时钳回服务端时间，
+  -- 否则一个错误的大 client_ts 会让后续所有正常写入都被单调保护拒掉。
+  if v_ts > (extract(epoch from now()) * 1000)::bigint + 86400000 then
+    v_ts := (extract(epoch from now()) * 1000)::bigint;
+  end if;
+
   if p_layout is null
      or jsonb_typeof(p_layout) <> 'array'
      or jsonb_array_length(p_layout) < 1

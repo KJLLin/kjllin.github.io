@@ -1446,6 +1446,13 @@ html[data-theme="dark"] .catalog-sheet {
     return sb.rpc('save_home_layout', { p_layout: order, p_client_ts: ts })
       .then(function(r) {
         if (r && r.error) { setSyncHint('warn', '仅保存在本机'); return false; }
+        var d = r.data;
+        if (d && d.applied === false) {
+          // 云端已有更新的排版（另一台设备刚改过），以后者为准
+          setSyncHint('warn', '已对齐云端最新排版');
+          refreshLayoutFromCloud();
+          return false;
+        }
         setSyncHint('ok', '已同步到云端');
         return true;
       })
