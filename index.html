@@ -1961,6 +1961,7 @@ html[data-theme="dark"] .catalog-sheet {
       sb.rpc('news_stats'),
       sb.from('news_items')
         .select('title,published_at,link')
+        .eq('is_ad', false)
         .order('published_at', { ascending: false })
         .limit(1)
     ];
