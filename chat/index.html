@@ -102,18 +102,23 @@
         <div class="chat-view-header" id="chatViewHeader">
           <span id="chatPartnerName"></span>
         </div>
+        <!-- 加载更早消息 -->
+        <div id="earlierBox" class="earlier-box"></div>
         <!-- 消息列表 -->
-        <div class="msg-list" id="msgList"></div>
+        <div class="msg-list" id="msgList" role="log" aria-live="polite" aria-relevant="additions" aria-label="消息记录"></div>
+        <!-- 不在底部时提示有新消息 -->
+        <button type="button" id="newMsgBtn" class="new-msg-btn hidden" aria-label="跳到最新消息">新消息 ↓</button>
         <!-- 输入栏 -->
         <div class="input-bar">
           <textarea
             id="msgInput"
             class="msg-textarea"
-            placeholder="输入消息，Enter 发送..."
+            placeholder="输入消息，Enter 发送，Shift+Enter 换行..."
             rows="1"
             maxlength="500"
+            aria-label="消息内容"
           ></textarea>
-          <button id="sendBtn" class="btn-send">发送</button>
+          <button id="sendBtn" class="btn-send" type="button" aria-label="发送消息">发送</button>
         </div>
       </div>
     </main>
