@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="KJLLin 资讯 — 聚合 IT 之家最新科技新闻，服务器定时同步">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>资讯 · KJLLin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    .container { max-width: 860px; margin: 0 auto; padding: 96px 20px 72px; }
+
+    .page-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+    }
+    .page-title {
+      font-size: 30px; font-weight: 700; letter-spacing: -.02em;
+      color: var(--text-primary); display: flex; align-items: center; gap: 10px;
+    }
+    .page-title i { color: var(--accent); font-size: 24px; }
+    .page-sub {
+      font-size: 13px; color: var(--text-tertiary); margin-top: 6px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .page-sub .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-tertiary); opacity: .6; }
+
+    .head-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 15px; border-radius: 999px;
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-secondary); font-size: 13px; font-family: inherit;
+      cursor: pointer; transition: background .18s ease, color .18s ease, transform .12s ease;
+    }
+    .btn-ghost:hover { background: var(--bg-mica-hover); color: var(--text-primary); }
+    .btn-ghost:active { transform: scale(.96); }
+    .btn-ghost i { font-size: 12px; }
+    .btn-ghost.is-spinning i { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ==================== 头条 ==================== */
+    .hero-card {
+      display: block; text-decoration: none; color: inherit;
+      border-radius: 22px; overflow: hidden;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      box-shadow: 0 10px 34px rgba(0, 0, 0, .07);
+      margin-bottom: 20px;
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+    }
+    .hero-card:hover { transform: translateY(-3px); box-shadow: 0 18px 44px rgba(0, 0, 0, .12); }
+    .hero-cover {
+      position: relative; aspect-ratio: 2 / 1; max-height: 320px; overflow: hidden;
+      background: linear-gradient(135deg, #e8e8ed, #d8d8df);
+    }
+    @media (max-width: 560px) {
+      .hero-cover { aspect-ratio: 16 / 10; max-height: 220px; }
+    }
+    .hero-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-body { padding: 18px 22px 20px; }
+    .hero-title {
+      font-size: 20px; font-weight: 700; line-height: 1.35; letter-spacing: -.01em;
+      color: var(--text-primary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .hero-summary {
+      font-size: 13.5px; line-height: 1.7; color: var(--text-secondary); margin-top: 8px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ==================== 列表 ==================== */
+    .news-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .news-card {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 16px 18px; border-radius: 16px;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      text-decoration: none; color: inherit;
+      transition: background .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease;
+    }
+    .news-card:hover { background: var(--bg-mica-hover); transform: translateY(-1px); }
+    .news-card:active { transform: scale(.995); }
+
+    .nc-main { flex: 1; min-width: 0; }
+    .nc-title {
+      font-size: 15.5px; font-weight: 600; line-height: 1.5; color: var(--text-primary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .nc-summary {
+      font-size: 13px; line-height: 1.65; color: var(--text-tertiary); margin-top: 6px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .nc-meta {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 10px; font-size: 11.5px; color: var(--text-tertiary);
+    }
+    .nc-src {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--accent-glow); color: var(--accent); font-weight: 600;
+    }
+
+    .nc-thumb {
+      flex: 0 0 auto; width: 104px; height: 78px; border-radius: 11px;
+      overflow: hidden; background: linear-gradient(135deg, #ececf0, #dcdce2);
+    }
+    .nc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ==================== 状态 ==================== */
+    .skeleton {
+      height: 110px; border-radius: 16px;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      position: relative; overflow: hidden;
+    }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 1.4s infinite;
+    }
+    html[data-theme="dark"] .skeleton::after {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+    }
+    @keyframes shimmer { to { transform: translateX(100%); } }
+
+    .list-status {
+      text-align: center; font-size: 12.5px; color: var(--text-tertiary);
+      padding: 22px 0 8px;
+    }
+    .empty {
+      text-align: center; padding: 64px 20px; color: var(--text-tertiary);
+    }
+    .empty i { font-size: 34px; opacity: .35; display: block; margin-bottom: 14px; }
+    .empty p { font-size: 14px; margin-bottom: 6px; }
+    .empty small { font-size: 12px; opacity: .8; }
+
+    .foot-note {
+      margin-top: 26px; padding-top: 18px;
+      border-top: 1px solid var(--border-mica);
+      font-size: 12px; line-height: 1.7; color: var(--text-tertiary);
+      text-align: center;
+    }
+    .foot-note a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 560px) {
+      .container { padding: 84px 14px 56px; }
+      .page-title { font-size: 24px; }
+      .hero-body { padding: 15px 17px 17px; }
+      .hero-title { font-size: 17px; }
+      .news-card { padding: 13px 14px; gap: 11px; }
+      .nc-title { font-size: 14.5px; }
+      .nc-thumb { width: 82px; height: 62px; }
+      .nc-summary { -webkit-line-clamp: 2; font-size: 12.5px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
+      <a href="/news/" class="menu-item"><i class="fas fa-newspaper"></i> 资讯</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
+      <a href="/news/" class="menu-item"><i class="fas fa-newspaper"></i> 资讯</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <header class="page-head">
+      <div>
+        <h1 class="page-title"><i class="fas fa-newspaper"></i> 资讯</h1>
+        <p class="page-sub">
+          <span>来自 IT 之家</span>
+          <span class="dot"></span>
+          <span id="syncHint">服务器定时同步</span>
+        </p>
+      </div>
+      <div class="head-actions">
+        <button type="button" class="btn-ghost" id="refreshBtn"><i class="fas fa-rotate"></i> 刷新</button>
+      </div>
+    </header>
+
+    <div id="heroSlot"></div>
+    <div class="news-list" id="newsList"></div>
+    <div class="empty" id="emptyBox" hidden>
+      <i class="fas fa-satellite-dish"></i>
+      <p>暂时还没有资讯</p>
+      <small>服务器每 25 分钟抓取一次，稍后再来看看</small>
+    </div>
+    <div class="list-status" id="listStatus"></div>
+
+    <p class="foot-note">
+      资讯内容版权归 <a href="https://www.ithome.com/" target="_blank" rel="noopener noreferrer">IT 之家</a> 所有，
+      本站仅做标题与摘要聚合，点击卡片跳转原文阅读。
+    </p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+  <script src="/common.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var sb = null;
+    try { sb = KJ.createSupabase(); } catch (e) {}
+    var PAGE = 20;
+    var state = { items: [], cursor: null, loading: false, done: false };
+
+    var listEl = document.getElementById('newsList');
+    var heroSlot = document.getElementById('heroSlot');
+    var statusEl = document.getElementById('listStatus');
+    var emptyEl = document.getElementById('emptyBox');
+
+    function esc(s) { return KJ.escapeHtml(s); }
+
+    function timeAgo(iso) {
+      var t = new Date(iso).getTime();
+      if (!isFinite(t)) return '';
+      var d = Date.now() - t;
+      if (d < 60000) return '刚刚';
+      if (d < 3600000) return Math.floor(d / 60000) + ' 分钟前';
+      if (d < 86400000) return Math.floor(d / 3600000) + ' 小时前';
+      if (d < 7 * 86400000) return Math.floor(d / 86400000) + ' 天前';
+      var dt = new Date(t);
+      return (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+    }
+
+    function safeLink(u) {
+      return /^https:\/\/([a-z0-9-]+\.)*ithome\.com\//i.test(u || '') ? u : 'https://www.ithome.com/';
+    }
+
+    function imgTag(url, alt) {
+      if (!url || !/^https:\/\//i.test(url)) return '';
+      return '<img src="' + esc(url) + '" alt="' + esc(alt || '') + '" loading="lazy" decoding="async" ' +
+             'referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">';
+    }
+
+    function heroHtml(it) {
+      return '<a class="hero-card" href="' + esc(safeLink(it.link)) + '" target="_blank" rel="noopener noreferrer">' +
+        (it.cover_url ? '<div class="hero-cover">' + imgTag(it.cover_url, it.title) + '</div>' : '') +
+        '<div class="hero-body">' +
+          '<div class="hero-title">' + esc(it.title) + '</div>' +
+          (it.summary ? '<div class="hero-summary">' + esc(it.summary) + '</div>' : '') +
+          '<div class="nc-meta"><span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+            '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
+            '<span>· 头条</span></div>' +
+        '</div>' +
+      '</a>';
+    }
+
+    function cardHtml(it) {
+      return '<a class="news-card" href="' + esc(safeLink(it.link)) + '" target="_blank" rel="noopener noreferrer">' +
+        '<div class="nc-main">' +
+          '<div class="nc-title">' + esc(it.title) + '</div>' +
+          (it.summary ? '<div class="nc-summary">' + esc(it.summary) + '</div>' : '') +
+          '<div class="nc-meta">' +
+            '<span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+            '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
+          '</div>' +
+        '</div>' +
+        (it.cover_url ? '<div class="nc-thumb">' + imgTag(it.cover_url, '') + '</div>' : '') +
+      '</a>';
+    }
+
+    function skeleton(n) {
+      var h = '';
+      for (var i = 0; i < n; i++) h += '<div class="skeleton"></div>';
+      return h;
+    }
+
+    function renderNew(rows, replace) {
+      if (replace) { state.items = rows.slice(); }
+      else { state.items = state.items.concat(rows); }
+
+      if (!state.items.length) {
+        emptyEl.hidden = false;
+        listEl.innerHTML = '';
+        heroSlot.innerHTML = '';
+        statusEl.textContent = '';
+        return;
+      }
+      emptyEl.hidden = true;
+
+      var hero = state.items[0];
+      var rest = state.items.slice(1);
+      heroSlot.innerHTML = heroHtml(hero);
+      listEl.innerHTML = rest.map(cardHtml).join('');
+      statusEl.textContent = state.done ? '已经到底了' : '';
+    }
+
+    function setMsg(t) { statusEl.textContent = t || ''; }
+
+    function loadMore(replace) {
+      if (state.loading || (state.done && !replace)) return Promise.resolve();
+      if (!sb) { setMsg('服务暂不可用'); return Promise.resolve(); }
+      state.loading = true;
+      if (replace) {
+        listEl.innerHTML = skeleton(4);
+        heroSlot.innerHTML = '';
+        setMsg('');
+      } else {
+        setMsg('加载中…');
+      }
+
+      var args = { p_limit: PAGE };
+      if (!replace && state.cursor) {
+        args.p_before_ts = state.cursor.ts;
+        args.p_before_id = state.cursor.id;
+      }
+
+      return sb.rpc('news_list', args).then(function (r) {
+        if (r.error) throw r.error;
+        var rows = r.data || [];
+        if (rows.length < PAGE) state.done = true;
+        if (rows.length) {
+          var last = rows[rows.length - 1];
+          state.cursor = { ts: last.published_at, id: last.id };
+        }
+        renderNew(rows, replace);
+        if (!rows.length && replace) {
+          emptyEl.hidden = false;
+          listEl.innerHTML = '';
+        }
+      }).catch(function (e) {
+        console.warn('news list:', e);
+        if (replace) { listEl.innerHTML = ''; }
+        setMsg('加载失败，请稍后重试');
+      }).then(function () {
+        state.loading = false;
+      });
+    }
+
+    function loadStats() {
+      if (!sb) return;
+      sb.rpc('news_stats').then(function (r) {
+        if (r.error || !r.data || !r.data.length) return;
+        var row = r.data[0];
+        var hint = document.getElementById('syncHint');
+        if (hint && row.latest) {
+          hint.textContent = '最后更新 ' + timeAgo(row.latest) + ' · 共 ' + row.total + ' 条';
+        }
+      }).catch(function () {});
+    }
+
+    // 无线滚动
+    var sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    document.querySelector('.container').appendChild(sentinel);
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) loadMore(false);
+      }, { rootMargin: '400px' }).observe(sentinel);
+    } else {
+      window.addEventListener('scroll', function () {
+        if (window.innerHeight + window.scrollY > document.body.offsetHeight - 600) loadMore(false);
+      });
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', function () {
+      var btn = this;
+      if (btn.classList.contains('is-spinning')) return;
+      btn.classList.add('is-spinning');
+      state.done = false;
+      state.cursor = null;
+      Promise.resolve(loadMore(true)).then(function () {
+        loadStats();
+        setTimeout(function () { btn.classList.remove('is-spinning'); }, 400);
+      });
+    });
+
+    // 启动
+    var themeBtn = document.getElementById('themeBtn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var st = KJ.toggleTheme();
+        themeBtn.innerHTML = KJ.getThemeIcon(st.mode);
+      });
+      themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+      KJ.onSystemThemeChange(function () {
+        themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+      });
+    }
+    KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
+    KJ.initNav(sb, { homeUrl: '/' });
+
+    loadMore(true).then(loadStats);
+    setInterval(loadStats, 120000);
+  })();
+  </script>
+</body>
+</html>
