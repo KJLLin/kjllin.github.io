@@ -277,6 +277,17 @@
     .post-card:hover {
       transform: translateY(-2px);
     }
+    /* 作者自己的编辑/删除：固定在右上角，不参与正文排版 */
+    .post-card .post-actions {
+      position: absolute; top: 14px; right: 16px; z-index: 2;
+      display: flex; gap: 6px;
+    }
+    .post-card.has-actions .post-title { padding-right: 64px; }
+    @media (max-width: 560px) {
+      .post-card { padding: 18px; }
+      .post-card .post-actions { top: 10px; right: 12px; }
+      .post-card.has-actions .post-title { padding-right: 56px; }
+    }
     /* Apple 按压反馈 */
     .post-card:active {
       transform: translateY(0) scale(0.985);
@@ -971,7 +982,7 @@
           list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇文章</div>' + data.map((p, i) => {
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
-              ? '<span style="display:flex;gap:6px;flex-shrink:0">' +
+              ? '<span class="post-actions">' +
                 '<a href="/discuss/edit/?id=' + p.id + '" class="del-btn edit-post-btn" title="编辑" aria-label="编辑文章"><i class="fas fa-pen-to-square"></i></a>' +
                 '<button class="del-btn del-post-btn" data-id="' + p.id + '" title="删除" aria-label="删除文章"><i class="fas fa-trash"></i></button>' +
                 '</span>'
@@ -996,7 +1007,7 @@
               { id: p.user_id, nick: p.nick || '匿名', avatar_url: p.avatar_url },
               { size: 22, className: 'author-av' }
             );
-            return '<div class="post-card mica">' +
+            return '<div class="post-card mica' + (actions ? ' has-actions' : '') + '">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
