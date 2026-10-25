@@ -973,9 +973,9 @@ async function loadConversationList() {
       return;
     }
 
-    // 获取用户信息
-    var { data: users, error: ue } = await sb.from('users')
-      .select('id, nick, email').in('id', partnerIds.slice(0, 15));
+    // 获取用户信息（仅公开昵称，不含邮箱/手机号）
+    var { data: users, error: ue } = await sb.from('profiles_public')
+      .select('id, nick').in('id', partnerIds.slice(0, 15));
 
     if (ue) throw ue;
     renderConvList(users || []);
@@ -992,10 +992,10 @@ function renderConvList(users) {
     return;
   }
   el.innerHTML = users.map(function(u) {
-    var nick = u.nick || (u.email ? u.email.split('@')[0] : '用户');
+    var nick = u.nick || '用户';
     return '<div class="conv-item-inline" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '" onclick="inviteFromConv(this)">'
       + '<div class="invite-avatar">' + KJ.escapeHtml((nick[0] || '?').toUpperCase()) + '</div>'
-      + '<div class="invite-info"><div class="conv-name">' + KJ.escapeHtml(nick) + '</div><div class="conv-email">' + KJ.escapeHtml(u.email || '') + '</div></div>'
+      + '<div class="invite-info"><div class="conv-name">' + KJ.escapeHtml(nick) + '</div></div>'
       + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent);font-size:13px"></i>'
       + '</div>';
   }).join('');
@@ -1032,9 +1032,8 @@ async function searchUsers(query) {
   if (inviteLock || !sb) return;
   inviteLock = true;
   try {
-    var { data, error } = await sb.from('users')
-      .select('id, nick, email').ilike('email', '%' + query + '%')
-      .neq('id', myUserId).limit(5);
+    // 服务端搜索：只返回昵称与脱敏提示，不返回邮箱/手机号原值
+    var { data, error } = await sb.rpc('search_users', { p_term: query });
     if (error) { console.warn('搜索失败:', error); return; }
     renderInviteResults(data || []);
   } catch(e) { console.warn('搜索异常:', e); }
@@ -1049,10 +1048,11 @@ function renderInviteResults(users) {
     return;
   }
   el.innerHTML = users.map(function(u) {
-    var nick = u.nick || (u.email ? u.email.split('@')[0] : '用户');
-    return '<div class="invite-result-item" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '" data-email="' + KJ.escapeHtml(u.email || '') + '">'
+    var nick = u.nick || '用户';
+    var hint = u.hint || '';
+    return '<div class="invite-result-item" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '">'
       + '<div class="invite-avatar">' + KJ.escapeHtml((nick[0] || '?').toUpperCase()) + '</div>'
-      + '<div class="invite-info"><div class="invite-nick">' + KJ.escapeHtml(nick) + '</div><div class="invite-email">' + KJ.escapeHtml(u.email || '') + '</div></div>'
+      + '<div class="invite-info"><div class="invite-nick">' + KJ.escapeHtml(nick) + '</div>' + (hint ? '<div class="invite-email">' + KJ.escapeHtml(hint) + '</div>' : '') + '</div>'
       + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent)"></i>'
       + '</div>';
   }).join('');
