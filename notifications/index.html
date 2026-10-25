@@ -113,6 +113,32 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
     @media (max-width: 560px) { .container { padding: 72px 14px 60px; } }
   </style>
+
+    /* ===== 通知中心重构新增 ===== */
+    .head-unread { font-size: 13px; font-weight: 500; color: var(--accent, #0071e3); margin-left: 8px; }
+    .notif-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+    .notif-tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--color-border); background: var(--bg-mica);
+      color: var(--text-secondary); font-size: 13px;
+      transition: background .18s ease, color .18s ease, border-color .18s ease;
+    }
+    .notif-tab:hover { background: var(--bg-mica-hover, var(--bg-mica)); }
+    .notif-tab.active { background: var(--accent, #0071e3); color: #fff; border-color: transparent; }
+    .tab-badge {
+      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+      background: rgba(255,255,255,.25); color: inherit;
+      font-size: 11px; line-height: 18px; text-align: center;
+    }
+    .notif-tab:not(.active) .tab-badge { background: var(--accent, #0071e3); color: #fff; }
+    .tab-badge:empty { display: none; }
+    .notif-day { margin: 14px 0 6px; text-align: center; font-size: 12px; color: var(--text-tertiary); }
+    .notif-day span { padding: 2px 10px; border-radius: 999px; background: var(--bg-mica); border: 1px solid var(--color-border); }
+    .list-status { text-align: center; font-size: 12px; color: var(--text-tertiary); padding: 14px 0; }
+    .notif-item { cursor: pointer; }
+    .notif-item:focus-visible { outline: 2px solid var(--accent, #0071e3); outline-offset: 2px; }
+
 </head>
 <body>
   <!-- ================== 全局导航栏 ================== -->
@@ -142,242 +168,399 @@
 
   <div class="container" id="main">
     <div class="page-head">
-      <h1 class="page-title"><i class="fas fa-bell"></i> 通知</h1>
+      <h1 class="page-title"><i class="fas fa-bell"></i> 通知<span class="head-unread" id="headUnread"></span></h1>
       <div class="head-actions">
         <button class="btn" id="deskNotifBtn" title="在后台收到新通知时弹出系统桌面通知"><i class="far fa-bell"></i> 开启桌面通知</button>
         <button class="btn" id="markAllBtn" style="display:none"><i class="fas fa-check-double"></i> 全部已读</button>
+        <button class="btn" id="clearReadBtn" style="display:none"><i class="fas fa-broom"></i> 清空已读</button>
       </div>
     </div>
-    <div id="notifList">
+
+    <div class="notif-tabs" id="notifTabs" role="tablist" aria-label="通知筛选">
+      <button class="notif-tab active" data-filter="all" role="tab" aria-selected="true">全部</button>
+      <button class="notif-tab" data-filter="unread" role="tab" aria-selected="false">未读 <span class="tab-badge" id="badgeUnread"></span></button>
+      <button class="notif-tab" data-filter="pm" role="tab" aria-selected="false">站内信 <span class="tab-badge" id="badgePm"></span></button>
+      <button class="notif-tab" data-filter="interaction" role="tab" aria-selected="false">互动 <span class="tab-badge" id="badgeInteraction"></span></button>
+      <button class="notif-tab" data-filter="announce" role="tab" aria-selected="false">公告</button>
+    </div>
+
+    <div id="notifList" role="list" aria-live="polite">
       <div class="skeleton" aria-hidden="true"></div>
       <div class="skeleton" aria-hidden="true"></div>
       <div class="skeleton" aria-hidden="true"></div>
     </div>
-    <div style="text-align:center;margin-top:18px">
-      <button class="btn" id="loadMoreBtn" style="display:none"><i class="fas fa-chevron-down"></i> 加载更多</button>
-    </div>
+    <div id="notifSentinel" style="height:1px"></div>
+    <div class="list-status" id="listStatus"></div>
   </div>
 
   <script src="/common.js"></script>
   <script>
-    (function() {
-      var $ = function(s) { return document.querySelector(s); };
-      var sb = KJ.createSupabase();
-      var currentUser = null;
-      var PAGE_SIZE = 30;
-      var loaded = 0;
-      var hasMore = false;
-      var _marking = false;
+  (function() {
+    var $ = function(s) { return document.querySelector(s); };
+    var sb = KJ.createSupabase();
+    var PAGE = 30;
 
-      // 主题
-      var themeBtn = $('#themeBtn');
-      function updateThemeUI() { var s = KJ.applyTheme('#f3f3f3', '#000'); themeBtn.innerHTML = KJ.getThemeIcon(s.mode); }
-      themeBtn.addEventListener('click', function() { KJ.toggleTheme(); updateThemeUI(); });
-      KJ.onSystemThemeChange(updateThemeUI); updateThemeUI();
+    var S = {
+      user: null,
+      filter: 'all',
+      items: [],
+      cursorTime: null,
+      cursorId: null,
+      hasMore: false,
+      loading: false,
+      seq: 0,
+      channel: null,
+      reloadTimer: null
+    };
 
+    var TYPE_META = {
+      pm: { icon: 'fa-envelope', label: '站内信', cls: 'pm' },
+      like: { icon: 'fa-heart', label: '点赞', cls: 'like' },
+      follow: { icon: 'fa-user-plus', label: '关注', cls: 'follow' },
+      system: { icon: 'fa-bullhorn', label: '系统', cls: 'system' },
+      announce: { icon: 'fa-bullhorn', label: '公告', cls: 'system' }
+    };
+
+    var FILTERS = {
+      all:         { type: null,          unreadOnly: false },
+      unread:      { type: null,          unreadOnly: true  },
+      pm:          { type: 'pm',          unreadOnly: false },
+      interaction: { type: 'interaction', unreadOnly: false },
+      announce:    { type: 'announce',    unreadOnly: false }
+    };
+
+    function esc(s) { return KJ.escapeHtml(s == null ? '' : String(s)); }
+
+    function dayLabel(iso) {
+      var d = new Date(iso);
+      if (isNaN(d)) return '';
+      var now = new Date();
+      var diff = Math.floor(
+        (new Date(now.getFullYear(), now.getMonth(), now.getDate()) -
+         new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000
+      );
+      if (diff === 0) return '今天';
+      if (diff === 1) return '昨天';
+      if (diff < 7) return diff + ' 天前';
+      if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+      return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    }
+
+    function itemHtml(n, i) {
+      var meta = TYPE_META[n.type] || TYPE_META.system;
+      var isAnnounce = n.type === 'announce';
+      var badge = isAnnounce ? '<span class="ann-badge">公告</span>' : '';
+      var delBtn = isAnnounce ? '' :
+        '<button class="notif-del" data-del="' + esc(n.id) + '" title="删除" aria-label="删除通知"><i class="fas fa-times"></i></button>';
+      return '<div class="notif-item' + (n.read ? ' read' : '') + (isAnnounce ? ' notif-announce' : '') + '"' +
+        ' data-id="' + esc(n.id) + '" data-link="' + esc(n.link || '') + '" data-read="' + (n.read ? '1' : '0') + '"' +
+        ' role="listitem" tabindex="0" style="animation-delay:' + (0.02 + Math.min(i, 12) * 0.02).toFixed(2) + 's">' +
+        '<div class="notif-icon ' + (isAnnounce ? 'system' : meta.cls) + '"><i class="fas ' + meta.icon + '"></i></div>' +
+        '<div class="notif-body">' +
+          '<div class="notif-title">' + badge + esc(n.title) + '</div>' +
+          '<div class="notif-time"><i class="fas ' + meta.icon + '"></i> ' + meta.label + ' · ' + esc(KJ.formatDate(n.created_at)) + '</div>' +
+        '</div>' +
+        (n.read ? '' : '<span class="unread-dot" title="未读"></span>') +
+        delBtn +
+      '</div>';
+    }
+
+    function emptyHtml() {
+      var map = {
+        all: ['fa-bell-slash', '暂无通知', '站内信、点赞、关注和公告会出现在这里'],
+        unread: ['fa-check-double', '没有未读通知', '所有通知都已读过了'],
+        pm: ['fa-envelope-open', '暂无站内信通知', '收到新私信时会出现在这里'],
+        interaction: ['fa-heart', '暂无互动通知', '有人点赞或关注你时会出现在这里'],
+        announce: ['fa-bullhorn', '暂无公告', '管理员发布公告后会出现在这里']
+      };
+      var m = map[S.filter] || map.all;
+      return '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both"><i class="fas ' + m[0] + '"></i>' +
+        m[1] + '<br><span style="font-size:12px">' + m[2] + '</span></div>';
+    }
+
+    function render() {
+      var el = $('#notifList');
+      if (!S.items.length) { el.className = ''; el.innerHTML = emptyHtml(); return; }
+      el.className = 'notif-list';
+      var html = '', lastDay = '';
+      for (var i = 0; i < S.items.length; i++) {
+        var n = S.items[i];
+        var d = dayLabel(n.created_at);
+        if (d !== lastDay) {
+          html += '<div class="notif-day"><span>' + esc(d) + '</span></div>';
+          lastDay = d;
+        }
+        html += itemHtml(n, i);
+      }
+      el.innerHTML = html;
+    }
+
+    function setStatus(t) { var el = $('#listStatus'); if (el) el.textContent = t || ''; }
+
+    function setBadge(sel, n) {
+      var el = $(sel);
+      if (!el) return;
+      el.textContent = n > 99 ? '99+' : (n > 0 ? String(n) : '');
+    }
+
+    function matchesFilter(n) {
+      var f = S.filter;
+      if (f === 'all') return true;
+      if (f === 'unread') return !n.read;
+      if (f === 'interaction') return n.type === 'like' || n.type === 'follow';
+      return n.type === f;
+    }
+
+    async function load(reset) {
+      if (!sb || !S.user || S.loading) return;
+      if (reset) { S.items = []; S.cursorTime = null; S.cursorId = null; S.hasMore = false; }
+      S.loading = true;
+      setStatus('加载中...');
+      var seq = ++S.seq;
+      try {
+        var f = FILTERS[S.filter] || FILTERS.all;
+        var r = await sb.rpc('notif_list', {
+          p_before: reset ? null : S.cursorTime,
+          p_before_id: reset ? null : S.cursorId,
+          p_limit: PAGE,
+          p_type: f.type,
+          p_unread_only: f.unreadOnly
+        });
+        if (seq !== S.seq) return;
+        if (r.error) throw r.error;
+        var rows = r.data || [];
+        if (reset) {
+          S.items = rows;
+        } else {
+          var seen = {};
+          S.items.forEach(function(x) { seen[x.id] = 1; });
+          rows.forEach(function(x) { if (!seen[x.id]) { S.items.push(x); seen[x.id] = 1; } });
+        }
+        S.hasMore = rows.length === PAGE;
+        if (rows.length) {
+          var last = rows[rows.length - 1];
+          S.cursorTime = last.created_at;
+          S.cursorId = last.id;
+        }
+        render();
+        setStatus(S.hasMore ? '' : (S.items.length ? '已经到底了' : ''));
+      } catch (e) {
+        if (seq !== S.seq) return;
+        console.warn('load notifications failed:', e);
+        if (reset) $('#notifList').innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>通知加载失败，请刷新重试</div>';
+        setStatus('加载失败');
+      } finally {
+        if (seq === S.seq) { S.loading = false; }
+      }
+    }
+
+    async function updateStats() {
+      if (!sb || !S.user) return;
+      try {
+        var r = await sb.rpc('notif_stats');
+        if (r.error || !r.data || !r.data.length) return;
+        var s = r.data[0];
+        var unread = Number(s.unread) || 0;
+        var total = Number(s.total) || 0;
+        setBadge('#badgeUnread', unread);
+        setBadge('#badgePm', s.unread_pm);
+        setBadge('#badgeInteraction', s.unread_interaction);
+        var head = $('#headUnread');
+        if (head) head.textContent = unread > 0 ? unread + ' 条未读' : '';
+        $('#markAllBtn').style.display = unread > 0 ? '' : 'none';
+        $('#clearReadBtn').style.display = (total - unread) > 0 ? '' : 'none';
+      } catch (e) { /* 忽略统计失败 */ }
+    }
+
+    async function markRead(id) {
+      try {
+        await sb.from('notifications').update({ read: true }).eq('id', id).eq('user_id', S.user.id);
+      } catch (e) {}
+    }
+
+    async function deleteOne(id) {
+      try {
+        var r = await sb.from('notifications').delete().eq('id', id).eq('user_id', S.user.id);
+        if (r.error) throw r.error;
+        S.items = S.items.filter(function(x) { return x.id !== id; });
+        render(); updateStats();
+        KJ.toast('已删除');
+      } catch (e) { KJ.toast('删除失败'); }
+    }
+
+    function bindList() {
+      var listEl = $('#notifList');
+      listEl.addEventListener('click', async function(e) {
+        var delBtn = e.target.closest('.notif-del');
+        if (delBtn) {
+          e.stopPropagation();
+          await deleteOne(delBtn.dataset.del);
+          return;
+        }
+        var item = e.target.closest('.notif-item');
+        if (!item) return;
+        if (item.dataset.read !== '1') {
+          item.classList.add('read');
+          item.dataset.read = '1';
+          var dot = item.querySelector('.unread-dot');
+          if (dot) dot.remove();
+          await markRead(item.dataset.id);
+          updateStats();
+        }
+        var link = item.dataset.link;
+        if (!link) return;
+        try {
+          var u = new URL(link, location.origin);
+          if (u.origin === location.origin) { location.href = u.pathname + u.search; return; }
+          window.open(link, '_blank', 'noopener,noreferrer');
+        } catch (_) {}
+      });
+
+      listEl.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var item = e.target.closest('.notif-item');
+        if (item) { e.preventDefault(); item.click(); }
+      });
+    }
+
+    function bindTabs() {
+      $('#notifTabs').addEventListener('click', function(e) {
+        var btn = e.target.closest('.notif-tab');
+        if (!btn) return;
+        var f = btn.dataset.filter;
+        if (f === S.filter) return;
+        S.filter = f;
+        document.querySelectorAll('.notif-tab').forEach(function(b) {
+          var on = b === btn;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        load(true);
+      });
+    }
+
+    function bindActions() {
+      $('#markAllBtn').addEventListener('click', async function() {
+        var btn = this;
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+          var r = await sb.rpc('notif_mark_all_read');
+          if (r.error) throw r.error;
+          KJ.toast('已全部标记为已读');
+          await load(true);
+          await updateStats();
+        } catch (e) { KJ.toast('操作失败，请重试'); }
+        finally { btn.disabled = false; }
+      });
+
+      $('#clearReadBtn').addEventListener('click', async function() {
+        if (!confirm('清空所有已读通知？公告会保留。')) return;
+        var btn = this;
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+          var r = await sb.rpc('notif_delete_read');
+          if (r.error) throw r.error;
+          KJ.toast('已清空已读通知');
+          await load(true);
+          await updateStats();
+        } catch (e) { KJ.toast('操作失败，请重试'); }
+        finally { btn.disabled = false; }
+      });
+    }
+
+    function bindInfiniteScroll() {
+      if (!('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting && S.hasMore && !S.loading) load(false);
+      }, { rootMargin: '200px' });
+      io.observe($('#notifSentinel'));
+    }
+
+    function subscribe() {
+      if (!sb || !S.user) return;
+      if (S.channel) { try { sb.removeChannel(S.channel); } catch (_) {} S.channel = null; }
+      S.channel = sb.channel('notif_page_' + S.user.id)
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + S.user.id },
+          function(payload) {
+            var n = payload.new;
+            if (!n) return;
+            updateStats();
+            if (!matchesFilter(n)) return;
+            if (S.items.some(function(x) { return x.id === n.id; })) return;
+            S.items.unshift(n);
+            render();
+            KJ.toast(n.title || '收到新通知');
+          })
+        .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + S.user.id },
+          function() {
+            clearTimeout(S.reloadTimer);
+            S.reloadTimer = setTimeout(function() { load(true); updateStats(); }, 400);
+          })
+        .subscribe();
+    }
+
+    function setupTheme() {
+      var btn = $('#themeBtn');
+      if (!btn) return;
+      function upd() { var s = KJ.applyTheme('#f3f3f3', '#000'); btn.innerHTML = KJ.getThemeIcon(s.mode); }
+      btn.addEventListener('click', function() { KJ.toggleTheme(); upd(); });
+      KJ.onSystemThemeChange(upd);
+      upd();
+    }
+
+    function setupDesktopBtn() {
+      var btn = $('#deskNotifBtn');
+      if (!btn) return;
+      function refresh() {
+        var on = KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled();
+        btn.classList.toggle('active', !!on);
+        btn.innerHTML = on ? '<i class="fas fa-bell"></i> 已开启桌面通知' : '<i class="far fa-bell"></i> 开启桌面通知';
+      }
+      btn.addEventListener('click', async function() {
+        if (KJ.rateLimit && !KJ.rateLimit('desknotif', 1000, 1)) return;
+        if (KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled()) {
+          KJ.disableBrowserNotification(); refresh(); return;
+        }
+        var r = await KJ.requestBrowserNotification();
+        refresh();
+        if (r && r.ok) KJ.toast('已开启桌面通知');
+        else if (r && r.reason === 'denied') KJ.toast('浏览器已拒绝通知权限，请在浏览器设置中允许');
+        else KJ.toast('当前浏览器不支持桌面通知');
+      });
+      refresh();
+    }
+
+    (async function init() {
+      setupTheme();
+      setupDesktopBtn();
       KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
       KJ.initNav(sb, { homeUrl: '/' });
 
-      function esc(s) { return KJ.escapeHtml(s); }
-
-      // 桌面通知开关
-      var deskNotifBtn = document.getElementById('deskNotifBtn');
-      function refreshDeskNotifBtn() {
-        if (!deskNotifBtn) return;
-        var on = KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled();
-        deskNotifBtn.classList.toggle('active', !!on);
-        deskNotifBtn.innerHTML = on
-          ? '<i class="fas fa-bell"></i> 已开启桌面通知'
-          : '<i class="far fa-bell"></i> 开启桌面通知';
+      if (!sb) {
+        $('#main').innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>网络错误，请刷新后重试</div>';
+        return;
       }
-      if (deskNotifBtn) {
-        deskNotifBtn.addEventListener('click', async function() {
-          if (!KJ.rateLimit('desknotif', 1000, 1)) return;
-          if (KJ.isBrowserNotificationEnabled && KJ.isBrowserNotificationEnabled()) {
-            KJ.disableBrowserNotification();
-            refreshDeskNotifBtn();
-            return;
-          }
-          var r = await KJ.requestBrowserNotification();
-          if (r && r.ok) {
-            refreshDeskNotifBtn();
-            KJ.toast('已开启桌面通知');
-          } else if (r && r.reason === 'denied') {
-            refreshDeskNotifBtn();
-            KJ.toast('浏览器已拒绝通知权限，请在浏览器设置中允许');
-          } else {
-            refreshDeskNotifBtn();
-            KJ.toast('当前浏览器不支持桌面通知');
-          }
-        });
-        refreshDeskNotifBtn();
+      var r = await sb.auth.getSession().catch(function() { return null; });
+      S.user = (r && r.data && r.data.session && r.data.session.user) || null;
+      if (!S.user) {
+        $('#main').innerHTML = '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both"><i class="fas fa-user-lock"></i>登录后查看通知<div style="margin-top:16px"><a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="btn" style="text-decoration:none;display:inline-flex">前往登录</a></div></div>';
+        return;
       }
 
-      var TYPE_META = {
-        pm: { icon: 'fa-envelope', label: '站内信' },
-        like: { icon: 'fa-heart', label: '点赞' },
-        follow: { icon: 'fa-user-plus', label: '关注' },
-        system: { icon: 'fa-bullhorn', label: '系统' },
-        announce: { icon: 'fa-bullhorn', label: '公告' }
-      };
+      bindTabs();
+      bindActions();
+      bindList();
+      bindInfiniteScroll();
 
-      function fmtDate(iso) {
-        if (!iso) return '--';
-        return KJ.formatDate(iso);
-      }
-
-      function notifHtml(n, i) {
-        var meta = TYPE_META[n.type] || TYPE_META.system;
-        var isAnnounce = n.type === 'announce';
-        // 公告：独立橙色样式 + 公告徽标，系统级通知不提供删除按钮
-        var badge = isAnnounce ? '<span class="ann-badge">公告</span>' : '';
-        var deleteBtn = isAnnounce ? '' :
-          '<button class="notif-del" data-del="' + esc(n.id) + '" title="删除" aria-label="删除通知"><i class="fas fa-times"></i></button>';
-        var titleEl = isAnnounce
-          ? '<div class="notif-title">' + badge + esc(n.title) + '</div>'
-          : '<div class="notif-title">' + esc(n.title) + '</div>';
-        return '<div class="notif-item' + (n.read ? ' read' : '') + (isAnnounce ? ' notif-announce' : '') + '" data-id="' + esc(n.id) + '" data-link="' + esc(n.link || '') + '" data-read="' + (n.read ? '1' : '0') + '" style="animation-delay:' + (0.03 + i * 0.025).toFixed(2) + 's" role="button" tabindex="0">' +
-          '<div class="notif-icon ' + (isAnnounce ? 'system' : esc(n.type)) + '"><i class="fas ' + meta.icon + '"></i></div>' +
-          '<div class="notif-body">' +
-            titleEl +
-            '<div class="notif-time"><i class="fas ' + meta.icon + '"></i> ' + meta.label + ' · ' + fmtDate(n.created_at) + '</div>' +
-          '</div>' +
-          (n.read ? '' : '<span class="unread-dot" title="未读"></span>') +
-          deleteBtn +
-        '</div>';
-      }
-
-      // 公告已由后端同步为真实通知（type='announce'），无需单独拉取公告表；
-      // 发布/停用/删除的同步与自动清理由数据库触发器与 pg_cron 完成（迁移 15）
-      async function loadNotifications(append) {
-        if (!sb || !currentUser) return;
-        var listEl = $('#notifList');
-        try {
-          var res = await sb.from('notifications')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false })
-            .range(loaded, loaded + PAGE_SIZE - 1);
-          if (res.error) throw res.error;
-          var items = res.data || [];
-          loaded += items.length;
-          hasMore = items.length === PAGE_SIZE;
-
-          if (!append) {
-            if (items.length === 0) {
-              listEl.innerHTML = '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both"><i class="fas fa-bell-slash"></i>暂无通知<br><span style="font-size:12px">站内信、点赞、关注和公告会出现在这里</span></div>';
-            } else {
-              listEl.className = 'notif-list';
-              listEl.innerHTML = items.map(notifHtml).join('');
-            }
-          } else if (items.length > 0) {
-            listEl.insertAdjacentHTML('beforeend', items.map(notifHtml).join(''));
-          }
-          $('#loadMoreBtn').style.display = hasMore ? '' : 'none';
-          // 有未读时显示"全部已读"
-          var anyUnread = false;
-          try {
-            var c = await sb.from('notifications').select('*', { count: 'exact', head: true })
-              .eq('user_id', currentUser.id).eq('read', false);
-            anyUnread = (c.count || 0) > 0;
-          } catch(e) {}
-          $('#markAllBtn').style.display = anyUnread ? '' : 'none';
-        } catch(e) {
-          console.warn('Load notifications failed:', e);
-          listEl.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>通知加载失败，请刷新重试</div>';
-        }
-      }
-
-      async function markRead(id) {
-        if (!sb) return;
-        try { await sb.from('notifications').update({ read: true }).eq('id', id).eq('user_id', currentUser.id); } catch(e) {}
-      }
-
-      function bindList() {
-        var listEl = $('#notifList');
-        listEl.addEventListener('click', async function(e) {
-          var delBtn = e.target.closest('.notif-del');
-          if (delBtn) {
-            e.stopPropagation();
-            var id = delBtn.dataset.del;
-            try {
-              var res = await sb.from('notifications').delete().eq('id', id).eq('user_id', currentUser.id);
-              if (res.error) throw res.error;
-              var item = listEl.querySelector('.notif-item[data-id="' + id + '"]');
-              if (item) item.remove();
-              KJ.toast('已删除');
-            } catch(err) { KJ.toast('删除失败'); }
-            return;
-          }
-          var item = e.target.closest('.notif-item');
-          if (!item) return;
-          // 标记已读后跳转
-          if (item.dataset.read !== '1') {
-            item.classList.add('read');
-            item.dataset.read = '1';
-            var dot = item.querySelector('.unread-dot');
-            if (dot) dot.remove();
-            await markRead(item.dataset.id);
-          }
-          var link = item.dataset.link;
-          if (link) {
-            try {
-              var u = new URL(link, location.origin);
-              if (u.origin === location.origin) { location.href = u.pathname + u.search; return; }
-              // 站外链接（如公告外链）：新标签页打开
-              window.open(link, '_blank', 'noopener,noreferrer');
-            } catch(_) {}
-          }
-        });
-      }
-
-      $('#markAllBtn').addEventListener('click', async function() {
-        if (_marking || !sb || !currentUser) return;
-        _marking = true;
-        var btn = $('#markAllBtn');
-        btn.disabled = true;
-        try {
-          var res = await sb.from('notifications').update({ read: true })
-            .eq('user_id', currentUser.id).eq('read', false);
-          if (res.error) throw res.error;
-          document.querySelectorAll('.notif-item').forEach(function(el) {
-            el.classList.add('read');
-            el.dataset.read = '1';
-            var dot = el.querySelector('.unread-dot');
-            if (dot) dot.remove();
-          });
-          btn.style.display = 'none';
-          KJ.toast('已全部标记为已读');
-        } catch(e) {
-          KJ.toast('操作失败，请重试');
-        } finally {
-          _marking = false;
-          btn.disabled = false;
-        }
-      });
-
-      $('#loadMoreBtn').addEventListener('click', function() {
-        if (!KJ.rateLimit('notif_loadmore', 800, 1)) return;
-        loadNotifications(true);
-      });
-
-      // ====================== 启动 ======================
-      (async function init() {
-        var main = $('#main');
-        if (!sb) {
-          main.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>网络错误，请刷新后重试</div>';
-          return;
-        }
-        var r = await sb.auth.getSession().catch(function() { return null; });
-        currentUser = (r && r.data && r.data.session && r.data.session.user) || null;
-        if (!currentUser) {
-          main.innerHTML = '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both"><i class="fas fa-user-lock"></i>登录后查看通知<div style="margin-top:16px"><a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="btn" style="text-decoration:none;display:inline-flex">前往登录</a></div></div>';
-          return;
-        }
-        bindList();
-        await loadNotifications(false);
-      })();
+      await load(true);
+      await updateStats();
+      subscribe();
     })();
+  })();
   </script>
 </body>
 </html>

@@ -37,6 +37,7 @@ const S = {
   channel: null,
   searchSeq: 0,       // 搜索请求序号，丢弃过期响应
   convMenuPartner: null,
+  unreadOnly: false,  // 会话列表：仅看未读
 };
 
 // ====================== 工具 ======================
@@ -113,6 +114,20 @@ const U = {
       clearTimeout(t);
       t = setTimeout(() => fn.apply(this, args), ms);
     };
+  },
+};
+
+// ====================== 草稿（按会话分别保存） ======================
+const Draft = {
+  key(id) { return 'kjllin_chat_draft_' + id; },
+  get(id) {
+    try { return localStorage.getItem(this.key(id)) || ''; } catch (e) { return ''; }
+  },
+  set(id, v) {
+    try {
+      if (id && v && v.trim()) localStorage.setItem(this.key(id), v);
+      else if (id) localStorage.removeItem(this.key(id));
+    } catch (e) { /* 隐私模式下忽略 */ }
   },
 };
 
@@ -261,12 +276,20 @@ const ConvList = {
     if (!list) return;
 
     const blockedIds = new Set(S.blockedList.map((b) => b.blocked_id));
-    const normal = S.conversations.filter((c) => !blockedIds.has(c.partnerId));
-    const blocked = S.conversations.filter((c) => blockedIds.has(c.partnerId));
+    let normal = S.conversations.filter((c) => !blockedIds.has(c.partnerId));
+    let blocked = S.conversations.filter((c) => blockedIds.has(c.partnerId));
+
+    // 未读筛选
+    if (S.unreadOnly) {
+      normal = normal.filter((c) => c.unread > 0);
+      blocked = blocked.filter((c) => c.unread > 0);
+    }
 
     list.innerHTML = normal.length
       ? normal.map((c) => this._item(c, false)).join('')
-      : `<div class="conv-empty">${blocked.length ? '暂无活跃对话' : '暂无对话，搜索用户（手机号/昵称/邮箱）发起私信'}</div>`;
+      : `<div class="conv-empty">${S.unreadOnly
+          ? '没有未读对话'
+          : (blocked.length ? '暂无活跃对话' : '暂无对话，搜索用户（手机号/昵称/邮箱）发起私信')}</div>`;
 
     if (blockedSection) {
       if (blocked.length) {
@@ -276,6 +299,17 @@ const ConvList = {
       } else {
         blockedSection.style.display = 'none';
       }
+    }
+
+    // 未读总数：页面标题 + 筛选按钮角标
+    const totalUnread = S.conversations.reduce((a, c) => a + (c.unread || 0), 0);
+    const totalEl = $('#convUnreadTotal');
+    if (totalEl) totalEl.textContent = totalUnread > 0 ? String(totalUnread) : '';
+    document.title = (totalUnread > 0 ? `(${totalUnread}) ` : '') + '站内信 · KJLLin';
+    const fBtn = $('#unreadFilterBtn');
+    if (fBtn) {
+      fBtn.classList.toggle('active', S.unreadOnly);
+      fBtn.setAttribute('aria-pressed', S.unreadOnly ? 'true' : 'false');
     }
 
     this._highlight();
@@ -447,7 +481,15 @@ const ChatView = {
     }
 
     this.markRead(partnerId);
-    setTimeout(() => $('#msgInput')?.focus(), 80);
+
+    // 恢复该会话的草稿
+    const input = $('#msgInput');
+    if (input) {
+      input.value = Draft.get(partnerId);
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    }
+    setTimeout(() => input?.focus(), 80);
   },
 
   close() {
@@ -496,9 +538,14 @@ const ChatView = {
     const cls = ['msg-row', isMe ? 'msg-me' : 'msg-them'];
     if (isNew) cls.push('msg-new');
     if (m._pending) cls.push('msg-pending');
+    // 撤回：本人消息、非发送中、2 分钟内
+    const canRecall = isMe && !m._pending &&
+      (Date.now() - new Date(m.created_at).getTime() < 120000);
+    // 可撤回时即使被合并进同一组，也保留一行 meta 用于放置「撤回」
+    const rowMeta = showMeta || canRecall;
     return `<div class="${cls.join(' ')}" data-mid="${m.id}">
       <div class="msg-bubble">${text}</div>
-      ${showMeta ? `<div class="msg-meta"><span class="msg-time">${U.time(m.created_at)}</span>${isMe ? this._statusHtml(m) : ''}</div>` : ''}
+      ${rowMeta ? `<div class="msg-meta">${showMeta ? `<span class="msg-time">${U.time(m.created_at)}</span>${isMe ? this._statusHtml(m) : ''}` : ''}${canRecall ? `<button type="button" class="msg-recall-inline" data-recall="${m.id}" title="撤回这条消息">撤回</button>` : ''}</div>` : ''}
     </div>`;
   },
 
@@ -647,6 +694,7 @@ const ChatView = {
     this.render();
     input.value = '';
     input.style.height = 'auto';
+    Draft.set(partnerId, '');
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
     try {
@@ -668,6 +716,7 @@ const ChatView = {
       if (i >= 0) S.messages.splice(i, 1);
       this.render({ scroll: 'keep' });
       input.value = saved;
+      Draft.set(partnerId, saved);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       Toast.error(KJ.formatSupabaseError ? KJ.formatSupabaseError(e) : '发送失败，请重试');
       input.focus();
@@ -909,6 +958,31 @@ function bindEvents() {
   input?.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    Draft.set(S.selectedId, input.value);
+  });
+
+  // 仅看未读
+  $('#unreadFilterBtn')?.addEventListener('click', () => {
+    S.unreadOnly = !S.unreadOnly;
+    ConvList.render();
+  });
+
+  // 撤回（仅自己 2 分钟内的消息）
+  $('#msgList')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-recall]');
+    if (!btn) return;
+    const id = btn.dataset.recall;
+    if (!id || !confirm('撤回这条消息？撤回后双方都将看不到。')) return;
+    try {
+      const { error } = await sb.from('private_messages')
+        .delete().eq('id', id).eq('sender_id', S.user.id);
+      if (error) throw error;
+      ChatView.removeMessage(id);
+      Toast.success('已撤回');
+    } catch (err) {
+      console.warn('recall failed:', err);
+      Toast.error('撤回失败，请稍后重试');
+    }
   });
 
   // 加载更早（事件委托，按钮是动态渲染的）
