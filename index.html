@@ -286,6 +286,249 @@
       .section-title { font-size: 24px; }
     }
   </style>
+
+  <style>
+    /* ==================== 首页 · iCloud 小组件桌面 ==================== */
+    .home-shell {
+      position: relative;
+      padding-top: 108px;
+      padding-bottom: 40px;
+      min-height: 100vh;
+    }
+    /* 背景光斑（不依赖图片） */
+    .home-shell::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(58% 46% at 14% 6%, rgba(10,132,255,.20), transparent 62%),
+        radial-gradient(48% 42% at 88% 2%, rgba(191,90,242,.16), transparent 62%),
+        radial-gradient(52% 46% at 72% 88%, rgba(48,209,88,.14), transparent 62%),
+        radial-gradient(42% 42% at 6% 92%, rgba(255,159,10,.14), transparent 62%);
+    }
+    html[data-theme="dark"] .home-shell::before {
+      background:
+        radial-gradient(58% 46% at 14% 6%, rgba(10,132,255,.22), transparent 62%),
+        radial-gradient(48% 42% at 88% 2%, rgba(191,90,242,.18), transparent 62%),
+        radial-gradient(52% 46% at 72% 88%, rgba(48,209,88,.12), transparent 62%),
+        radial-gradient(42% 42% at 6% 92%, rgba(255,159,10,.10), transparent 62%);
+    }
+
+    .home-hero {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+    .home-avatar {
+      width: 58px; height: 58px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 24px; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #0a84ff, #bf5af2);
+      box-shadow: 0 8px 24px rgba(10,132,255,.28);
+      flex-shrink: 0;
+    }
+    .home-hello { min-width: 0; flex: 1; }
+    .home-date {
+      font-size: 12px; letter-spacing: .04em;
+      color: var(--color-text-tertiary);
+      margin-bottom: 2px;
+    }
+    .home-title {
+      font-size: clamp(22px, 3.4vw, 30px);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--color-text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .home-sub {
+      font-size: 13px;
+      color: var(--color-text-tertiary);
+      margin-top: 4px;
+    }
+    .home-login {
+      padding: 9px 18px;
+      border-radius: 999px;
+      background: var(--color-accent);
+      color: var(--color-text-on-accent);
+      font-size: 14px; font-weight: 600;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    /* 网格 */
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-auto-rows: 138px;
+      gap: 16px;
+    }
+    .widget {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px;
+      border-radius: 24px;
+      background: var(--color-bg-glass);
+      backdrop-filter: var(--blur-button);
+      -webkit-backdrop-filter: var(--blur-button);
+      border: 1px solid var(--color-border);
+      box-shadow: 0 8px 26px rgba(0,0,0,.06);
+      text-decoration: none;
+      color: inherit;
+      overflow: hidden;
+      transition: transform .28s var(--spring-default, cubic-bezier(.2,.8,.2,1)),
+                  box-shadow .28s ease, border-color .28s ease;
+    }
+    .widget::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity .28s ease;
+      background: radial-gradient(120% 90% at 0% 0%, var(--w-tint, transparent), transparent 62%);
+      pointer-events: none;
+    }
+    .widget:hover {
+      transform: translateY(-3px) scale(1.012);
+      box-shadow: 0 16px 38px rgba(0,0,0,.12);
+      border-color: var(--color-border-strong, var(--color-border));
+    }
+    .widget:hover::after { opacity: 1; }
+    .widget:active { transform: translateY(-1px) scale(.998); }
+
+    .widget--chat { grid-column: span 2; grid-row: span 2; }
+
+    .w-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .w-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      color: #fff; font-size: 18px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.14);
+      flex-shrink: 0;
+    }
+    .w-icon--chat    { background: linear-gradient(135deg, #0a84ff, #5ac8fa); }
+    .w-icon--notif   { background: linear-gradient(135deg, #ff453a, #ff9f0a); }
+    .w-icon--game    { background: linear-gradient(135deg, #bf5af2, #5e5ce6); }
+    .w-icon--cloud   { background: linear-gradient(135deg, #64d2ff, #0a84ff); }
+    .w-icon--discuss { background: linear-gradient(135deg, #30d158, #64d2ff); }
+    .w-icon--profile { background: linear-gradient(135deg, #ff375f, #bf5af2); }
+    .w-icon--settings{ background: linear-gradient(135deg, #8e8e93, #636366); }
+    .w-icon--docs    { background: linear-gradient(135deg, #5e5ce6, #0a84ff); }
+
+    .widget--chat .w-icon { width: 48px; height: 48px; font-size: 21px; border-radius: 14px; }
+
+    .w-title {
+      font-size: 14px; font-weight: 600;
+      color: var(--color-text-primary);
+      letter-spacing: -.01em;
+    }
+    .w-body { margin-top: 10px; }
+    .w-big {
+      display: flex; align-items: baseline; gap: 6px;
+      margin-top: 6px;
+    }
+    .w-big span {
+      font-size: 46px; line-height: 1;
+      font-weight: 700; letter-spacing: -.03em;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .w-big small, .w-num small {
+      font-size: 12px; color: var(--color-text-tertiary);
+    }
+    .w-num { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
+    .w-num span {
+      font-size: 26px; font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .w-preview {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .w-foot {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+      margin-top: 10px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .w-foot i { font-size: 9px; opacity: .55; margin-left: auto; }
+
+    .w-badge {
+      min-width: 22px; height: 22px; padding: 0 7px;
+      border-radius: 999px;
+      background: #ff453a; color: #fff;
+      font-size: 11px; font-weight: 700; line-height: 22px;
+      text-align: center;
+    }
+    .w-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #ff453a;
+      box-shadow: 0 0 0 4px rgba(255,69,58,.15);
+    }
+
+    /* 时钟组件 */
+    .widget--clock {
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: linear-gradient(150deg, rgba(10,132,255,.14), rgba(191,90,242,.12));
+      border-color: transparent;
+    }
+    .clock-time {
+      font-size: 34px; font-weight: 700;
+      letter-spacing: -.03em;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .clock-hint {
+      font-size: 11px; color: var(--color-text-tertiary);
+      letter-spacing: .08em;
+    }
+
+    /* 每类组件的轻微色染 */
+    .widget--chat    { --w-tint: rgba(10,132,255,.10); }
+    .widget--notif   { --w-tint: rgba(255,69,58,.09); }
+    .widget--game    { --w-tint: rgba(191,90,242,.09); }
+    .widget--cloud   { --w-tint: rgba(100,210,255,.10); }
+    .widget--discuss { --w-tint: rgba(48,209,88,.09); }
+    .widget--profile { --w-tint: rgba(255,55,95,.09); }
+    .widget--settings{ --w-tint: rgba(142,142,147,.10); }
+    .widget--docs    { --w-tint: rgba(94,92,230,.09); }
+
+    @media (max-width: 900px) {
+      .widget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 132px; }
+      .widget--chat { grid-column: span 2; grid-row: span 1; }
+      .widget--chat .w-big span { font-size: 38px; }
+    }
+    @media (max-width: 560px) {
+      .home-shell { padding-top: 92px; }
+      .widget-grid { gap: 12px; grid-auto-rows: 122px; }
+      .widget { padding: 14px; border-radius: 20px; }
+      .w-icon { width: 36px; height: 36px; font-size: 15px; border-radius: 10px; }
+      .widget--chat .w-icon { width: 40px; height: 40px; font-size: 17px; }
+      .w-big span { font-size: 38px; }
+      .w-num span { font-size: 22px; }
+      .home-avatar { width: 48px; height: 48px; font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .widget, .widget::after { transition: none; }
+      .widget:hover { transform: none; }
+    }
+  </style>
+
 </head>
 <body>
   <div class="bg-base"></div>
@@ -341,45 +584,112 @@
     </div>
   </header>
 
-  <div class="container">
-    <!-- ==================== Hero — Apple 风格大标题 ==================== -->
-    <section class="hero">
-      <p class="hero-greeting">— KJLLIN —</p>
-      <h1 class="hero-name" id="typeName"><span class="cursor"></span></h1>
-      <p class="hero-subtitle">站内信 · 游戏中心 · 资源云盘 · 文章社区 — 一站式个人门户</p>
+  <div class="container home-shell">
+    <!-- ==================== 顶部问候 ==================== -->
+    <section class="home-hero">
+      <div class="home-avatar" id="homeAvatar" aria-hidden="true">K</div>
+      <div class="home-hello">
+        <p class="home-date" id="homeDate"></p>
+        <h1 class="home-title" id="homeGreet">欢迎来到 KJLLin</h1>
+        <p class="home-sub" id="homeSub">站内信 · 游戏中心 · 资源云盘 · 文章广场</p>
+      </div>
+      <a class="home-login" id="homeLogin" href="/login/" hidden>登录</a>
     </section>
 
-    <!-- ==================== 作品展示 ==================== -->
-    <section class="section">
-      <div class="section-header">
-        <p class="section-label">Projects</p>
-        <h2 class="section-title">我的作品</h2>
-      </div>
-      <div class="card-grid">
-        <a href="/chat" class="project-card" id="cardChat">
-          <div class="card-shine"></div>
-          <div class="card-icon"><i class="fas fa-envelope"></i></div>
-          <h3 class="card-title">站内信</h3>
-          <p class="card-desc">实时消息平台，内置账号系统、敏感词过滤、深色模式，全端兼容。</p>
-          <div class="card-tags"><span class="tag">实时通信</span><span class="tag">Supabase</span><span class="tag">管理后台</span></div>
-        </a>
+    <!-- ==================== 小组件桌面 ==================== -->
+    <section class="widget-grid" aria-label="功能入口">
 
-        <a href="/game/" class="project-card" id="cardGame">
-          <div class="card-shine"></div>
-          <div class="card-icon"><i class="fas fa-gamepad"></i></div>
-          <h3 class="card-title">游戏中心</h3>
-          <p class="card-desc">精选小游戏合集：恐龙快跑、2048、贪吃蛇、石头剪刀布、舒尔特方格，支持触屏操作。</p>
-          <div class="card-tags"><span class="tag">跑酷</span><span class="tag">专注力</span><span class="tag">触屏</span></div>
-        </a>
+      <!-- 站内信：大组件 -->
+      <a href="/chat" class="widget widget--chat">
+        <div class="w-top">
+          <span class="w-icon w-icon--chat"><i class="fas fa-envelope"></i></span>
+          <span class="w-badge" id="chatBadge" hidden></span>
+        </div>
+        <div class="w-body">
+          <div class="w-title">站内信</div>
+          <div class="w-big"><span id="statChat">—</span><small>条未读</small></div>
+          <div class="w-preview" id="chatPreview">与好友保持联系</div>
+        </div>
+        <div class="w-foot"><span id="chatPartners">—</span> 个对话 <i class="fas fa-arrow-right"></i></div>
+      </a>
 
-        <a href="/cloud/" class="project-card" id="cardCloud">
-          <div class="card-shine"></div>
-          <div class="card-icon"><i class="fas fa-cloud"></i></div>
-          <h3 class="card-title">资源云盘</h3>
-          <p class="card-desc">在线文件管理，支持上传、下载、预览多种文件格式，云端存储跨设备同步。</p>
-          <div class="card-tags"><span class="tag">文件管理</span><span class="tag">云端存储</span><span class="tag">跨设备</span></div>
-        </a>
+      <!-- 通知 -->
+      <a href="/notifications/" class="widget widget--notif">
+        <div class="w-top">
+          <span class="w-icon w-icon--notif"><i class="fas fa-bell"></i></span>
+          <span class="w-dot" id="notifDot" hidden></span>
+        </div>
+        <div class="w-body">
+          <div class="w-title">通知</div>
+          <div class="w-num"><span id="statNotif">—</span><small>条未读</small></div>
+        </div>
+        <div class="w-foot">查看全部 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 时钟 -->
+      <div class="widget widget--clock" aria-hidden="true">
+        <div class="clock-time" id="clockTime">--:--</div>
+        <div class="clock-hint">现在</div>
       </div>
+
+      <!-- 游戏 -->
+      <a href="/game/" class="widget widget--game">
+        <div class="w-top"><span class="w-icon w-icon--game"><i class="fas fa-gamepad"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">游戏中心</div>
+          <div class="w-num"><span>5</span><small>款游戏</small></div>
+        </div>
+        <div class="w-foot">恐龙快跑 · 2048 · 贪吃蛇 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 云盘 -->
+      <a href="/cloud/" class="widget widget--cloud">
+        <div class="w-top"><span class="w-icon w-icon--cloud"><i class="fas fa-cloud"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">资源云盘</div>
+          <div class="w-num"><span>∞</span><small>云端空间</small></div>
+        </div>
+        <div class="w-foot">上传 · 分享 · 私有空间 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 文章广场 -->
+      <a href="/discuss/" class="widget widget--discuss">
+        <div class="w-top"><span class="w-icon w-icon--discuss"><i class="fas fa-book-open"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">文章广场</div>
+          <div class="w-num"><span id="statPosts">—</span><small>篇我的文章</small></div>
+        </div>
+        <div class="w-foot">看看大家在聊什么 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 个人主页 -->
+      <a href="/u/" class="widget widget--profile">
+        <div class="w-top"><span class="w-icon w-icon--profile"><i class="fas fa-circle-user"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">个人主页</div>
+          <div class="w-num"><span id="statProfile">—</span><small>我的动态</small></div>
+        </div>
+        <div class="w-foot">查看主页 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 设置 -->
+      <a href="/settings/" class="widget widget--settings">
+        <div class="w-top"><span class="w-icon w-icon--settings"><i class="fas fa-gear"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">设置</div>
+        </div>
+        <div class="w-foot">账号 · 隐私 · 外观 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
+      <!-- 帮助 -->
+      <a href="/docs/" class="widget widget--docs">
+        <div class="w-top"><span class="w-icon w-icon--docs"><i class="fas fa-book"></i></span></div>
+        <div class="w-body">
+          <div class="w-title">帮助文档</div>
+        </div>
+        <div class="w-foot">使用指南与常见问题 <i class="fas fa-arrow-right"></i></div>
+      </a>
+
     </section>
 
     <footer class="footer"><span>© 2026 KJLLin · All Rights Reserved</span> <span class="footer-sep">|</span> <a href="/docs/"><i class="fas fa-book"></i> 帮助文档</a></footer>
@@ -631,6 +941,137 @@
       document.body.appendChild(s);
     })(0);
   </script>
+
+  <script>
+  // ==================== 首页小组件：问候 + 实时统计 ====================
+  (function() {
+    function $(id) { return document.getElementById(id); }
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function truncate(str, n) {
+      str = String(str || '').replace(/\s+/g, ' ').trim();
+      return str.length > n ? str.slice(0, n) + '…' : str;
+    }
+    function greetingWord() {
+      var h = new Date().getHours();
+      return h < 6 ? '凌晨好' : h < 12 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+    }
+    function updateClock() {
+      var d = new Date();
+      var week = '日一二三四五六'[d.getDay()];
+      if ($('clockTime')) $('clockTime').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+      if ($('homeDate')) $('homeDate').textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + week;
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+
+    function setStat(id, value) {
+      var el = $(id);
+      if (el) el.textContent = (value === null || value === undefined) ? '—' : String(value);
+    }
+
+    function setGuest() {
+      if ($('homeGreet')) $('homeGreet').textContent = '欢迎来到 KJLLin';
+      if ($('homeSub')) $('homeSub').textContent = '登录后查看你的消息与动态';
+      if ($('homeLogin')) $('homeLogin').hidden = false;
+      setStat('statChat', '—'); setStat('statNotif', '—'); setStat('statPosts', '—');
+    }
+
+    function nickOf(user) {
+      var m = user.user_metadata || {};
+      return m.nick || m.user_name || m.full_name ||
+             (user.email ? user.email.split('@')[0] : '') || '用户';
+    }
+
+    function renderUser(user) {
+      var nick = nickOf(user);
+      var nameEl = $('homeGreet');
+      if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
+      var av = $('homeAvatar');
+      if (av) av.textContent = Array.from(nick)[0] || 'K';
+      if ($('homeLogin')) $('homeLogin').hidden = true;
+
+      if ($('statProfile')) $('statProfile').textContent = '查看';
+      loadStats(user);
+    }
+
+    function loadStats(user) {
+      var sb = null;
+      try { sb = KJ.createSupabase(); } catch (e) {}
+      if (!sb) return;
+
+      var tasks = [
+        sb.rpc('chat_conversations'),
+        sb.rpc('notif_stats'),
+        sb.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      ];
+
+      Promise.allSettled(tasks).then(function(res) {
+        // 站内信
+        try {
+          var r0 = res[0];
+          if (r0.status === 'fulfilled' && r0.value && !r0.value.error) {
+            var rows = r0.value.data || [];
+            var unread = rows.reduce(function(a, c) { return a + (Number(c.unread) || 0); }, 0);
+            setStat('statChat', unread);
+            if ($('chatPartners')) $('chatPartners').textContent = rows.length;
+            if (rows.length && rows[0].latest_text && $('chatPreview')) {
+              $('chatPreview').textContent = truncate(rows[0].latest_text, 30);
+            } else if ($('chatPreview')) {
+              $('chatPreview').textContent = '还没有对话，去找朋友聊聊';
+            }
+            var badge = $('chatBadge');
+            if (badge) {
+              badge.hidden = unread <= 0;
+              badge.textContent = unread > 99 ? '99+' : String(unread);
+            }
+          }
+        } catch (e) {}
+
+        // 通知
+        try {
+          var r1 = res[1];
+          if (r1.status === 'fulfilled' && r1.value && !r1.value.error && r1.value.data && r1.value.data.length) {
+            var un = Number(r1.value.data[0].unread) || 0;
+            setStat('statNotif', un);
+            var dot = $('notifDot');
+            if (dot) dot.hidden = un <= 0;
+          }
+        } catch (e) {}
+
+        // 文章数
+        try {
+          var r2 = res[2];
+          if (r2.status === 'fulfilled' && r2.value && typeof r2.value.count === 'number') {
+            setStat('statPosts', r2.value.count);
+          }
+        } catch (e) {}
+      });
+    }
+
+    function waitForSupabase(cb, tries) {
+      tries = tries || 0;
+      var sb = null;
+      try { sb = KJ.createSupabase(); } catch (e) {}
+      if (sb) return cb(sb);
+      if (tries > 80) return cb(null);
+      setTimeout(function() { waitForSupabase(cb, tries + 1); }, 150);
+    }
+
+    waitForSupabase(function(sb) {
+      if (!sb) { setGuest(); return; }
+      sb.auth.getSession().then(function(r) {
+        var user = r && r.data && r.data.session && r.data.session.user;
+        if (user) renderUser(user); else setGuest();
+      }).catch(setGuest);
+
+      sb.auth.onAuthStateChange(function(event, session) {
+        if (event === 'SIGNED_IN' && session && session.user) renderUser(session.user);
+        else if (event === 'SIGNED_OUT') setGuest();
+      });
+    });
+  })();
+  </script>
+
 <div id="toast" class="toast hidden"></div>
 </body>
 </html>

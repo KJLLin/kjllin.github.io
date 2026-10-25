@@ -86,6 +86,62 @@
     .btn-primary:hover { background: var(--color-accent-hover, var(--accent)); }
     .follow-btn.following { border-color: transparent; background: var(--accent-glow); color: var(--accent); }
 
+
+    /* ====================== 资料卡（2026-10 升级） ====================== */
+    .profile-hero {
+      position: relative;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--bg-mica);
+      box-shadow: var(--shadow-rest);
+      animation: fadeUp 0.5s var(--win-ease) both;
+    }
+    .profile-cover {
+      height: 132px;
+      background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 45%, #bf5af2 76%, #ff375f 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-cover::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(60% 120% at 15% 0%, rgba(255,255,255,.38), transparent 60%),
+        radial-gradient(50% 100% at 90% 110%, rgba(255,255,255,.18), transparent 60%);
+    }
+    .profile-cover::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,.22) 1px, transparent 1px);
+      background-size: 18px 18px;
+      opacity: .35;
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+    }
+    .profile-body {
+      display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+      padding: 0 28px 24px;
+    }
+    .profile-body .avatar {
+      width: 96px; height: 96px; font-size: 38px;
+      margin-top: -46px;
+      border: 4px solid var(--bg-mica);
+      box-shadow: 0 10px 28px rgba(0,0,0,.16);
+      position: relative; z-index: 1;
+    }
+    .profile-main {
+      flex: 1; min-width: 220px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 16px; flex-wrap: wrap; padding-top: 14px;
+    }
+    .profile-main .profile-info { flex: 1; min-width: 200px; }
+    @media (max-width: 560px) {
+      .profile-cover { height: 108px; }
+      .profile-body { padding: 0 18px 18px; gap: 14px; }
+      .profile-body .avatar { width: 76px; height: 76px; font-size: 30px; margin-top: -38px; }
+      .profile-main { padding-top: 8px; }
+    }
+
     /* ====================== 统计 ====================== */
     .stat-grid {
       margin-top: 20px; display: grid;
@@ -321,26 +377,33 @@
         var html = '';
 
         // 资料卡
-        html += '<div class="profile-card mica">' +
-          '<div class="avatar">' + esc((nick || '?').charAt(0).toUpperCase()) + '</div>' +
-          '<div class="profile-info">' +
-            '<div class="profile-name">' + esc(nick) +
-              (profileUser.is_admin === true ? '<span class="admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '') +
+        var actionsHtml =
+          (isSelf
+            ? '<a href="/settings/" class="btn btn-primary"><i class="fas fa-gear"></i> 用户设置</a>' +
+              '<a href="/settings/profile/" class="btn"><i class="fas fa-pen-to-square"></i> 编辑资料</a>'
+            : (currentUser
+                ? '<button type="button" class="btn follow-btn' + (following ? ' following' : '') + '" id="followBtn">' +
+                    (following ? '<i class="fas fa-check"></i> 已关注' : '<i class="fas fa-plus"></i> 关注') + '</button>'
+                : '')) +
+          (currentUser && !isSelf ? '<a href="/chat/?to=' + encodeURIComponent(targetId) + '" class="btn"><i class="fas fa-envelope"></i> 发私信</a>' : '') +
+          '<button type="button" class="btn" id="shareProfileBtn"><i class="fas fa-link"></i> 分享主页</button>';
+
+        html += '<div class="profile-hero">' +
+          '<div class="profile-cover"></div>' +
+          '<div class="profile-body">' +
+            '<div class="avatar">' + esc(Array.from(nick)[0] || '?').toUpperCase() + '</div>' +
+            '<div class="profile-main">' +
+              '<div class="profile-info">' +
+                '<div class="profile-name">' + esc(nick) +
+                  (profileUser.is_admin === true ? '<span class="admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '') +
+                '</div>' +
+                '<div class="profile-meta">' +
+                  '<span><i class="fas fa-calendar"></i> 加入于 ' + fmtDate(profileUser.created_at) + '</span>' +
+                  '<span><i class="fas fa-id-badge"></i> <span class="mono">' + esc(String(targetId).slice(0, 8)) + '</span></span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="profile-actions">' + actionsHtml + '</div>' +
             '</div>' +
-            '<div class="profile-meta">' +
-              '<span><i class="fas fa-calendar"></i> 注册于 ' + fmtDate(profileUser.created_at) + '</span>' +
-              '<span><i class="fas fa-link"></i> <span class="mono">' + esc(targetId) + '</span></span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="profile-actions">' +
-            (isSelf
-              ? '<a href="/settings/" class="btn btn-primary"><i class="fas fa-gear"></i> 用户设置</a>' +
-                '<a href="/settings/profile/" class="btn"><i class="fas fa-pen-to-square"></i> 编辑资料</a>'
-              : (currentUser
-                  ? '<button type="button" class="btn follow-btn' + (following ? ' following' : '') + '" id="followBtn">' +
-                      (following ? '<i class="fas fa-check"></i> 已关注' : '<i class="fas fa-plus"></i> 关注') + '</button>'
-                  : '')) +
-            '<a href="/chat/" class="btn"><i class="fas fa-envelope"></i> 站内信</a>' +
           '</div>' +
         '</div>';
 
@@ -358,6 +421,21 @@
         html += '<div id="postPager"></div>';
 
         $('#main').innerHTML = html;
+
+        var shareBtn = document.getElementById('shareProfileBtn');
+        if (shareBtn) {
+          shareBtn.addEventListener('click', async function() {
+            var url = location.href;
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(url);
+                KJ.toast('主页链接已复制');
+              } else {
+                window.prompt('复制主页链接', url);
+              }
+            } catch(e) { window.prompt('复制主页链接', url); }
+          });
+        }
 
         bindFollow(targetId, isSelf);
         bindFollowStats(targetId);
