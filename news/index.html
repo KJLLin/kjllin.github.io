@@ -60,7 +60,7 @@
     @media (max-width: 560px) {
       .hero-cover { aspect-ratio: 16 / 10; max-height: 220px; }
     }
-    .hero-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-cover img { width: 100%; height: 100%; object-fit: cover; object-position: center 32%; display: block; }
     .hero-body { padding: 18px 22px 20px; }
     .hero-title {
       font-size: 20px; font-weight: 700; line-height: 1.35; letter-spacing: -.01em;
@@ -104,6 +104,12 @@
       background: var(--accent-glow); color: var(--accent); font-weight: 600;
     }
 
+    .nc-hot {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: linear-gradient(135deg, #ff9f0a, #ff375f);
+      color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    }
     .nc-thumb {
       flex: 0 0 auto; width: 104px; height: 78px; border-radius: 11px;
       overflow: hidden; background: linear-gradient(135deg, #ececf0, #dcdce2);
@@ -153,7 +159,13 @@
       .hero-title { font-size: 17px; }
       .news-card { padding: 13px 14px; gap: 11px; }
       .nc-title { font-size: 14.5px; }
-      .nc-thumb { width: 82px; height: 62px; }
+      .nc-hot {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: linear-gradient(135deg, #ff9f0a, #ff375f);
+      color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    }
+    .nc-thumb { width: 82px; height: 62px; }
       .nc-summary { -webkit-line-clamp: 2; font-size: 12.5px; }
     }
   </style>
@@ -192,6 +204,8 @@
         <p class="page-sub">
           <span>来自 IT 之家</span>
           <span class="dot"></span>
+          <span>已过滤电商导购</span>
+          <span class="dot"></span>
           <span id="syncHint">服务器定时同步</span>
         </p>
       </div>
@@ -211,7 +225,7 @@
 
     <p class="foot-note">
       资讯内容版权归 <a href="https://www.ithome.com/" target="_blank" rel="noopener noreferrer">IT 之家</a> 所有，
-      本站仅做标题与摘要聚合，点击卡片跳转原文阅读。
+      本站仅做标题与摘要聚合，并自动过滤促销导购类内容，点击卡片跳转原文阅读。
     </p>
   </div>
 
@@ -262,6 +276,7 @@
           '<div class="hero-title">' + esc(it.title) + '</div>' +
           (it.summary ? '<div class="hero-summary">' + esc(it.summary) + '</div>' : '') +
           '<div class="nc-meta"><span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+            (it.importance >= 5 ? '<span class="nc-hot"><i class="fas fa-star"></i> 精选</span>' : '') +
             '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
             '<span>· 头条</span></div>' +
         '</div>' +
@@ -275,6 +290,7 @@
           (it.summary ? '<div class="nc-summary">' + esc(it.summary) + '</div>' : '') +
           '<div class="nc-meta">' +
             '<span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+            (it.importance >= 5 ? '<span class="nc-hot"><i class="fas fa-star"></i> 精选</span>' : '') +
             '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
           '</div>' +
         '</div>' +

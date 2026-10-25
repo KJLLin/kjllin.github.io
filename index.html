@@ -1580,7 +1580,7 @@ html[data-theme="dark"] .catalog-sheet {
     if (id === 'news') {
       var nit = d.news;
       return '<div class="w-title">资讯</div>' +
-        '<div class="w-num"><span>' + statText(s.newsTotal) + '</span><small>条科技新闻</small></div>' +
+        '<div class="w-num"><span>' + statText(s.newsTotal) + '</span><small>条精选资讯</small></div>' +
         (nit && nit.title ? '<div class="w-preview">' + esc(nit.title) + '</div>' : '');
     }
     if (id === 'profile') {
@@ -2024,7 +2024,7 @@ html[data-theme="dark"] .catalog-sheet {
   // ---------------- 用户状态 ----------------
   function setGuest() {
     var g = $('homeGreet');
-    if (g) g.textContent = '欢迎来到 KJLLin';
+    if (g) g.textContent = greetingWord();
     var sub = $('homeSub');
     if (sub) sub.textContent = '登录后查看你的消息与动态';
     var login = $('homeLogin');
@@ -2042,7 +2042,7 @@ html[data-theme="dark"] .catalog-sheet {
     STATE.user = user;
     var nick = nickOf(user);
     var nameEl = $('homeGreet');
-    if (nameEl) nameEl.textContent = '欢迎回来，' + nick;
+    if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
     var login = $('homeLogin');
     if (login) login.hidden = true;
 
