@@ -326,12 +326,13 @@
         $('#loginPrompt').style.display='none';$('#settingsContent').style.display='block';
 
         var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
-        $('#avatarEl').textContent=nick.charAt(0).toUpperCase();
+        KJ.paintAvatar($('#avatarEl'), { nick: nick });
         $('#nameEl').textContent=nick;
         $('#emailEl').textContent=user.email||'';
         // 管理员标识：查询 users 表 is_admin 字段
         try{
-          var ra=await sb.from('users').select('is_admin').eq('id',user.id).limit(1);
+          var ra=await sb.from('users').select('is_admin,avatar_url').eq('id',user.id).limit(1);
+          if(ra.data&&ra.data.length){ KJ.paintAvatar($('#avatarEl'), { nick: nick, avatar_url: ra.data[0].avatar_url||'' }); }
           if(ra.data&&ra.data.length&&ra.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';var ae=$('#adminEntry');if(ae)ae.style.display='';}
         }catch(e){}
 

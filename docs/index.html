@@ -778,7 +778,7 @@ var docs = {
     content: '<p>首页采用类 iCloud 的<strong>桌面小组件</strong>布局，把消息、通知与各功能入口集中在一屏。</p>'
       + '<h2 id="layout">小组件布局<a href="#layout" class="anchor-icon">#</a></h2>'
       + '<p>桌面端为 4 列网格，站内信是占据 2×2 的主组件；窄屏自动变为 2 列，主组件转为通栏。</p>'
-      + '<ul><li>顶部显示头像、当前日期与时段问候（早上好 / 下午好 / 晚上好）</li>'
+      + '<ul><li>顶部显示当前日期与时段问候（早上好 / 下午好 / 晚上好）</li>'
       + '<li>右侧为实时时钟组件</li>'
       + '<li>其余为站内信、通知、游戏、云盘、文章广场、个人主页、设置、帮助文档</li></ul>'
       + '<h2 id="stats">实时数据<a href="#stats" class="anchor-icon">#</a></h2>'
@@ -843,7 +843,7 @@ var docs = {
     title: '游戏总览',
     category: '游戏中心',
     meta: 'KJLLin 游戏中心提供的所有游戏一览',
-    toc: [['游戏列表', 'game-list'], ['云端排行榜', 'leaderboard']],
+    toc: [['游戏列表', 'game-list'], ['继续上次', 'recent'], ['收藏置顶', 'pin'], ['我的战绩', 'records'], ['云端排行榜', 'leaderboard']],
     content: '<p>KJLLin 游戏中心提供多款精选小游戏，支持触屏和键盘操作，所有游戏均支持云端排行榜。</p>'
       + '<h2 id="game-list">游戏列表<a href="#game-list" class="anchor-icon">#</a></h2>'
       + '<div class="card-grid">'
@@ -853,6 +853,12 @@ var docs = {
       + '<a class="feature-card" href="/game/snake/"><div class="fc-icon"><i class="fas fa-snake"></i></div><h4>贪吃蛇</h4><p>经典怀旧游戏</p></a>'
       + '<a class="feature-card" href="/game/schulte/"><div class="fc-icon"><i class="fas fa-table-cells"></i></div><h4>舒尔特方格</h4><p>注意力训练工具</p></a>'
       + '</div>'
+      + '<h2 id="recent">继续上次<a href="#recent" class="anchor-icon">#</a></h2>'
+      + '<p>从游戏中心点进过的游戏会记在「继续上次」里，显示最近玩过的时间和顺序，最多保留 6 个，一点就回到游戏。</p>'
+      + '<h2 id="pin">收藏置顶<a href="#pin" class="anchor-icon">#</a></h2>'
+      + '<p>把鼠标移到任意游戏卡片上，点右上角的<strong>星标</strong>即可收藏。收藏的游戏会自动排到列表最前面；再点一次取消收藏。收藏状态保存在本机。</p>'
+      + '<h2 id="records">我的战绩<a href="#records" class="anchor-icon">#</a></h2>'
+      + '<p>卡片上的金色小标签显示你在该游戏的<strong>本机最好成绩</strong>：2048 与贪吃蛇为最高分，舒尔特方格为最短用时。成绩由游戏自己记录，清空浏览器数据会一并清除。</p>'
       + '<h2 id="leaderboard">云端排行榜<a href="#leaderboard" class="anchor-icon">#</a></h2>'
       + '<p>登录后，你的最高分会自动同步到云端。更换设备游戏时，分数不会丢失。点击游戏页的排行榜可查看全站排名。</p>'
   },
@@ -963,7 +969,8 @@ var docs = {
     toc: [['浏览文章', 'browse'], ['发布文章', 'post'], ['点赞与关注', 'social'], ['阅读模式', 'reading'], ['Markdown 支持', 'markdown']],
     content: '<p>文章广场是用户交流的公共空间，支持写文章、回复、点赞与关注，内容支持 Markdown 格式和代码高亮。</p>'
       + '<h2 id="browse">浏览文章<a href="#browse" class="anchor-icon">#</a></h2>'
-      + '<p>文章广场首页展示最新文章，支持分页浏览。点击文章标题进入详情页查看完整内容和回复。</p>'
+      + '<p>文章广场首页展示最新文章，支持分页浏览。每张卡片显示标题、<strong>两行内容摘要</strong>、作者头像与昵称、发布时间和点赞数，不用点进去也能大致判断内容。</p>'
+      + '<p>作者昵称与头像都是<strong>实时读取</strong>的：作者改名或换头像后，历史文章会自动跟着更新，不会留下旧昵称。点击文章标题进入详情页查看完整内容和回复。</p>'
       + '<h2 id="post">发布文章<a href="#post" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
       + '<li><span class="step-content">点击「发布新帖」按钮。</span></li>'
@@ -1066,11 +1073,18 @@ var docs = {
     title: '设置中心',
     category: '账号与安全',
     meta: '账户概览、私信隐私、外观与会话管理',
-    toc: [['账户概览', 'overview'], ['私信接收设置', 'privacy'], ['外观', 'appearance'], ['退出登录', 'logout']],
+    toc: [['账户概览', 'overview'], ['头像', 'avatar'], ['私信接收设置', 'privacy'], ['外观', 'appearance'], ['退出登录', 'logout']],
     content: '<p><a href="/settings/">设置中心</a>集中管理账号、隐私与外观。</p>'
       + '<h2 id="overview">账户概览<a href="#overview" class="anchor-icon">#</a></h2>'
       + '<p>顶部卡片显示头像、昵称、邮箱与管理员标识，并提供快捷入口：个人主页、站内信、编辑资料。</p>'
       + '<p>卡片下方展示三项实时数据：<strong>未读通知</strong>、<strong>登录设备数</strong>、<strong>我的文章数</strong>。</p>'
+      + '<h2 id="avatar">头像<a href="#avatar" class="anchor-icon">#</a></h2>'
+      + '<p>在 <a href="/settings/profile/">个人资料</a> 里可以换头像：</p>'
+      + '<ul><li>点一下头像即可选择本地图片，也可以直接把图片拖到头像上</li>'
+      + '<li>支持 JPG / PNG / WebP / GIF，<strong>最大 5MB</strong>；上传前会自动<strong>居中裁成方形</strong>并压到 512×512，所以上传大图也会很快</li>'
+      + '<li>不设置头像时，系统用<strong>昵称首字</strong>加一组随机的柔和渐变色作为默认头像，同一个人每次看到的颜色都一样</li>'
+      + '<li>点「恢复默认头像」会删除已上传的图片并回到首字头像</li>'
+      + '<li>头像会同步出现在导航栏、个人主页、文章列表与详情、站内信会话等位置</li></ul>'
       + '<h2 id="privacy">私信接收设置<a href="#privacy" class="anchor-icon">#</a></h2>'
       + '<p>决定谁可以给你发私信，修改后立即生效：</p>'
       + '<ul><li><strong>所有人（拉黑除外）</strong> — 默认，最开放</li>'
@@ -1147,6 +1161,10 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>自定义头像：</strong>支持上传图片作为头像（自动裁成方形并压缩），未上传时使用昵称首字 + 稳定渐变；头像同步显示在导航栏、个人主页、文章、站内信等位置。</li>'
+      + '<li><strong>游戏中心增强：</strong>新增「继续上次」最近游玩、星标收藏置顶、本机最高分战绩徽章与数字键快捷进入。</li>'
+      + '<li><strong>文章广场：</strong>列表新增两行内容摘要与作者头像；未登录提示改为轻量横条，不再挤占首屏。</li>'
+      + '<li><strong>修复：</strong>通知中心在部分环境把样式代码当正文显示的问题。</li>'
       + '<li><strong>桌面编辑：</strong>编辑状态改为 iOS 式轻微抖动；支持按住拖动排序（手机端长按浮起，不影响滚动），左上角 × 移除，排版按账号<strong>云端同步</strong>，换设备自动恢复。</li>'
       + '<li><strong>导航升级：</strong>顶部导航改为毛玻璃悬浮条，当前页面自动高亮；窄屏收起菜单项并保留移动端下拉。</li>'
       + '<li><strong>站内信重构：</strong>会话列表改由数据库聚合；消息支持游标分页、日期分隔与连续消息合并；新增草稿保存、2 分钟内撤回、已读回执（✓ / ✓✓）与「仅看未读」筛选。</li>'

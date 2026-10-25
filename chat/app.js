@@ -171,6 +171,7 @@ const Store = {
       partnerId: r.partner_id,
       nick: r.nick || '',
       isAdmin: r.is_admin === true,
+      avatar_url: r.avatar_url || '',
       latestText: r.latest_text || '',
       latestTime: r.latest_time,
       unread: Number(r.unread) || 0,
@@ -206,11 +207,11 @@ const Store = {
   async profile(userId) {
     const { data, error } = await sb
       .from('profiles_public')
-      .select('id, nick, is_admin')
+      .select('id, nick, is_admin, avatar_url')
       .eq('id', userId)
       .maybeSingle();
     if (error) return null;
-    return data ? { nick: data.nick || '', isAdmin: data.is_admin === true } : null;
+    return data ? { nick: data.nick || '', isAdmin: data.is_admin === true, avatar_url: data.avatar_url || '' } : null;
   },
 
   async blocks() {
@@ -236,7 +237,7 @@ const ConvList = {
       S.blockedList = blocks;
       S.conversations = convs;
       for (const c of convs) {
-        S.partners[c.partnerId] = { nick: c.nick, is_admin: c.isAdmin };
+        S.partners[c.partnerId] = { nick: c.nick, is_admin: c.isAdmin, avatar_url: c.avatar_url || '' };
       }
       this.render();
     } catch (e) {
@@ -318,7 +319,7 @@ const ConvList = {
   _item(c, isBlocked) {
     const p = S.partners[c.partnerId] || {};
     const name = p.nick || '用户';
-    const avatar = U.initial(name);
+    const avatar = KJ.avatarHtml({ id: c.partnerId, nick: name, avatar_url: p.avatar_url }, { size: 40, className: 'conv-avatar' });
     const preview = U.escape((c.latestText || '').replace(/\s+/g, ' ').slice(0, 40));
     const time = U.shortTime(c.latestTime);
     const badge = c.unread > 0
@@ -327,7 +328,7 @@ const ConvList = {
       ? '<span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '';
 
     return `<div class="conv-item" data-id="${c.partnerId}" role="button" tabindex="0" aria-label="与 ${U.escape(name)} 的对话">
-      <div class="conv-avatar">${avatar}</div>
+      ${avatar}
       <div class="conv-body">
         <div class="conv-top">
           <span class="conv-name">${U.escape(name)}${adminBadge}</span>
@@ -759,8 +760,8 @@ const Search = {
         const name = u.nick || '未设置昵称';
         const badge = u.is_admin === true
           ? ' <span class="chat-admin-badge"><i class="fas fa-shield-halved"></i> 管理员</span>' : '';
-        return `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(name)}" data-admin="${u.is_admin === true ? '1' : ''}" role="button" tabindex="0">
-          <span class="search-avatar">${U.initial(name)}</span>
+        return `<div class="search-item" data-id="${u.id}" data-nick="${U.escape(name)}" data-avatar="${U.escape(u.avatar_url || '')}" data-admin="${u.is_admin === true ? '1' : ''}" role="button" tabindex="0">
+          ${KJ.avatarHtml({ id: u.id, nick: name, avatar_url: u.avatar_url }, { size: 34, className: 'search-avatar' })}
           <div class="search-info">
             <span class="search-nick">${U.escape(name)}${badge}</span>
             <span class="search-email">${U.escape(u.hint || '')}</span>
@@ -776,8 +777,8 @@ const Search = {
     }
   },
 
-  select(userId, nick, isAdmin) {
-    S.partners[userId] = { nick: nick || '用户', is_admin: isAdmin === true };
+  select(userId, nick, isAdmin, avatarUrl) {
+    S.partners[userId] = { nick: nick || '用户', is_admin: isAdmin === true, avatar_url: avatarUrl || '' };
     $('#searchResults')?.classList.add('hidden');
     const box = $('#searchResults');
     if (box) box.innerHTML = '';
@@ -871,7 +872,7 @@ function bindEvents() {
   const onSelectResult = (e) => {
     const item = e.target.closest('.search-item');
     if (!item) return;
-    Search.select(item.dataset.id, item.dataset.nick, item.dataset.admin === '1');
+    Search.select(item.dataset.id, item.dataset.nick, item.dataset.admin === '1', item.dataset.avatar || '');
   };
   $('#searchResults')?.addEventListener('click', onSelectResult);
   $('#searchResults')?.addEventListener('keydown', (e) => {
@@ -1064,7 +1065,7 @@ async function init() {
     const to = new URLSearchParams(location.search).get('to');
     if (to && to !== S.user.id) {
       const p = await Store.profile(to).catch(() => null);
-      Search.select(to, p?.nick || '用户', p?.isAdmin === true);
+      Search.select(to, p?.nick || '用户', p?.isAdmin === true, p?.avatar_url || '');
     }
   } catch (e) {
     console.error('Chat init failed:', e);
