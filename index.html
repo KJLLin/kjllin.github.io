@@ -528,6 +528,19 @@
     }
     @media (max-width: 560px) {
       .home-shell { padding-top: 92px; }
+      .home-hero { gap: 12px; }
+      .home-title {
+        font-size: 19px;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .home-edit { padding: 9px 11px; }
+      .home-edit span { display: none; }
+      .home-login { padding: 9px 14px; font-size: 13px; }
+      .sync-hint { display: none !important; }
       .home-sub { display: none; }
       .widget-grid { gap: 12px; grid-auto-rows: 150px; }
       .widget { padding: 14px; border-radius: 20px; }
@@ -595,50 +608,164 @@ html[data-theme="dark"] .widget {
 html[data-theme="dark"] .home-edit { background: rgba(255, 255, 255, 0.08); }
 html[data-theme="dark"] .home-edit:hover { background: rgba(255, 255, 255, 0.14); }
 
-/* 编辑态：静态虚线框 + 工具栏（不做抖动，保证按钮可点、也更友好） */
-.home-editing .widget:not(.widget--add) {
-  cursor: default;
-  outline: 1.5px dashed rgba(10, 132, 255, 0.38);
-  outline-offset: -4px;
-}
-.home-editing .widget:not(.widget--add):hover {
-  transform: none;
-  outline-color: rgba(10, 132, 255, 0.7);
+/* ==================== 编辑态：iOS 抖动 ==================== */
+
+/* 抖动关键帧：角度极小（±0.55deg），肉眼是「颤」而不是「转」 */
+@keyframes iosWiggle {
+  0%   { transform: rotate(-0.55deg) translate3d(-0.4px, 0.4px, 0); }
+  25%  { transform: rotate(0.50deg)  translate3d(0.4px, -0.4px, 0); }
+  50%  { transform: rotate(-0.42deg) translate3d(-0.4px, -0.4px, 0); }
+  75%  { transform: rotate(0.58deg)  translate3d(0.4px, 0.4px, 0); }
+  100% { transform: rotate(-0.55deg) translate3d(-0.4px, 0.4px, 0); }
 }
 
-/* 组件工具栏 */
-.widget-toolbar { display: none; }
-.home-editing .widget-toolbar {
-  display: flex;
-  gap: 6px;
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 6;
+.home-editing .widget:not(.widget--add) {
+  cursor: default;
+  outline: 1.5px dashed rgba(10, 132, 255, 0.34);
+  outline-offset: -4px;
+  /* 每个组件用不同的负延迟错开相位，避免整齐划一的机械感 */
+  animation: iosWiggle 0.4s ease-in-out infinite;
+  animation-delay: var(--wiggle-delay, 0s);
+  transform-origin: 50% 50%;
+  will-change: transform;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
+
+/* 指针进入 / 键盘聚焦 / 按下时暂停 —— iOS 上手指按住图标同样会停住，
+   这既符合直觉，也让按钮在一次「瞄准」里稳定可点。 */
+.home-editing .widget:not(.widget--add):hover,
+.home-editing .widget:not(.widget--add):focus-within,
+.home-editing .widget:not(.widget--add):active {
+  animation-play-state: paused;
+  outline-color: rgba(10, 132, 255, 0.66);
+}
+
+/* 拖动中的组件：停止抖动，跟随指针，抬起一层 */
+.home-editing .widget.is-dragging {
+  animation: none !important;
+  z-index: 60;
+  cursor: grabbing;
+  pointer-events: none;            /* 让 elementFromPoint 命中底下的落点组件 */
+  outline-color: rgba(10, 132, 255, 0.9);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: box-shadow .2s ease;
+}
+
+/* 给左上角 × 让位（仅可删除的组件；固定组件没有 ×，保持原对齐） */
+.home-editing .widget:not(.widget--add):not(.widget--fixed) > .w-top { padding-left: 26px; }
+
+/* 编辑态收起底部说明，把空间让给排序按钮，避免文字被压 */
+.home-editing .widget:not(.widget--add) { justify-content: flex-start; }
+.home-editing .widget:not(.widget--add) > .w-foot { display: none; }
+.home-editing .widget:not(.widget--add) > .w-body { padding-bottom: 30px; }
+/* 拖动经过时，落点组件给出插入提示 */
+.home-editing .widget.is-drop-target {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+  animation-play-state: paused;
+}
+.home-editing .widget.is-drop-target::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(10, 132, 255, 0.09);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 无抖动偏好 / 触摸端省电 */
+@media (prefers-reduced-motion: reduce) {
+  .home-editing .widget:not(.widget--add) { animation: none; }
+}
+
+/* ==================== 组件工具栏 ==================== */
+
+/* 左上角删除：iOS 原生圆形 × */
 .wt-btn {
-  width: 26px; height: 26px;
+  position: relative;
+  width: 24px; height: 24px;
   border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.92);
-  color: #3a3a3c;
-  font-size: 13px; line-height: 1;
+  border: none;
+  background: rgba(60, 60, 67, 0.66);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 14px; line-height: 1;
   display: grid; place-items: center;
   cursor: pointer;
   padding: 0;
   font-family: inherit;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
   transition: background .15s ease, transform .15s ease;
 }
-.wt-btn:hover { background: #fff; transform: scale(1.06); }
-.wt-btn:active { transform: scale(.94); }
-.wt-del { color: #ff453a; }
-html[data-theme="dark"] .wt-btn {
-  background: rgba(58, 58, 60, 0.95);
-  color: #f2f2f7;
-  border-color: rgba(255, 255, 255, 0.12);
+.wt-btn:hover { background: rgba(60, 60, 67, 0.86); }
+.wt-btn:active { transform: scale(.9); }
+
+.wt-del {
+  display: none;
+  position: absolute;
+  left: 8px; top: 8px;
+  z-index: 7;
 }
-html[data-theme="dark"] .wt-btn:hover { background: rgba(72, 72, 74, 0.98); }
+.home-editing .wt-del { display: grid; }
+
+/* 右下角辅助排序按钮（键盘 / 触摸精确微调） */
+.widget-move {
+  display: none;
+  position: absolute;
+  right: 10px; bottom: 10px;
+  gap: 6px;
+  z-index: 7;
+}
+.home-editing .widget-move { display: flex; }
+.widget-move .wt-btn {
+  width: 26px; height: 26px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #3a3a3c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+}
+/* 触摸热区扩到 ~40px，视觉尺寸仍保持轻巧 */
+.wt-btn::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+.widget-move .wt-btn:hover { background: #fff; }
+html[data-theme="dark"] .widget-move .wt-btn {
+  background: rgba(58, 58, 60, 0.92);
+  color: #f2f2f7;
+}
+html[data-theme="dark"] .wt-btn { background: rgba(120, 120, 128, 0.66); }
+html[data-theme="dark"] .wt-del { background: rgba(120, 120, 128, 0.8); }
+html[data-theme="dark"] .widget-move .wt-btn:hover { background: rgba(72, 72, 74, 0.98); }
+
+/* 拖拽期间锁住页面滚动与选择 */
+body.dragging-widget {
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: contain;
+}
+
+/* 同步状态提示 */
+.sync-hint {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.sync-hint.show { display: inline-flex; }
+.sync-hint i { font-size: 11px; }
+.sync-hint.is-ok { color: #34c759; }
+.sync-hint.is-warn { color: #ff9f0a; }
 
 /* 添加入口 */
 .widget--add {
@@ -913,6 +1040,7 @@ html[data-theme="dark"] .catalog-sheet {
         <p class="home-sub" id="homeSub">站内信 · 游戏中心 · 资源云盘 · 文章广场</p>
       </div>
       <div class="home-actions">
+        <span class="sync-hint" id="syncHint" role="status" aria-live="polite"></span>
         <a class="home-login" id="homeLogin" href="/login/" hidden>登录</a>
         <button type="button" class="home-edit" id="editWidgetsBtn" aria-pressed="false">
           <i class="fas fa-sliders"></i> 编辑
@@ -1244,28 +1372,153 @@ html[data-theme="dark"] .catalog-sheet {
     data: { convs: [], posts: [], announce: null }
   };
 
-  // ---------------- 布局持久化 ----------------
+  // ---------------- 布局：本地缓存 + 云端同步 ----------------
+  // 本地负责「秒开」，云端负责「跨设备」。冲突用 client_ts 做 last-write-wins。
+  var LAYOUT_VERSION = 2;
+  var SYNC_DEBOUNCE = 1100;
+  var syncTimer = null;
+
   function layoutKey() {
     return 'kj_home_layout_v1_' + (STATE.user ? STATE.user.id : 'guest');
   }
-  function loadLayout() {
+
+  // 只保留合法的组件 id，去重；FIXED 组件永远补齐在最前
+  function sanitizeLayout(arr) {
+    if (!Array.isArray(arr)) return null;
+    var out = [];
+    arr.forEach(function(id) {
+      if (typeof id === 'string' && WIDGETS[id] && out.indexOf(id) < 0) out.push(id);
+    });
+    FIXED.forEach(function(id) {
+      if (out.indexOf(id) < 0) out.unshift(id);
+    });
+    return out.length ? out : null;
+  }
+
+  function readLocal() {
     try {
       var raw = localStorage.getItem(layoutKey());
-      if (raw) {
-        var arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          arr = arr.filter(function(id) { return WIDGETS[id]; });
-          FIXED.forEach(function(id) {
-            if (arr.indexOf(id) < 0) arr.unshift(id);
-          });
-          if (arr.length) return arr;
-        }
+      if (!raw) return null;
+      var v = JSON.parse(raw);
+      if (Array.isArray(v)) {                 // v1：纯数组，无时间戳
+        var a = sanitizeLayout(v);
+        return a ? { order: a, ts: 0 } : null;
+      }
+      if (v && typeof v === 'object') {
+        var a2 = sanitizeLayout(v.order);
+        if (a2) return { order: a2, ts: Number(v.ts) || 0 };
       }
     } catch (e) {}
-    return DEFAULT_LAYOUT.slice();
+    return null;
   }
-  function saveLayout() {
-    try { localStorage.setItem(layoutKey(), JSON.stringify(STATE.layout)); } catch (e) {}
+
+  function writeLocal(order, ts) {
+    try {
+      localStorage.setItem(layoutKey(), JSON.stringify({ v: LAYOUT_VERSION, order: order, ts: ts }));
+    } catch (e) {}
+  }
+
+  function loadLayout() {
+    var loc = readLocal();
+    return loc ? loc.order.slice() : DEFAULT_LAYOUT.slice();
+  }
+
+  function setSyncHint(kind, text) {
+    var el = $('syncHint');
+    if (!el) return;
+    clearTimeout(el._t);
+    if (!text) { el.className = 'sync-hint'; el.innerHTML = ''; return; }
+    var icon = kind === 'ok' ? 'fa-cloud-arrow-up'
+             : kind === 'warn' ? 'fa-triangle-exclamation'
+             : 'fa-cloud';
+    el.className = 'sync-hint show' + (kind === 'ok' ? ' is-ok' : kind === 'warn' ? ' is-warn' : '');
+    el.innerHTML = '<i class="fas ' + icon + '"></i>' + esc(text);
+    if (kind === 'ok') {
+      el._t = setTimeout(function() { el.className = 'sync-hint'; el.innerHTML = ''; }, 2600);
+    }
+  }
+
+  function layoutClient() {
+    try { return KJ.createSupabase(); } catch (e) { return null; }
+  }
+
+  function pushLayout(sb, userId, order, ts) {
+    return sb.rpc('save_home_layout', { p_layout: order, p_client_ts: ts })
+      .then(function(r) {
+        if (r && r.error) { setSyncHint('warn', '仅保存在本机'); return false; }
+        setSyncHint('ok', '已同步到云端');
+        return true;
+      })
+      .catch(function() { setSyncHint('warn', '仅保存在本机'); return false; });
+  }
+
+  // 拉云端；返回最终应使用的顺序
+  function pullLayout(sb, userId) {
+    if (!sb || !userId) return Promise.resolve(loadLayout());
+    return sb.rpc('get_home_layout')
+      .then(function(r) {
+        if (r && r.error) throw r.error;
+        var row = (r.data && r.data[0]) || null;
+        var loc = readLocal();
+        var localTs = loc ? loc.ts : 0;
+
+        if (!row) {
+          // 云端还没有：把本地布局迁上去
+          var seed = loc && loc.order.length ? loc.order : DEFAULT_LAYOUT.slice();
+          pushLayout(sb, userId, seed.slice(), localTs || Date.now());
+          return seed;
+        }
+
+        var cloudOrder = sanitizeLayout(row.layout);
+        var cloudTs = Number(row.client_ts) || 0;
+
+        if (cloudOrder && cloudTs > localTs) {          // 云端更新 → 覆盖本机
+          writeLocal(cloudOrder, cloudTs);
+          return cloudOrder;
+        }
+        if (loc && localTs > cloudTs) {                 // 本机更新 → 推上去
+          pushLayout(sb, userId, loc.order.slice(), localTs);
+        }
+        return loc && loc.order.length ? loc.order : (cloudOrder || DEFAULT_LAYOUT.slice());
+      })
+      .catch(function() { return loadLayout(); });
+  }
+
+  function saveLayout(immediate) {
+    var ts = Date.now();
+    writeLocal(STATE.layout, ts);
+
+    var sb = layoutClient();
+    var uid = STATE.user && STATE.user.id;
+    if (!sb || !uid) { setSyncHint('', ''); return; }   // 未登录：只存本机
+
+    setSyncHint('', '同步中…');
+    clearTimeout(syncTimer);
+    var snapshot = STATE.layout.slice();
+    if (immediate) {
+      syncTimer = null;
+      pushLayout(sb, uid, snapshot, ts);
+      return;
+    }
+    syncTimer = setTimeout(function() {
+      syncTimer = null;
+      pushLayout(sb, uid, snapshot, ts);
+    }, SYNC_DEBOUNCE);
+  }
+
+  // 从云端刷新（切换标签页回来 / 登录时）
+  function refreshLayoutFromCloud() {
+    if (!STATE.user || STATE.editing) return Promise.resolve();
+    var sb = layoutClient();
+    if (!sb) return Promise.resolve();
+    return pullLayout(sb, STATE.user.id).then(function(order) {
+      if (!order || !order.length || STATE.editing) return;
+      var same = order.length === STATE.layout.length &&
+                 order.every(function(v, i) { return v === STATE.layout[i]; });
+      if (same) return;
+      STATE.layout = order;
+      renderGrid();
+    });
   }
 
   // ---------------- 渲染 ----------------
@@ -1382,16 +1635,21 @@ html[data-theme="dark"] .catalog-sheet {
       if (!w) return '';
       var size = w.size === 'lg' ? ' widget--lg' : (w.size === 'md' ? ' widget--md' : '');
       var attrs = w.href ? ' data-href="' + w.href + '" role="link" tabindex="0"' : '';
-      var toolbar = '<span class="widget-toolbar">' +
-        '<button type="button" class="wt-btn" data-move="-1" data-id="' + id + '" aria-label="向前移动">‹</button>' +
-        '<button type="button" class="wt-btn" data-move="1" data-id="' + id + '" aria-label="向后移动">›</button>' +
-        (w.fixed ? '' : '<button type="button" class="wt-btn wt-del" data-remove="' + id + '" aria-label="移除组件">×</button>') +
+      // 每个组件一个随机负延迟，让抖动相位错开（iOS 也是这样各不相同）
+      var delay = (-(Math.random() * 0.4)).toFixed(2) + 's';
+      var delBtn = w.fixed ? '' :
+        '<button type="button" class="wt-btn wt-del" data-remove="' + id + '" aria-label="移除' + esc(w.title) + '">×</button>';
+      var moveBtns = '<span class="widget-move">' +
+        '<button type="button" class="wt-btn" data-move="-1" data-id="' + id + '" aria-label="' + esc(w.title) + ' 前移">‹</button>' +
+        '<button type="button" class="wt-btn" data-move="1" data-id="' + id + '" aria-label="' + esc(w.title) + ' 后移">›</button>' +
         '</span>';
-      return '<div class="widget' + size + ' widget--' + w.color + '" data-w="' + id + '"' + attrs + '>' +
+      return '<div class="widget' + size + ' widget--' + w.color +
+        (w.fixed ? ' widget--fixed' : '') + '" data-w="' + id + '"' +
+        ' style="--wiggle-delay:' + delay + '"' + attrs + '>' +
         topHtml(id) +
         '<div class="w-body">' + bodyHtml(id) + '</div>' +
         (footHtml(id) ? '<div class="w-foot">' + footHtml(id) + '</div>' : '') +
-        toolbar +
+        delBtn + moveBtns +
         '</div>';
     }).join('');
 
@@ -1421,10 +1679,10 @@ html[data-theme="dark"] .catalog-sheet {
       btn.classList.toggle('active', STATE.editing);
       btn.setAttribute('aria-pressed', STATE.editing ? 'true' : 'false');
       btn.innerHTML = STATE.editing
-        ? '<i class="fas fa-check"></i> 完成'
-        : '<i class="fas fa-sliders"></i> 编辑';
+        ? '<i class="fas fa-check"></i><span>完成</span>'
+        : '<i class="fas fa-sliders"></i><span>编辑</span>';
     }
-    if (!STATE.editing) closeCatalog();
+    if (!STATE.editing) { closeCatalog(); saveLayout(true); }   // 点「完成」立即落库
     renderGrid();
   }
 
@@ -1465,7 +1723,7 @@ html[data-theme="dark"] .catalog-sheet {
       '<div class="catalog-sheet" role="dialog" aria-modal="true" aria-label="添加组件">' +
         '<div class="catalog-head"><h3>添加小组件</h3>' +
           '<button type="button" class="catalog-close" id="catalogClose" aria-label="关闭">×</button></div>' +
-        '<p class="catalog-tip">选择要放到桌面上的组件。拖动右上角按钮可以调整顺序。</p>' +
+        '<p class="catalog-tip">选择要放到桌面上的组件。按住组件可拖动排序，排版会自动同步到你的账号。</p>' +
         items +
         '<div class="catalog-foot">' +
           '<button type="button" class="catalog-reset" id="catalogReset">恢复默认布局</button>' +
@@ -1480,7 +1738,7 @@ html[data-theme="dark"] .catalog-sheet {
     $('catalogDone').addEventListener('click', closeCatalog);
     $('catalogReset').addEventListener('click', function() {
       STATE.layout = DEFAULT_LAYOUT.slice();
-      saveLayout();
+      saveLayout(true);
       renderGrid();
       closeCatalog();
     });
@@ -1508,7 +1766,119 @@ html[data-theme="dark"] .catalog-sheet {
     var grid = $('widgetGrid');
     if (!grid) return;
 
+    var drag = null;
+    var suppressClick = false;
+
+    function killDrag(animateBack) {
+      if (!drag) return;
+      var el = drag.el;
+      clearTimeout(drag.longPress);
+      document.body.classList.remove('dragging-widget');
+      var t = grid.querySelector('.is-drop-target');
+      if (t) t.classList.remove('is-drop-target');
+
+      if (drag.started) {
+        suppressClick = true;
+        setTimeout(function() { suppressClick = false; }, 60);
+        if (animateBack) {
+          el.style.transition = 'transform .18s cubic-bezier(.2,.8,.2,1)';
+          el.style.transform = 'translate3d(0,0,0)';
+          setTimeout(function() {
+            el.classList.remove('is-dragging');
+            el.style.transition = '';
+            el.style.transform = '';
+          }, 180);
+        } else {
+          el.classList.remove('is-dragging');
+          el.style.transform = '';
+        }
+      }
+      drag = null;
+    }
+
+    function startDrag() {
+      if (!drag || drag.started) return;
+      drag.started = true;
+      drag.el.classList.add('is-dragging');
+      document.body.classList.add('dragging-widget');
+      drag.el.style.transform = 'translate3d(0,0,0) scale(1.04)';
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) {} }
+    }
+
+    // 按下：桌面端拖 6px 即起，触摸端需先长按 300ms（把普通滑动留给页面滚动）
+    grid.addEventListener('pointerdown', function(e) {
+      if (!STATE.editing) return;
+      if (e.target.closest('button, a[href]')) return;
+      var el = e.target.closest('.widget[data-w]');
+      if (!el || el.classList.contains('widget--add')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      drag = {
+        el: el, id: el.getAttribute('data-w'), pid: e.pointerId,
+        x0: e.clientX, y0: e.clientY, dx: 0, dy: 0,
+        started: false, touch: e.pointerType !== 'mouse', longPress: null
+      };
+      if (drag.touch) {
+        drag.longPress = setTimeout(function() {
+          if (drag && !drag.started) startDrag();
+        }, 300);
+      }
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    grid.addEventListener('pointermove', function(e) {
+      if (!drag || e.pointerId !== drag.pid) return;
+      drag.dx = e.clientX - drag.x0;
+      drag.dy = e.clientY - drag.y0;
+
+      if (!drag.started) {
+        var dist = Math.sqrt(drag.dx * drag.dx + drag.dy * drag.dy);
+        if (drag.touch) {
+          if (dist > 10) { clearTimeout(drag.longPress); drag = null; }  // 判定为滚动
+          return;
+        }
+        if (dist < 6) return;
+        startDrag();
+      }
+
+      if (e.cancelable) e.preventDefault();
+      drag.el.style.transform =
+        'translate3d(' + drag.dx + 'px,' + drag.dy + 'px,0) scale(1.04)';
+
+      var under = document.elementFromPoint(e.clientX, e.clientY);
+      var t = under && under.closest ? under.closest('.widget[data-w]') : null;
+      if (t === drag.el) t = null;
+      var prev = grid.querySelector('.is-drop-target');
+      if (prev && prev !== t) prev.classList.remove('is-drop-target');
+      if (t) t.classList.add('is-drop-target');
+    });
+
+    grid.addEventListener('pointerup', function(e) {
+      if (!drag || e.pointerId !== drag.pid) return;
+      var d = drag;
+      var target = grid.querySelector('.is-drop-target');
+
+      if (!d.started || !target) { killDrag(true); return; }
+
+      var from = STATE.layout.indexOf(d.id);
+      var to = STATE.layout.indexOf(target.getAttribute('data-w'));
+      killDrag(false);
+      if (from < 0 || to < 0 || from === to) return;
+
+      STATE.layout.splice(to, 0, STATE.layout.splice(from, 1)[0]);
+      saveLayout();
+      renderGrid();
+    });
+
+    grid.addEventListener('pointercancel', function() { killDrag(true); });
+
+    // 拖拽中锁住页面滚动（触摸端长按后）
+    document.addEventListener('touchmove', function(e) {
+      if (drag && drag.started && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
     grid.addEventListener('click', function(e) {
+      if (suppressClick) { e.preventDefault(); e.stopPropagation(); return; }
       var move = e.target.closest('[data-move]');
       if (move) {
         e.preventDefault();
@@ -1619,6 +1989,9 @@ html[data-theme="dark"] .catalog-sheet {
     if (sub) sub.textContent = '登录后查看你的消息与动态';
     var login = $('homeLogin');
     if (login) login.hidden = false;
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    setSyncHint('', '');
     STATE.stats = { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null };
     STATE.data = { convs: [], posts: [], announce: null };
     renderGrid();
@@ -1638,6 +2011,7 @@ html[data-theme="dark"] .catalog-sheet {
     STATE.layout = loadLayout();
     renderGrid();
     loadData(user);
+    refreshLayoutFromCloud();      // 云端排版晚到则覆盖重绘
   }
 
   function waitForSupabase(cb, tries) {
@@ -1683,6 +2057,11 @@ html[data-theme="dark"] .catalog-sheet {
       if (e.key !== 'Escape') return;
       if ($('catalogOverlay')) { closeCatalog(); return; }
       if (STATE.editing) setEditing(false);
+    });
+
+    // 切回标签页时对齐云端排版（另一台设备可能刚改过）
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && !STATE.editing) refreshLayoutFromCloud();
     });
   }
 
