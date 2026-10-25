@@ -303,17 +303,19 @@
       z-index: -1;
       pointer-events: none;
       background:
-        radial-gradient(58% 46% at 14% 6%, rgba(10,132,255,.20), transparent 62%),
-        radial-gradient(48% 42% at 88% 2%, rgba(191,90,242,.16), transparent 62%),
-        radial-gradient(52% 46% at 72% 88%, rgba(48,209,88,.14), transparent 62%),
-        radial-gradient(42% 42% at 6% 92%, rgba(255,159,10,.14), transparent 62%);
+        radial-gradient(46% 38% at 12% 8%, rgba(10,132,255,.34), transparent 62%),
+        radial-gradient(40% 34% at 88% 0%, rgba(191,90,242,.28), transparent 62%),
+        radial-gradient(44% 40% at 74% 90%, rgba(48,209,88,.24), transparent 62%),
+        radial-gradient(36% 36% at 4% 94%, rgba(255,159,10,.24), transparent 62%),
+        radial-gradient(30% 26% at 46% 52%, rgba(90,200,250,.18), transparent 66%);
     }
     html[data-theme="dark"] .home-shell::before {
       background:
-        radial-gradient(58% 46% at 14% 6%, rgba(10,132,255,.22), transparent 62%),
-        radial-gradient(48% 42% at 88% 2%, rgba(191,90,242,.18), transparent 62%),
-        radial-gradient(52% 46% at 72% 88%, rgba(48,209,88,.12), transparent 62%),
-        radial-gradient(42% 42% at 6% 92%, rgba(255,159,10,.10), transparent 62%);
+        radial-gradient(46% 38% at 12% 8%, rgba(10,132,255,.36), transparent 62%),
+        radial-gradient(40% 34% at 88% 0%, rgba(191,90,242,.30), transparent 62%),
+        radial-gradient(44% 40% at 74% 90%, rgba(48,209,88,.22), transparent 62%),
+        radial-gradient(36% 36% at 4% 94%, rgba(255,159,10,.18), transparent 62%),
+        radial-gradient(30% 26% at 46% 52%, rgba(90,200,250,.16), transparent 66%);
     }
 
     .home-hero {
@@ -526,6 +528,7 @@
     }
     @media (max-width: 560px) {
       .home-shell { padding-top: 92px; }
+      .home-sub { display: none; }
       .widget-grid { gap: 12px; grid-auto-rows: 150px; }
       .widget { padding: 14px; border-radius: 20px; }
       .w-body { margin-top: 4px; }
@@ -543,6 +546,308 @@
     }
   </style>
 
+  <style>
+/* ==================== 首页 · 小组件系统（2026-10 增强） ==================== */
+
+/* 毛玻璃增强：更通透的底 + 更强的模糊与饱和 */
+.widget {
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(26px) saturate(185%);
+  backdrop-filter: blur(26px) saturate(185%);
+  box-shadow:
+    0 10px 34px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+html[data-theme="dark"] .widget {
+  background: rgba(30, 30, 34, 0.42);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 10px 34px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* 尺寸 */
+.widget--lg { grid-column: span 2; grid-row: span 2; justify-content: flex-start; }
+.widget--md { grid-column: span 2; }
+
+/* 编辑按钮 */
+.home-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.home-edit {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  color: var(--color-text-secondary);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.home-edit:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.home-edit.active {
+  background: var(--color-accent);
+  border-color: transparent;
+  color: var(--color-text-on-accent);
+}
+html[data-theme="dark"] .home-edit { background: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .home-edit:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* 编辑态：静态虚线框 + 工具栏（不做抖动，保证按钮可点、也更友好） */
+.home-editing .widget:not(.widget--add) {
+  cursor: default;
+  outline: 1.5px dashed rgba(10, 132, 255, 0.38);
+  outline-offset: -4px;
+}
+.home-editing .widget:not(.widget--add):hover {
+  transform: none;
+  outline-color: rgba(10, 132, 255, 0.7);
+}
+
+/* 组件工具栏 */
+.widget-toolbar { display: none; }
+.home-editing .widget-toolbar {
+  display: flex;
+  gap: 6px;
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+}
+.wt-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+  color: #3a3a3c;
+  font-size: 13px; line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: background .15s ease, transform .15s ease;
+}
+.wt-btn:hover { background: #fff; transform: scale(1.06); }
+.wt-btn:active { transform: scale(.94); }
+.wt-del { color: #ff453a; }
+html[data-theme="dark"] .wt-btn {
+  background: rgba(58, 58, 60, 0.95);
+  color: #f2f2f7;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme="dark"] .wt-btn:hover { background: rgba(72, 72, 74, 0.98); }
+
+/* 添加入口 */
+.widget--add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed rgba(60, 60, 67, 0.28);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  color: var(--color-text-tertiary);
+  font-size: 30px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.widget--add:hover {
+  background: rgba(255, 255, 255, 0.34);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+html[data-theme="dark"] .widget--add {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-theme="dark"] .widget--add:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* 组件内的小列表（最近对话 / 最近文章 / 公告 / 快捷游戏） */
+.w-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.w-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+.w-list-item .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-accent); flex-shrink: 0; opacity: .65;
+}
+.w-list-item .txt {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.w-list-item .meta {
+  font-size: 10px; color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+.w-empty {
+  font-size: 12px; color: var(--color-text-tertiary);
+  margin-top: 6px;
+}
+
+/* 快捷游戏小宫格 */
+.w-games {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.w-game {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  text-decoration: none; color: var(--color-text-secondary);
+  font-size: 10px; text-align: center;
+}
+.w-game i {
+  width: 32px; height: 32px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: var(--color-accent);
+  font-size: 14px;
+}
+html[data-theme="dark"] .w-game i {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 公告组件的正文 */
+.w-announce-text {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 组件选择器 */
+.catalog-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  display: grid; place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: catalogFade .2s ease both;
+}
+@keyframes catalogFade { from { opacity: 0; } to { opacity: 1; } }
+.catalog-sheet {
+  width: min(520px, 100%);
+  max-height: 78vh;
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(34px) saturate(190%);
+  backdrop-filter: blur(34px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+  animation: catalogPop .26s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes catalogPop {
+  from { opacity: 0; transform: scale(.96) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+html[data-theme="dark"] .catalog-sheet {
+  background: rgba(32, 32, 36, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.catalog-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.catalog-head h3 {
+  font-size: 17px; font-weight: 650;
+  color: var(--color-text-primary);
+}
+.catalog-close {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: none; background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+  cursor: pointer; font-size: 15px;
+}
+.catalog-tip {
+  font-size: 12px; color: var(--color-text-tertiary);
+  margin-bottom: 12px;
+}
+.catalog-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: var(--color-bg-hover);
+  margin-bottom: 8px;
+}
+.catalog-item .ci-icon {
+  width: 36px; height: 36px; border-radius: 11px;
+  display: grid; place-items: center;
+  color: #fff; font-size: 15px; flex-shrink: 0;
+}
+.catalog-item .ci-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.catalog-item .ci-title {
+  font-size: 14px; font-weight: 550;
+  color: var(--color-text-primary);
+}
+.catalog-item .ci-desc {
+  font-size: 11px; color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+.catalog-add {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+.catalog-add:hover { background: var(--color-accent-glow); }
+.catalog-add[disabled] {
+  border-color: var(--color-border);
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+.catalog-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+.catalog-reset {
+  border: none; background: none;
+  color: var(--color-text-tertiary);
+  font-size: 12px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.catalog-done {
+  padding: 8px 18px; border-radius: 999px;
+  border: none; background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  /* 小屏统一单行高度，避免 lg 组件占据两行 */
+  .widget--lg { grid-column: span 2; grid-row: span 1; }
+  .widget--md { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  .home-actions { gap: 6px; }
+  .home-edit { padding: 7px 12px; font-size: 12px; }
+  .widget-toolbar { right: 8px; bottom: 8px; }
+  .wt-btn { width: 24px; height: 24px; font-size: 12px; }
+}
+
+  </style>
 </head>
 <body>
   <div class="bg-base"></div>
@@ -607,104 +912,16 @@
         <h1 class="home-title" id="homeGreet">欢迎来到 KJLLin</h1>
         <p class="home-sub" id="homeSub">站内信 · 游戏中心 · 资源云盘 · 文章广场</p>
       </div>
-      <a class="home-login" id="homeLogin" href="/login/" hidden>登录</a>
-    </section>
-
-    <!-- ==================== 小组件桌面 ==================== -->
-    <section class="widget-grid" aria-label="功能入口">
-
-      <!-- 站内信：大组件 -->
-      <a href="/chat" class="widget widget--chat">
-        <div class="w-top">
-          <span class="w-icon w-icon--chat"><i class="fas fa-envelope"></i></span>
-          <span class="w-badge" id="chatBadge" hidden></span>
-        </div>
-        <div class="w-body">
-          <div class="w-title">站内信</div>
-          <div class="w-big"><span id="statChat">—</span><small>条未读</small></div>
-          <div class="w-preview" id="chatPreview">与好友保持联系</div>
-        </div>
-        <div class="w-foot"><span id="chatPartners">—</span> 个对话 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 通知 -->
-      <a href="/notifications/" class="widget widget--notif">
-        <div class="w-top">
-          <span class="w-icon w-icon--notif"><i class="fas fa-bell"></i></span>
-          <span class="w-dot" id="notifDot" hidden></span>
-        </div>
-        <div class="w-body">
-          <div class="w-title">通知</div>
-          <div class="w-num"><span id="statNotif">—</span><small>条未读</small></div>
-        </div>
-        <div class="w-foot">查看全部 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 时钟 -->
-      <div class="widget widget--clock" aria-hidden="true">
-        <div class="clock-time" id="clockTime">--:--</div>
-        <div class="clock-hint">现在</div>
+      <div class="home-actions">
+        <a class="home-login" id="homeLogin" href="/login/" hidden>登录</a>
+        <button type="button" class="home-edit" id="editWidgetsBtn" aria-pressed="false">
+          <i class="fas fa-sliders"></i> 编辑
+        </button>
       </div>
-
-      <!-- 游戏 -->
-      <a href="/game/" class="widget widget--game">
-        <div class="w-top"><span class="w-icon w-icon--game"><i class="fas fa-gamepad"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">游戏中心</div>
-          <div class="w-num"><span>5</span><small>款游戏</small></div>
-        </div>
-        <div class="w-foot">恐龙快跑 · 2048 · 贪吃蛇 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 云盘 -->
-      <a href="/cloud/" class="widget widget--cloud">
-        <div class="w-top"><span class="w-icon w-icon--cloud"><i class="fas fa-cloud"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">资源云盘</div>
-          <div class="w-num"><span>∞</span><small>云端空间</small></div>
-        </div>
-        <div class="w-foot">上传 · 分享 · 私有空间 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 文章广场 -->
-      <a href="/discuss/" class="widget widget--discuss">
-        <div class="w-top"><span class="w-icon w-icon--discuss"><i class="fas fa-book-open"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">文章广场</div>
-          <div class="w-num"><span id="statPosts">—</span><small>篇我的文章</small></div>
-        </div>
-        <div class="w-foot">看看大家在聊什么 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 个人主页 -->
-      <a href="/u/" class="widget widget--profile">
-        <div class="w-top"><span class="w-icon w-icon--profile"><i class="fas fa-circle-user"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">个人主页</div>
-          <div class="w-num"><span id="statProfile">—</span><small>我的动态</small></div>
-        </div>
-        <div class="w-foot">查看主页 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 设置 -->
-      <a href="/settings/" class="widget widget--settings">
-        <div class="w-top"><span class="w-icon w-icon--settings"><i class="fas fa-gear"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">设置</div>
-        </div>
-        <div class="w-foot">账号 · 隐私 · 外观 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
-      <!-- 帮助 -->
-      <a href="/docs/" class="widget widget--docs">
-        <div class="w-top"><span class="w-icon w-icon--docs"><i class="fas fa-book"></i></span></div>
-        <div class="w-body">
-          <div class="w-title">帮助文档</div>
-        </div>
-        <div class="w-foot">使用指南与常见问题 <i class="fas fa-arrow-right"></i></div>
-      </a>
-
     </section>
+
+    <!-- ==================== 小组件桌面（由脚本渲染，可编辑/添加） ==================== -->
+    <section class="widget-grid" id="widgetGrid" aria-label="桌面小组件"></section>
 
     <footer class="footer"><span>© 2026 KJLLin · All Rights Reserved</span> <span class="footer-sep">|</span> <a href="/docs/"><i class="fas fa-book"></i> 帮助文档</a></footer>
   </div>
@@ -957,133 +1174,525 @@
   </script>
 
   <script>
-  // ==================== 首页小组件：问候 + 实时统计 ====================
-  (function() {
-    function $(id) { return document.getElementById(id); }
-    function pad(n) { return n < 10 ? '0' + n : '' + n; }
-    function truncate(str, n) {
-      str = String(str || '').replace(/\s+/g, ' ').trim();
-      return str.length > n ? str.slice(0, n) + '…' : str;
+// ==================== 首页小组件：问候 + 实时统计 + 编辑/添加 ====================
+(function() {
+  'use strict';
+
+  var $ = function(id) { return document.getElementById(id); };
+  var esc = function(s) { return KJ.escapeHtml(s == null ? '' : String(s)); };
+  var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+
+  function truncate(str, n) {
+    str = String(str || '').replace(/\s+/g, ' ').trim();
+    return str.length > n ? str.slice(0, n) + '…' : str;
+  }
+  function shortDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var now = new Date();
+    if (d.toDateString() === now.toDateString()) return pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  function greetingWord() {
+    var h = new Date().getHours();
+    return h < 6 ? '凌晨好' : h < 12 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+  }
+  function nickOf(user) {
+    var m = user.user_metadata || {};
+    return m.nick || m.user_name || m.full_name ||
+           (user.email ? user.email.split('@')[0] : '') || '用户';
+  }
+
+  // ---------------- 组件定义 ----------------
+  var WIDGETS = {
+    chat:        { title: '站内信',   icon: 'fa-envelope',    color: 'chat',     size: 'lg', href: '/chat',           fixed: true },
+    notif:       { title: '通知',     icon: 'fa-bell',        color: 'notif',    size: 'sm', href: '/notifications/', fixed: true },
+    clock:       { title: '时钟',     icon: 'fa-clock',       color: 'clock',    size: 'sm',                          fixed: true },
+    game:        { title: '游戏中心', icon: 'fa-gamepad',     color: 'game',     size: 'sm', href: '/game/' },
+    cloud:       { title: '资源云盘', icon: 'fa-cloud',       color: 'cloud',    size: 'sm', href: '/cloud/' },
+    discuss:     { title: '文章广场', icon: 'fa-book-open',   color: 'discuss',  size: 'sm', href: '/discuss/' },
+    profile:     { title: '个人主页', icon: 'fa-circle-user', color: 'profile',  size: 'sm', href: '/u/' },
+    settings:    { title: '设置',     icon: 'fa-gear',        color: 'settings', size: 'sm', href: '/settings/' },
+    docs:        { title: '帮助文档', icon: 'fa-book',        color: 'docs',     size: 'sm', href: '/docs/' },
+
+    recentChats: { title: '最近对话', icon: 'fa-comments',    color: 'chat',     size: 'md', href: '/chat',
+                   desc: '最近 3 个对话与未读数' },
+    recentPosts: { title: '最近文章', icon: 'fa-newspaper',   color: 'discuss',  size: 'md', href: '/discuss/',
+                   desc: '你最近发布的 3 篇文章' },
+    games:       { title: '快捷游戏', icon: 'fa-dice',        color: 'game',     size: 'md', href: '/game/',
+                   desc: '常用游戏一键进入' },
+    announce:    { title: '最新公告', icon: 'fa-bullhorn',    color: 'notif',    size: 'md', href: '/notifications/',
+                   desc: '平台最新一条公告' }
+  };
+
+  var DEFAULT_LAYOUT = ['chat', 'notif', 'clock', 'game', 'cloud', 'discuss', 'profile', 'settings', 'docs'];
+  var ADDABLE = ['recentChats', 'recentPosts', 'games', 'announce'];
+  var FIXED = ['chat', 'notif', 'clock'];
+
+  var GAMES = [
+    ['/game/dino/', '恐龙', 'fa-dragon'],
+    ['/game/rps/', '猜拳', 'fa-hand-back-fist'],
+    ['/game/tfe/', '2048', 'fa-table-cells-large'],
+    ['/game/snake/', '贪吃蛇', 'fa-staff-snake']
+  ];
+
+  var STATE = {
+    user: null,
+    layout: DEFAULT_LAYOUT.slice(),
+    editing: false,
+    stats: { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null },
+    data: { convs: [], posts: [], announce: null }
+  };
+
+  // ---------------- 布局持久化 ----------------
+  function layoutKey() {
+    return 'kj_home_layout_v1_' + (STATE.user ? STATE.user.id : 'guest');
+  }
+  function loadLayout() {
+    try {
+      var raw = localStorage.getItem(layoutKey());
+      if (raw) {
+        var arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr = arr.filter(function(id) { return WIDGETS[id]; });
+          FIXED.forEach(function(id) {
+            if (arr.indexOf(id) < 0) arr.unshift(id);
+          });
+          if (arr.length) return arr;
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_LAYOUT.slice();
+  }
+  function saveLayout() {
+    try { localStorage.setItem(layoutKey(), JSON.stringify(STATE.layout)); } catch (e) {}
+  }
+
+  // ---------------- 渲染 ----------------
+  function statText(v) { return (v === null || v === undefined) ? '—' : String(v); }
+
+  function topHtml(id) {
+    if (id === 'clock') return '';
+    var w = WIDGETS[id];
+    var extra = '';
+    if (id === 'chat') {
+      var un = Number(STATE.stats.chatUnread) || 0;
+      extra = '<span class="w-badge"' + (un > 0 ? '' : ' hidden') + '>' +
+              (un > 99 ? '99+' : un) + '</span>';
+    } else if (id === 'notif') {
+      var nu = Number(STATE.stats.notifUnread) || 0;
+      extra = '<span class="w-dot"' + (nu > 0 ? '' : ' hidden') + '></span>';
     }
-    function greetingWord() {
-      var h = new Date().getHours();
-      return h < 6 ? '凌晨好' : h < 12 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+    return '<div class="w-top"><span class="w-icon w-icon--' + w.color + '">' +
+      '<i class="fas ' + w.icon + '"></i></span>' + extra + '</div>';
+  }
+
+  function bodyHtml(id) {
+    var s = STATE.stats, d = STATE.data;
+
+    if (id === 'chat') {
+      return '<div class="w-title">站内信</div>' +
+        '<div class="w-big"><span>' + statText(s.chatUnread) + '</span><small>条未读</small></div>' +
+        '<div class="w-preview">' + esc(s.chatPreview || '与好友保持联系') + '</div>';
     }
-    function updateClock() {
-      var d = new Date();
-      var week = '日一二三四五六'[d.getDay()];
-      if ($('clockTime')) $('clockTime').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
-      if ($('homeDate')) $('homeDate').textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + week;
+    if (id === 'notif') {
+      return '<div class="w-title">通知</div>' +
+        '<div class="w-num"><span>' + statText(s.notifUnread) + '</span><small>条未读</small></div>';
     }
+    if (id === 'clock') {
+      return '<div class="clock-time" id="clockTime">--:--</div><div class="clock-hint">现在</div>';
+    }
+    if (id === 'game') {
+      return '<div class="w-title">游戏中心</div><div class="w-num"><span>5</span><small>款游戏</small></div>';
+    }
+    if (id === 'cloud') {
+      return '<div class="w-title">资源云盘</div><div class="w-num"><span>∞</span><small>云端空间</small></div>';
+    }
+    if (id === 'discuss') {
+      return '<div class="w-title">文章广场</div><div class="w-num"><span>' + statText(s.posts) + '</span><small>篇我的文章</small></div>';
+    }
+    if (id === 'profile') {
+      return '<div class="w-title">个人主页</div><div class="w-num"><span>查看</span><small>我的动态</small></div>';
+    }
+    if (id === 'settings') {
+      return '<div class="w-title">设置</div>';
+    }
+    if (id === 'docs') {
+      return '<div class="w-title">帮助文档</div>';
+    }
+    if (id === 'recentChats') {
+      if (!d.convs.length) return '<div class="w-title">最近对话</div><div class="w-empty">暂无对话</div>';
+      var ci = d.convs.slice(0, 3).map(function(c) {
+        return '<div class="w-list-item"><span class="dot"></span>' +
+          '<span class="txt">' + esc(c.nick || '用户') + '</span>' +
+          (c.unread > 0 ? '<span class="meta">' + c.unread + ' 条</span>' : '') + '</div>';
+      }).join('');
+      return '<div class="w-title">最近对话</div><div class="w-list">' + ci + '</div>';
+    }
+    if (id === 'recentPosts') {
+      if (!d.posts.length) return '<div class="w-title">最近文章</div><div class="w-empty">还没有发布文章</div>';
+      var pi = d.posts.map(function(p) {
+        return '<div class="w-list-item"><span class="dot"></span>' +
+          '<span class="txt">' + esc(p.title || '无标题') + '</span>' +
+          '<span class="meta">' + shortDate(p.created_at) + '</span></div>';
+      }).join('');
+      return '<div class="w-title">最近文章</div><div class="w-list">' + pi + '</div>';
+    }
+    if (id === 'games') {
+      var gi = GAMES.map(function(g) {
+        return '<a class="w-game" href="' + g[0] + '"><i class="fas ' + g[2] + '"></i>' + g[1] + '</a>';
+      }).join('');
+      return '<div class="w-title">快捷游戏</div><div class="w-games">' + gi + '</div>';
+    }
+    if (id === 'announce') {
+      if (!d.announce) return '<div class="w-title">最新公告</div><div class="w-empty">暂无公告</div>';
+      var t = d.announce.title || '';
+      var body = d.announce.content ? truncate(d.announce.content, 46) : '';
+      return '<div class="w-title">最新公告</div>' +
+        '<div class="w-announce-text"><strong>' + esc(t) + '</strong>' +
+        (body ? '<br>' + esc(body) : '') + '</div>';
+    }
+    return '';
+  }
+
+  function footHtml(id) {
+    switch (id) {
+      case 'chat':     return '<span>' + statText(STATE.stats.chatPartners) + '</span> 个对话 <i class="fas fa-arrow-right"></i>';
+      case 'notif':    return '查看全部 <i class="fas fa-arrow-right"></i>';
+      case 'game':     return '恐龙快跑 · 2048 · 贪吃蛇 <i class="fas fa-arrow-right"></i>';
+      case 'cloud':    return '上传 · 分享 · 私有空间 <i class="fas fa-arrow-right"></i>';
+      case 'discuss':  return '看看大家在聊什么 <i class="fas fa-arrow-right"></i>';
+      case 'profile':  return '查看主页 <i class="fas fa-arrow-right"></i>';
+      case 'settings': return '账号 · 隐私 · 外观 <i class="fas fa-arrow-right"></i>';
+      case 'docs':     return '使用指南与常见问题 <i class="fas fa-arrow-right"></i>';
+      case 'recentChats': return '进入站内信 <i class="fas fa-arrow-right"></i>';
+      case 'recentPosts': return '进入文章广场 <i class="fas fa-arrow-right"></i>';
+      case 'games':       return '全部游戏 <i class="fas fa-arrow-right"></i>';
+      case 'announce':    return '查看通知 <i class="fas fa-arrow-right"></i>';
+      default: return '';
+    }
+  }
+
+  function renderGrid() {
+    var grid = $('widgetGrid');
+    if (!grid) return;
+
+    var html = STATE.layout.map(function(id) {
+      var w = WIDGETS[id];
+      if (!w) return '';
+      var size = w.size === 'lg' ? ' widget--lg' : (w.size === 'md' ? ' widget--md' : '');
+      var attrs = w.href ? ' data-href="' + w.href + '" role="link" tabindex="0"' : '';
+      var toolbar = '<span class="widget-toolbar">' +
+        '<button type="button" class="wt-btn" data-move="-1" data-id="' + id + '" aria-label="向前移动">‹</button>' +
+        '<button type="button" class="wt-btn" data-move="1" data-id="' + id + '" aria-label="向后移动">›</button>' +
+        (w.fixed ? '' : '<button type="button" class="wt-btn wt-del" data-remove="' + id + '" aria-label="移除组件">×</button>') +
+        '</span>';
+      return '<div class="widget' + size + ' widget--' + w.color + '" data-w="' + id + '"' + attrs + '>' +
+        topHtml(id) +
+        '<div class="w-body">' + bodyHtml(id) + '</div>' +
+        (footHtml(id) ? '<div class="w-foot">' + footHtml(id) + '</div>' : '') +
+        toolbar +
+        '</div>';
+    }).join('');
+
+    if (STATE.editing) {
+      html += '<button type="button" class="widget widget--add" id="addWidgetBtn" aria-label="添加组件">＋</button>';
+    }
+    grid.innerHTML = html;
+    updateClock();
+  }
+
+  function updateClock() {
+    var d = new Date();
+    var t = $('clockTime');
+    if (t) t.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var dateEl = $('homeDate');
+    if (dateEl) {
+      dateEl.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + '日一二三四五六'[d.getDay()];
+    }
+  }
+
+  // ---------------- 编辑操作 ----------------
+  function setEditing(on) {
+    STATE.editing = !!on;
+    document.body.classList.toggle('home-editing', STATE.editing);
+    var btn = $('editWidgetsBtn');
+    if (btn) {
+      btn.classList.toggle('active', STATE.editing);
+      btn.setAttribute('aria-pressed', STATE.editing ? 'true' : 'false');
+      btn.innerHTML = STATE.editing
+        ? '<i class="fas fa-check"></i> 完成'
+        : '<i class="fas fa-sliders"></i> 编辑';
+    }
+    if (!STATE.editing) closeCatalog();
+    renderGrid();
+  }
+
+  function moveWidget(id, dir) {
+    var i = STATE.layout.indexOf(id);
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= STATE.layout.length) return;
+    var tmp = STATE.layout[i];
+    STATE.layout[i] = STATE.layout[j];
+    STATE.layout[j] = tmp;
+    saveLayout();
+    renderGrid();
+  }
+
+  function removeWidget(id) {
+    if (FIXED.indexOf(id) >= 0) return;
+    STATE.layout = STATE.layout.filter(function(x) { return x !== id; });
+    saveLayout();
+    renderGrid();
+  }
+
+  // ---------------- 组件选择器 ----------------
+  function openCatalog() {
+    if ($('catalogOverlay')) return;
+    var items = ADDABLE.map(function(id) {
+      var w = WIDGETS[id];
+      var added = STATE.layout.indexOf(id) >= 0;
+      return '<div class="catalog-item">' +
+        '<span class="ci-icon w-icon--' + w.color + '"><i class="fas ' + w.icon + '"></i></span>' +
+        '<span class="ci-body"><span class="ci-title">' + esc(w.title) + '</span>' +
+        '<span class="ci-desc">' + esc(w.desc || '') + '</span></span>' +
+        '<button type="button" class="catalog-add" data-add="' + id + '"' +
+        (added ? ' disabled' : '') + '>' + (added ? '已添加' : '添加') + '</button>' +
+        '</div>';
+    }).join('');
+
+    var html = '<div class="catalog-overlay" id="catalogOverlay">' +
+      '<div class="catalog-sheet" role="dialog" aria-modal="true" aria-label="添加组件">' +
+        '<div class="catalog-head"><h3>添加小组件</h3>' +
+          '<button type="button" class="catalog-close" id="catalogClose" aria-label="关闭">×</button></div>' +
+        '<p class="catalog-tip">选择要放到桌面上的组件。拖动右上角按钮可以调整顺序。</p>' +
+        items +
+        '<div class="catalog-foot">' +
+          '<button type="button" class="catalog-reset" id="catalogReset">恢复默认布局</button>' +
+          '<button type="button" class="catalog-done" id="catalogDone">完成</button>' +
+        '</div>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    var ov = $('catalogOverlay');
+    ov.addEventListener('click', function(e) { if (e.target === ov) closeCatalog(); });
+    $('catalogClose').addEventListener('click', closeCatalog);
+    $('catalogDone').addEventListener('click', closeCatalog);
+    $('catalogReset').addEventListener('click', function() {
+      STATE.layout = DEFAULT_LAYOUT.slice();
+      saveLayout();
+      renderGrid();
+      closeCatalog();
+    });
+    var adds = ov.querySelectorAll('[data-add]');
+    for (var i = 0; i < adds.length; i++) {
+      adds[i].addEventListener('click', function() {
+        var id = this.getAttribute('data-add');
+        if (STATE.layout.indexOf(id) >= 0) return;
+        STATE.layout.push(id);
+        saveLayout();
+        renderGrid();
+        this.disabled = true;
+        this.textContent = '已添加';
+      });
+    }
+  }
+
+  function closeCatalog() {
+    var el = $('catalogOverlay');
+    if (el) el.remove();
+  }
+
+  // ---------------- 事件绑定 ----------------
+  function bindGrid() {
+    var grid = $('widgetGrid');
+    if (!grid) return;
+
+    grid.addEventListener('click', function(e) {
+      var move = e.target.closest('[data-move]');
+      if (move) {
+        e.preventDefault();
+        e.stopPropagation();
+        moveWidget(move.getAttribute('data-id'), Number(move.getAttribute('data-move')));
+        return;
+      }
+      var del = e.target.closest('[data-remove]');
+      if (del) {
+        e.preventDefault();
+        e.stopPropagation();
+        removeWidget(del.getAttribute('data-remove'));
+        return;
+      }
+      if (e.target.closest('#addWidgetBtn')) {
+        e.preventDefault();
+        openCatalog();
+        return;
+      }
+      if (STATE.editing) return;
+      // 组件内部的链接（快捷游戏）交给浏览器
+      if (e.target.closest('a[href]')) return;
+      var w = e.target.closest('.widget[data-href]');
+      if (w) window.location.href = w.getAttribute('data-href');
+    });
+
+    grid.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (STATE.editing) return;
+      var w = e.target.closest('.widget[data-href]');
+      if (w) {
+        e.preventDefault();
+        window.location.href = w.getAttribute('data-href');
+      }
+    });
+  }
+
+  // ---------------- 数据 ----------------
+  function loadData(user) {
+    var sb = null;
+    try { sb = KJ.createSupabase(); } catch (e) {}
+    if (!sb) { renderGrid(); return; }
+
+    var empty = Promise.resolve({ data: [], count: null, error: null });
+    var tasks = [
+      sb.rpc('chat_conversations'),
+      sb.rpc('notif_stats'),
+      user ? sb.from('posts')
+        .select('id,title,created_at', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3) : empty,
+      sb.from('announcements')
+        .select('id,title,content,created_at')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    ];
+
+    Promise.allSettled(tasks).then(function(res) {
+      // 会话
+      try {
+        if (res[0].status === 'fulfilled' && res[0].value && !res[0].value.error) {
+          var rows = res[0].value.data || [];
+          STATE.data.convs = rows.map(function(r) {
+            return { nick: r.nick || '用户', unread: Number(r.unread) || 0 };
+          });
+          STATE.stats.chatUnread = rows.reduce(function(a, c) { return a + (Number(c.unread) || 0); }, 0);
+          STATE.stats.chatPartners = rows.length;
+          STATE.stats.chatPreview = rows[0] && rows[0].latest_text
+            ? truncate(rows[0].latest_text, 30) : '';
+        }
+      } catch (e) {}
+
+      // 通知
+      try {
+        if (res[1].status === 'fulfilled' && res[1].value && !res[1].value.error &&
+            res[1].value.data && res[1].value.data.length) {
+          STATE.stats.notifUnread = Number(res[1].value.data[0].unread) || 0;
+        }
+      } catch (e) {}
+
+      // 文章
+      try {
+        if (res[2].status === 'fulfilled' && res[2].value && !res[2].value.error) {
+          STATE.data.posts = res[2].value.data || [];
+          STATE.stats.posts = typeof res[2].value.count === 'number'
+            ? res[2].value.count : STATE.data.posts.length;
+        }
+      } catch (e) {}
+
+      // 公告
+      try {
+        if (res[3].status === 'fulfilled' && res[3].value && !res[3].value.error) {
+          STATE.data.announce = (res[3].value.data || [])[0] || null;
+        }
+      } catch (e) {}
+
+      renderGrid();
+    });
+  }
+
+  // ---------------- 用户状态 ----------------
+  function setGuest() {
+    var g = $('homeGreet');
+    if (g) g.textContent = '欢迎来到 KJLLin';
+    var sub = $('homeSub');
+    if (sub) sub.textContent = '登录后查看你的消息与动态';
+    var login = $('homeLogin');
+    if (login) login.hidden = false;
+    STATE.stats = { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null };
+    STATE.data = { convs: [], posts: [], announce: null };
+    renderGrid();
+    loadData(null);
+  }
+
+  function applyUser(user) {
+    STATE.user = user;
+    var nick = nickOf(user);
+    var nameEl = $('homeGreet');
+    if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
+    var av = $('homeAvatar');
+    if (av) av.textContent = Array.from(nick)[0] || 'K';
+    var login = $('homeLogin');
+    if (login) login.hidden = true;
+
+    STATE.layout = loadLayout();
+    renderGrid();
+    loadData(user);
+  }
+
+  function waitForSupabase(cb, tries) {
+    tries = tries || 0;
+    var sb = null;
+    try { sb = KJ.createSupabase(); } catch (e) {}
+    if (sb) return cb(sb);
+    if (tries > 80) return cb(null);
+    setTimeout(function() { waitForSupabase(cb, tries + 1); }, 150);
+  }
+
+  // ---------------- 启动 ----------------
+  function boot() {
     updateClock();
     setInterval(updateClock, 30000);
 
-    function setStat(id, value) {
-      var el = $(id);
-      if (el) el.textContent = (value === null || value === undefined) ? '—' : String(value);
+    var editBtn = $('editWidgetsBtn');
+    if (editBtn) {
+      editBtn.addEventListener('click', function() { setEditing(!STATE.editing); });
     }
 
-    function setGuest() {
-      if ($('homeGreet')) $('homeGreet').textContent = '欢迎来到 KJLLin';
-      if ($('homeSub')) $('homeSub').textContent = '登录后查看你的消息与动态';
-      if ($('homeLogin')) $('homeLogin').hidden = false;
-      setStat('statChat', '—'); setStat('statNotif', '—'); setStat('statPosts', '—');
-    }
+    bindGrid();
 
-    function nickOf(user) {
-      var m = user.user_metadata || {};
-      return m.nick || m.user_name || m.full_name ||
-             (user.email ? user.email.split('@')[0] : '') || '用户';
-    }
-
-    function renderUser(user) {
-      var nick = nickOf(user);
-      var nameEl = $('homeGreet');
-      if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
-      var av = $('homeAvatar');
-      if (av) av.textContent = Array.from(nick)[0] || 'K';
-      if ($('homeLogin')) $('homeLogin').hidden = true;
-
-      if ($('statProfile')) $('statProfile').textContent = '查看';
-      loadStats(user);
-    }
-
-    function loadStats(user) {
-      var sb = null;
-      try { sb = KJ.createSupabase(); } catch (e) {}
-      if (!sb) return;
-
-      var tasks = [
-        sb.rpc('chat_conversations'),
-        sb.rpc('notif_stats'),
-        sb.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-      ];
-
-      Promise.allSettled(tasks).then(function(res) {
-        // 站内信
-        try {
-          var r0 = res[0];
-          if (r0.status === 'fulfilled' && r0.value && !r0.value.error) {
-            var rows = r0.value.data || [];
-            var unread = rows.reduce(function(a, c) { return a + (Number(c.unread) || 0); }, 0);
-            setStat('statChat', unread);
-            if ($('chatPartners')) $('chatPartners').textContent = rows.length;
-            if (rows.length && rows[0].latest_text && $('chatPreview')) {
-              $('chatPreview').textContent = truncate(rows[0].latest_text, 30);
-            } else if ($('chatPreview')) {
-              $('chatPreview').textContent = '还没有对话，去找朋友聊聊';
-            }
-            var badge = $('chatBadge');
-            if (badge) {
-              badge.hidden = unread <= 0;
-              badge.textContent = unread > 99 ? '99+' : String(unread);
-            }
-          }
-        } catch (e) {}
-
-        // 通知
-        try {
-          var r1 = res[1];
-          if (r1.status === 'fulfilled' && r1.value && !r1.value.error && r1.value.data && r1.value.data.length) {
-            var un = Number(r1.value.data[0].unread) || 0;
-            setStat('statNotif', un);
-            var dot = $('notifDot');
-            if (dot) dot.hidden = un <= 0;
-          }
-        } catch (e) {}
-
-        // 文章数
-        try {
-          var r2 = res[2];
-          if (r2.status === 'fulfilled' && r2.value && typeof r2.value.count === 'number') {
-            setStat('statPosts', r2.value.count);
-          }
-        } catch (e) {}
-      });
-    }
-
-    function waitForSupabase(cb, tries) {
-      tries = tries || 0;
-      var sb = null;
-      try { sb = KJ.createSupabase(); } catch (e) {}
-      if (sb) return cb(sb);
-      if (tries > 80) return cb(null);
-      setTimeout(function() { waitForSupabase(cb, tries + 1); }, 150);
-    }
+    // 先按访客布局渲染，避免空白
+    STATE.layout = loadLayout();
+    renderGrid();
 
     waitForSupabase(function(sb) {
       if (!sb) { setGuest(); return; }
       sb.auth.getSession().then(function(r) {
         var user = r && r.data && r.data.session && r.data.session.user;
-        if (user) renderUser(user); else setGuest();
+        if (user) applyUser(user); else setGuest();
       }).catch(setGuest);
 
       sb.auth.onAuthStateChange(function(event, session) {
-        if (event === 'SIGNED_IN' && session && session.user) renderUser(session.user);
-        else if (event === 'SIGNED_OUT') setGuest();
+        if (event === 'SIGNED_IN' && session && session.user) applyUser(session.user);
+        else if (event === 'SIGNED_OUT') { STATE.user = null; setGuest(); }
       });
     });
-  })();
+
+    // ESC 退出编辑 / 关闭选择器
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      if ($('catalogOverlay')) { closeCatalog(); return; }
+      if (STATE.editing) setEditing(false);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
   </script>
 
 <div id="toast" class="toast hidden"></div>

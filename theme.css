@@ -1057,12 +1057,56 @@ i.fas, i.far, i.fab, i.fa-solid, i.fa-regular, i.fa-brands, i.fa {
 .mobile-menu-dropdown.open { display: flex; }
 .mobile-menu-dropdown .menu-item { display: block; width: 100%; text-align: left; }
 
-@media (max-width: 520px) {
+/* 平板及以下：导航项收纳进汉堡菜单，避免挤压 */
+@media (max-width: 980px) {
   .menu-bar .menu-item { display: none; }
   .hamburger { display: grid; }
+}
+@media (max-width: 520px) {
   .menu-user-tag { display: none; }
 }
-@media (min-width: 521px) {
+@media (min-width: 981px) {
   .hamburger { display: none !important; }
   .mobile-menu-dropdown { display: none !important; }
 }
+
+/* ====================== 导航栏毛玻璃升级 ====================== */
+.menu-bar {
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  backdrop-filter: blur(28px) saturate(200%);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.07),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+html[data-theme="dark"] .menu-bar {
+  background: rgba(28, 28, 30, 0.55);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.42),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* 滚动后提升不透明度，保证文字可读 */
+.menu-bar.scrolled { background: rgba(255, 255, 255, 0.8); }
+html[data-theme="dark"] .menu-bar.scrolled { background: rgba(28, 28, 30, 0.78); }
+
+/* 桌面导航项微交互 */
+@media (min-width: 981px) {
+  .menu-item { transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform 180ms var(--spring-default, ease); }
+  .menu-item:hover { transform: translateY(-1px); }
+  .menu-item.active { box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.14); }
+}
+/* 汉堡按钮旋转反馈 */
+.hamburger { transition: background var(--transition-fast), color var(--transition-fast), transform 220ms var(--spring-default, ease); }
+.hamburger:active { transform: scale(0.92); }
+/* 移动下拉：更明显的分组与玻璃质感 */
+.mobile-menu-dropdown {
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  backdrop-filter: blur(30px) saturate(190%);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+}
+html[data-theme="dark"] .mobile-menu-dropdown { background: rgba(28, 28, 30, 0.72); }
+.mobile-menu-dropdown .menu-item { padding: 11px 14px; border-radius: var(--radius-sm); }
+.mobile-menu-dropdown .menu-item.active { font-weight: 600; }
