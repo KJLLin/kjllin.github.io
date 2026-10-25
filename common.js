@@ -70,6 +70,111 @@
     });
   }
 
+  // ====================== 用户头像 ======================
+  var AVATAR_BUCKET = 'avatars';
+
+  /**
+   * 头像图片地址
+   *  - 本系统 Storage 存的是相对路径 {uid}/a-xxx.webp → 拼成公网 URL
+   *  - 外部 https URL（如 GitHub 头像）原样使用
+   * @param {string} raw
+   * @returns {string}
+   */
+  function avatarSrc(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return '';
+    if (/^https:\/\//i.test(s)) return s;
+    if (s.indexOf('/') < 0) return '';
+    return SUPABASE_URL + '/storage/v1/object/public/' + AVATAR_BUCKET + '/' +
+      s.split('/').map(encodeURIComponent).join('/');
+  }
+
+  /**
+   * 昵称首字（按码点取，emoji 不会被截断成半个）
+   * @param {string} nick
+   * @returns {string}
+   */
+  function avatarInitial(nick) {
+    var s = String(nick == null ? '' : nick).trim();
+    if (!s) return '?';
+    return Array.from(s)[0].toUpperCase();
+  }
+
+  /** 由 id / 昵称得到稳定色相，同一个人永远是同一个配色 */
+  function avatarHue(seed) {
+    var s = String(seed == null ? '' : seed);
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  /** 注入头像基础样式（只注入一次） */
+  function injectAvatarStyle() {
+    if (document.getElementById('kj-avatar-style')) return;
+    var st = document.createElement('style');
+    st.id = 'kj-avatar-style';
+    st.textContent = [
+      '.kj-av{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;',
+      'width:var(--av-size,40px);height:var(--av-size,40px);border-radius:50%;overflow:hidden;',
+      'background:linear-gradient(135deg,hsl(var(--av-hue,212) 82% 62%),hsl(calc(var(--av-hue,212) + 32) 76% 52%));',
+      'color:#fff;font-weight:700;font-size:var(--av-fs,16px);line-height:1;letter-spacing:.02em;',
+      'user-select:none;-webkit-user-select:none;vertical-align:middle}',
+      '.kj-av__txt{display:block}',
+      '.kj-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}',
+      '.kj-av--ring{box-shadow:0 0 0 2px rgba(255,255,255,.85),0 4px 14px rgba(0,0,0,.14)}',
+      'html[data-theme="dark"] .kj-av--ring{box-shadow:0 0 0 2px rgba(30,30,32,.9),0 4px 14px rgba(0,0,0,.45)}',
+      '.kj-av--nav{--av-size:18px;--av-fs:9px;margin-right:6px;vertical-align:-2px}',
+      '.kj-av-host{position:relative;overflow:hidden}',
+      '.kj-av-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  /**
+   * 生成头像 HTML：有图用 img，无图用昵称首字 + 稳定渐变
+   * @param {object} user  { id, nick, avatar_url }
+   * @param {object} [opts] { size, ring, className, nick, url }
+   * @returns {string}
+   */
+  function avatarHtml(user, opts) {
+    opts = opts || {};
+    injectAvatarStyle();
+    var size = Math.max(16, Math.min(240, Number(opts.size) || 40));
+    var nick = (user && (user.nick || user.nickname)) || opts.nick || '';
+    var raw = (user && (user.avatar_url || user.avatarUrl)) || opts.url || '';
+    var src = avatarSrc(raw);
+    var hue = avatarHue((user && user.id) || nick || 'kj');
+    var cls = 'kj-av' + (opts.ring ? ' kj-av--ring' : '') + (opts.className ? ' ' + opts.className : '');
+    var style = '--av-size:' + size + 'px;--av-fs:' + Math.round(size * 0.42) + 'px;--av-hue:' + hue;
+    return '<span class="' + cls + '" style="' + style + '" aria-hidden="true">' +
+      '<span class="kj-av__txt">' + escapeHtml(avatarInitial(nick)) + '</span>' +
+      (src ? '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+      '</span>';
+  }
+
+  /**
+   * 给页面上已有的圆形头像元素填充内容（保留该元素原有尺寸与阴影）
+   * 无自定义头像时回落为昵称首字
+   * @param {Element} el
+   * @param {object} user
+   */
+  function paintAvatar(el, user) {
+    if (!el) return;
+    injectAvatarStyle();
+    var src = avatarSrc(user && (user.avatar_url || user.avatarUrl));
+    var nick = (user && (user.nick || user.nickname)) || '';
+    if (src) {
+      el.classList.add('kj-av-host');
+      el.innerHTML = '<img class="kj-av-img" src="' + escapeHtml(src) +
+        '" alt="" loading="lazy" decoding="async" onerror="this.remove()">';
+      if (nick) el.setAttribute('title', nick);
+    } else {
+      el.classList.remove('kj-av-host');
+      el.textContent = avatarInitial(nick);
+      el.removeAttribute('title');
+    }
+  }
+
   // ====================== Toast 通知 ======================
   /**
    * 显示 Toast（自动移除旧 Toast）
@@ -582,8 +687,30 @@
       if (logoutBtn) logoutBtn.style.display = '';
     }
 
-    // 将导航栏"个人主页"菜单项（桌面 + 移动下拉）显示为用户昵称；user 为空时恢复默认文案
-    function setProfileMenuItem(user, nickOverride) {
+    // 头像缓存：uid → avatar_url（'' 表示确认没有）
+    var avatarCache = {};
+    var avatarPending = {};
+
+    function fetchAvatar(user, nickOverride) {
+      if (!user || !user.id || !sb) return;
+      var uid = user.id;
+      if (avatarCache[uid] !== undefined) {
+        setProfileMenuItem(user, nickOverride, avatarCache[uid]);
+        return;
+      }
+      if (avatarPending[uid]) return;
+      avatarPending[uid] = true;
+      sb.from('users').select('avatar_url').eq('id', uid).maybeSingle()
+        .then(function(r) {
+          avatarCache[uid] = (r && r.data && r.data.avatar_url) || '';
+          setProfileMenuItem(user, nickOverride, avatarCache[uid]);
+        })
+        .catch(function() {})
+        .then(function() { avatarPending[uid] = false; });
+    }
+
+    // 将导航栏"个人主页"菜单项（桌面 + 移动下拉）显示为用户昵称 + 头像；user 为空时恢复默认文案
+    function setProfileMenuItem(user, nickOverride, avatarUrl) {
       var items = document.querySelectorAll('a.menu-item[href^="/u/"]');
       if (!items.length) return;
       var nick = user ? (nickOverride || getDisplayNick(user)) : '';
@@ -591,8 +718,11 @@
         var a = items[i];
         if (user && nick) {
           var display = nick.length > 12 ? nick.slice(0, 12) + '…' : nick;
+          var icon = avatarUrl
+            ? avatarHtml({ id: user.id, nick: nick, avatar_url: avatarUrl }, { size: 18, className: 'kj-av--nav' })
+            : '<i class="fas fa-circle-user"></i>';
           a.href = user.id ? '/u/?id=' + encodeURIComponent(user.id) : '/u/';
-          a.innerHTML = '<i class="fas fa-circle-user"></i> ' + escapeHtml(display);
+          a.innerHTML = icon + ' ' + escapeHtml(display);
           a.title = nick;
         } else {
           a.href = '/u/';
@@ -604,7 +734,9 @@
 
     function setUserTag(user, nickOverride) {
       // 昵称直接显示在"个人主页"菜单项中，userTag 不再单独显示昵称
-      setProfileMenuItem(user, nickOverride);
+      var known = user && user.id && avatarCache[user.id] !== undefined ? avatarCache[user.id] : undefined;
+      setProfileMenuItem(user, nickOverride, known);
+      if (user && known === undefined) fetchAvatar(user, nickOverride);
       if (userTag) {
         userTag.innerHTML = '';
         userTag.style.display = 'none';
@@ -1233,6 +1365,11 @@
     safeStorage: safeStorage,
     createSupabase: createSupabase,
     escapeHtml: escapeHtml,
+    avatarSrc: avatarSrc,
+    avatarInitial: avatarInitial,
+    avatarHtml: avatarHtml,
+    paintAvatar: paintAvatar,
+    injectAvatarStyle: injectAvatarStyle,
     toast: toast,
     injectToastStyle: injectToastStyle,
     smoothScrollTo: smoothScrollTo,

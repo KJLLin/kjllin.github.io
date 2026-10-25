@@ -219,14 +219,29 @@
     .sort-tab:hover { color: var(--accent); }
     .sort-tab:active { transform: scale(0.96); transition: transform var(--duration-instant) var(--spring-default); }
     .sort-tab.active { background: var(--color-bg); color: var(--accent); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    /* 未登录提示：轻量横条，不占视觉重心（文章本身仍可浏览） */
     .login-prompt {
-      text-align: center; padding: 48px 20px; border-radius: var(--radius-lg);
-      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 14px 18px; border-radius: var(--radius-md);
+      margin-bottom: 18px;
       animation: fadeUp 0.5s var(--win-ease) 0.1s both;
     }
-    .login-prompt .icon { font-size: 48px; margin-bottom: 12px; }
-    .login-prompt .text { font-size: 16px; color: var(--text-secondary); margin-bottom: 16px; }
-    .login-prompt .hint { font-size: 13px; color: var(--text-tertiary); }
+    .login-prompt .icon {
+      font-size: 15px; width: 32px; height: 32px; flex-shrink: 0;
+      display: grid; place-items: center; border-radius: 50%;
+      background: var(--accent-glow); color: var(--accent);
+    }
+    .login-prompt .text { font-size: 13.5px; color: var(--text-secondary); flex: 1; min-width: 140px; margin: 0; }
+    .login-prompt .hint { font-size: 13px; color: var(--text-tertiary); margin: 0; }
+    .login-prompt .hint a {
+      display: inline-flex; align-items: center;
+      padding: 6px 14px; border-radius: 999px;
+      background: var(--accent); color: #fff !important;
+      text-decoration: none; font-weight: 600; font-size: 12.5px;
+      transition: background var(--transition-fast), transform var(--duration-instant);
+    }
+    .login-prompt .hint a:hover { background: var(--accent-light); }
+    .login-prompt .hint a:active { transform: scale(0.96); }
 
     .btn {
       font-size: 13px; padding: 8px 20px; border-radius: var(--radius-sm);
@@ -297,7 +312,12 @@
       font-size: 12px; color: var(--text-tertiary); margin-top: 14px;
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
-    .post-card .post-footer .author { font-weight: 600; color: var(--accent); }
+    .post-card .post-footer .author { font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 6px; }
+    .post-card .post-footer .author .author-av { flex-shrink: 0; }
+    .post-card .post-excerpt { display: block; margin: 2px 0 8px; font-size: 13px; line-height: 1.65;
+      color: var(--text-secondary); text-decoration: none;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .post-card .post-excerpt:hover { color: var(--text-primary); }
     .post-card .post-footer .footer-spacer { flex: 1; }
     .post-card .like-btn {
       display: inline-flex; align-items: center; gap: 6px;
@@ -580,8 +600,8 @@
     <!-- ==================== 登录提示（未登录时显示） ==================== -->
     <div class="login-prompt mica" id="loginPrompt">
       <div class="icon"><i class="fas fa-lock"></i></div>
-      <div class="text">请登录后参与文章广场</div>
-      <div class="hint"><a href="/login/?redirect=/discuss/" style="color:var(--accent);text-decoration:none;font-weight:600">→ 前往登录</a></div>
+      <div class="text">登录后可以发布文章、点赞和关注作者</div>
+      <div class="hint"><a href="/login/?redirect=/discuss/">登录</a></div>
     </div>
 
     <!-- ==================== 文章列表 ==================== -->
@@ -766,7 +786,7 @@
           userInfo.innerHTML = '<span style="color:var(--text-tertiary);font-size:14px;">未登录</span>';
           authBtns.innerHTML =
             '<a href="/login/?redirect=/discuss/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
-          loginPrompt.style.display = 'block';
+          loginPrompt.style.display = 'flex';
         }
       }
 
@@ -820,8 +840,8 @@
         }
       }
 
-      // 批量拉取作者实时昵称，覆盖 posts.nick 快照
-      // posts.nick 是发帖时的历史快照，用户改名后不会同步；此处以 users.nick（经 profiles_public 视图）为准
+      // 批量拉取作者实时昵称与头像，覆盖 posts.nick 快照
+      // posts.nick 是发帖时的历史快照，用户改名后不会同步；此处以 profiles_public 为准
       async function fillLiveNicks(posts) {
         if (!posts || !posts.length) return;
         var ids = [];
@@ -831,14 +851,16 @@
         }
         if (!ids.length) return;
         try {
-          var r = await sb.from('profiles_public').select('id,nick').in('id', ids);
+          var r = await sb.from('profiles_public').select('id,nick,avatar_url').in('id', ids);
           if (r.error || !r.data) return;
           var byId = {};
-          for (var j = 0; j < r.data.length; j++) byId[r.data[j].id] = r.data[j].nick;
+          for (var j = 0; j < r.data.length; j++) byId[r.data[j].id] = r.data[j];
           for (var k = 0; k < posts.length; k++) {
-            var live = byId[posts[k].user_id];
+            var row = byId[posts[k].user_id];
+            if (!row) continue;
             // 仅在拿到有效实时昵称时覆盖，查询失败则回退到快照，保证不会退化成「匿名」
-            if (live && String(live).trim()) posts[k].nick = live;
+            if (row.nick && String(row.nick).trim()) posts[k].nick = row.nick;
+            posts[k].avatar_url = row.avatar_url || '';
           }
         } catch(e) {
           console.warn('fillLiveNicks error:', e);
@@ -958,14 +980,31 @@
             const showFollow = currentUser && !isOwner && p.user_id;
             const following = showFollow && myFollows.has(p.user_id);
 
+            var excerpt = '';
+            if (p.content) {
+              var plain = String(p.content)
+                .replace(/```[\s\S]*?```/g, ' ')
+                .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+                .replace(/[#>*_`~-]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+              if (plain) excerpt = '<a href="/discuss/view/?id=' + p.id + '" class="post-excerpt">' +
+                KJ.escapeHtml(plain.slice(0, 96)) + (plain.length > 96 ? '…' : '') + '</a>';
+            }
+            var authorAv = KJ.avatarHtml(
+              { id: p.user_id, nick: p.nick || '匿名', avatar_url: p.avatar_url },
+              { size: 22, className: 'author-av' }
+            );
             return '<div class="post-card mica">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
               '</div>' +
               actions +
+              excerpt +
               '<div class="post-footer">' +
-                '<span class="author"><i class="fas fa-user"></i> ' + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
+                '<span class="author">' + authorAv + KJ.escapeHtml(p.nick || '匿名') + '</span>' +
                 (showFollow
                   ? '<button class="follow-btn' + (following ? ' following' : '') + '" data-author="' + p.user_id + '">' + (following ? '已关注' : '＋ 关注') + '</button>'
                   : '') +

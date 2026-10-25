@@ -195,6 +195,8 @@
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
       font-size: 13px; color: var(--text-tertiary);
     }
+    .post-card .post-meta .author { display: inline-flex; align-items: center; gap: 7px; }
+    .post-card .post-meta .author .author-av { flex-shrink: 0; }
     .post-card .post-meta .author {
       font-weight: 600; color: var(--accent);
     }
@@ -689,7 +691,11 @@
         (post.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
         '</h1>';
       html += '<div class="post-meta">';
-      html += '<span class="author">' + (post.user_id
+      var authorAvatar = KJ.avatarHtml(
+        { id: post.user_id, nick: post.nick || '匿名', avatar_url: post.avatar_url },
+        { size: 24, className: 'author-av' }
+      );
+      html += '<span class="author">' + authorAvatar + (post.user_id
         ? '<a href="/u/?id=' + encodeURIComponent(post.user_id) + '" style="color:inherit;text-decoration:none">' + KJ.escapeHtml(post.nick || '匿名') + '</a>'
         : KJ.escapeHtml(post.nick || '匿名')) + '</span>';
       html += '<span class="dot"></span>';
@@ -902,9 +908,10 @@
         if (data.user_id) {
           try {
             var nickRes = await sb.from('profiles_public')
-              .select('nick').eq('id', data.user_id).maybeSingle();
+              .select('nick,avatar_url').eq('id', data.user_id).maybeSingle();
             var liveNick = nickRes && nickRes.data && nickRes.data.nick;
             if (liveNick && String(liveNick).trim()) data.nick = liveNick;
+            if (nickRes && nickRes.data) data.avatar_url = nickRes.data.avatar_url || '';
           } catch(e) {
             console.warn('Load author nick error:', e);
           }

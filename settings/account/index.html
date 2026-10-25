@@ -309,7 +309,7 @@
         $('#loginPrompt').style.display='none';$('#accountContent').style.display='block';
 
         var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
-        $('#profileAvatar').textContent=nick.charAt(0).toUpperCase();
+        KJ.paintAvatar($('#profileAvatar'), { nick: nick });
         $('#profileName').textContent=nick;
         $('#profileEmail').textContent=user.email;
         $('#emailStatus').textContent=user.email_confirmed_at?'已验证':'待验证';
@@ -318,7 +318,8 @@
         $('#infoCreated').textContent=fmtDate(user.created_at);
 
         try{
-          var r2=await sb.from('users').select('last_login_time,status,is_admin').eq('id',user.id).limit(1);
+          var r2=await sb.from('users').select('last_login_time,status,is_admin,avatar_url').eq('id',user.id).limit(1);
+          if(r2.data&&r2.data.length){ KJ.paintAvatar($('#profileAvatar'), { nick: nick, avatar_url: r2.data[0].avatar_url||'' }); }
           if(r2.data&&r2.data.length){$('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);$('#infoStatus').textContent=r2.data[0].status==='active'?'正常':'待审核';
             if(r2.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';}
           }

@@ -343,7 +343,7 @@
       async function loadProfile(targetId) {
         // 资料来自公开视图（匿名可读，不含邮箱）
         var pRes = await sb.from('profiles_public')
-          .select('id,nick,is_admin,created_at')
+          .select('id,nick,is_admin,created_at,avatar_url')
           .eq('id', targetId).maybeSingle();
         if (pRes.error) throw pRes.error;
         if (!pRes.data) { showNotFound('找不到该用户'); return; }
@@ -391,7 +391,8 @@
         html += '<div class="profile-hero">' +
           '<div class="profile-cover"></div>' +
           '<div class="profile-body">' +
-            '<div class="avatar">' + esc(Array.from(nick)[0] || '?').toUpperCase() + '</div>' +
+            KJ.avatarHtml({ id: profileUser.id, nick: nick, avatar_url: profileUser.avatar_url },
+                          { size: 96, ring: true, className: 'avatar' }) +
             '<div class="profile-main">' +
               '<div class="profile-info">' +
                 '<div class="profile-name">' + esc(nick) +
@@ -586,7 +587,7 @@
             listEl.innerHTML = '<div class="fmodal-empty">还没有' + (isFollowers ? '粉丝' : '关注的人') + '</div>';
             return;
           }
-          var uRes = await sb.from('profiles_public').select('id,nick,is_admin').in('id', ids);
+          var uRes = await sb.from('profiles_public').select('id,nick,is_admin,avatar_url').in('id', ids);
           if (uRes.error) throw uRes.error;
           var users = uRes.data || [];
           var byId = {};
@@ -607,7 +608,7 @@
             var char = nick.charAt(0).toUpperCase();
             html += '<div class="fuser">' +
               '<a class="fu-main" href="/u/?id=' + encodeURIComponent(id) + '">' +
-                '<span class="fu-avatar">' + esc(char) + '</span>' +
+                KJ.avatarHtml(uv, { size: 40, className: 'fu-avatar' }) +
                 '<span style="flex:1;min-width:0">' +
                   '<div class="fu-name">' + esc(nick) +
                     (uv.is_admin === true ? ' <i class="fas fa-shield-halved" style="font-size:10px;color:var(--accent)"></i>' : '') +

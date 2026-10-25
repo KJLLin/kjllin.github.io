@@ -230,6 +230,56 @@
       font-weight: 500;
     }
 
+    /* ===== 我的区（最近游玩 / 收藏 / 战绩） ===== */
+    .hub-section { margin-bottom: 32px; }
+    .hub-section[hidden] { display: none; }
+    .hub-strip {
+      display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 12px;
+      scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+    }
+    .hub-chip {
+      display: flex; align-items: center; gap: 10px;
+      flex: 0 0 auto; min-width: 168px;
+      padding: 12px 16px; border-radius: var(--radius-md);
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      text-decoration: none; color: inherit;
+      transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+    }
+    .hub-chip:hover { transform: translateY(-2px); background: var(--bg-mica-hover); border-color: var(--border-mica-hover); }
+    .hub-chip:active { transform: scale(0.97); }
+    .hub-chip .ico { font-size: 22px; line-height: 1; flex-shrink: 0; }
+    .hub-chip .txt { min-width: 0; }
+    .hub-chip .nm { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hub-chip .sb { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+
+    /* 收藏星标（卡片右上角，hover 出现） */
+    .game-pin {
+      position: absolute; top: 14px; right: 14px; z-index: 3;
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 12px; color: var(--text-tertiary);
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      cursor: pointer; opacity: 0;
+      transition: opacity var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), background var(--transition-fast);
+    }
+    .game-card:hover .game-pin, .game-pin.is-on, .game-pin:focus-visible { opacity: 1; }
+    .game-pin:hover { transform: scale(1.1); background: var(--bg-mica-hover); }
+    .game-pin.is-on { color: #ffb300; border-color: rgba(255,179,0,.35); background: rgba(255,179,0,.12); }
+
+    /* 战绩 */
+    .game-record {
+      position: relative; z-index: 2; pointer-events: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 10px; font-size: 11px; font-weight: 600;
+      color: #b8860b; background: rgba(255, 179, 0, 0.13);
+      border: 1px solid rgba(255, 179, 0, 0.28);
+      padding: 3px 9px; border-radius: 999px;
+    }
+    html[data-theme="dark"] .game-record { color: #ffcf4d; background: rgba(255, 179, 0, 0.16); }
+    @media (max-width: 560px) {
+      .game-pin { opacity: 1; }
+    }
+
     /* 搜索栏 */
     .search-wrap {
       margin-bottom: 24px; opacity: 0;
@@ -321,6 +371,12 @@
       <input type="text" class="search-box" id="searchBox" placeholder="搜索游戏..." autocomplete="off">
     </div>
 
+    <!-- 继续上次玩 -->
+    <section class="hub-section" id="hubRecent" hidden>
+      <h2 class="section-title">继续上次</h2>
+      <div class="hub-strip" id="hubRecentStrip"></div>
+    </section>
+
     <!-- 游戏列表 -->
     <section>
       <h2 class="section-title">全部游戏</h2>
@@ -352,7 +408,7 @@
 
         <a href="/game/snake/" class="game-card mica" data-keywords="贪吃蛇 蛇 snake 经典 怀旧 触屏">
           <div class="card-shine"></div>
-          <div class="card-icon">🐍</div>
+          <div class="card-icon"><i class="fas fa-staff-snake"></i></div>
           <h3 class="card-title">贪吃蛇</h3>
           <p class="card-desc">经典贪吃蛇游戏。键盘/触屏双模式操控，速度随分数递增，支持最高分本地记录！</p>
           <div class="card-tags">
@@ -364,7 +420,7 @@
 
         <a href="/game/rps/" class="game-card mica" data-keywords="石头剪刀布 猜拳 rps 对战 联机 双人">
           <div class="card-shine"></div>
-          <div class="card-icon">✊</div>
+          <div class="card-icon"><i class="fas fa-hand-back-fist"></i></div>
           <h3 class="card-title">石头剪刀布</h3>
           <p class="card-desc">经典猜拳游戏，支持人机对战和双人联机对战。联机模式通过房间号匹配，实时对决！</p>
           <div class="card-tags">
@@ -460,6 +516,178 @@
     KJ.initMessageBanner(sb);
 
     $('#searchBox').addEventListener('input', filterGames);
+
+    // ---------------- 我的游戏：最近游玩 / 收藏置顶 / 本地战绩 ----------------
+    (function initGameHub() {
+      var RECENT_KEY = 'kj_game_recent';
+      var PIN_KEY = 'kj_game_pinned';
+      var RECENT_MAX = 6;
+
+      // 各游戏的本地最高分键名（新增游戏时在这里补一行即可）
+      var RECORDS = {
+        tfe:     { label: '最高分', keys: ['best2048'] },
+        snake:   { label: '最高分', keys: ['snake_high_score'] },
+        dino:    { label: '最高分', keys: ['dino_high_score', 'dino_best_score'] },
+        schulte: { label: '最快',   keys: ['schulte_best_3', 'schulte_best_4', 'schulte_best_5'],
+                   better: 'min', fixed: 2, unit: ' 秒' }
+      };
+
+      function readJSON(k, dflt) {
+        try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? dflt : v; }
+        catch (e) { return dflt; }
+      }
+      function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+      function readBest(cfg) {
+        var best = null;
+        for (var i = 0; i < cfg.keys.length; i++) {
+          var v = parseFloat(localStorage.getItem(cfg.keys[i]));
+          if (!isFinite(v) || v <= 0) continue;
+          if (best === null || (cfg.better === 'min' ? v < best : v > best)) best = v;
+        }
+        return best;
+      }
+
+      var cards = [].slice.call(document.querySelectorAll('.game-card'));
+      var info = {};
+      cards.forEach(function (card, idx) {
+        var m = /^\/game\/([^/]+)\//.exec(card.getAttribute('href') || '');
+        if (!m) return;
+        var key = m[1];
+        card.setAttribute('data-game', key);
+        card.setAttribute('data-order', String(idx));
+        var iconEl = card.querySelector('.card-icon');
+        info[key] = {
+          card: card,
+          title: ((card.querySelector('.card-title') || {}).textContent || key).trim(),
+          icon: iconEl ? iconEl.innerHTML : '\uD83C\uDFAE'
+        };
+      });
+
+      // 本地战绩
+      Object.keys(RECORDS).forEach(function (key) {
+        var cfg = RECORDS[key], it = info[key];
+        if (!cfg || !it) return;
+        var v = readBest(cfg);
+        if (v === null) return;
+        var txt = cfg.fixed ? v.toFixed(cfg.fixed) : String(Math.round(v));
+        var el = document.createElement('div');
+        el.className = 'game-record';
+        el.innerHTML = '<i class="fas fa-trophy"></i> ' + cfg.label + ' ' + txt + (cfg.unit || '');
+        it.card.appendChild(el);
+      });
+
+      // 收藏置顶
+      var pinned = readJSON(PIN_KEY, []);
+      if (!Array.isArray(pinned)) pinned = [];
+
+      function applyPins() {
+        var grid = document.getElementById('gameGrid');
+        if (!grid) return;
+        var list = [].slice.call(grid.querySelectorAll('.game-card'));
+        list.sort(function (a, b) {
+          var pa = pinned.indexOf(a.getAttribute('data-game')) >= 0 ? 0 : 1;
+          var pb = pinned.indexOf(b.getAttribute('data-game')) >= 0 ? 0 : 1;
+          if (pa !== pb) return pa - pb;
+          return Number(a.getAttribute('data-order')) - Number(b.getAttribute('data-order'));
+        });
+        // appendChild 会把节点移出再插入，入场动画（opacity:0）会重放，
+        // 所以重排时直接锁定为最终可见状态。
+        list.forEach(function (c) {
+          c.style.animation = 'none';
+          c.style.opacity = '1';
+          grid.appendChild(c);
+        });
+      }
+
+      Object.keys(info).forEach(function (key) {
+        var card = info[key].card;
+        var btn = document.createElement('span');
+        btn.className = 'game-pin' + (pinned.indexOf(key) >= 0 ? ' is-on' : '');
+        btn.setAttribute('role', 'button');
+        btn.setAttribute('tabindex', '0');
+        btn.setAttribute('aria-label', '收藏 ' + info[key].title);
+        btn.setAttribute('aria-pressed', pinned.indexOf(key) >= 0 ? 'true' : 'false');
+        btn.innerHTML = '<i class="fas fa-star"></i>';
+
+        function togglePin(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var i = pinned.indexOf(key);
+          if (i >= 0) pinned.splice(i, 1); else pinned.unshift(key);
+          writeJSON(PIN_KEY, pinned);
+          var on = pinned.indexOf(key) >= 0;
+          btn.classList.toggle('is-on', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          applyPins();
+          KJ.toast(on ? '已收藏并置顶' : '已取消收藏');
+        }
+        btn.addEventListener('click', togglePin);
+        btn.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') togglePin(e);
+        });
+        card.appendChild(btn);
+      });
+      if (pinned.length) applyPins();
+
+      // 最近游玩
+      var recent = readJSON(RECENT_KEY, []);
+      if (!Array.isArray(recent)) recent = [];
+      recent = recent.filter(function (r) { return r && info[r.key]; });
+
+      function timeAgo(ts) {
+        var d = Date.now() - (Number(ts) || 0);
+        if (d < 60000) return '刚刚';
+        if (d < 3600000) return Math.floor(d / 60000) + ' 分钟前';
+        if (d < 86400000) return Math.floor(d / 3600000) + ' 小时前';
+        if (d < 7 * 86400000) return Math.floor(d / 86400000) + ' 天前';
+        return '很久以前';
+      }
+
+      function renderRecent() {
+        var sec = document.getElementById('hubRecent');
+        var strip = document.getElementById('hubRecentStrip');
+        if (!sec || !strip) return;
+        if (!recent.length) { sec.hidden = true; return; }
+        sec.hidden = false;
+        strip.innerHTML = recent.slice(0, RECENT_MAX).map(function (r) {
+          var it = info[r.key];
+          return '<a class="hub-chip" href="' + it.card.getAttribute('href') + '">' +
+            '<span class="ico">' + it.icon + '</span>' +
+            '<span class="txt"><span class="nm">' + it.title + '</span>' +
+            '<span class="sb">' + timeAgo(r.ts) + '</span></span></a>';
+        }).join('');
+      }
+
+      function markRecent(key) {
+        if (!key) return;
+        var i = -1;
+        for (var j = 0; j < recent.length; j++) if (recent[j].key === key) { i = j; break; }
+        if (i >= 0) recent.splice(i, 1);
+        recent.unshift({ key: key, ts: Date.now() });
+        if (recent.length > RECENT_MAX) recent.length = RECENT_MAX;
+        writeJSON(RECENT_KEY, recent);
+      }
+
+      cards.forEach(function (card) {
+        card.addEventListener('click', function () { markRecent(card.getAttribute('data-game')); });
+      });
+      renderRecent();
+
+      // 数字键 1-9：直接打开当前可见的第 n 个游戏
+      document.addEventListener('keydown', function (e) {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        var tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+        var n = parseInt(e.key, 10);
+        if (!n || n < 1) return;
+        var visible = cards.filter(function (c) { return c.style.display !== 'none'; });
+        var target = visible[n - 1];
+        if (!target) return;
+        e.preventDefault();
+        markRecent(target.getAttribute('data-game'));
+        window.location.href = target.getAttribute('href');
+      });
+    })();
     window.addEventListener('scroll', handleScroll);
     KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
     KJ.initNav(sb, { homeUrl: '/' });

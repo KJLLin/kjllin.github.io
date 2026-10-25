@@ -324,15 +324,6 @@
       gap: 16px;
       margin-bottom: 26px;
     }
-    .home-avatar {
-      width: 58px; height: 58px;
-      border-radius: 50%;
-      display: grid; place-items: center;
-      font-size: 24px; font-weight: 700; color: #fff;
-      background: linear-gradient(135deg, #0a84ff, #bf5af2);
-      box-shadow: 0 8px 24px rgba(10,132,255,.28);
-      flex-shrink: 0;
-    }
     .home-hello { min-width: 0; flex: 1; }
     .home-date {
       font-size: 12px; letter-spacing: .04em;
@@ -551,7 +542,6 @@
       .w-big span { font-size: 34px; }
       .w-num span { font-size: 20px; }
       .w-foot { margin-top: 4px; font-size: 10px; }
-      .home-avatar { width: 48px; height: 48px; font-size: 20px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .widget, .widget::after { transition: none; }
@@ -1033,7 +1023,6 @@ html[data-theme="dark"] .catalog-sheet {
   <div class="container home-shell">
     <!-- ==================== 顶部问候 ==================== -->
     <section class="home-hero">
-      <div class="home-avatar" id="homeAvatar" aria-hidden="true">K</div>
       <div class="home-hello">
         <p class="home-date" id="homeDate"></p>
         <h1 class="home-title" id="homeGreet">欢迎来到 KJLLin</h1>
@@ -2010,8 +1999,6 @@ html[data-theme="dark"] .catalog-sheet {
     var nick = nickOf(user);
     var nameEl = $('homeGreet');
     if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
-    var av = $('homeAvatar');
-    if (av) av.textContent = Array.from(nick)[0] || 'K';
     var login = $('homeLogin');
     if (login) login.hidden = true;
 

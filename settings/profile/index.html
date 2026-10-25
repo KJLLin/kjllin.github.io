@@ -28,8 +28,17 @@
     .card-glass-form h2{font-size:17px;font-weight:600;color:var(--color-text-primary);margin-bottom:24px;display:flex;align-items:center;gap:8px}
 
     .avatar-section{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
-    .avatar-large{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:34px;font-weight:700;margin-bottom:8px;box-shadow:0 6px 20px var(--color-accent-glow)}
-    .avatar-hint{font-size:12px;color:var(--color-text-tertiary)}
+    .avatar-pick{position:relative;width:88px;height:88px;padding:0;border:none;background:none;cursor:pointer;margin-bottom:10px;border-radius:50%;-webkit-tap-highlight-color:transparent}
+    .avatar-large{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-light));color:var(--color-text-on-accent);display:grid;place-items:center;font-size:36px;font-weight:700;box-shadow:0 6px 20px var(--color-accent-glow);overflow:hidden;position:relative;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease}
+    .avatar-pick:hover .avatar-large{transform:scale(1.04);box-shadow:0 10px 26px var(--color-accent-glow)}
+    .avatar-pick:active .avatar-large{transform:scale(.97)}
+    .avatar-pick .badge{position:absolute;right:-1px;bottom:-1px;width:28px;height:28px;border-radius:50%;background:var(--color-accent);color:#fff;display:grid;place-items:center;font-size:12px;border:2.5px solid var(--color-bg);box-shadow:0 2px 8px rgba(0,0,0,.2);pointer-events:none}
+    .avatar-pick.is-busy .badge i{animation:kjSpin 1s linear infinite}
+    @keyframes kjSpin{to{transform:rotate(360deg)}}
+    .avatar-actions{display:flex;gap:16px;margin-top:2px}
+    .avatar-actions button{background:none;border:none;padding:2px 0;font-family:inherit;font-size:12px;color:var(--color-accent);cursor:pointer}
+    .avatar-actions button.danger{color:#ff453a}
+    .avatar-hint{font-size:12px;color:var(--color-text-tertiary);margin-top:8px;text-align:center;line-height:1.5}
 
     .form-group{margin-bottom:16px}
     .form-group label{display:block;font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px}
@@ -97,7 +106,17 @@
     <div id="profileContent" style="display:none">
       <div class="card-glass-form">
         <h2><i class="fas fa-user-edit"></i> 个人资料</h2>
-        <div class="avatar-section"><div class="avatar-large" id="profileAvatarLarge">U</div><div class="avatar-hint">头像取自昵称首字母</div></div>
+        <div class="avatar-section">
+          <button type="button" class="avatar-pick" id="avatarPick" aria-label="更换头像">
+            <div class="avatar-large" id="profileAvatarLarge">U</div>
+            <span class="badge"><i class="fas fa-camera"></i></span>
+          </button>
+          <input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <div class="avatar-actions">
+            <button type="button" id="avatarRemove" hidden>恢复默认头像</button>
+          </div>
+          <div class="avatar-hint" id="avatarHint">点按头像更换 · 支持 JPG / PNG / WebP · 自动裁成方形</div>
+        </div>
         <div class="form-group"><label>昵称</label><input type="text" id="nickInput" placeholder="设置你的昵称" maxlength="20"><div class="form-feedback" id="nickFeedback"></div><div class="form-hint">1-20 个字符，支持中英文和数字</div></div>
         <div class="form-group"><label>邮箱</label><input type="email" id="emailShow" disabled><div class="form-hint">邮箱不可修改，如需更换请联系管理员</div></div>
         <button class="btn-save" id="saveBtn"><i class="fas fa-save"></i> 保存修改</button>
@@ -117,6 +136,7 @@
     (function(){
     var $=function(s){return document.querySelector(s);};
     var sb,user;
+    var currentNick='', currentAvatar='';
     try{sb=KJ.createSupabase();}catch(e){}
     if(sb) KJ.initMessageBanner(sb);
 
@@ -130,15 +150,133 @@
         user=r.data.session.user;
         $('#loginPrompt').style.display='none';$('#profileContent').style.display='block';
         var nick=user.user_metadata&&user.user_metadata.nick||(user.email||'').split('@')[0]||'用户';
-        $('#profileAvatarLarge').textContent=nick.charAt(0).toUpperCase();
+        currentNick=nick;
+        setAvatarUI('');
         $('#nickInput').value=nick;
         $('#emailShow').value=user.email||'';
         $('#infoUserId').textContent=user.id.substring(0,12)+'...';
         $('#infoCreated').textContent=fmtDate(user.created_at);
         if(user.email_confirmed_at){$('#infoVerified').textContent='已验证';$('#infoVerified').innerHTML='已验证 <i class="fas fa-check"></i>';$('#infoVerified').style.color='var(--color-success)';}
         else{$('#infoVerified').textContent='未验证';$('#infoVerified').style.color='var(--color-warning)';}
+        loadAvatar();
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
+
+    // ---------------- 头像 ----------------
+    function setAvatarUI(avatarUrl){
+      currentAvatar=avatarUrl||'';
+      KJ.paintAvatar($('#profileAvatarLarge'), { nick: currentNick, avatar_url: currentAvatar });
+      $('#avatarRemove').hidden = !currentAvatar;
+    }
+
+    async function loadAvatar(){
+      if(!sb||!user)return;
+      try{
+        var r=await sb.from('users').select('avatar_url').eq('id',user.id).maybeSingle();
+        if(!r.error&&r.data) setAvatarUI(r.data.avatar_url||'');
+      }catch(e){}
+    }
+
+    /** 居中裁成方形 + 缩到 512，输出 webp（不支持时退 jpeg） */
+    function compressImage(file){
+      return new Promise(function(resolve,reject){
+        var img=new Image();
+        var url=URL.createObjectURL(file);
+        img.onload=function(){
+          URL.revokeObjectURL(url);
+          try{
+            var side=Math.min(img.naturalWidth,img.naturalHeight);
+            var sx=(img.naturalWidth-side)/2, sy=(img.naturalHeight-side)/2;
+            var out=512;
+            var cv=document.createElement('canvas');
+            cv.width=out; cv.height=out;
+            var ctx=cv.getContext('2d');
+            ctx.imageSmoothingEnabled=true;
+            ctx.imageSmoothingQuality='high';
+            ctx.drawImage(img,sx,sy,side,side,0,0,out,out);
+            cv.toBlob(function(b){
+              if(b) return resolve(b);
+              cv.toBlob(function(b2){
+                b2?resolve(b2):reject(new Error('图片编码失败'));
+              },'image/jpeg',0.88);
+            },'image/webp',0.86);
+          }catch(err){reject(err);}
+        };
+        img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('图片读取失败'));};
+        img.src=url;
+      });
+    }
+
+    var avatarBusy=false;
+    async function uploadAvatar(file){
+      if(!file||avatarBusy||!user)return;
+      if(!/^image\//.test(file.type)){KJ.toast('请选择图片文件');return;}
+      if(file.size>5*1024*1024){KJ.toast('图片不要超过 5MB');return;}
+      avatarBusy=true;
+      var pick=$('#avatarPick');
+      pick.classList.add('is-busy');
+      $('#avatarHint').textContent='处理中…';
+      try{
+        var blob=await compressImage(file);
+        var ext=blob.type==='image/webp'?'webp':'jpg';
+        var path=user.id+'/a-'+Date.now()+'.'+ext;
+        var up=await sb.storage.from('avatars').upload(path,blob,{contentType:blob.type,cacheControl:'31536000',upsert:false});
+        if(up.error)throw up.error;
+        var upd=await sb.from('users').update({avatar_url:path}).eq('id',user.id);
+        if(upd.error){try{await sb.storage.from('avatars').remove([path]);}catch(_){} throw upd.error;}
+        // 清掉旧文件（同目录下除当前这张）
+        try{
+          var ls=await sb.storage.from('avatars').list(user.id,{limit:100});
+          var olds=(ls.data||[]).filter(function(o){return user.id+'/'+o.name!==path;})
+                                 .map(function(o){return user.id+'/'+o.name;});
+          if(olds.length)await sb.storage.from('avatars').remove(olds);
+        }catch(_){}
+        setAvatarUI(path);
+        KJ.toast('头像已更新');
+      }catch(e){
+        console.warn('avatar upload:',e);
+        KJ.toast((e&&e.message)?('头像上传失败：'+e.message):'头像上传失败');
+        setAvatarUI(currentAvatar);
+      }finally{
+        avatarBusy=false;
+        pick.classList.remove('is-busy');
+        $('#avatarHint').textContent='点按头像更换 · 支持 JPG / PNG / WebP · 自动裁成方形';
+        $('#avatarFile').value='';
+      }
+    }
+
+    $('#avatarPick').addEventListener('click',function(){ if(!avatarBusy)$('#avatarFile').click(); });
+    $('#avatarFile').addEventListener('change',function(e){ uploadAvatar(e.target.files&&e.target.files[0]); });
+
+    $('#avatarRemove').addEventListener('click',async function(){
+      if(avatarBusy)return;
+      if(!confirm('恢复为昵称首字头像？当前上传的图片会被删除。'))return;
+      avatarBusy=true;
+      try{
+        var r=await sb.rpc('clear_my_avatar');
+        if(r.error)throw r.error;
+        try{
+          var ls=await sb.storage.from('avatars').list(user.id,{limit:100});
+          var all=(ls.data||[]).map(function(o){return user.id+'/'+o.name;});
+          if(all.length)await sb.storage.from('avatars').remove(all);
+        }catch(_){}
+        setAvatarUI('');
+        KJ.toast('已恢复默认头像');
+      }catch(e){KJ.toast('操作失败，请稍后再试');}
+      finally{avatarBusy=false;}
+    });
+
+    // 支持拖拽图片到头像上
+    ['dragover','dragenter'].forEach(function(ev){
+      $('#avatarPick').addEventListener(ev,function(e){e.preventDefault();e.currentTarget.classList.add('is-over');});
+    });
+    ['dragleave','drop'].forEach(function(ev){
+      $('#avatarPick').addEventListener(ev,function(e){e.preventDefault();e.currentTarget.classList.remove('is-over');});
+    });
+    $('#avatarPick').addEventListener('drop',function(e){
+      var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+      if(f)uploadAvatar(f);
+    });
 
     $('#saveBtn').addEventListener('click',async function(){
       if(!KJ.rateLimit('profile_save', 5000)) return; // 5秒内只能保存一次
