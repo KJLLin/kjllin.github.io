@@ -985,6 +985,21 @@ async function loadConversationList() {
   }
 }
 
+/** 列表渲染出首字头像后，再批量补上真实头像（一次 RPC，避免 N+1） */
+function paintListAvatars(rootEl, users) {
+  if (!rootEl || !users || !users.length) return;
+  var ids = users.map(function (u) { return u.id; });
+  sb.rpc('get_avatars', { p_ids: ids }).then(function (r) {
+    if (r.error || !r.data) return;
+    var map = {};
+    r.data.forEach(function (x) { map[x.id] = x.avatar_url || ''; });
+    users.forEach(function (u) {
+      var node = rootEl.querySelector('[data-uid="' + u.id + '"] .invite-avatar');
+      if (node) KJ.paintAvatar(node, { nick: u.nick || '用户', avatar_url: map[u.id] || '' });
+    });
+  }).catch(function () {});
+}
+
 function renderConvList(users) {
   var el = document.getElementById('convListInline');
   if (!users.length) {
@@ -999,6 +1014,7 @@ function renderConvList(users) {
       + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent);font-size:13px"></i>'
       + '</div>';
   }).join('');
+  paintListAvatars(el, users);
 }
 
 function resetConvListSent() {
@@ -1057,6 +1073,7 @@ function renderInviteResults(users) {
       + '</div>';
   }).join('');
   el.classList.add('show');
+  paintListAvatars(el, users);
 }
 
 document.getElementById('inviteResults').addEventListener('click', function(e) {
