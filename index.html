@@ -422,6 +422,7 @@
     .w-icon--profile { background: linear-gradient(135deg, #ff375f, #bf5af2); }
     .w-icon--settings{ background: linear-gradient(135deg, #8e8e93, #636366); }
     .w-icon--docs    { background: linear-gradient(135deg, #5e5ce6, #0a84ff); }
+    .w-icon--news    { background: linear-gradient(135deg, #ff9f0a, #ff375f); }
 
     .widget--chat .w-icon { width: 48px; height: 48px; font-size: 21px; border-radius: 14px; }
 
@@ -1026,7 +1027,7 @@ html[data-theme="dark"] .catalog-sheet {
       <div class="home-hello">
         <p class="home-date" id="homeDate"></p>
         <h1 class="home-title" id="homeGreet">欢迎来到 KJLLin</h1>
-        <p class="home-sub" id="homeSub">站内信 · 游戏中心 · 资源云盘 · 文章广场</p>
+        <p class="home-sub" id="homeSub">站内信 · 资讯 · 游戏 · 云盘 · 文章广场</p>
       </div>
       <div class="home-actions">
         <span class="sync-hint" id="syncHint" role="status" aria-live="polite"></span>
@@ -1328,6 +1329,7 @@ html[data-theme="dark"] .catalog-sheet {
     game:        { title: '游戏中心', icon: 'fa-gamepad',     color: 'game',     size: 'sm', href: '/game/' },
     cloud:       { title: '资源云盘', icon: 'fa-cloud',       color: 'cloud',    size: 'sm', href: '/cloud/' },
     discuss:     { title: '文章广场', icon: 'fa-book-open',   color: 'discuss',  size: 'sm', href: '/discuss/' },
+    news:        { title: '资讯',     icon: 'fa-rss',         color: 'news',     size: 'sm', href: '/news/' },
     profile:     { title: '个人主页', icon: 'fa-circle-user', color: 'profile',  size: 'sm', href: '/u/' },
     settings:    { title: '设置',     icon: 'fa-gear',        color: 'settings', size: 'sm', href: '/settings/' },
     docs:        { title: '帮助文档', icon: 'fa-book',        color: 'docs',     size: 'sm', href: '/docs/' },
@@ -1342,7 +1344,7 @@ html[data-theme="dark"] .catalog-sheet {
                    desc: '平台最新一条公告' }
   };
 
-  var DEFAULT_LAYOUT = ['chat', 'notif', 'clock', 'game', 'cloud', 'discuss', 'profile', 'settings', 'docs'];
+  var DEFAULT_LAYOUT = ['chat', 'notif', 'clock', 'game', 'cloud', 'discuss', 'news', 'profile', 'settings', 'docs'];
   var ADDABLE = ['recentChats', 'recentPosts', 'games', 'announce'];
   var FIXED = ['chat', 'notif', 'clock'];
 
@@ -1357,8 +1359,8 @@ html[data-theme="dark"] .catalog-sheet {
     user: null,
     layout: DEFAULT_LAYOUT.slice(),
     editing: false,
-    stats: { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null },
-    data: { convs: [], posts: [], announce: null }
+    stats: { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null, newsTotal: null },
+    data: { convs: [], posts: [], announce: null, news: null }
   };
 
   // ---------------- 布局：本地缓存 + 云端同步 ----------------
@@ -1407,9 +1409,22 @@ html[data-theme="dark"] .catalog-sheet {
     } catch (e) {}
   }
 
+  // 新增栏目时，让已存在的布局自动补上一次（用户删掉后不会再补）
+  function withNewsOnce(order) {
+    try {
+      if (localStorage.getItem('kj_news_added_v1')) return order;
+      localStorage.setItem('kj_news_added_v1', '1');
+      if (order.indexOf('news') < 0) {
+        var i = order.indexOf('discuss');
+        order.splice(i >= 0 ? i + 1 : order.length, 0, 'news');
+      }
+    } catch (e) {}
+    return order;
+  }
+
   function loadLayout() {
     var loc = readLocal();
-    return loc ? loc.order.slice() : DEFAULT_LAYOUT.slice();
+    return withNewsOnce(loc ? loc.order.slice() : DEFAULT_LAYOUT.slice());
   }
 
   function setSyncHint(kind, text) {
@@ -1560,6 +1575,12 @@ html[data-theme="dark"] .catalog-sheet {
     if (id === 'discuss') {
       return '<div class="w-title">文章广场</div><div class="w-num"><span>' + statText(s.posts) + '</span><small>篇我的文章</small></div>';
     }
+    if (id === 'news') {
+      var nit = d.news;
+      return '<div class="w-title">资讯</div>' +
+        '<div class="w-num"><span>' + statText(s.newsTotal) + '</span><small>条科技新闻</small></div>' +
+        (nit && nit.title ? '<div class="w-preview">' + esc(nit.title) + '</div>' : '');
+    }
     if (id === 'profile') {
       return '<div class="w-title">个人主页</div><div class="w-num"><span>查看</span><small>我的动态</small></div>';
     }
@@ -1611,6 +1632,7 @@ html[data-theme="dark"] .catalog-sheet {
       case 'game':     return '恐龙快跑 · 2048 · 贪吃蛇 <i class="fas fa-arrow-right"></i>';
       case 'cloud':    return '上传 · 分享 · 私有空间 <i class="fas fa-arrow-right"></i>';
       case 'discuss':  return '看看大家在聊什么 <i class="fas fa-arrow-right"></i>';
+      case 'news':     return 'IT 之家 · 定时同步 <i class="fas fa-arrow-right"></i>';
       case 'profile':  return '查看主页 <i class="fas fa-arrow-right"></i>';
       case 'settings': return '账号 · 隐私 · 外观 <i class="fas fa-arrow-right"></i>';
       case 'docs':     return '使用指南与常见问题 <i class="fas fa-arrow-right"></i>';
@@ -1931,6 +1953,11 @@ html[data-theme="dark"] .catalog-sheet {
         .select('id,title,content,created_at')
         .eq('active', true)
         .order('created_at', { ascending: false })
+        .limit(1),
+      sb.rpc('news_stats'),
+      sb.from('news_items')
+        .select('title,published_at,link')
+        .order('published_at', { ascending: false })
         .limit(1)
     ];
 
@@ -1973,6 +2000,19 @@ html[data-theme="dark"] .catalog-sheet {
         }
       } catch (e) {}
 
+      // 资讯
+      try {
+        if (res[4] && res[4].status === 'fulfilled' && res[4].value && !res[4].value.error &&
+            res[4].value.data && res[4].value.data.length) {
+          STATE.stats.newsTotal = Number(res[4].value.data[0].total) || 0;
+        }
+      } catch (e) {}
+      try {
+        if (res[5] && res[5].status === 'fulfilled' && res[5].value && !res[5].value.error) {
+          STATE.data.news = (res[5].value.data || [])[0] || null;
+        }
+      } catch (e) {}
+
       renderGrid();
     });
   }
@@ -1988,8 +2028,8 @@ html[data-theme="dark"] .catalog-sheet {
     clearTimeout(syncTimer);
     syncTimer = null;
     setSyncHint('', '');
-    STATE.stats = { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null };
-    STATE.data = { convs: [], posts: [], announce: null };
+    STATE.stats = { chatUnread: null, chatPartners: null, chatPreview: '', notifUnread: null, posts: null, newsTotal: null };
+    STATE.data = { convs: [], posts: [], announce: null, news: null };
     renderGrid();
     loadData(null);
   }
@@ -1998,7 +2038,7 @@ html[data-theme="dark"] .catalog-sheet {
     STATE.user = user;
     var nick = nickOf(user);
     var nameEl = $('homeGreet');
-    if (nameEl) nameEl.textContent = greetingWord() + '，' + nick;
+    if (nameEl) nameEl.textContent = '欢迎回来，' + nick;
     var login = $('homeLogin');
     if (login) login.hidden = true;
 

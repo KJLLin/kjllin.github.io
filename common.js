@@ -625,6 +625,27 @@
    * 移动端下拉补齐「通知中心 / 设置」入口
    * 避免每个页面手工维护同样的菜单
    */
+  /**
+   * 全站补「资讯」入口（插在文章广场之后）
+   * 新增栏目时只改这里，不必逐个修改 26 个页面的导航 HTML
+   */
+  function ensureNewsLinks() {
+    try {
+      var sets = document.querySelectorAll('.menu-bar, #mobileMenu');
+      for (var i = 0; i < sets.length; i++) {
+        var box = sets[i];
+        if (!box || box.querySelector('a.menu-item[href="/news/"]')) continue;
+        var anchor = box.querySelector('a.menu-item[href^="/discuss"]');
+        if (!anchor) continue;                 // 该容器没有文章广场项，跳过
+        var a = document.createElement('a');
+        a.href = '/news/';
+        a.className = 'menu-item';
+        a.innerHTML = '<i class="fas fa-newspaper"></i> 资讯';
+        anchor.parentNode.insertBefore(a, anchor.nextSibling);
+      }
+    } catch (e) {}
+  }
+
   function ensureMobileLinks() {
     try {
       var dd = document.getElementById('mobileMenu');
@@ -667,6 +688,7 @@
     setupNavScrollEffect();
     // 先补齐移动端入口，再统一计算高亮（新加的元素也要参与）
     ensureMobileLinks();
+    ensureNewsLinks();
     markActiveNav();
 
     // 创建 Supabase 客户端（如果未传入；复用模块级懒初始化单例，而不是每次新建）
@@ -1396,7 +1418,8 @@
     disableBrowserNotification: disableBrowserNotification,
     isBrowserNotificationEnabled: isBrowserNotificationEnabled,
     rateLimit: rateLimit,
-    initNav: initNav
+    initNav: initNav,
+    ensureNewsLinks: ensureNewsLinks
   };
 
   // 注入 Toast 样式
