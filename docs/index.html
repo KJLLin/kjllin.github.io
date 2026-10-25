@@ -774,7 +774,7 @@ var docs = {
     title: '首页导航',
     category: '开始使用',
     meta: '类 iCloud 的小组件桌面，一眼看到消息与动态',
-    toc: [['小组件布局', 'layout'], ['实时数据', 'stats'], ['快捷入口', 'entries'], ['外观', 'theme']],
+    toc: [['小组件布局', 'layout'], ['实时数据', 'stats'], ['自定义桌面', 'customize'], ['外观', 'theme']],
     content: '<p>首页采用类 iCloud 的<strong>桌面小组件</strong>布局，把消息、通知与各功能入口集中在一屏。</p>'
       + '<h2 id="layout">小组件布局<a href="#layout" class="anchor-icon">#</a></h2>'
       + '<p>桌面端为 4 列网格，站内信是占据 2×2 的主组件；窄屏自动变为 2 列，主组件转为通栏。</p>'
@@ -787,10 +787,15 @@ var docs = {
       + '<li><strong>通知</strong>：未读通知数，有未读时图标右上角显示红点</li>'
       + '<li><strong>文章广场</strong>：你已发布的文章数</li></ul>'
       + '<p>未登录时组件仍可点击进入各功能，登录后会显示统计数字。</p>'
-      + '<h2 id="entries">快捷入口<a href="#entries" class="anchor-icon">#</a></h2>'
-      + '<p>点击任意小组件即可进入对应模块。悬停时组件会轻微上浮，点击有按压缩放反馈。</p>'
+      + '<h2 id="customize">自定义桌面<a href="#customize" class="anchor-icon">#</a></h2>'
+      + '<p>点击问候语右侧的「编辑」进入编辑模式：</p>'
+      + '<ul><li>每个组件右下角出现 <strong>‹ › ×</strong>：左右移动顺序，或移除组件</li>'
+      + '<li><strong>站内信 / 通知 / 时钟</strong>为固定组件，只能移动、不能移除</li>'
+      + '<li>点击末尾的 <strong>＋</strong> 打开「添加小组件」，可添加：最近对话、最近文章、快捷游戏、最新公告</li>'
+      + '<li>布局按账号保存在本地，刷新或下次访问会保持；也可在弹层中点「恢复默认布局」</li>'
+      + '<li>按 <kbd>Esc</kbd> 退出编辑模式</li></ul>'
       + '<h2 id="theme">外观<a href="#theme" class="anchor-icon">#</a></h2>'
-      + '<p>首页背景会根据浅色 / 深色主题自动切换柔和的渐变光斑，无图片依赖。右上角可切换主题。</p>'
+      + '<p>首页卡片采用<strong>毛玻璃</strong>材质：半透明底 + 背景模糊与饱和度提升，背景的渐变光斑会透出淡淡的颜色。浅色 / 深色主题分别适配。</p>'
   },
   'register': {
     title: '注册与登录',

@@ -487,6 +487,64 @@
    * @param {string} [opts.loginUrl='/login/']       - 登录页路径
    * @param {string} [opts.homeUrl='/']              - 退出后跳转
    */
+  /**
+   * 自动高亮当前页面对应的导航项
+   * 页面里手写的 active 容易漏改，这里按 pathname 统一计算一次
+   */
+  function markActiveNav() {
+    try {
+      var path = global.location.pathname.replace(/\/index\.html$/, '/');
+      if (path.length > 1) path = path.replace(/\/$/, '');
+      var links = document.querySelectorAll('.menu-item[href]');
+      for (var i = 0; i < links.length; i++) {
+        var a = links[i];
+        var href = a.getAttribute('href') || '';
+        if (href.charAt(0) !== '/') continue;
+        var base = href.split('?')[0].replace(/\/index\.html$/, '/');
+        if (base.length > 1) base = base.replace(/\/$/, '');
+        var match;
+        if (base === '' || base === '/') match = (path === '' || path === '/');
+        else match = (path === base || path.indexOf(base + '/') === 0);
+        if (match) {
+          a.classList.add('active');
+          a.setAttribute('aria-current', 'page');
+        } else {
+          a.classList.remove('active');
+          a.removeAttribute('aria-current');
+        }
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * 移动端下拉补齐「通知中心 / 设置」入口
+   * 避免每个页面手工维护同样的菜单
+   */
+  function ensureMobileLinks() {
+    try {
+      var dd = document.getElementById('mobileMenu');
+      if (!dd) return;
+      var existing = {};
+      var links = dd.querySelectorAll('a[href]');
+      for (var i = 0; i < links.length; i++) {
+        existing[(links[i].getAttribute('href') || '').replace(/\/$/, '')] = true;
+      }
+      var extras = [
+        ['/notifications/', 'fa-bell', '通知中心'],
+        ['/settings/', 'fa-gear', '设置']
+      ];
+      for (var j = 0; j < extras.length; j++) {
+        var href = extras[j][0];
+        if (existing[href.replace(/\/$/, '')]) continue;
+        var a = document.createElement('a');
+        a.href = href;
+        a.className = 'menu-item';
+        a.innerHTML = '<i class="fas ' + extras[j][1] + '"></i> ' + extras[j][2];
+        dd.appendChild(a);
+      }
+    } catch (e) {}
+  }
+
   function initNav(sb, opts) {
     opts = opts || {};
     var logoutSel = opts.logoutBtn || '#logoutBtn';
@@ -502,6 +560,9 @@
 
     // 导航栏滚动材质效果（Apple: 滚动时材质变实，而非硬分割线）
     setupNavScrollEffect();
+    // 先补齐移动端入口，再统一计算高亮（新加的元素也要参与）
+    ensureMobileLinks();
+    markActiveNav();
 
     // 创建 Supabase 客户端（如果未传入；复用模块级懒初始化单例，而不是每次新建）
     if (!sb) sb = getNavSupabase();
