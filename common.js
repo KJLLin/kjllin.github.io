@@ -100,12 +100,16 @@
     return Array.from(s)[0].toUpperCase();
   }
 
-  /** 由 id / 昵称得到稳定色相，同一个人永远是同一个配色 */
+  /**
+   * 由 id / 昵称得到稳定色相，同一个人永远是同一个配色。
+   * 默认头像统一走蓝色系（196~215，青蓝到正蓝），只做细微变化，
+   * 这样列表里一排头像看起来是一套的，又不会完全是同一个蓝。
+   */
   function avatarHue(seed) {
     var s = String(seed == null ? '' : seed);
     var h = 0;
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-    return h;
+    return 196 + (h % 20);
   }
 
   /** 注入头像基础样式（只注入一次） */
@@ -116,7 +120,7 @@
     st.textContent = [
       '.kj-av{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;',
       'width:var(--av-size,40px);height:var(--av-size,40px);border-radius:50%;overflow:hidden;',
-      'background:linear-gradient(135deg,hsl(var(--av-hue,212) 82% 62%),hsl(calc(var(--av-hue,212) + 32) 76% 52%));',
+      'background:linear-gradient(135deg,hsl(var(--av-hue,212) 86% 62%),hsl(calc(var(--av-hue,212) + 14) 80% 50%));',
       'color:#fff;font-weight:700;font-size:var(--av-fs,16px);line-height:1;letter-spacing:.02em;',
       'user-select:none;-webkit-user-select:none;vertical-align:middle}',
       '.kj-av__txt{display:block}',

@@ -43,6 +43,19 @@
     .btn-ghost.is-spinning i { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* 来源筛选 */
+    .src-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 18px; }
+    .src-tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-secondary); font-size: 13px; font-family: inherit;
+      transition: background .18s ease, color .18s ease, border-color .18s ease;
+    }
+    .src-tab:hover { background: var(--bg-mica-hover); color: var(--text-primary); }
+    .src-tab.active { background: var(--accent); border-color: transparent; color: #fff; }
+    .src-tab .cnt { font-size: 11px; opacity: .75; }
+
     /* ==================== 头条 ==================== */
     .hero-card {
       display: block; text-decoration: none; color: inherit;
@@ -202,9 +215,7 @@
       <div>
         <h1 class="page-title"><i class="fas fa-newspaper"></i> 资讯</h1>
         <p class="page-sub">
-          <span>来自 IT 之家</span>
-          <span class="dot"></span>
-          <span>已过滤电商导购</span>
+          <span>IT 之家 · 中新网</span>
           <span class="dot"></span>
           <span id="syncHint">服务器定时同步</span>
         </p>
@@ -213,6 +224,8 @@
         <button type="button" class="btn-ghost" id="refreshBtn"><i class="fas fa-rotate"></i> 刷新</button>
       </div>
     </header>
+
+    <div class="src-tabs" id="srcTabs"></div>
 
     <div id="heroSlot"></div>
     <div class="news-list" id="newsList"></div>
@@ -225,7 +238,7 @@
 
     <p class="foot-note">
       资讯内容版权归 <a href="https://www.ithome.com/" target="_blank" rel="noopener noreferrer">IT 之家</a> 所有，
-      本站仅做标题与摘要聚合，并自动过滤促销导购类内容，点击卡片跳转原文阅读。
+      本站仅做标题与摘要聚合，版权归原媒体所有，点击卡片跳转原文阅读。
     </p>
   </div>
 
@@ -238,7 +251,7 @@
     var sb = null;
     try { sb = KJ.createSupabase(); } catch (e) {}
     var PAGE = 20;
-    var state = { items: [], cursor: null, loading: false, done: false };
+    var state = { items: [], cursor: null, loading: false, done: false, source: null, srcList: [] };
 
     var listEl = document.getElementById('newsList');
     var heroSlot = document.getElementById('heroSlot');
@@ -269,13 +282,17 @@
              'referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">';
     }
 
+    function srcBadge(it) {
+      return '<span class="nc-src"><i class="fas fa-bolt"></i> ' + esc(it.source_name || '资讯') + '</span>';
+    }
+
     function heroHtml(it) {
       return '<a class="hero-card" href="' + esc(safeLink(it.link)) + '" target="_blank" rel="noopener noreferrer">' +
         (it.cover_url ? '<div class="hero-cover">' + imgTag(it.cover_url, it.title) + '</div>' : '') +
         '<div class="hero-body">' +
           '<div class="hero-title">' + esc(it.title) + '</div>' +
           (it.summary ? '<div class="hero-summary">' + esc(it.summary) + '</div>' : '') +
-          '<div class="nc-meta"><span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+          '<div class="nc-meta">' + srcBadge(it) +
             (it.importance >= 5 ? '<span class="nc-hot"><i class="fas fa-star"></i> 精选</span>' : '') +
             '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
             '<span>· 头条</span></div>' +
@@ -289,7 +306,7 @@
           '<div class="nc-title">' + esc(it.title) + '</div>' +
           (it.summary ? '<div class="nc-summary">' + esc(it.summary) + '</div>' : '') +
           '<div class="nc-meta">' +
-            '<span class="nc-src"><i class="fas fa-bolt"></i> IT 之家</span>' +
+            srcBadge(it) +
             (it.importance >= 5 ? '<span class="nc-hot"><i class="fas fa-star"></i> 精选</span>' : '') +
             '<span>' + esc(timeAgo(it.published_at)) + '</span>' +
           '</div>' +
@@ -339,6 +356,7 @@
       }
 
       var args = { p_limit: PAGE };
+      if (state.source) args.p_source = state.source;
       if (!replace && state.cursor) {
         args.p_before_ts = state.cursor.ts;
         args.p_before_id = state.cursor.id;
@@ -366,6 +384,33 @@
       });
     }
 
+    function renderSrcTabs(active) {
+      var el = document.getElementById('srcTabs');
+      if (!el) return;
+      var list = state.srcList || [];
+      if (list.length < 2) { el.innerHTML = ''; return; }
+      var total = list.reduce(function (a, r) { return a + Number(r.total || 0); }, 0);
+      var html = '<button type="button" class="src-tab' + (!active ? ' active' : '') +
+                 '" data-src="">全部 <span class="cnt">' + total + '</span></button>';
+      list.forEach(function (r) {
+        html += '<button type="button" class="src-tab' + (active === r.source ? ' active' : '') +
+                '" data-src="' + esc(r.source) + '">' + esc(r.source_name || r.source) +
+                ' <span class="cnt">' + r.total + '</span></button>';
+      });
+      el.innerHTML = html;
+      Array.prototype.forEach.call(el.querySelectorAll('.src-tab'), function (btn) {
+        btn.addEventListener('click', function () {
+          var src = btn.getAttribute('data-src') || null;
+          if (src === state.source) return;
+          state.source = src;
+          state.done = false;
+          state.cursor = null;
+          renderSrcTabs(src);
+          loadMore(true);
+        });
+      });
+    }
+
     function loadStats() {
       if (!sb) return;
       sb.rpc('news_stats').then(function (r) {
@@ -375,6 +420,11 @@
         if (hint && row.latest) {
           hint.textContent = '最后更新 ' + timeAgo(row.latest) + ' · 共 ' + row.total + ' 条';
         }
+      }).catch(function () {});
+      sb.rpc('news_source_stats').then(function (r2) {
+        if (r2.error || !r2.data) return;
+        state.srcList = r2.data;
+        renderSrcTabs(state.source);
       }).catch(function () {});
     }
 

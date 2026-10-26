@@ -698,6 +698,7 @@ var sidebarStructure = [
   [ '账号与安全', [
     ['account', '账号安全', 'shield-halved'],
     ['settings', '设置中心', 'gear'],
+    ['admin', '管理后台', 'user-shield'],
     ['devices', '设备管理', 'mobile-screen'],
     ['password', '修改密码', 'lock']
   ]],
@@ -969,22 +970,24 @@ var docs = {
   'news': {
     title: 'IT 之家资讯',
     category: '资讯',
-    meta: '服务器定时同步 IT 之家头条，自动过滤电商导购，只做标题与摘要聚合',
-    toc: [['数据来源', 'source'], ['内容筛选', 'filter'], ['页面结构', 'layout'], ['刷新与加载', 'refresh'], ['版权说明', 'copyright']],
-    content: '<p><a href="/news/">资讯</a>聚合 IT 之家（ITHome）的科技新闻，由<strong>服务器定时抓取</strong>，打开页面即可看到最新内容，不需要你自己订阅 RSS。</p>'
+    meta: '服务器定时同步 IT 之家与中新网，只做标题与摘要聚合',
+    toc: [['数据来源', 'source'], ['内容范围', 'filter'], ['页面结构', 'layout'], ['刷新与加载', 'refresh'], ['版权说明', 'copyright']],
+    content: '<p><a href="/news/">资讯</a>聚合 IT 之家与中新网的新闻，由<strong>服务器定时抓取</strong>，打开页面即可看到最新内容，不需要你自己订阅 RSS。</p>'
       + '<h2 id="source">数据来源<a href="#source" class="anchor-icon">#</a></h2>'
-      + '<p>来源是 IT 之家官方 RSS（<code>ithome.com/rss/</code>）。服务器<strong>每 2 分钟检查一次</strong>，距上次抓取超过 25 分钟就发起新一轮同步，因此内容最迟约半小时内会更新。</p>'
+      + '<p>目前接入两个来源，各自按自己的节奏更新：</p>'
+      + '<ul><li><strong>IT 之家</strong> — 官方 RSS，每 25 分钟一次，科技与数码为主</li>'
+      + '<li><strong>中新网</strong> — 官方滚动新闻 RSS，每 20 分钟一次，时政与社会为主</li></ul>'
+      + '<p>服务器每 2 分钟检查一次待处理队列，到点就发起抓取，因此内容最迟约半小时内会更新。页面上方可以按来源筛选。</p>'
       + '<ul><li>只保存<strong>标题、摘要、封面图、原文链接与发布时间</strong>，不搬运全文</li>'
       + '<li>同一条新闻按 guid 去重，标题或摘要变化时会更新，不会重复出现</li>'
       + '<li>只接受 IT 之家本站链接，避免 RSS 被注入外链</li>'
       + '<li>资讯保留 45 天，之后自动清理</li></ul>'
-      + '<h2 id="filter">内容筛选<a href="#filter" class="anchor-icon">#</a></h2>'
-      + '<p>IT 之家的原始 RSS 里混着大量电商导购稿（「xx 元好价」「直降 xx 元」「开售」之类），本站会自动过滤掉这部分，同时<strong>尽量保留有价值的行业和技术新闻</strong>。</p>'
-      + '<ul><li><strong>过滤掉的</strong>：标题带促销词（好价 / 直降 / 国补 / 秒杀 / 优惠券 / 到手价等），或带价格且属于商品销售类的内容</li>'
-      + '<li><strong>保留的</strong>：财报、裁员与并购、融资投资、监管调查、安全漏洞、标准协议、AI 与芯片、系统更新、游戏与影视行业动态等</li>'
-      + '<li>财报和投资类新闻里的「亿元」「美元」<strong>不会被当成商品价格</strong>误伤（这是早期版本的一个坑，已修正）</li>'
-      + '<li>标了 <strong>精选</strong> 的条目，是按「行业 / 资本 / 安全 / 标准 / 技术 / 封面质量」加权评分较高的，属于当天比较值得看的几条</li></ul>'
-      + '<p>按目前的实际数据，大约会过滤掉 <strong>三成</strong> 的条目，其余照常展示 —— 既去掉广告，又不会让内容变得太少。</p>'
+      + '<h2 id="filter">内容范围<a href="#filter" class="anchor-icon">#</a></h2>'
+      + '<p>资讯<strong>不做关键词过滤</strong>，源里有什么就收录什么，只按域名和 guid 去重。之前尝试过用黑名单剔除电商导购稿，后来去掉了 —— 判断成本高、容易误伤，不如把选择权交给你。</p>'
+      + '<ul><li>如果只想看某一类，可以用来源筛选，或直接 Ctrl/⌘+F 搜关键词</li>'
+      + '<li>标题带「好价」「直降」这类内容的会照常出现在列表里，它们确实也是当天发布的信息</li>'
+      + '<li>标了 <strong>精选</strong> 的条目，是按「行业 / 资本 / 安全 / 标准 / 技术 / 封面质量」加权评分较高的几条，只是角标，不影响收录</li></ul>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">关于央视新闻</span><p>央视网官方的 RSS 频道最后更新停在 2007 年，站点列表页是 JS 渲染，<code>api.cntv.cn</code> 的接口有访问校验，服务端拿不到稳定的实时数据，所以暂时没有接入。如果之后有可用的公开源，加一行配置即可。</p></div></div>'
       + '<h2 id="layout">页面结构<a href="#layout" class="anchor-icon">#</a></h2>'
       + '<ul><li>顶部是最新一条的<strong>头条大卡</strong>，带封面图</li>'
       + '<li>下面是列表，每条显示标题、两行摘要、封面缩略图与发布时间</li>'
@@ -1130,6 +1133,30 @@ var docs = {
       + '<h2 id="logout">退出登录<a href="#logout" class="anchor-icon">#</a></h2>'
       + '<p>页面底部的「退出登录」会清除当前会话并返回首页。</p>'
   },
+  'admin': {
+    title: '管理后台',
+    category: '账号与安全',
+    meta: '用户权限、公告与资讯源管理（仅管理员）',
+    toc: [['进入方式', 'enter'], ['用户管理', 'users'], ['内容与资讯源', 'content'], ['账号工具', 'tools']],
+    content: '<p><a href="/admin/">管理后台</a>只对<strong>管理员</strong>开放。页面分为三个分区，用顶部的分段控件切换。</p>'
+      + '<h2 id="enter">进入方式<a href="#enter" class="anchor-icon">#</a></h2>'
+      + '<p>从 <a href="/settings/">设置中心</a> 的管理员入口进入，或直接访问 <code>/admin/</code>。非管理员会看到「无权访问」提示，不会加载任何数据。</p>'
+      + '<h2 id="users">用户管理<a href="#users" class="anchor-icon">#</a></h2>'
+      + '<ul><li>顶部统计总用户数、管理员数、功能受限用户数</li>'
+      + '<li>搜索框可按昵称、邮箱、手机号过滤</li>'
+      + '<li>每个用户卡片显示头像、昵称、邮箱/手机、注册与最近登录时间</li>'
+      + '<li>下方四个功能开关（站内信 / 文章广场 / 云盘上传 / 游戏云分数），点一下变红即禁用，改完点该行的「保存」</li></ul>'
+      + '<h2 id="content">内容与资讯源<a href="#content" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>全站公告</strong> — 填标题（必填）、内容、跳转链接后发布，全站顶部横幅生效，可停用或删除</li>'
+      + '<li><strong>资讯源</strong> — 显示每个源的条数、抓取间隔、上次抓取与最新入库时间、最近一次错误</li>'
+      + '<li>「立即同步」会触发一轮抓取，结果 1~2 分钟后入库</li></ul>'
+      + '<h2 id="tools">账号工具<a href="#tools" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>创建手机号账号</strong> — 新用户可用手机号 + 密码登录</li>'
+      + '<li><strong>绑定手机号</strong> — 给已有账号补手机号</li>'
+      + '<li><strong>更新邮箱</strong> — 换邮箱后可用新邮箱 + 密码登录</li>'
+      + '<li><strong>重置密码</strong> — 用户忘记密码时由管理员设置</li></ul>'
+      + '<div class="admonition admonition--warning"><span class="admonition-icon"><i class="fas fa-triangle-exclamation"></i></span><div class="admonition-content"><span class="admonition-heading">注意</span><p>这几项操作会直接改动账号凭证，请确认对方身份后再执行；重置密码后建议提醒用户自行修改。</p></div></div>'
+  },
   'devices': {
     title: '设备管理',
     category: '账号与安全',
@@ -1195,7 +1222,7 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
-      + '<li><strong>资讯精选：</strong>资讯自动过滤电商导购稿（约三成），保留行业与技术新闻，重要的条目标「精选」角标。</li>'
+      + '<li><strong>资讯多源：</strong>新增中新网滚动新闻；取消导购黑名单，全部收录；支持按来源筛选。<code>news_feeds</code> 加一行即可接入新源。</li>'
       + '<li><strong>资讯频道：</strong>新增 <a href="/news/">资讯</a> 页，服务器每 25 分钟抓取 IT 之家 RSS，支持头条大卡、无限滚动与封面图；首页新增资讯组件，全站导航同步加入入口。</li>'
       + '<li><strong>自定义头像：</strong>支持上传图片作为头像（自动裁成方形并压缩），未上传时使用昵称首字 + 稳定渐变；头像同步显示在导航栏、个人主页、文章、站内信等位置。</li>'
       + '<li><strong>游戏中心增强：</strong>新增「继续上次」最近游玩、星标收藏置顶、本机最高分战绩徽章与数字键快捷进入。</li>'
