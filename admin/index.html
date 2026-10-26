@@ -127,6 +127,46 @@
       .save-btn{flex:1 1 100%;margin-left:0;margin-top:4px;padding:8px}
       .gate-card{padding:36px 16px}
     }
+
+    /* ==================== 分段标签 ==================== */
+    .admin-tabs{
+      display:flex;gap:5px;padding:5px;margin-bottom:16px;
+      border-radius:14px;background:var(--color-bg-input);border:1px solid var(--color-border);
+    }
+    .admin-tab{
+      flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      padding:9px 10px;border:none;border-radius:10px;background:transparent;
+      color:var(--color-text-secondary);font-size:13.5px;font-weight:500;font-family:inherit;
+      cursor:pointer;transition:background .2s var(--ease-out),color .2s var(--ease-out);
+      -webkit-tap-highlight-color:transparent;
+    }
+    .admin-tab i{font-size:12px}
+    .admin-tab:hover{color:var(--color-text-primary)}
+    .admin-tab.active{
+      background:var(--color-bg-raised);color:var(--color-text-primary);font-weight:600;
+      box-shadow:0 1px 3px rgba(0,0,0,.10),0 0 0 1px rgba(0,0,0,.03);
+    }
+    .admin-panel[hidden]{display:none}
+
+    /* ==================== 资讯源 ==================== */
+    .feed-row{
+      display:flex;align-items:center;gap:12px;padding:12px 14px;
+      border-radius:12px;background:var(--color-bg-input);border:1px solid var(--color-border);
+    }
+    .feed-dot{width:8px;height:8px;border-radius:50%;background:#34c759;flex-shrink:0}
+    .feed-dot.off{background:#8e8e93}
+    .feed-dot.err{background:var(--color-danger)}
+    .feed-main{flex:1;min-width:0}
+    .feed-name{font-size:13.5px;font-weight:600;color:var(--color-text-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .feed-meta{font-size:11.5px;color:var(--color-text-tertiary);margin-top:3px;line-height:1.5;word-break:break-all}
+    .feed-cnt{font-size:11px;font-weight:600;color:var(--color-accent);background:var(--color-accent-glow);padding:2px 9px;border-radius:999px}
+    .feed-actions{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+    .feed-note{font-size:12px;color:var(--color-text-tertiary)}
+
+    @media (max-width:520px){
+      .admin-tab{padding:8px 6px;font-size:12.5px;gap:5px}
+      .admin-tab i{display:none}
+    }
   </style>
 </head>
 <body>
@@ -180,6 +220,13 @@
 
     <!-- 管理后台内容：仅管理员可见 -->
     <div id="adminContent" style="display:none">
+      <div class="admin-tabs" id="adminTabs" role="tablist">
+        <button type="button" class="admin-tab active" data-panel="users" role="tab"><i class="fas fa-users"></i> 用户</button>
+        <button type="button" class="admin-tab" data-panel="content" role="tab"><i class="fas fa-bullhorn"></i> 内容</button>
+        <button type="button" class="admin-tab" data-panel="tools" role="tab"><i class="fas fa-screwdriver-wrench"></i> 工具</button>
+      </div>
+
+      <div class="admin-panel" data-panel="users">
       <!-- 统计 -->
       <div class="card card-glass card-anim" style="margin-bottom:12px">
         <div class="card-header"><i class="fas fa-chart-simple"></i> 统计概览</div>
@@ -201,6 +248,43 @@
         <div class="search-hint"><i class="fas fa-circle-info"></i> 点击开关切换功能（红色为已禁用），修改后需点击该行的「保存」</div>
       </div>
 
+      <!-- 用户列表 -->
+      <div id="userList" class="user-list"></div>
+      </div>
+
+      <div class="admin-panel" data-panel="content" hidden>
+      <!-- 全站公告管理 -->
+      <div class="card card-glass card-anim" style="margin-bottom:12px">
+        <div class="card-header"><i class="fas fa-bullhorn c-accent"></i> 全站公告</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="phone-grid">
+            <input id="annTitle" class="search-input" placeholder="公告标题" autocomplete="off">
+            <input id="annContent" class="search-input" placeholder="内容（可选，将展示在标题后）" autocomplete="off">
+          </div>
+          <div class="phone-grid">
+            <input id="annLink" class="search-input" placeholder="跳转链接（可选）" autocomplete="off">
+            <button type="button" class="save-btn" id="annAddBtn"><i class="fas fa-paper-plane"></i> 发布公告</button>
+          </div>
+          <div class="search-hint"><i class="fas fa-circle-info"></i> 发布后全站顶部横幅展示（仅最新一条生效）。可停用或删除。</div>
+        </div>
+
+        <div id="annList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- 资讯源（服务器端订阅） -->
+      <div class="card card-glass card-anim" style="margin-top:12px">
+        <div class="card-header"><i class="fas fa-rss c-accent"></i> 资讯源</div>
+        <div class="search-hint"><i class="fas fa-circle-info"></i> 服务器按各源自己的间隔自动抓取。改源只需在数据库 <code>news_feeds</code> 加一行。</div>
+        <div id="feedList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        <div class="feed-actions">
+          <button type="button" class="save-btn" id="newsSyncBtn"><i class="fas fa-rotate"></i> 立即同步</button>
+          <span class="feed-note" id="feedNote"></span>
+        </div>
+      </div>
+      </div>
+
+      <div class="admin-panel" data-panel="tools" hidden>
       <!-- 手机号账号管理（仅管理员，通过 admin-phone 函数执行） -->
       <div class="card card-glass card-anim" style="margin-bottom:12px" id="phoneCard">
         <div class="card-header"><i class="fas fa-address-book"></i> 账号联系方式管理</div>
@@ -248,28 +332,7 @@
           </div>
         </div>
       </div>
-
-      <!-- 全站公告管理 -->
-      <div class="card card-glass card-anim" style="margin-bottom:12px">
-        <div class="card-header"><i class="fas fa-bullhorn c-accent"></i> 全站公告</div>
-
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div class="phone-grid">
-            <input id="annTitle" class="search-input" placeholder="公告标题" autocomplete="off">
-            <input id="annContent" class="search-input" placeholder="内容（可选，将展示在标题后）" autocomplete="off">
-          </div>
-          <div class="phone-grid">
-            <input id="annLink" class="search-input" placeholder="跳转链接（可选）" autocomplete="off">
-            <button type="button" class="save-btn" id="annAddBtn"><i class="fas fa-paper-plane"></i> 发布公告</button>
-          </div>
-          <div class="search-hint"><i class="fas fa-circle-info"></i> 发布后全站顶部横幅展示（仅最新一条生效）。可停用或删除。</div>
-        </div>
-
-        <div id="annList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
       </div>
-
-      <!-- 用户列表 -->
-      <div id="userList" class="user-list"></div>
     </div>
   </div>
 
@@ -325,9 +388,12 @@
 
         $('#gateCard').style.display='none';
         $('#adminContent').style.display='block';
+        bindTabs();
         bindAnnounce();
+        bindFeeds();
         loadUsers();
         loadAnnouncements();
+        loadFeeds();
       }catch(e){console.error('loadUser:',e);showGate('加载失败','网络异常，请刷新页面重试');}
     }
 
@@ -424,6 +490,93 @@
       });
     }
 
+    // ==================== 分栏切换 ====================
+    function bindTabs(){
+      var bar=$('#adminTabs');
+      if(!bar||bar._bound)return;
+      bar._bound=true;
+      bar.addEventListener('click',function(e){
+        var btn=e.target.closest?e.target.closest('.admin-tab'):null;
+        if(!btn)return;
+        var target=btn.getAttribute('data-panel');
+        var tabs=bar.querySelectorAll('.admin-tab');
+        for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i]===btn);
+        var panels=document.querySelectorAll('.admin-panel');
+        for(var j=0;j<panels.length;j++)panels[j].hidden=panels[j].getAttribute('data-panel')!==target;
+        if(target==='content')loadFeeds();
+      });
+    }
+
+    // ==================== 资讯源 ====================
+    function fmtAgo(iso){
+      if(!iso)return '从未';
+      var d=Date.now()-new Date(iso).getTime();
+      if(!isFinite(d))return '--';
+      if(d<60000)return '刚刚';
+      if(d<3600000)return Math.floor(d/60000)+' 分钟前';
+      if(d<86400000)return Math.floor(d/3600000)+' 小时前';
+      return Math.floor(d/86400000)+' 天前';
+    }
+
+    async function loadFeeds(){
+      var el=$('#feedList');
+      if(!el)return;
+      el.innerHTML='<div class="list-empty"><i class="fas fa-circle-notch fa-spin"></i> 加载资讯源...</div>';
+      try{
+        var r=await sb.rpc('admin_news_overview');
+        if(r.error)throw r.error;
+        var d=r.data||{};
+        var feeds=d.feeds||[];
+        if(!feeds.length){el.innerHTML='<div class="list-empty">还没有配置资讯源</div>';return}
+        el.innerHTML=feeds.map(function(f){
+          var err='';
+          var jobs=d.jobs||[];
+          for(var i=0;i<jobs.length;i++){
+            if(jobs[i].source===f.source&&jobs[i].error){err=jobs[i].error;break}
+          }
+          var dotCls=f.enabled===false?'off':(err?'err':'');
+          return '<div class="feed-row">'+
+            '<span class="feed-dot '+dotCls+'"></span>'+
+            '<div class="feed-main">'+
+              '<div class="feed-name">'+esc(f.name)+
+                '<span class="feed-cnt">'+f.total+' 条</span>'+
+                (f.enabled===false?'<span style="font-size:11px;color:var(--color-text-tertiary)">已停用</span>':'')+
+              '</div>'+
+              '<div class="feed-meta">每 '+f.interval+' 分钟抓取 · 上次 '+fmtAgo(f.last_fetch_at)+
+                ' · 最新 '+(f.latest?fmtAgo(f.latest):'--')+
+                (err?' · <span style="color:var(--color-danger)">最近错误：'+esc(err)+'</span>':'')+
+              '</div>'+
+            '</div>'+
+          '</div>';
+        }).join('');
+      }catch(e){
+        el.innerHTML='<div class="list-empty">加载失败：'+esc(e.message||'未知错误')+'</div>';
+      }
+    }
+
+    function bindFeeds(){
+      var btn=$('#newsSyncBtn');
+      if(!btn||btn._bound)return;
+      btn._bound=true;
+      btn.addEventListener('click',async function(){
+        if(!KJ.rateLimit('admin_news_sync',5000,1,'操作过于频繁，请稍后再试'))return;
+        var note=$('#feedNote');
+        btn.disabled=true;var old=btn.innerHTML;
+        btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 同步中...';
+        if(note)note.textContent='已发起抓取，结果 1~2 分钟后入库';
+        try{
+          var r=await sb.rpc('admin_news_sync');
+          if(r.error)throw r.error;
+          KJ.toast('已触发同步');
+          setTimeout(loadFeeds,8000);
+        }catch(e){
+          KJ.toast('同步失败：'+(e.message||'未知错误'));
+        }finally{
+          btn.disabled=false;btn.innerHTML=old;
+        }
+      });
+    }
+
     // ==================== 数据加载 ====================
     async function loadUsers(){
       var el=$('#userList');
@@ -440,7 +593,19 @@
         renderStats();
         renderList();
         populateUserSelects('');
+        loadAvatars();
       }catch(e){console.error('loadUsers:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新页面重试</div>';}
+    }
+
+    // 头像（单独取，避免 users 表列权限变化影响主查询）
+    var avatarMap={};
+    async function loadAvatars(){
+      try{
+        var r=await sb.rpc('admin_user_avatars');
+        if(r.error||!r.data)return;
+        for(var i=0;i<r.data.length;i++)avatarMap[r.data[i].id]=r.data[i].avatar_url||'';
+        if(loaded)renderList();
+      }catch(e){}
     }
 
     // ==================== 统计 ====================
@@ -509,7 +674,7 @@
 
       return '<div class="card card-glass user-card" data-uid="'+esc(u.id)+'">'+
         '<div class="uc-head">'+
-          '<div class="uc-avatar">'+esc((displayName||'?').charAt(0).toUpperCase())+'</div>'+
+          KJ.avatarHtml({id:u.id,nick:displayName,avatar_url:avatarMap[u.id]},{size:44,className:'uc-avatar'})+
           '<div class="uc-info">'+
             '<div class="uc-name">'+esc(displayName)+badges+'</div>'+
             '<div class="uc-email">'+esc(u.email||'--')+(u.phone?' · '+esc(u.phone):'')+'</div>'+

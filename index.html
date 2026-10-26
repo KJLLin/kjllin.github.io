@@ -452,6 +452,12 @@
       color: var(--color-text-primary);
       font-variant-numeric: tabular-nums;
     }
+    .w-src {
+      display: inline-block; margin-right: 5px; padding: 1px 6px;
+      border-radius: 5px; font-size: 10px; font-weight: 600;
+      background: rgba(10, 132, 255, .12); color: var(--color-accent);
+      vertical-align: 1px;
+    }
     .w-preview {
       margin-top: 10px;
       font-size: 12px;
@@ -1580,8 +1586,12 @@ html[data-theme="dark"] .catalog-sheet {
     if (id === 'news') {
       var nit = d.news;
       return '<div class="w-title">资讯</div>' +
-        '<div class="w-num"><span>' + statText(s.newsTotal) + '</span><small>条精选资讯</small></div>' +
-        (nit && nit.title ? '<div class="w-preview">' + esc(nit.title) + '</div>' : '');
+        '<div class="w-num"><span>' + statText(s.newsTotal) + '</span><small>条资讯</small></div>' +
+        (nit && nit.title
+          ? '<div class="w-preview">' +
+            (nit.source_name ? '<span class="w-src">' + esc(nit.source_name) + '</span>' : '') +
+            esc(nit.title) + '</div>'
+          : '');
     }
     if (id === 'profile') {
       return '<div class="w-title">个人主页</div><div class="w-num"><span>查看</span><small>我的动态</small></div>';
@@ -1959,11 +1969,7 @@ html[data-theme="dark"] .catalog-sheet {
         .order('created_at', { ascending: false })
         .limit(1),
       sb.rpc('news_stats'),
-      sb.from('news_items')
-        .select('title,published_at,link')
-        .eq('is_ad', false)
-        .order('published_at', { ascending: false })
-        .limit(1)
+      sb.rpc('news_list', { p_limit: 1 })
     ];
 
     Promise.allSettled(tasks).then(function(res) {
