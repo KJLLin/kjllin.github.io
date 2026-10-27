@@ -282,11 +282,27 @@
 
     /* 搜索栏 */
     .search-wrap {
+      display: flex; gap: 10px; align-items: center;
       margin-bottom: 24px; opacity: 0;
       animation: fadeUp 0.7s var(--win-ease) 0.15s forwards;
     }
+    .rank-link {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px;
+      padding: 12px 18px; border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #ffb300, #ff9f0a);
+      color: #fff; text-decoration: none; font-size: 14px; font-weight: 600;
+      box-shadow: 0 4px 14px rgba(255, 179, 0, .3);
+      transition: transform .16s var(--spring-default, cubic-bezier(.2,.8,.2,1)), box-shadow .18s ease;
+      white-space: nowrap;
+    }
+    .rank-link:hover { transform: translateY(-1px); box-shadow: 0 7px 20px rgba(255,179,0,.38); }
+    .rank-link:active { transform: scale(.97); }
+    @media (max-width: 560px) {
+      .rank-link { padding: 12px 14px; font-size: 0; gap: 0; }
+      .rank-link i { font-size: 15px; }
+    }
     .search-box {
-      width: 100%; padding: 12px 18px; border-radius: var(--radius-md);
+      width: 100%; flex: 1; min-width: 0; padding: 12px 18px; border-radius: var(--radius-md);
       border: 1px solid var(--border-mica); background: var(--bg-mica);
       color: var(--text-primary); font-size: 14px; outline: none;
       transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -369,6 +385,7 @@
     <!-- 搜索栏 -->
     <div class="search-wrap">
       <input type="text" class="search-box" id="searchBox" placeholder="搜索游戏..." autocomplete="off">
+      <a href="/game/rank/" class="rank-link" title="查看各游戏排行榜"><i class="fas fa-trophy"></i> 排行榜</a>
     </div>
 
     <!-- 继续上次玩 -->

@@ -966,6 +966,8 @@
             }
             
             isGameOver = false;
+            // 关键：每局重开都要复位，否则只有页面加载后的第一局会把成绩同步到云端
+            scoreSaved = false;
             score = 0;
             coinsCollected = 0;
             // --- 基础速度降低50% ---
