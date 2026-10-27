@@ -376,6 +376,77 @@ input, textarea, button { font-family: inherit; }
 }
 
 /* ====================== 输入栏 — Liquid Glass ====================== */
+/* ==================== 文件卡片消息 ==================== */
+.msg-file {
+  display: flex; align-items: center; gap: 10px;
+  min-width: 210px; max-width: 300px;
+  padding: 10px 12px; border-radius: 14px;
+  background: var(--color-bg-glass-solid, #fff);
+  border: 1px solid var(--color-border);
+  text-decoration: none; color: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  transition: background .16s ease, transform .16s ease;
+}
+.msg-file:hover { background: var(--color-bg-hover); }
+.msg-file:active { transform: scale(.985); }
+.fc-icon {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 17px; color: #fff;
+  background: linear-gradient(135deg, #8e8e93, #636366);
+}
+.fc-doc  { background: linear-gradient(135deg, #2b579a, #1b3f7a); }
+.fc-xls  { background: linear-gradient(135deg, #217346, #145230); }
+.fc-ppt  { background: linear-gradient(135deg, #d24726, #a33518); }
+.fc-pdf  { background: linear-gradient(135deg, #e5322d, #b2221e); }
+.fc-zip  { background: linear-gradient(135deg, #f0a30a, #c47f00); }
+.fc-img  { background: linear-gradient(135deg, #0a84ff, #5e5ce6); }
+.fc-vid  { background: linear-gradient(135deg, #bf5af2, #7d3cc4); }
+.fc-aud  { background: linear-gradient(135deg, #ff375f, #c4274a); }
+.fc-code { background: linear-gradient(135deg, #30d158, #1f9c42); }
+.fc-txt  { background: linear-gradient(135deg, #64d2ff, #0a84ff); }
+.fc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fc-name {
+  font-size: 13.5px; font-weight: 500; color: var(--color-text-primary);
+  word-break: break-all;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.fc-meta { font-size: 11px; color: var(--color-text-tertiary); }
+.fc-note { font-size: 11px; color: var(--color-accent); }
+.fc-dl {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 11px;
+  background: var(--color-bg-input); color: var(--color-text-secondary);
+}
+
+/* ==================== 待发送文件条 ==================== */
+.share-pending {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 14px 8px; padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(10, 132, 255, .08);
+  border: 1px solid rgba(10, 132, 255, .2);
+  animation: fadeUp .22s ease both;
+}
+.share-pending[hidden] { display: none; }
+.sp-ico {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, #8e8e93, #636366);
+}
+.sp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sp-name {
+  font-size: 13px; font-weight: 500; color: var(--color-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sp-meta { font-size: 11px; color: var(--color-text-tertiary); }
+.sp-cancel {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  border: none; background: rgba(120, 120, 128, .16);
+  color: var(--color-text-secondary); font-size: 14px; line-height: 1;
+  cursor: pointer; font-family: inherit; padding: 0;
+}
+.sp-cancel:hover { background: rgba(120, 120, 128, .26); }
+
 .char-count {
   position: absolute; right: 16px; bottom: 5px;
   font-size: 10.5px; color: var(--color-text-tertiary);

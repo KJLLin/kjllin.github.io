@@ -38,6 +38,7 @@ const S = {
   searchSeq: 0,       // 搜索请求序号，丢弃过期响应
   convMenuPartner: null,
   unreadOnly: false,  // 会话列表：仅看未读
+  pendingShare: null, // 待发送的文件：{ name, size, url, mime, note }
 };
 
 // ====================== 工具 ======================
@@ -101,6 +102,36 @@ const U = {
       /(https?:\/\/[^\s<>"{}|\\^`[\]\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     );
+  },
+
+  /** 文件大小格式化 */
+  bytes(n) {
+    const v = Number(n);
+    if (!isFinite(v) || v <= 0) return '';
+    if (v < 1024) return v + ' B';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';
+    if (v < 1024 * 1024 * 1024) return (v / 1024 / 1024).toFixed(1) + ' MB';
+    return (v / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  },
+
+  /** 按扩展名给文件卡片配图标 */
+  fileIcon(name) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    const map = {
+      doc: ['fa-file-word', 'doc'], docx: ['fa-file-word', 'doc'],
+      xls: ['fa-file-excel', 'xls'], xlsx: ['fa-file-excel', 'xls'], csv: ['fa-file-csv', 'xls'],
+      ppt: ['fa-file-powerpoint', 'ppt'], pptx: ['fa-file-powerpoint', 'ppt'],
+      pdf: ['fa-file-pdf', 'pdf'],
+      zip: ['fa-file-zipper', 'zip'], rar: ['fa-file-zipper', 'zip'], '7z': ['fa-file-zipper', 'zip'], gz: ['fa-file-zipper', 'zip'],
+      png: ['fa-file-image', 'img'], jpg: ['fa-file-image', 'img'], jpeg: ['fa-file-image', 'img'],
+      gif: ['fa-file-image', 'img'], webp: ['fa-file-image', 'img'], svg: ['fa-file-image', 'img'],
+      mp4: ['fa-file-video', 'vid'], mov: ['fa-file-video', 'vid'], mkv: ['fa-file-video', 'vid'], webm: ['fa-file-video', 'vid'],
+      mp3: ['fa-file-audio', 'aud'], wav: ['fa-file-audio', 'aud'], m4a: ['fa-file-audio', 'aud'], flac: ['fa-file-audio', 'aud'],
+      txt: ['fa-file-lines', 'txt'], md: ['fa-file-lines', 'txt'], json: ['fa-file-code', 'code'],
+      js: ['fa-file-code', 'code'], ts: ['fa-file-code', 'code'], html: ['fa-file-code', 'code'],
+      css: ['fa-file-code', 'code'], py: ['fa-file-code', 'code'], sql: ['fa-file-code', 'code']
+    };
+    return map[ext] || ['fa-file', 'gen'];
   },
 
   /** 生成头像字符（兼容 emoji 代理对） */
@@ -533,6 +564,26 @@ const ChatView = {
       : '<span class="msg-status" title="已发送"><i class="fas fa-check"></i></span>';
   },
 
+  _fileCardHtml(m) {
+    const a = m.attachment || {};
+    const name = a.name || m.text || '文件';
+    const [icon, cls] = U.fileIcon(name);
+    const size = U.bytes(a.size);
+    const note = a.note ? String(a.note) : '';
+    const url = /^https:\/\//i.test(a.url || '') ? a.url : '';
+    const tag = url ? 'a' : 'div';
+    const hrefAttr = url ? ` href="${U.escape(url)}" target="_blank" rel="noopener noreferrer"` : '';
+    return `<${tag} class="msg-file"${hrefAttr}>
+      <span class="fc-icon fc-${cls}"><i class="fas ${icon}"></i></span>
+      <span class="fc-main">
+        <span class="fc-name">${U.escape(name)}</span>
+        <span class="fc-meta">${size ? size + ' · ' : ''}${url ? '点击下载' : '链接已失效'}</span>
+        ${note ? `<span class="fc-note">${U.escape(note)}</span>` : ''}
+      </span>
+      ${url ? '<span class="fc-dl"><i class="fas fa-download"></i></span>' : ''}
+    </${tag}>`;
+  },
+
   _rowHtml(m, showMeta, isNew) {
     const isMe = m.sender_id === S.user.id;
     const text = U.linkify(U.escape(m.text));
@@ -545,7 +596,7 @@ const ChatView = {
     // 可撤回时即使被合并进同一组，也保留一行 meta 用于放置「撤回」
     const rowMeta = showMeta || canRecall;
     return `<div class="${cls.join(' ')}" data-mid="${m.id}">
-      <div class="msg-bubble">${text}</div>
+      ${m.attachment ? this._fileCardHtml(m) : `<div class="msg-bubble">${text}</div>`}
       ${rowMeta ? `<div class="msg-meta">${showMeta ? `<span class="msg-time">${U.time(m.created_at)}</span>${isMe ? this._statusHtml(m) : ''}` : ''}${canRecall ? `<button type="button" class="msg-recall-inline" data-recall="${m.id}" title="撤回这条消息">撤回</button>` : ''}</div>` : ''}
     </div>`;
   },
@@ -669,12 +720,48 @@ const ChatView = {
     }
   },
 
+  /** 渲染「待发送文件」提示条 */
+  renderPendingShare() {
+    const bar = $('#sharePending');
+    if (!bar) return;
+    const share = S.pendingShare;
+    if (!share) { bar.hidden = true; bar.innerHTML = ''; return; }
+    const [icon, cls] = U.fileIcon(share.name);
+    const size = U.bytes(share.size);
+    bar.hidden = false;
+    bar.innerHTML = '<span class="sp-ico fc-' + cls + '"><i class="fas ' + icon + '"></i></span>' +
+      '<span class="sp-main"><span class="sp-name">' + U.escape(share.name) + '</span>' +
+      '<span class="sp-meta">' + (size ? size + ' · ' : '') + '发送给当前对话</span></span>' +
+      '<button type="button" class="sp-cancel" id="shareCancelBtn" aria-label="取消发送">×</button>';
+    const btn = document.getElementById('shareCancelBtn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        S.pendingShare = null;
+        ChatView.renderPendingShare();
+        try { history.replaceState(null, '', '/chat/'); } catch (e) {}
+      });
+    }
+  },
+
   async send() {
     if (!S.selectedId) return;
     const input = $('#msgInput');
     const text = (input?.value || '').trim();
-    if (!text) { Toast.error('不能发送空消息'); return; }
+    const share = S.pendingShare || null;
+
+    if (!text && !share) { Toast.error('不能发送空消息'); return; }
     if (text.length > MAX_LEN) { Toast.error(`消息不能超过${MAX_LEN}个字符`); return; }
+
+    // 分享模式下：一条消息同时承载文件与附言
+    const attachment = share ? {
+      kind: 'file',
+      name: String(share.name || '文件').slice(0, 200),
+      size: Number(share.size) || 0,
+      url: share.url,
+      mime: share.mime || '',
+      note: (text || share.note || '').slice(0, 100)
+    } : null;
+    const bodyText = share ? String(share.name || '文件').slice(0, 200) : text;
 
     const partnerId = S.selectedId;
     const btn = $('#sendBtn');
@@ -685,7 +772,8 @@ const ChatView = {
       id: 'tmp-' + Date.now() + '-' + Math.random().toString(16).slice(2),
       sender_id: S.user.id,
       recipient_id: partnerId,
-      text,
+      text: bodyText,
+      attachment,
       created_at: new Date().toISOString(),
       read: false,
       _pending: true,
@@ -700,9 +788,12 @@ const ChatView = {
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
     try {
+      const row = { sender_id: S.user.id, recipient_id: partnerId, text: bodyText };
+      if (attachment) row.attachment = attachment;
+
       const { data, error } = await sb.from('private_messages')
-        .insert([{ sender_id: S.user.id, recipient_id: partnerId, text }])
-        .select('id, sender_id, recipient_id, text, read, created_at')
+        .insert([row])
+        .select('id, sender_id, recipient_id, text, read, created_at, attachment')
         .single();
       if (error) throw error;
 
@@ -710,7 +801,8 @@ const ChatView = {
       if (i >= 0) S.messages[i] = data; else S.messages.push(data);
       S._lastNewId = data.id;
       this.render({ scroll: 'bottom' });
-      ConvList.touch(partnerId, text, data.created_at, false);
+      ConvList.touch(partnerId, share ? '[文件] ' + bodyText : bodyText, data.created_at, false);
+      if (share) { S.pendingShare = null; this.renderPendingShare(); }
       input.focus();
     } catch (e) {
       console.warn('发送失败:', e);
@@ -1033,6 +1125,52 @@ function bindEvents() {
 }
 
 // ====================== 初始化 ======================
+/**
+ * 处理来自云盘的分享参数：算出可访问的下载地址，显示待发送条
+ * 私有空间文件用 1 小时临时签名链接
+ */
+async function prepareShareFromUrl(params) {
+  const path = params.get('share') || '';
+  const name = params.get('name') || path.split('/').pop() || '文件';
+  const space = params.get('space') === 'private' ? 'cloud-drive-private' : 'cloud-drive';
+  const size = Number(params.get('size')) || 0;
+  const mime = params.get('mime') || '';
+
+  if (!path) return;
+
+  let url = '';
+  let note = '';
+  try {
+    if (space === 'cloud-drive') {
+      url = KJ.SUPABASE_URL + '/storage/v1/object/public/cloud-drive/' +
+        path.split('/').map(encodeURIComponent).join('/');
+    } else {
+      const { data, error } = await sb.storage.from('cloud-drive-private')
+        .createSignedUrl(path, 3600 * 6);
+      if (error) throw error;
+      url = data?.signedUrl || '';
+      note = '私有空间链接 6 小时内有效';
+    }
+  } catch (e) {
+    console.warn('prepare share failed:', e);
+    Toast.error('无法生成下载链接，请回云盘重试');
+    return;
+  }
+
+  if (!/^https:\/\//i.test(url)) {
+    Toast.error('无法生成下载链接，请回云盘重试');
+    return;
+  }
+
+  S.pendingShare = { name, size, url, mime, note };
+  if (ChatView.renderPendingShare) ChatView.renderPendingShare();
+
+  // 清掉地址栏参数，避免刷新重复
+  try { history.replaceState(null, '', '/chat/' + (params.get('to') ? '?to=' + params.get('to') : '')); } catch (e) {}
+
+  if (!S.selectedId) Toast.info ? Toast.info('选一个对话即可发送文件') : Toast.error('选一个对话即可发送文件');
+}
+
 async function init() {
   Theme.init();
 
@@ -1076,10 +1214,17 @@ async function init() {
     Realtime.subscribe();
 
     // ?to=<uuid> 直达会话
-    const to = new URLSearchParams(location.search).get('to');
+    const params = new URLSearchParams(location.search);
+    const to = params.get('to');
     if (to && to !== S.user.id) {
       const p = await Store.profile(to).catch(() => null);
       Search.select(to, p?.nick || '用户', p?.isAdmin === true, p?.avatar_url || '');
+    }
+
+    // ?share=<path>&name=..&space=public|private&size=..&mime=..
+    // 来自云盘的「发送给好友」：在站内信里完成选人与发送
+    if (params.get('share')) {
+      await prepareShareFromUrl(params);
     }
   } catch (e) {
     console.error('Chat init failed:', e);

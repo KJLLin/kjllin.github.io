@@ -869,7 +869,7 @@ var docs = {
       + '<h2 id="leaderboard">排行榜<a href="#leaderboard" class="anchor-icon">#</a></h2>'
       + '<p>游戏中心右上角的「<strong>排行榜</strong>」进入 <a href="/game/rank/">榜单页</a>，可以切换查看每个游戏的排名：</p>'
       + '<ul><li>每个游戏只记录<strong>你的最好成绩</strong>，反复玩不会刷出一堆记录</li>'
-      + '<li>恐龙快跑 / 2048 / 贪吃蛇比<strong>谁更高</strong>；舒尔特方格比<strong>谁更快</strong>（用时越短排名越靠前）</li>'
+      + '<li>恐龙快跑 / 2048 / 贪吃蛇比<strong>谁更高</strong>；舒尔特只统计 <strong>5×5</strong>，比谁更快（用时越短排名越靠前），其他规格仍记录个人成绩但不进榜</li>'
       + '<li>榜单页顶部可以关掉「参加排行榜」。关闭后你的成绩仍会记录，但<strong>不会出现在公开榜单上</strong>，别人看不到你</li>'
       + '<li>关闭状态下列表里也不会出现你，但「我的名次」一栏仍会显示自己的成绩</li></ul>'
       + '<div class="admonition admonition--tip"><span class="admonition-icon"><i class="fas fa-lightbulb"></i></span><div class="admonition-content"><span class="admonition-heading">提示</span><p>排行榜默认开启，和以前的公开成绩一致。如果不想被看到，进榜单页关掉开关即可，即时生效。</p></div></div>'
@@ -949,7 +949,7 @@ var docs = {
     title: '站内信',
     category: '社交功能',
     meta: '私密对话、已读回执、草稿与撤回',
-    toc: [['发起对话', 'start'], ['消息阅读与分页', 'reading'], ['草稿与撤回', 'draft'], ['已读回执', 'receipt'], ['屏蔽与删除', 'block'], ['游戏邀请', 'invite']],
+    toc: [['发起对话', 'start'], ['消息阅读与分页', 'reading'], ['发送文件', 'file'], ['草稿与撤回', 'draft'], ['已读回执', 'receipt'], ['屏蔽与删除', 'block'], ['游戏邀请', 'invite']],
     content: '<p>站内信支持用户之间发送私密消息，具备已读回执、草稿保存、消息撤回与实时通知。</p>'
       + '<h2 id="start">发起对话<a href="#start" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
@@ -963,6 +963,17 @@ var docs = {
       + '<li>消息按日期分隔（今天 / 昨天 / 具体日期），同一人 3 分钟内的连续消息自动合并</li>'
       + '<li>当你停留在历史消息位置时，新消息不会打断阅读，而是显示「新消息 ↓」按钮</li>'
       + '<li>会话列表顶部可开启「仅看未读」，标签页标题会显示未读总数</li></ul>'
+      + '<h2 id="file">发送文件<a href="#file" class="anchor-icon">#</a></h2>'
+      + '<p>把云盘里的文件发给好友，统一在站内信里完成（云盘不再单独弹窗）：</p>'
+      + '<ol class="steps">'
+      + '<li><span class="step-content">在 <a href="/cloud/">云盘</a> 点文件右侧的<strong>纸飞机</strong>按钮。</span></li>'
+      + '<li><span class="step-content">自动跳转到站内信，输入框上方出现<strong>待发送文件条</strong>。</span></li>'
+      + '<li><span class="step-content">选一个对话，可以顺手写一句附言，点发送。</span></li>'
+      + '</ol>'
+      + '<p>对方收到的是<strong>文件卡片</strong>：图标按类型区分（Word / Excel / PDF / 压缩包 / 图片…），显示文件名、大小与下载按钮，点一下就能下载。</p>'
+      + '<ul><li>私有空间的文件使用 <strong>6 小时临时链接</strong>，过期后卡片仍在但无法下载，需要重新分享</li>'
+      + '<li>文件卡片同样支持撤回（2 分钟内）与已读回执</li>'
+      + '<li>会话列表里这类消息显示为「[文件] 文件名」</li></ul>'
       + '<h2 id="draft">草稿与撤回<a href="#draft" class="anchor-icon">#</a></h2>'
       + '<ul><li><strong>草稿</strong>：输入后未发送的内容会按会话自动保存，切换对话或刷新页面后可继续编辑</li>'
       + '<li><strong>撤回</strong>：自己发送的 <strong>2 分钟内</strong>消息，时间行会出现「撤回」，撤回后双方实时消失</li></ul>'
@@ -1108,7 +1119,8 @@ var docs = {
       + '<ul><li>支持批量下载选中文件</li><li>列表显示文件名、大小与上传时间</li><li>可创建文件夹组织文件</li>'
       + '<li>文件按 <code>{用户ID}/</code> 前缀隔离，普通用户只能看到自己的文件</li></ul>'
       + '<h2 id="share">分享给好友<a href="#share" class="anchor-icon">#</a></h2>'
-      + '<p>在文件上点击分享，输入<strong>昵称、邮箱或手机号</strong>（至少 2 个字符）搜索用户，点击即可把文件链接通过站内信发送给对方。</p>'
+      + '<p>在文件上点「纸飞机」，会<strong>跳转到站内信</strong>完成分享：顶部出现待发送的文件条，选好对话点发送即可，还能顺手写一句附言。</p>'
+      + '<p>对方收到一张<strong>文件卡片</strong>（图标 + 文件名 + 大小 + 下载按钮）。私有空间的文件使用 <strong>6 小时临时链接</strong>，过期后需重新分享。</p>'
       + '<p>搜索只返回昵称与脱敏提示，不会暴露对方的完整邮箱或手机号。</p>'
       + '<div class="admonition admonition--warning"><span class="admonition-icon"><i class="fas fa-triangle-exclamation"></i></span><div class="admonition-content"><span class="admonition-heading">注意</span><p>公共空间的文件链接任何拿到链接的人都能访问，请勿上传隐私文件；隐私文件请放入私有空间。</p></div></div>'
   },
@@ -1239,6 +1251,9 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>站内信文件卡片：</strong>云盘分享统一跳到站内信完成，消息支持文件卡片（图标 / 文件名 / 大小 / 下载）。</li>'
+      + '<li><strong>排行榜调整：</strong>舒尔特只排 5×5；成绩提交增加频率限制，防刷。</li>'
+      + '<li><strong>分享封面：</strong>社交平台分享改用 1200×630 的 PNG 封面图。</li>'
       + '<li><strong>更新提示：</strong>每次发版会在站内记录说明，用户下次打开时弹窗告知一次。</li>'
       + '<li><strong>游戏排行榜：</strong>新增独立的排行榜页，支持按游戏切换、查看自己的名次，并可自行选择是否参加公开榜单。</li>'
       + '<li><strong>修复：</strong>恐龙快跑只有页面加载后第一局的成绩会同步到云端，之后的高分不生效。</li>'
