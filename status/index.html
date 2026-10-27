@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co https://api.hcaptcha.com https://hcaptcha.com; base-uri 'self'; form-action 'self'; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="KJLLin 网络诊断 — 逐项检查本站、Supabase 认证与数据服务、人机验证的连通性">
   <title>网络诊断 · KJLLin</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
@@ -94,12 +95,12 @@
     var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
 
     var TESTS = [
-      { key: 'self', name: '本站静态资源', desc: '页面与脚本所在服务器', url: '/vendor/supabase.min.js',
-        opts: { method: 'HEAD' }, expect: 'any' },
+      { key: 'self', name: '本站静态资源', desc: '页面与脚本所在服务器', url: '/favicon.svg?probe=' + Date.now(),
+        opts: { method: 'GET' }, expect: 'ok' },
       { key: 'auth', name: 'Supabase 认证服务', desc: '登录接口（最关键）', url: SUPABASE + '/auth/v1/health',
         opts: { headers: { apikey: ANON } }, expect: 'ok' },
-      { key: 'rest', name: 'Supabase 数据服务', desc: '文章、私信等数据接口', url: SUPABASE + '/rest/v1/',
-        opts: { headers: { apikey: ANON } }, expect: 'any' },
+      { key: 'rest', name: 'Supabase 数据服务', desc: '文章、私信等数据接口', url: SUPABASE + '/rest/v1/posts?select=id&limit=1',
+        opts: { headers: { apikey: ANON } }, expect: 'ok' },
       { key: 'hcaptcha', name: 'hCaptcha 验证', desc: '人机验证组件', url: 'https://api.hcaptcha.com/checksiteconfig?host=kjllin.dpdns.org&sitekey=10000000-ffff-ffff-ffff-000000000001&sc=1&swa=1',
         opts: { mode: 'no-cors' }, expect: 'any' }
     ];

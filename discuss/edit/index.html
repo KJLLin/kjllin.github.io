@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://*.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.hcaptcha.com https://*.hcaptcha.com https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://*.hcaptcha.com; frame-src 'self' https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,9 +16,9 @@
   <script src="/vendor/supabase.min.js"></script>
   <script src="/vendor/marked.min.js"></script>
   <script src="/vendor/purify.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+  <link rel="stylesheet" href="/vendor/easymde/easymde.min.css">
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <style>
     html{--win-ease:var(--spring-default);--bounce:var(--spring-bounce);--transition-fast:200ms var(--win-ease);--transition-normal:300ms var(--win-ease);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;transition:background-color var(--transition-normal)}
@@ -177,7 +177,7 @@
 
     // EasyMDE
     var _emLoaded=false;
-    function loadEasyMDE(cb){if(_emLoaded){cb();return}if(window.EasyMDE){_emLoaded=true;cb();return}var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js';s.onload=function(){_emLoaded=true;cb()};s.onerror=function(){var ls=document.getElementById('loadingState');if(ls)ls.style.display='none';var c=document.getElementById('editorContainer');if(c)c.innerHTML='<div style="text-align:center;padding:20px;color:var(--danger);font-size:14px"><i class="fas fa-triangle-exclamation"></i> 编辑器加载失败，请检查网络后刷新页面</div>'};document.head.appendChild(s)}
+    function loadEasyMDE(cb){if(_emLoaded){cb();return}if(window.EasyMDE){_emLoaded=true;cb();return}var s=document.createElement('script');s.src='/vendor/easymde/easymde.min.js';s.onload=function(){_emLoaded=true;cb()};s.onerror=function(){var ls=document.getElementById('loadingState');if(ls)ls.style.display='none';var c=document.getElementById('editorContainer');if(c)c.innerHTML='<div style="text-align:center;padding:20px;color:var(--danger);font-size:14px"><i class="fas fa-triangle-exclamation"></i> 编辑器加载失败，请检查网络后刷新页面</div>'};document.head.appendChild(s)}
     function initEditor(initVal){if(!window.EasyMDE){loadEasyMDE(function(){initEditor(initVal)});return}if(easyMDE)return;easyMDE=new EasyMDE({element:document.getElementById('postContent'),spellChecker:false,autoDownloadFontAwesome:false,status:['lines','words','cursor'],toolbar:['bold','italic','heading','|','quote','unordered-list','ordered-list','|','code','link','image','table','|','preview','side-by-side','|','guide'],minHeight:'280px',maxHeight:'500px',renderingConfig:{codeSyntaxHighlighting:true},previewRender:function(plainText){var html=plainText;try{if(window.marked)html=window.marked.parse(plainText);}catch(e){html=plainText}if(window.DOMPurify){html=DOMPurify.sanitize(html,{ALLOWED_TAGS:['h1','h2','h3','h4','h5','h6','p','br','hr','strong','em','b','i','u','s','del','a','ul','ol','li','blockquote','pre','code','img','table','thead','tbody','tr','th','td','span','div','sub','sup'],ALLOWED_ATTR:['href','title','target','rel','src','alt','width','height','class','id','type','checked','disabled'],ALLOW_DATA_ATTR:false})}else{return '<pre>'+KJ.escapeHtml(plainText)+'</pre>'}return html}});if(initVal)easyMDE.value(initVal)}
 
     // Load post（防重入：INITIAL_SESSION 与 getSession 双触发时只加载一次）
