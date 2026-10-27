@@ -80,6 +80,24 @@
     .btn-danger-outline:hover{background:var(--color-danger-bg)}
     .btn-danger-outline:active{transform:scale(0.96)}
 
+    /* ── 登录状态 ── */
+    .session-card{padding:20px 22px;border-radius:var(--radius-xl);margin-bottom:16px}
+    .session-card h3{font-size:15px;color:var(--color-text-primary);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+    .session-card h3 i{color:var(--color-success, #34c759);font-size:14px}
+    .sess-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-border);font-size:13.5px;color:var(--color-text-secondary)}
+    .sess-row:last-of-type{border-bottom:none}
+    .sess-row b{font-weight:600;color:var(--color-text-primary)}
+    .sess-note{font-size:12px;color:var(--color-text-tertiary);line-height:1.6;margin:10px 0 14px}
+    .sess-note a{color:var(--color-accent);text-decoration:none}
+    .sess-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;-webkit-user-select:none;user-select:none;font-size:13px;color:var(--color-text-secondary)}
+    .sess-toggle span{flex:1}
+    .sess-toggle input{position:absolute;opacity:0;width:0;height:0}
+    .sess-switch{position:relative;width:46px;height:28px;border-radius:999px;background:rgba(120,120,128,.3);flex-shrink:0;transition:background .22s ease}
+    .sess-switch::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+    .sess-toggle input:checked + .sess-switch{background:#34c759}
+    .sess-toggle input:checked + .sess-switch::after{transform:translateX(18px)}
+    .sess-toggle input:focus-visible + .sess-switch{outline:2px solid var(--color-accent);outline-offset:2px}
+
     /* ── 危险区域 ── */
     .danger-zone{border:1px dashed rgba(255,59,48,0.3);border-radius:var(--radius-xl);padding:24px;text-align:center;animation:fadeUp 0.6s var(--ease-out) 0.42s both}
     .danger-zone h3{font-size:15px;color:var(--color-danger);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -210,6 +228,19 @@
         <div class="binding-row" id="githubBindingRow"><span class="b-icon"><i class="fab fa-github"></i></span><span class="b-label">GitHub</span><span class="b-status" id="githubStatus">检查中...</span></div>
         <div class="binding-row" id="cpoauthBindingRow"><span class="b-icon"><i class="fas fa-code" style="color:#667eea"></i></span><span class="b-label">CPOAuth</span><span class="b-status" id="cpoauthStatus">检查中...</span></div>
         <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:12px;text-align:center"><i class="fas fa-info-circle"></i> 更多第三方登录即将上线</div>
+      </div>
+
+      <!-- 登录状态 -->
+      <div class="session-card card-glass">
+        <h3><i class="fas fa-shield-halved"></i> 登录状态</h3>
+        <div class="sess-row"><span>本机保持登录</span><b id="sessKeepText">3 个月</b></div>
+        <div class="sess-row"><span>多设备登录</span><b>已允许</b></div>
+        <p class="sess-note">同一账号可以在手机、平板、电脑上同时在线，互不挤下线。想收回某台设备，去 <a href="/settings/devices/">登录设备</a> 查看。</p>
+        <label class="sess-toggle" for="sessPersist">
+          <span>下次登录时在此设备保持 3 个月</span>
+          <input type="checkbox" id="sessPersist" checked>
+          <i class="sess-switch" aria-hidden="true"></i>
+        </label>
       </div>
 
       <!-- 危险区域 -->
@@ -442,6 +473,25 @@
         renderGithubBinding();
       } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
     }
+
+    // 登录状态面板
+    (function initSessionCard(){
+      try{
+        var days = KJ.authRemainingDays();
+        var el = document.getElementById('sessKeepText');
+        if (el) el.textContent = (days === null) ? '仅本次浏览' : ('3 个月（还剩 ' + days + ' 天）');
+        var sw = document.getElementById('sessPersist');
+        if (sw) {
+          sw.checked = KJ.authPersist();
+          sw.addEventListener('change', function(){
+            KJ.setAuthPersist(sw.checked);
+            KJ.toast(sw.checked ? '已开启：下次登录保持 3 个月' : '已关闭：下次登录仅保留到关闭浏览器');
+            var d2 = KJ.authRemainingDays();
+            if (el) el.textContent = (d2 === null) ? '仅本次浏览' : ('3 个月（还剩 ' + d2 + ' 天）');
+          });
+        }
+      }catch(e){}
+    })();
 
     $('#accountLogoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
     $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});

@@ -418,35 +418,6 @@ input, textarea, button { font-family: inherit; }
   background: var(--color-bg-input); color: var(--color-text-secondary);
 }
 
-/* ==================== 待发送文件条 ==================== */
-.share-pending {
-  display: flex; align-items: center; gap: 10px;
-  margin: 0 14px 8px; padding: 9px 12px;
-  border-radius: 12px;
-  background: rgba(10, 132, 255, .08);
-  border: 1px solid rgba(10, 132, 255, .2);
-  animation: fadeUp .22s ease both;
-}
-.share-pending[hidden] { display: none; }
-.sp-ico {
-  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-  display: grid; place-items: center; font-size: 13px; color: #fff;
-  background: linear-gradient(135deg, #8e8e93, #636366);
-}
-.sp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.sp-name {
-  font-size: 13px; font-weight: 500; color: var(--color-text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.sp-meta { font-size: 11px; color: var(--color-text-tertiary); }
-.sp-cancel {
-  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
-  border: none; background: rgba(120, 120, 128, .16);
-  color: var(--color-text-secondary); font-size: 14px; line-height: 1;
-  cursor: pointer; font-family: inherit; padding: 0;
-}
-.sp-cancel:hover { background: rgba(120, 120, 128, .26); }
-
 .char-count {
   position: absolute; right: 16px; bottom: 5px;
   font-size: 10.5px; color: var(--color-text-tertiary);

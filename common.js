@@ -16,6 +16,74 @@
     removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} }
   };
 
+  const safeSession = {
+    getItem: function(k) { try { return sessionStorage.getItem(k); } catch(e) { return null; } },
+    setItem: function(k, v) { try { sessionStorage.setItem(k, v); } catch(e) {} },
+    removeItem: function(k) { try { sessionStorage.removeItem(k); } catch(e) {} }
+  };
+
+  // ====================== 登录状态（默认保持 90 天） ======================
+  // 说明：Supabase 的 access token 只有 1 小时，但 refresh token 会持续续期。
+  // 这里额外维护一个「记住到哪天」的时间戳：
+  //   · 勾选「保持登录」→ token 写入 localStorage，并滚动延长到 90 天后
+  //   · 不勾选        → token 只写 sessionStorage，关掉浏览器即退出
+  // 多设备：服务端 sessions_single_per_user = false，同一账号可在多台设备同时在线，
+  //        本模块不做任何「挤下线」处理。
+  var AUTH_KEEP_DAYS = 90;
+  var AUTH_PERSIST_KEY = 'kj_auth_persist';
+  var AUTH_UNTIL_KEY = 'kj_auth_until';
+
+  function authPersist() { return safeStorage.getItem(AUTH_PERSIST_KEY) !== '0'; }
+
+  function extendAuthUntil() {
+    if (!authPersist()) return;
+    try { safeStorage.setItem(AUTH_UNTIL_KEY, String(Date.now() + AUTH_KEEP_DAYS * 86400000)); } catch (e) {}
+  }
+
+  function setAuthPersist(on) {
+    try {
+      safeStorage.setItem(AUTH_PERSIST_KEY, on ? '1' : '0');
+      if (on) extendAuthUntil();
+      else safeStorage.removeItem(AUTH_UNTIL_KEY);
+    } catch (e) {}
+  }
+
+  /** 距离需要重新登录还剩几天；未开启保持登录返回 null */
+  function authRemainingDays() {
+    if (!authPersist()) return null;
+    var raw = Number(safeStorage.getItem(AUTH_UNTIL_KEY) || 0);
+    if (!raw) return AUTH_KEEP_DAYS;
+    return Math.max(0, Math.ceil((raw - Date.now()) / 86400000));
+  }
+
+  /** 清除本机登录状态（不动服务端其他设备） */
+  function clearAuthLocal() {
+    try { safeStorage.removeItem(AUTH_UNTIL_KEY); } catch (e) {}
+    try {
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) localStorage.removeItem(k);
+      }
+      for (var j = sessionStorage.length - 1; j >= 0; j--) {
+        var k2 = sessionStorage.key(j);
+        if (k2 && k2.indexOf('sb-') === 0 && k2.indexOf('-auth-token') > 0) sessionStorage.removeItem(k2);
+      }
+    } catch (e) {}
+  }
+
+  // 按「是否保持登录」把 token 分发到 localStorage 或 sessionStorage
+  var authStorage = {
+    getItem: function(k) {
+      var v = safeSession.getItem(k);
+      return v != null ? v : safeStorage.getItem(k);
+    },
+    setItem: function(k, v) {
+      if (authPersist()) { safeStorage.setItem(k, v); safeSession.removeItem(k); }
+      else { safeSession.setItem(k, v); safeStorage.removeItem(k); }
+    },
+    removeItem: function(k) { safeStorage.removeItem(k); safeSession.removeItem(k); }
+  };
+
   // ====================== Supabase 客户端 ======================
   // 全站共享的主客户端实例：createSupabase 创建后登记，
   // initNav 未显式传入 sb 时复用它，避免双客户端并发刷新 refresh token
@@ -47,13 +115,20 @@
         auth: {
           persistSession: true,
           detectSessionInUrl: true,
-          storage: {
-            getItem: function(k) { return safeStorage.getItem(k); },
-            setItem: function(k, v) { safeStorage.setItem(k, v); },
-            removeItem: function(k) { safeStorage.removeItem(k); }
-          }
+          storage: authStorage
         }
       });
+      // 登录状态到期（超过 90 天没来过）→ 清本机凭证，回到访客态
+      try {
+        var until = Number(safeStorage.getItem(AUTH_UNTIL_KEY) || 0);
+        if (authPersist() && until && Date.now() > until) {
+          clearAuthLocal();
+          client.auth.signOut().catch(function() {});
+        } else if (authPersist()) {
+          extendAuthUntil();   // 滚动续期
+        }
+      } catch (e) {}
+
       // 自动记录登录设备（SIGNED_IN 时触发一次）
       var _recorded = false;
       client.auth.onAuthStateChange(function(event) {
@@ -61,7 +136,8 @@
           _recorded = true;
           recordLoginDevice(client);
         }
-        if (event === 'SIGNED_OUT') _recorded = false;
+        if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') extendAuthUntil();
+        if (event === 'SIGNED_OUT') { _recorded = false; }
       });
       _primaryClient = client;
       return client;
@@ -1525,6 +1601,10 @@
     safeStorage: safeStorage,
     createSupabase: createSupabase,
     sdkMissing: sdkMissing,
+    AUTH_KEEP_DAYS: AUTH_KEEP_DAYS,
+    authPersist: authPersist,
+    setAuthPersist: setAuthPersist,
+    authRemainingDays: authRemainingDays,
     escapeHtml: escapeHtml,
     avatarSrc: avatarSrc,
     avatarInitial: avatarInitial,

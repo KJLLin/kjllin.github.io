@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#ededed">
+  <meta name="description" content="分享文件给站内信好友">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <title>发送给朋友 · KJLLin</title>
+
+  <style>
+    /* ==========================================================================
+       微信「发送给朋友」同款选择页
+       配色刻意跟随微信：白底 #EDEDED 分隔，勾选与主按钮用 #07C160
+       ========================================================================== */
+    :root {
+      --wx-bg: #ededed;
+      --wx-panel: #ffffff;
+      --wx-text: #191919;
+      --wx-sub: #888888;
+      --wx-line: rgba(0, 0, 0, .08);
+      --wx-green: #07c160;
+      --wx-green-dim: #9fdcb8;
+      --wx-field: #f2f2f2;
+      --wx-danger: #fa5151;
+    }
+    html[data-theme="dark"] {
+      --wx-bg: #111111;
+      --wx-panel: #1c1c1e;
+      --wx-text: #ededed;
+      --wx-sub: #8e8e93;
+      --wx-line: rgba(255, 255, 255, .1);
+      --wx-field: #2c2c2e;
+      --wx-green-dim: #2b6b45;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { transition: background-color .25s ease; }
+    body {
+      font-family: -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: var(--wx-bg);
+      color: var(--wx-text);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex; justify-content: center;
+    }
+
+    /* 桌面端：收窄成一列，模拟手机分享面板 */
+    .wx-app {
+      width: 100%; max-width: 520px; min-height: 100vh;
+      background: var(--wx-bg);
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+    @media (min-width: 640px) {
+      body { background: #d8d8d8; align-items: center; padding: 24px 0; }
+      html[data-theme="dark"] body { background: #000; }
+      .wx-app {
+        min-height: 0; height: min(88vh, 780px);
+        border-radius: 14px; overflow: hidden;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
+      }
+    }
+
+    /* ==================== 顶栏 ==================== */
+    .wx-bar {
+      flex-shrink: 0; height: 48px; padding: 0 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--wx-panel);
+      border-bottom: 1px solid var(--wx-line);
+      position: sticky; top: 0; z-index: 5;
+    }
+    .wx-bar__title {
+      font-size: 16px; font-weight: 600; letter-spacing: -.01em;
+      position: absolute; left: 50%; transform: translateX(-50%);
+      white-space: nowrap; pointer-events: none;
+    }
+    .wx-btn {
+      border: none; background: none; font-family: inherit; font-size: 15.5px;
+      color: var(--wx-text); cursor: pointer; padding: 6px 2px; line-height: 1;
+    }
+    .wx-btn--send {
+      font-weight: 600; color: var(--wx-green);
+    }
+    .wx-btn--send:disabled { color: var(--wx-green-dim); cursor: default; }
+    .wx-btn:active { opacity: .6; }
+
+    /* ==================== 滚动区 ==================== */
+    .wx-scroll {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: var(--wx-bg);
+      padding-bottom: 12px;
+    }
+
+    /* 文件预览条 */
+    .wx-file {
+      display: flex; align-items: center; gap: 11px;
+      margin: 10px 0 0; padding: 11px 14px;
+      background: var(--wx-panel);
+    }
+    .wx-file__ico {
+      width: 42px; height: 42px; border-radius: 6px; flex-shrink: 0;
+      display: grid; place-items: center; color: #fff; font-size: 19px;
+      background: linear-gradient(135deg, #8e8e93, #636366);
+    }
+    .wx-file__main { flex: 1; min-width: 0; }
+    .wx-file__name {
+      font-size: 15px; font-weight: 500; line-height: 1.35;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      word-break: break-all;
+    }
+    .wx-file__meta { font-size: 12px; color: var(--wx-sub); margin-top: 2px; }
+    .wx-file__badge {
+      font-size: 11px; color: var(--wx-green); border: 1px solid currentColor;
+      border-radius: 4px; padding: 1px 5px; flex-shrink: 0;
+    }
+
+    /* 文件类型配色 */
+    .fc-doc  { background: linear-gradient(135deg, #2b579a, #1b3f7a); }
+    .fc-xls  { background: linear-gradient(135deg, #217346, #145230); }
+    .fc-ppt  { background: linear-gradient(135deg, #d24726, #a33518); }
+    .fc-pdf  { background: linear-gradient(135deg, #e5322d, #b2221e); }
+    .fc-zip  { background: linear-gradient(135deg, #f0a30a, #c47f00); }
+    .fc-img  { background: linear-gradient(135deg, #0a84ff, #5e5ce6); }
+    .fc-vid  { background: linear-gradient(135deg, #bf5af2, #7d3cc4); }
+    .fc-aud  { background: linear-gradient(135deg, #ff375f, #c4274a); }
+    .fc-code { background: linear-gradient(135deg, #30d158, #1f9c42); }
+    .fc-txt  { background: linear-gradient(135deg, #64d2ff, #0a84ff); }
+    .fc-gen  { background: linear-gradient(135deg, #8e8e93, #636366); }
+
+    /* 搜索 */
+    .wx-search {
+      display: flex; align-items: center; gap: 6px;
+      margin: 10px 14px 8px; padding: 0 10px; height: 34px;
+      background: var(--wx-field); border-radius: 6px;
+      color: var(--wx-sub);
+    }
+    .wx-search i { font-size: 12px; }
+    .wx-search input {
+      flex: 1; min-width: 0; border: none; background: none; outline: none;
+      font-family: inherit; font-size: 14.5px; color: var(--wx-text);
+      -webkit-appearance: none; appearance: none;
+    }
+    .wx-search input:focus, .wx-note input:focus { outline: none; box-shadow: none; }
+    .wx-search input::placeholder { color: var(--wx-sub); }
+    .wx-search__clear {
+      border: none; background: none; color: var(--wx-sub);
+      font-size: 14px; cursor: pointer; padding: 2px 0; display: none;
+    }
+    .wx-search__clear.on { display: block; }
+
+    /* 已选 */
+    .wx-selected {
+      display: flex; gap: 14px; overflow-x: auto;
+      padding: 10px 14px 12px; background: var(--wx-panel);
+      border-bottom: 1px solid var(--wx-line);
+      scrollbar-width: none;
+    }
+    .wx-selected::-webkit-scrollbar { display: none; }
+    .wx-sel {
+      flex: 0 0 auto; width: 50px; text-align: center; position: relative;
+      cursor: pointer;
+    }
+    .wx-sel__av {
+      width: 46px; height: 46px; border-radius: 5px; overflow: hidden;
+      margin: 0 auto 4px; position: relative;
+    }
+    .wx-sel__av .kj-av { border-radius: 5px; width: 46px; height: 46px; }
+    .wx-sel__x {
+      position: absolute; right: -2px; top: -2px; width: 17px; height: 17px;
+      border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff;
+      font-size: 9px; display: grid; place-items: center;
+      border: 1.5px solid var(--wx-panel); z-index: 2;
+    }
+    .wx-sel__name {
+      font-size: 10.5px; color: var(--wx-sub);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* 列表 */
+    .wx-sec-title {
+      padding: 12px 14px 6px; font-size: 12px; color: var(--wx-sub);
+    }
+    .wx-people { background: var(--wx-panel); }
+    .wx-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 14px; cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+    }
+    .wx-row:active { background: var(--wx-field); }
+    .wx-row + .wx-row .wx-row__body { border-top: 1px solid var(--wx-line); }
+    .wx-check {
+      width: 21px; height: 21px; border-radius: 50%; flex-shrink: 0;
+      border: 1.5px solid #c9c9c9; display: grid; place-items: center;
+      color: transparent; font-size: 10px;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    html[data-theme="dark"] .wx-check { border-color: #4a4a4c; }
+    .wx-row.on .wx-check {
+      background: var(--wx-green); border-color: var(--wx-green); color: #fff;
+    }
+    .wx-row__av { width: 40px; height: 40px; flex-shrink: 0; }
+    .wx-row__av .kj-av { border-radius: 5px; width: 40px; height: 40px; }
+    .wx-row__body {
+      flex: 1; min-width: 0; display: flex; align-items: center;
+      padding: 9px 0; margin: -9px 0;
+    }
+    .wx-row__name {
+      font-size: 15.5px; color: var(--wx-text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .wx-row__tag {
+      flex-shrink: 0; margin-left: 8px; font-size: 10.5px; color: var(--wx-sub);
+      border: 1px solid var(--wx-line); border-radius: 4px; padding: 1px 5px;
+    }
+
+    /* 留言 */
+    .wx-note {
+      flex-shrink: 0; background: var(--wx-panel);
+      border-top: 1px solid var(--wx-line);
+      padding: 9px 14px calc(9px + env(safe-area-inset-bottom, 0px));
+    }
+    .wx-note input {
+      width: 100%; border: none; outline: none; background: none;
+      font-family: inherit; font-size: 14.5px; color: var(--wx-text);
+      -webkit-appearance: none; appearance: none;
+    }
+    .wx-note input::placeholder { color: var(--wx-sub); }
+
+    /* ==================== 结果页 ==================== */
+    .wx-result {
+      position: absolute; inset: 0; z-index: 40;
+      background: var(--wx-bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 32px 26px calc(32px + env(safe-area-inset-bottom, 0px));
+      animation: wxFade .22s ease both;
+    }
+    @keyframes wxFade { from { opacity: 0; } }
+    .wx-result[hidden] { display: none; }
+    .wx-result__ring {
+      width: 74px; height: 74px; border-radius: 50%;
+      background: var(--wx-green); color: #fff;
+      display: grid; place-items: center; font-size: 34px;
+      box-shadow: 0 10px 30px rgba(7, 193, 96, .3);
+      animation: wxPop .42s cubic-bezier(.18, .9, .26, 1.12) both;
+    }
+    @keyframes wxPop { from { transform: scale(.4); opacity: 0; } }
+    .wx-result__title {
+      font-size: 19px; font-weight: 600; margin-top: 18px;
+      animation: wxUp .42s .06s cubic-bezier(.2, .8, .2, 1) both;
+    }
+    .wx-result__sub {
+      font-size: 13.5px; color: var(--wx-sub); margin-top: 7px;
+      text-align: center; line-height: 1.6;
+      animation: wxUp .42s .12s cubic-bezier(.2, .8, .2, 1) both;
+    }
+    @keyframes wxUp { from { transform: translateY(10px); opacity: 0; } }
+    .wx-result__acts {
+      width: 100%; max-width: 320px; margin-top: 30px;
+      display: flex; flex-direction: column; gap: 10px;
+      animation: wxUp .42s .18s cubic-bezier(.2, .8, .2, 1) both;
+    }
+    .wx-act {
+      width: 100%; padding: 13px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer;
+      transition: transform .12s ease, opacity .16s ease;
+    }
+    .wx-act:active { transform: scale(.98); opacity: .88; }
+    .wx-act--primary { background: var(--wx-green); color: #fff; }
+    .wx-act--ghost {
+      background: var(--wx-panel); color: var(--wx-text);
+      border: 1px solid var(--wx-line);
+    }
+    .wx-act--link {
+      background: none; color: var(--wx-sub); font-weight: 400; font-size: 13.5px;
+      padding: 6px;
+    }
+
+    /* 空态 / 骨架 */
+    .wx-empty {
+      padding: 44px 20px; text-align: center; color: var(--wx-sub); font-size: 13.5px;
+      line-height: 1.7;
+    }
+    .wx-skel { padding: 12px 14px; display: flex; gap: 12px; align-items: center; background: var(--wx-panel); }
+    .wx-skel__av { width: 40px; height: 40px; border-radius: 5px; background: var(--wx-field); flex-shrink: 0;
+      animation: wxPulse 1.4s ease-in-out infinite; }
+    .wx-skel__line { height: 12px; border-radius: 6px; background: var(--wx-field); flex: 1;
+      animation: wxPulse 1.4s ease-in-out infinite; }
+    @keyframes wxPulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+    /* 失败提示条 */
+    .wx-alert {
+      position: fixed; left: 50%; top: 22px; transform: translateX(-50%);
+      max-width: 90vw; padding: 10px 16px; border-radius: 8px;
+      background: rgba(0, 0, 0, .82); color: #fff; font-size: 13.5px;
+      z-index: 90; animation: wxUp .24s ease both;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wx-app">
+  <header class="wx-bar">
+    <button type="button" class="wx-btn" id="cancelBtn">取消</button>
+    <div class="wx-bar__title">发送给朋友</div>
+    <button type="button" class="wx-btn wx-btn--send" id="sendBtn" disabled>发送</button>
+  </header>
+
+  <div class="wx-scroll" id="scrollArea">
+    <div class="wx-file" id="fileCard">
+      <span class="wx-file__ico" id="fileIcon"><i class="fas fa-file"></i></span>
+      <span class="wx-file__main">
+        <span class="wx-file__name" id="fileName">文件</span>
+        <span class="wx-file__meta" id="fileMeta">正在准备…</span>
+      </span>
+      <span class="wx-file__badge" id="fileBadge" hidden>私有</span>
+    </div>
+
+    <div class="wx-search">
+      <i class="fas fa-search"></i>
+      <input type="search" id="searchInput" placeholder="搜索" autocomplete="off" enterkeyhint="search">
+      <button type="button" class="wx-search__clear" id="searchClear" aria-label="清空"><i class="fas fa-circle-xmark"></i></button>
+    </div>
+
+    <div class="wx-selected" id="selectedBar" hidden></div>
+
+    <div class="wx-sec-title" id="listTitle">最近聊天</div>
+    <div class="wx-people" id="peopleList"></div>
+    <div id="listHint"></div>
+  </div>
+
+  <div class="wx-note">
+    <input type="text" id="noteInput" placeholder="留言（可选）" maxlength="100" autocomplete="off">
+  </div>
+
+  <!-- 发送结果 -->
+  <div class="wx-result" id="resultOverlay" hidden>
+    <div class="wx-result__ring"><i class="fas fa-check"></i></div>
+    <div class="wx-result__title" id="resultTitle">已发送</div>
+    <div class="wx-result__sub" id="resultSub"></div>
+    <div class="wx-result__acts" id="resultActs"></div>
+  </div>
+</div>
+
+<script src="/vendor/supabase.min.js"></script>
+<script src="/common.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (s) { return document.querySelector(s); };
+
+  var params = new URLSearchParams(location.search);
+  var SHARE_PATH = params.get('share') || '';
+  var SHARE_NAME = params.get('name') || (SHARE_PATH ? SHARE_PATH.split('/').pop() : '文件');
+  var SHARE_SPACE = params.get('space') === 'private' ? 'private' : 'public';
+  var SHARE_SIZE = Number(params.get('size')) || 0;
+  var SHARE_MIME = params.get('mime') || '';
+  var FROM = params.get('from') || (params.get('space') ? 'cloud' : '');
+  var RETURN_URL = params.get('back') || (FROM === 'cloud' ? '/cloud/' : '');
+
+  var MAX_PICK = 9;
+  var sb = null;
+  var me = null;
+
+  var state = {
+    picked: [],      // [{id, nick, avatar_url}]
+    recent: [],
+    results: [],
+    mode: 'recent',  // recent | search
+    sending: false,
+    fileUrl: '',
+    fileNote: ''
+  };
+
+  // ---------------------------------------------------------------- 工具
+  function esc(s) { return KJ.escapeHtml(s == null ? '' : s); }
+
+  function alertBar(msg, ms) {
+    var el = document.createElement('div');
+    el.className = 'wx-alert';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, ms || 2400);
+  }
+
+  function fileIcon(name) {
+    var ext = String(name || '').split('.').pop().toLowerCase();
+    var map = {
+      doc: ['fa-file-word', 'doc'], docx: ['fa-file-word', 'doc'],
+      xls: ['fa-file-excel', 'xls'], xlsx: ['fa-file-excel', 'xls'], csv: ['fa-file-csv', 'xls'],
+      ppt: ['fa-file-powerpoint', 'ppt'], pptx: ['fa-file-powerpoint', 'ppt'],
+      pdf: ['fa-file-pdf', 'pdf'],
+      zip: ['fa-file-zipper', 'zip'], rar: ['fa-file-zipper', 'zip'], '7z': ['fa-file-zipper', 'zip'],
+      png: ['fa-file-image', 'img'], jpg: ['fa-file-image', 'img'], jpeg: ['fa-file-image', 'img'],
+      gif: ['fa-file-image', 'img'], webp: ['fa-file-image', 'img'], svg: ['fa-file-image', 'img'],
+      mp4: ['fa-file-video', 'vid'], mov: ['fa-file-video', 'vid'], mkv: ['fa-file-video', 'vid'],
+      mp3: ['fa-file-audio', 'aud'], wav: ['fa-file-audio', 'aud'], m4a: ['fa-file-audio', 'aud'],
+      txt: ['fa-file-lines', 'txt'], md: ['fa-file-lines', 'txt'],
+      json: ['fa-file-code', 'code'], js: ['fa-file-code', 'code'], ts: ['fa-file-code', 'code'],
+      html: ['fa-file-code', 'code'], css: ['fa-file-code', 'code'], py: ['fa-file-code', 'code']
+    };
+    return map[ext] || ['fa-file', 'gen'];
+  }
+
+  function bytes(n) {
+    var v = Number(n);
+    if (!isFinite(v) || v <= 0) return '';
+    if (v < 1024) return v + ' B';
+    if (v < 1048576) return (v / 1024).toFixed(1) + ' KB';
+    if (v < 1073741824) return (v / 1048576).toFixed(1) + ' MB';
+    return (v / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function avatarHtml(u, size) {
+    return KJ.avatarHtml({ id: u.id, nick: u.nick, avatar_url: u.avatar_url }, { size: size });
+  }
+
+  function isPicked(id) {
+    for (var i = 0; i < state.picked.length; i++) if (state.picked[i].id === id) return true;
+    return false;
+  }
+
+  // ---------------------------------------------------------------- 顶部文件卡
+  function paintFile() {
+    var pair = fileIcon(SHARE_NAME);
+    var ico = $('#fileIcon');
+    ico.innerHTML = '<i class="fas ' + pair[0] + '"></i>';
+    ico.className = 'wx-file__ico fc-' + pair[1];
+    $('#fileName').textContent = SHARE_NAME;
+    var bits = [];
+    var size = bytes(SHARE_SIZE);
+    if (size) bits.push(size);
+    bits.push(SHARE_SPACE === 'private' ? '私有空间 · 链接 6 小时有效' : '来自云盘 · 公开空间');
+    $('#fileMeta').textContent = bits.join(' · ');
+    $('#fileBadge').hidden = SHARE_SPACE !== 'private';
+  }
+
+  // 生成可下载地址
+  async function resolveUrl() {
+    if (!SHARE_PATH) return '';
+    try {
+      if (SHARE_SPACE === 'public') {
+        return KJ.SUPABASE_URL + '/storage/v1/object/public/cloud-drive/' +
+          SHARE_PATH.split('/').map(encodeURIComponent).join('/');
+      }
+      var r = await sb.storage.from('cloud-drive-private')
+        .createSignedUrl(SHARE_PATH, 6 * 3600);
+      if (r.error) throw r.error;
+      return (r.data && r.data.signedUrl) || '';
+    } catch (e) {
+      console.warn('resolve share url failed:', e);
+      return '';
+    }
+  }
+
+  // ---------------------------------------------------------------- 列表渲染
+  function rowHtml(u) {
+    var on = isPicked(u.id);
+    return '<div class="wx-row' + (on ? ' on' : '') + '" data-id="' + esc(u.id) + '" role="checkbox" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '">' +
+        '<span class="wx-check"><i class="fas fa-check"></i></span>' +
+        '<span class="wx-row__av">' + avatarHtml(u, 40) + '</span>' +
+        '<span class="wx-row__body"><span class="wx-row__name">' + esc(u.nick || '用户') + '</span>' +
+          (u.is_admin ? '<span class="wx-row__tag">管理员</span>' : '') +
+        '</span>' +
+      '</div>';
+  }
+
+  function renderList() {
+    var box = $('#peopleList');
+    var list = state.mode === 'search' ? state.results : state.recent;
+    $('#listTitle').textContent = state.mode === 'search' ? '搜索结果' : '最近聊天';
+
+    if (!list.length) {
+      box.innerHTML = '';
+      $('#listHint').innerHTML = '<div class="wx-empty">' +
+        (state.mode === 'search'
+          ? '没有找到这个用户<br>试试昵称的一部分'
+          : '还没有聊过天<br>用上面的搜索找个人吧') + '</div>';
+      return;
+    }
+    $('#listHint').innerHTML = '';
+    box.innerHTML = list.map(rowHtml).join('');
+  }
+
+  function renderSelected() {
+    var bar = $('#selectedBar');
+    if (!state.picked.length) { bar.hidden = true; bar.innerHTML = ''; paintSendBtn(); return; }
+    bar.hidden = false;
+    bar.innerHTML = state.picked.map(function (u) {
+      return '<div class="wx-sel" data-id="' + esc(u.id) + '">' +
+          '<span class="wx-sel__av">' + avatarHtml(u, 46) +
+            '<span class="wx-sel__x"><i class="fas fa-xmark"></i></span></span>' +
+          '<span class="wx-sel__name">' + esc(u.nick || '用户') + '</span>' +
+        '</div>';
+    }).join('');
+    paintSendBtn();
+  }
+
+  function paintSendBtn() {
+    var btn = $('#sendBtn');
+    var n = state.picked.length;
+    btn.textContent = n ? '发送(' + n + ')' : '发送';
+    btn.disabled = n === 0 || state.sending;
+  }
+
+  // ---------------------------------------------------------------- 选择
+  function togglePick(u) {
+    var idx = -1;
+    for (var i = 0; i < state.picked.length; i++) if (state.picked[i].id === u.id) { idx = i; break; }
+    if (idx >= 0) {
+      state.picked.splice(idx, 1);
+    } else {
+      if (state.picked.length >= MAX_PICK) { alertBar('最多同时发给 ' + MAX_PICK + ' 位朋友'); return; }
+      state.picked.push({ id: u.id, nick: u.nick, avatar_url: u.avatar_url || '' });
+    }
+    renderList();
+    renderSelected();
+  }
+
+  // ---------------------------------------------------------------- 加载
+  async function loadRecent() {
+    $('#peopleList').innerHTML = Array(4).fill(
+      '<div class="wx-skel"><span class="wx-skel__av"></span><span class="wx-skel__line"></span></div>'
+    ).join('');
+    try {
+      var r = await sb.rpc('chat_conversations');
+      if (r.error) throw r.error;
+      state.recent = (r.data || []).map(function (c) {
+        return { id: c.partner_id, nick: c.nick || '用户', avatar_url: c.avatar_url || '', is_admin: c.is_admin === true };
+      });
+    } catch (e) {
+      console.warn('load conversations failed:', e);
+      state.recent = [];
+    }
+    if (state.mode === 'recent') renderList();
+  }
+
+  var searchTimer = null;
+  function onSearchInput() {
+    var term = $('#searchInput').value.trim();
+    $('#searchClear').classList.toggle('on', !!term);
+    clearTimeout(searchTimer);
+    if (!term) {
+      state.mode = 'recent';
+      state.results = [];
+      renderList();
+      return;
+    }
+    searchTimer = setTimeout(async function () {
+      state.mode = 'search';
+      $('#listTitle').textContent = '搜索结果';
+      $('#peopleList').innerHTML = Array(3).fill(
+        '<div class="wx-skel"><span class="wx-skel__av"></span><span class="wx-skel__line"></span></div>'
+      ).join('');
+      try {
+        var r = await sb.rpc('chat_search_users', { term: term });
+        if (r.error) throw r.error;
+        state.results = (r.data || []).map(function (u) {
+          return { id: u.id, nick: u.nick || '用户', avatar_url: u.avatar_url || '', is_admin: u.is_admin === true };
+        });
+      } catch (e) {
+        state.results = [];
+      }
+      if (state.mode === 'search') renderList();
+    }, 260);
+  }
+
+  // ---------------------------------------------------------------- 发送
+  async function doSend() {
+    if (state.sending || !state.picked.length) return;
+    if (!state.fileUrl) { alertBar('文件链接还没准备好，请稍候'); return; }
+
+    state.sending = true;
+    paintSendBtn();
+    $('#sendBtn').textContent = '发送中';
+
+    var note = $('#noteInput').value.trim().slice(0, 100);
+    var payload = {
+      kind: 'file',
+      name: String(SHARE_NAME).slice(0, 200),
+      size: SHARE_SIZE,
+      url: state.fileUrl,
+      mime: SHARE_MIME,
+      note: note
+    };
+
+    var ok = [], bad = [];
+    for (var i = 0; i < state.picked.length; i++) {
+      var u = state.picked[i];
+      try {
+        var r = await sb.from('private_messages').insert([{
+          sender_id: me.id,
+          recipient_id: u.id,
+          text: '[文件] ' + String(SHARE_NAME).slice(0, 190),
+          attachment: payload
+        }]);
+        if (r.error) throw r.error;
+        ok.push(u);
+      } catch (e) {
+        console.warn('send failed:', u.nick, e);
+        bad.push(u);
+      }
+    }
+
+    state.sending = false;
+    if (!ok.length) {
+      paintSendBtn();
+      alertBar('发送失败，请检查网络后重试', 3000);
+      return;
+    }
+    showResult(ok, bad, note);
+  }
+
+  function showResult(ok, bad, note) {
+    var ov = $('#resultOverlay');
+    ov.hidden = false;
+
+    var names = ok.map(function (u) { return u.nick || '用户'; });
+    var short = names.slice(0, 3).join('、') + (names.length > 3 ? ' 等 ' + names.length + ' 位' : '');
+    $('#resultSub').innerHTML = '已发送给 ' + esc(short) +
+      (bad.length ? '<br><span style="color:var(--wx-danger)">' + bad.length + ' 位发送失败</span>' : '') +
+      (note ? '<br>附言：' + esc(note) : '');
+
+    var acts = [];
+    if (RETURN_URL) {
+      acts.push('<button type="button" class="wx-act wx-act--primary" id="actBack">' +
+        '<i class="fas fa-arrow-left"></i> 返回' + (FROM === 'cloud' ? '云盘' : '上一页') + '</button>');
+    }
+    acts.push('<button type="button" class="wx-act ' + (RETURN_URL ? 'wx-act--ghost' : 'wx-act--primary') + '" id="actChat">' +
+      '<i class="fas fa-comment-dots"></i> 去站内信看对话</button>');
+    acts.push('<button type="button" class="wx-act wx-act--link" id="actStay">留在本页，再选几位</button>');
+    $('#resultActs').innerHTML = acts.join('');
+
+    $('#actBack') && $('#actBack').addEventListener('click', function () {
+      location.href = RETURN_URL;
+    });
+    $('#actChat').addEventListener('click', function () {
+      location.href = ok.length === 1 ? '/chat/?to=' + ok[0].id : '/chat/';
+    });
+    $('#actStay').addEventListener('click', function () {
+      ov.hidden = true;
+      state.picked = [];
+      renderList();
+      renderSelected();
+      $('#noteInput').value = '';
+    });
+  }
+
+  // ---------------------------------------------------------------- 启动
+  async function boot() {
+    paintFile();
+
+    sb = KJ.createSupabase();
+    if (!sb) {
+      $('#listHint').innerHTML = '<div class="wx-empty">组件未加载成功，请刷新页面重试</div>';
+      return;
+    }
+
+    var sess = null;
+    try { sess = (await sb.auth.getSession()).data.session; } catch (e) {}
+    if (!sess) {
+      $('#listHint').innerHTML = '<div class="wx-empty">登录后才能分享给好友<br><br>' +
+        '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) +
+        '" style="color:var(--wx-green);font-weight:600;text-decoration:none">去登录</a></div>';
+      $('#peopleList').innerHTML = '';
+      return;
+    }
+    me = sess.user;
+
+    if (!SHARE_PATH) {
+      $('#fileMeta').textContent = '缺少文件信息';
+      $('#listHint').innerHTML = '<div class="wx-empty">没有要分享的文件，请回云盘重新选择</div>';
+      return;
+    }
+
+    state.fileUrl = await resolveUrl();
+    if (!state.fileUrl) {
+      $('#fileMeta').textContent = '无法生成下载链接';
+      $('#listHint').innerHTML = '<div class="wx-empty">链接生成失败，请回云盘重试</div>';
+      return;
+    }
+
+    await loadRecent();
+  }
+
+  // ---------------------------------------------------------------- 事件
+  $('#cancelBtn').addEventListener('click', function () {
+    if (RETURN_URL) location.href = RETURN_URL;
+    else if (history.length > 1) history.back();
+    else location.href = '/chat/';
+  });
+
+  $('#sendBtn').addEventListener('click', doSend);
+
+  $('#peopleList').addEventListener('click', function (e) {
+    var row = e.target.closest('.wx-row');
+    if (!row) return;
+    var id = row.getAttribute('data-id');
+    var list = state.mode === 'search' ? state.results : state.recent;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) { togglePick(list[i]); return; }
+    }
+  });
+
+  $('#peopleList').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var row = e.target.closest('.wx-row');
+    if (!row) return;
+    e.preventDefault();
+    row.click();
+  });
+
+  $('#selectedBar').addEventListener('click', function (e) {
+    var chip = e.target.closest('.wx-sel');
+    if (!chip) return;
+    var id = chip.getAttribute('data-id');
+    for (var i = 0; i < state.picked.length; i++) {
+      if (state.picked[i].id === id) { state.picked.splice(i, 1); break; }
+    }
+    renderList();
+    renderSelected();
+  });
+
+  $('#searchInput').addEventListener('input', onSearchInput);
+  $('#searchInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { this.value = ''; onSearchInput(); }
+  });
+  $('#searchClear').addEventListener('click', function () {
+    $('#searchInput').value = '';
+    $('#searchInput').focus();
+    onSearchInput();
+  });
+
+  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState !== 'loading') boot();
+})();
+</script>
+</body>
+</html>
