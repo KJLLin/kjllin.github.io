@@ -1183,15 +1183,9 @@ html[data-theme="dark"] .catalog-sheet {
 
     // ====================== 登录状态 + 未读站内信 ======================
     (function loadSupabaseSDK(retryIdx) {
-      // 锁定精确版本 + SRI 完整性校验，防 CDN 供应链篡改（两 CDN 分发字节不同，各自配哈希）
-      // 同域自托管优先（国内访问 CDN 不稳定），CDN 仅作兜底
-      var CDNS = [
-        { url: '/vendor/supabase.min.js' },
-        { url: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js',
-          sri: 'sha384-EyR2P0dlmjnEGcm9xcjdAn0VedZpRHEwDLP9oSS6wYMvzHBHkUrvgonveazJ/sSx' },
-        { url: 'https://unpkg.com/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js',
-          sri: 'sha384-wpYIjtxlMVT5ozjJ7qFSKtFgLdvF6Hbgq4TUt28jqLzRjJfIXStSdJ/YB5RVJ9GB' }
-      ];
+      // 只从本站加载：CDN 兜底已移除（一是国内常不可达，二是 CSP 不再放行境外脚本，
+      // 留着一个必然被拦的兜底只会让错误更难定位）。本地失败时给出明确提示。
+      var CDNS = [{ url: '/vendor/supabase.min.js' }];
       if (retryIdx >= CDNS.length) {
         showError('登录组件加载失败，请刷新页面重试');
         var l2 = document.getElementById('loader');
