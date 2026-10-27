@@ -22,7 +22,7 @@ let sb;
 // ====================== 常量 ======================
 const PAGE_SIZE = 30;          // 每次加载的消息条数
 const GROUP_MS = 3 * 60 * 1000; // 同一人连续发言的合并窗口
-const MAX_LEN = 500;           // 与输入框 maxlength 一致（服务端上限 2000）
+const MAX_LEN = 1000;          // 与输入框 maxlength 一致（服务端上限 1000）
 
 // ====================== 状态 ======================
 const S = {
@@ -695,6 +695,7 @@ const ChatView = {
     this.render();
     input.value = '';
     input.style.height = 'auto';
+    if (ChatView._updateCharCount) ChatView._updateCharCount();
     Draft.set(partnerId, '');
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
@@ -956,10 +957,23 @@ function bindEvents() {
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ChatView.send(); }
   });
+  // 字数提示：接近上限变橙，到顶变红
+  const charCountEl = $('#charCount');
+  function updateCharCount() {
+    if (!charCountEl || !input) return;
+    const n = input.value.length;
+    if (!n) { charCountEl.className = 'char-count'; charCountEl.textContent = ''; return; }
+    const cls = 'char-count show' + (n >= MAX_LEN ? ' over' : (n >= MAX_LEN * 0.9 ? ' warn' : ''));
+    charCountEl.className = cls;
+    charCountEl.textContent = n + ' / ' + MAX_LEN;
+  }
+  ChatView._updateCharCount = updateCharCount;
+
   input?.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
     Draft.set(S.selectedId, input.value);
+    updateCharCount();
   });
 
   // 仅看未读

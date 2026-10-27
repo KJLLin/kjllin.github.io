@@ -121,10 +121,11 @@
             class="msg-textarea"
             placeholder="输入消息，Enter 发送，Shift+Enter 换行..."
             rows="1"
-            maxlength="500"
+            maxlength="1000"
             aria-label="消息内容"
           ></textarea>
           <button id="sendBtn" class="btn-send" type="button" aria-label="发送消息">发送</button>
+          <span class="char-count" id="charCount" aria-live="off"></span>
         </div>
       </div>
     </main>
