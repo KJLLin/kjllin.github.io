@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f7">
+  <meta name="description" content="KJLLin 游戏排行榜 — 各游戏最高分排名">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>排行榜 · 游戏中心 · KJLLin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    /* theme.css 只提供 --color-* 体系，这里做一层语义别名 */
+    :root {
+      --accent: var(--color-accent);
+      --accent-glow: var(--color-accent-glow);
+      --text-primary: var(--color-text-primary);
+      --text-secondary: var(--color-text-secondary);
+      --text-tertiary: var(--color-text-tertiary);
+      --bg-mica: var(--color-bg-glass);
+      --bg-mica-hover: var(--color-bg-glass-hover);
+      --border-mica: var(--color-border-glass);
+      --radius-md: 12px;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 96px 20px 72px; }
+
+    .page-head { margin-bottom: 20px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--accent); text-decoration: none; margin-bottom: 10px;
+    }
+    .page-title {
+      font-size: 28px; font-weight: 700; letter-spacing: -.02em;
+      color: var(--text-primary); display: flex; align-items: center; gap: 10px;
+    }
+    .page-title i { color: #ffb300; font-size: 23px; }
+    .page-sub { font-size: 13px; color: var(--text-tertiary); margin-top: 6px; }
+
+    /* 游戏切换 */
+    .game-tabs {
+      display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; margin-bottom: 8px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .game-tabs::-webkit-scrollbar { display: none; }
+    .g-tab {
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 15px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-mica); background: var(--bg-mica);
+      color: var(--text-secondary); font-size: 13px; font-family: inherit; font-weight: 500;
+      transition: background .18s ease, color .18s ease, border-color .18s ease;
+    }
+    .g-tab:hover { background: var(--bg-mica-hover); color: var(--text-primary); }
+    .g-tab.active { background: var(--accent); border-color: transparent; color: #fff; }
+    .g-tab i { font-size: 12px; }
+
+    /* 参与开关 */
+    .join-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 14px; margin-bottom: 16px;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+    }
+    .join-main { flex: 1; min-width: 0; }
+    .join-title { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+    .join-desc { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; line-height: 1.5; }
+    .switch {
+      position: relative; width: 46px; height: 28px; flex-shrink: 0;
+      border: none; border-radius: 999px; cursor: pointer; padding: 0;
+      background: rgba(120,120,128,.32); transition: background .22s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.22);
+      transition: transform .22s cubic-bezier(.2,.8,.2,1);
+    }
+    .switch[aria-checked="true"] { background: #34c759; }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); }
+
+    /* 我的名次 */
+    .mine-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px; border-radius: 16px; margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(10,132,255,.12), rgba(94,92,230,.1));
+      border: 1px solid var(--border-mica);
+    }
+    .mine-rank {
+      width: 54px; height: 54px; border-radius: 16px; flex-shrink: 0;
+      display: grid; place-items: center; font-size: 19px; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+    }
+    .mine-main { flex: 1; min-width: 0; }
+    .mine-label { font-size: 12px; color: var(--text-tertiary); }
+    .mine-score { font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -.01em; }
+    .mine-note { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+
+    /* 榜单 */
+    .board {
+      border-radius: 16px; overflow: hidden;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+    }
+    .row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; border-bottom: 1px solid var(--color-border);
+    }
+    .row:last-child { border-bottom: none; }
+    .row.me { background: rgba(10,132,255,.08); }
+    .rk {
+      width: 26px; flex-shrink: 0; text-align: center;
+      font-size: 14px; font-weight: 700; color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    .rk.top1 { color: #f5a623; }
+    .rk.top2 { color: #9aa0a6; }
+    .rk.top3 { color: #c07a3e; }
+    .row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+    .row-name { font-size: 14px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-name .me-tag {
+      margin-left: 6px; font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 999px; background: var(--accent-glow); color: var(--accent);
+    }
+    .row-score {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+    .row-score small { font-size: 10px; font-weight: 500; color: var(--text-tertiary); margin-left: 2px; }
+
+    .status { text-align: center; font-size: 12.5px; color: var(--text-tertiary); padding: 22px 0; }
+    .empty { text-align: center; padding: 44px 20px; color: var(--text-tertiary); font-size: 13px; }
+    .empty i { display: block; font-size: 30px; opacity: .3; margin-bottom: 12px; }
+    .skeleton { height: 52px; border-bottom: 1px solid var(--color-border); background: var(--bg-mica); }
+    .skeleton:last-child { border-bottom: none; }
+
+    @media (max-width: 560px) {
+      .container { padding: 84px 14px 56px; }
+      .page-title { font-size: 23px; }
+      .row { padding: 12px 13px; gap: 9px; }
+      .mine-rank { width: 48px; height: 48px; font-size: 17px; border-radius: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-menu">
+    <nav class="menu-bar mica" id="menuBar">
+      <span class="menu-logo">KJLLin</span>
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item active"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
+      <button id="themeBtn" class="menu-btn" aria-label="切换主题" title="浅色/深色/自动"><i class="fas fa-circle-half-stroke"></i></button>
+      <span id="userTag" class="menu-user-tag"></span>
+      <button id="logoutBtn" class="menu-btn logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+      <button class="menu-btn hamburger" id="hamburgerBtn" aria-label="菜单"><i class="fas fa-bars"></i></button>
+    </nav>
+    <div class="mobile-menu-dropdown mica" id="mobileMenu">
+      <a href="/" class="menu-item"><i class="fas fa-home"></i> 首页</a>
+      <a href="/chat" class="menu-item"><i class="fas fa-envelope"></i> 站内信</a>
+      <a href="/game/" class="menu-item"><i class="fas fa-gamepad"></i> 游戏</a>
+      <a href="/cloud/" class="menu-item"><i class="fas fa-cloud"></i> 云盘</a>
+      <a href="/discuss/" class="menu-item"><i class="fas fa-book-open"></i> 文章广场</a>
+      <a href="/u/" class="menu-item"><i class="fas fa-circle-user"></i> 个人主页</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-head">
+      <a href="/game/" class="back-link"><i class="fas fa-arrow-left"></i> 返回游戏中心</a>
+      <h1 class="page-title"><i class="fas fa-trophy"></i> 排行榜</h1>
+      <p class="page-sub" id="boardSub">各游戏的最高成绩排名</p>
+    </div>
+
+    <div class="game-tabs" id="gameTabs"></div>
+
+    <div class="join-card" id="joinCard" hidden>
+      <div class="join-main">
+        <div class="join-title">参加排行榜</div>
+        <div class="join-desc" id="joinDesc">开启后你的昵称与最高分会出现在公开榜单上</div>
+      </div>
+      <button type="button" class="switch" id="joinSwitch" role="switch" aria-checked="true" aria-label="参加排行榜"></button>
+    </div>
+
+    <div class="mine-card" id="mineCard" hidden>
+      <div class="mine-rank" id="mineRank">--</div>
+      <div class="mine-main">
+        <div class="mine-label">我的名次</div>
+        <div class="mine-score" id="mineScore">--</div>
+        <div class="mine-note" id="mineNote"></div>
+      </div>
+    </div>
+
+    <div class="board" id="board">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script src="/vendor/supabase.min.js"></script>
+  <script src="/common.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var sb = null;
+    try { sb = KJ.createSupabase(); } catch (e) {}
+
+    var GAMES = [
+      { key: 'dino',      name: '恐龙快跑',   icon: 'fa-dragon',            unit: '',   lower: false },
+      { key: 'tfe',       name: '2048',       icon: 'fa-puzzle-piece',      unit: '',   lower: false },
+      { key: 'snake',     name: '贪吃蛇',     icon: 'fa-staff-snake',       unit: '',   lower: false },
+      { key: 'schulte_3', name: '舒尔特 3×3', icon: 'fa-table-cells',       unit: ' 秒', lower: true },
+      { key: 'schulte_4', name: '舒尔特 4×4', icon: 'fa-table-cells',       unit: ' 秒', lower: true },
+      { key: 'schulte_5', name: '舒尔特 5×5', icon: 'fa-table-cells',       unit: ' 秒', lower: true }
+    ];
+
+    var state = { game: 'dino', joined: true, signedIn: false };
+
+    var tabsEl = document.getElementById('gameTabs');
+    var boardEl = document.getElementById('board');
+    var statusEl = document.getElementById('status');
+    var mineCard = document.getElementById('mineCard');
+    var joinCard = document.getElementById('joinCard');
+    var joinSwitch = document.getElementById('joinSwitch');
+
+    function gameMeta(key) {
+      for (var i = 0; i < GAMES.length; i++) if (GAMES[i].key === key) return GAMES[i];
+      return GAMES[0];
+    }
+
+    function fmtScore(meta, score) {
+      if (score == null) return '--';
+      if (meta.lower) return (score / 100).toFixed(2);
+      return String(score);
+    }
+
+    function renderTabs() {
+      tabsEl.innerHTML = GAMES.map(function (g) {
+        return '<button type="button" class="g-tab' + (g.key === state.game ? ' active' : '') +
+          '" data-game="' + g.key + '"><i class="fas ' + g.icon + '"></i>' + g.name + '</button>';
+      }).join('');
+      Array.prototype.forEach.call(tabsEl.querySelectorAll('.g-tab'), function (btn) {
+        btn.addEventListener('click', function () {
+          var k = btn.getAttribute('data-game');
+          if (k === state.game) return;
+          state.game = k;
+          renderTabs();
+          loadBoard();
+        });
+      });
+    }
+
+    function loadBoard() {
+      var meta = gameMeta(state.game);
+      boardEl.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+      statusEl.textContent = '';
+      mineCard.hidden = true;
+
+      if (!sb) {
+        boardEl.innerHTML = '<div class="empty"><i class="fas fa-plug-circle-xmark"></i>服务暂不可用，请刷新重试</div>';
+        return;
+      }
+
+      sb.rpc('game_leaderboard', { p_game: state.game, p_limit: 20 }).then(function (r) {
+        if (r.error) throw r.error;
+        var rows = r.data || [];
+        if (!rows.length) {
+          boardEl.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i>还没有人上榜，来当第一个吧</div>';
+        } else {
+          boardEl.innerHTML = rows.map(function (row) {
+            var rk = Number(row.rank);
+            var cls = rk === 1 ? ' top1' : rk === 2 ? ' top2' : rk === 3 ? ' top3' : '';
+            return '<div class="row' + (row.is_me ? ' me' : '') + '">' +
+              '<div class="rk' + cls + '">' + rk + '</div>' +
+              '<div class="row-main">' +
+                KJ.avatarHtml({ id: row.user_id, nick: row.nick, avatar_url: row.avatar_url }, { size: 32 }) +
+                '<span class="row-name">' + KJ.escapeHtml(row.nick || '用户') +
+                  (row.is_me ? '<span class="me-tag">我</span>' : '') + '</span>' +
+              '</div>' +
+              '<div class="row-score">' + fmtScore(meta, row.score) +
+                (meta.unit ? '<small>' + meta.unit + '</small>' : '') + '</div>' +
+            '</div>';
+          }).join('');
+        }
+        statusEl.textContent = rows.length ? '共 ' + rows.length + ' 位玩家' : '';
+      }).catch(function (e) {
+        console.warn('leaderboard:', e);
+        boardEl.innerHTML = '<div class="empty"><i class="fas fa-triangle-exclamation"></i>加载失败，请稍后重试</div>';
+      });
+
+      loadMine();
+    }
+
+    function loadMine() {
+      if (!state.signedIn || !sb) return;
+      var meta = gameMeta(state.game);
+      sb.rpc('game_my_rank', { p_game: state.game }).then(function (r) {
+        if (r.error || !r.data || !r.data.length) return;
+        var m = r.data[0];
+        mineCard.hidden = false;
+        document.getElementById('mineRank').textContent = m.has_score ? ('#' + m.rank) : '--';
+        document.getElementById('mineScore').textContent =
+          m.has_score ? (fmtScore(meta, m.score) + (meta.unit || '')) : '还没有成绩';
+        var note = [];
+        if (m.has_score) note.push('共 ' + m.total + ' 人参与');
+        else note.push('去玩一局就会出现在这里');
+        if (!m.joined) note.push('当前未参加排行榜');
+        document.getElementById('mineNote').textContent = note.join(' · ');
+      }).catch(function () {});
+    }
+
+    function loadJoinState() {
+      if (!sb) return;
+      sb.auth.getSession().then(function (r) {
+        state.signedIn = !!(r && r.data && r.data.session);
+        joinCard.hidden = !state.signedIn;
+        if (!state.signedIn) return;
+        sb.rpc('game_public').then(function (g) {
+          if (!g.error) {
+            state.joined = g.data !== false;
+            joinSwitch.setAttribute('aria-checked', state.joined ? 'true' : 'false');
+            document.getElementById('joinDesc').textContent = state.joined
+              ? '开启中：你的昵称与最高分会出现在公开榜单上'
+              : '已关闭：成绩只自己可见，不会出现在公开榜单';
+          }
+          loadMine();   // 登录态确认后再取排名，避免时序问题
+        }).catch(function () { loadMine(); });
+      }).catch(function () {});
+    }
+
+    joinSwitch.addEventListener('click', function () {
+      if (!state.signedIn || !sb) return;
+      var next = joinSwitch.getAttribute('aria-checked') !== 'true';
+      joinSwitch.setAttribute('aria-checked', next ? 'true' : 'false');
+      sb.rpc('set_game_public', { p_public: next }).then(function (r) {
+        if (r.error) throw r.error;
+        state.joined = next;
+        document.getElementById('joinDesc').textContent = next
+          ? '开启中：你的昵称与最高分会出现在公开榜单上'
+          : '已关闭：成绩只自己可见，不会出现在公开榜单';
+        KJ.toast(next ? '已参加排行榜' : '已退出排行榜');
+        loadBoard();
+      }).catch(function (e) {
+        joinSwitch.setAttribute('aria-checked', next ? 'false' : 'true');
+        KJ.toast('保存失败：' + (e.message || '请稍后重试'));
+      });
+    });
+
+    // 主题 / 导航
+    var themeBtn = document.getElementById('themeBtn');
+    if (themeBtn) {
+      themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+      themeBtn.addEventListener('click', function () {
+        var st = KJ.toggleTheme();
+        themeBtn.innerHTML = KJ.getThemeIcon(st.mode);
+      });
+      KJ.onSystemThemeChange(function () {
+        themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+      });
+    }
+    KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
+    KJ.initNav(sb, { homeUrl: '/game/' });
+
+    renderTabs();
+    loadJoinState();
+    loadBoard();
+    setTimeout(loadJoinState, 1500);
+  })();
+  </script>
+</body>
+</html>

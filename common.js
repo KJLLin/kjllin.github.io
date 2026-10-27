@@ -453,6 +453,117 @@
     return msg;
   }
 
+  // ====================== 站点更新提示 ======================
+  var RELEASE_SEEN_KEY = 'kj_release_seen';
+
+  function injectReleaseStyle() {
+    if (document.getElementById('kj-release-style')) return;
+    var st = document.createElement('style');
+    st.id = 'kj-release-style';
+    st.textContent = [
+      '.kj-rel-overlay{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;',
+      'padding:20px;background:rgba(0,0,0,.34);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);',
+      'animation:kjRelFade .22s ease both}',
+      '@keyframes kjRelFade{from{opacity:0}}',
+      '.kj-rel-card{width:100%;max-width:400px;max-height:82vh;overflow-y:auto;',
+      'background:var(--color-bg-glass-solid,#fff);border-radius:22px;padding:26px 24px 20px;',
+      'box-shadow:0 24px 60px rgba(0,0,0,.28);text-align:left;',
+      'animation:kjRelPop .34s cubic-bezier(.2,.9,.25,1) both}',
+      '@keyframes kjRelPop{from{transform:scale(.92) translateY(14px);opacity:0}}',
+      '.kj-rel-badge{width:52px;height:52px;border-radius:16px;margin-bottom:14px;',
+      'display:grid;place-items:center;font-size:22px;color:#fff;',
+      'background:linear-gradient(135deg,#0a84ff,#5e5ce6);box-shadow:0 8px 22px rgba(10,132,255,.32)}',
+      '.kj-rel-card h3{font-size:18px;font-weight:700;margin:0 0 5px;color:var(--color-text-primary,#1d1d1f);letter-spacing:-.01em}',
+      '.kj-rel-sub{font-size:12px;color:var(--color-text-tertiary,#86868b);margin:0 0 16px}',
+      '.kj-rel-list{margin:0 0 20px;padding:0;list-style:none}',
+      '.kj-rel-list li{position:relative;padding-left:20px;margin-bottom:9px;font-size:13.5px;line-height:1.65;',
+      'color:var(--color-text-secondary,#3a3a3c)}',
+      '.kj-rel-list li::before{content:"";position:absolute;left:6px;top:9px;width:5px;height:5px;border-radius:50%;',
+      'background:var(--color-accent,#0071e3);opacity:.75}',
+      '.kj-rel-btn{width:100%;padding:13px;border:none;border-radius:14px;background:var(--color-accent,#0071e3);',
+      'color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:transform .12s ease}',
+      '.kj-rel-btn:active{transform:scale(.97)}',
+      '.kj-rel-link{display:block;width:100%;margin-top:10px;padding:6px;background:none;border:none;',
+      'color:var(--color-text-tertiary,#86868b);font-size:12.5px;font-family:inherit;cursor:pointer;text-decoration:none;text-align:center}',
+      '.kj-rel-link:hover{color:var(--color-accent,#0071e3)}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  function closeReleaseModal(rel) {
+    var el = document.getElementById('kjReleaseModal');
+    if (el) el.remove();
+    if (rel && rel.version) {
+      try { localStorage.setItem(RELEASE_SEEN_KEY, rel.version); } catch (e) {}
+    }
+  }
+
+  function showReleaseModal(rel) {
+    if (!rel || document.getElementById('kjReleaseModal')) return;
+    injectReleaseStyle();
+
+    var list = (rel.changes || []).map(function (c) {
+      return '<li>' + escapeHtml(c) + '</li>';
+    }).join('');
+    var when = '';
+    try {
+      var d = new Date(rel.released_at);
+      if (!isNaN(d)) when = ' · ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+    } catch (e) {}
+
+    var html = '<div class="kj-rel-overlay" id="kjReleaseModal">' +
+      '<div class="kj-rel-card" role="dialog" aria-modal="true" aria-labelledby="kjRelTitle">' +
+        '<div class="kj-rel-badge"><i class="fas fa-wand-magic-sparkles"></i></div>' +
+        '<h3 id="kjRelTitle">' + escapeHtml(rel.title || '网站已更新') + '</h3>' +
+        '<p class="kj-rel-sub">版本 ' + escapeHtml(rel.version || '') + when + '</p>' +
+        (list ? '<ul class="kj-rel-list">' + list + '</ul>' : '') +
+        '<button type="button" class="kj-rel-btn" id="kjRelOk">知道啦</button>' +
+        '<a class="kj-rel-link" href="/docs/#update-log">查看完整更新日志</a>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    var ov = document.getElementById('kjReleaseModal');
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeReleaseModal(rel); });
+    document.getElementById('kjRelOk').addEventListener('click', function () { closeReleaseModal(rel); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { closeReleaseModal(rel); document.removeEventListener('keydown', esc); }
+    });
+  }
+
+  /**
+   * 检查是否有新版本；与上次看到的版本不同则弹窗
+   * 登录页、站内信页不打扰
+   */
+  function initReleaseNotice() {
+    var p = (global.location && global.location.pathname) || '/';
+    if (/^\/(login|chat)/.test(p)) return;
+
+    var attempt = 0;
+    var run = function () {
+      var sb = null;
+      try { sb = createSupabase(); } catch (e) {}
+      if (!sb) {
+        // SDK 可能还在动态加载（首页），稍后重试
+        if (attempt++ < 5) setTimeout(run, 1200);
+        return;
+      }
+      sb.rpc('latest_release').then(function (r) {
+        if (r.error || !r.data || !r.data.length) return;
+        var rel = r.data[0];
+        var seen = '';
+        try { seen = localStorage.getItem(RELEASE_SEEN_KEY) || ''; } catch (e) {}
+        if (seen === rel.version) return;
+        setTimeout(function () { showReleaseModal(rel); }, 1400);
+      }).catch(function () {});
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 800); });
+    } else {
+      setTimeout(run, 800);
+    }
+  }
+
   // ====================== 日期格式化 ======================
   function formatDate(iso) {
     if (!iso) return '--';
@@ -1442,6 +1553,8 @@
     isBrowserNotificationEnabled: isBrowserNotificationEnabled,
     rateLimit: rateLimit,
     initNav: initNav,
+    initReleaseNotice: initReleaseNotice,
+    showReleaseModal: showReleaseModal,
     ensureNewsLinks: ensureNewsLinks
   };
 
@@ -1480,5 +1593,8 @@
 
   // 挂载到全局
   global.KJ = KJ;
+
+  // 站点更新提示（全站自动检查，登录页与站内信页跳过）
+  try { initReleaseNotice(); } catch (e) {}
 
 })(window);

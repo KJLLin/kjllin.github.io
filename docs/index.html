@@ -787,6 +787,7 @@ var docs = {
       + '<li>右侧为实时时钟组件</li>'
       + '<li>其余为站内信、通知、游戏、云盘、文章广场、资讯、个人主页、设置、帮助文档</li>'
       + '<li>「资讯」组件显示 IT 之家新闻总条数与最新一条标题，点开进入 <a href="/news/">资讯页</a></li></ul>'
+      + '<p>站内有更新时，下次打开任意页面会弹出一次<strong>更新说明</strong>，列出这次改了什么。点「知道啦」后不会再重复提示，直到下一个版本。</p>'
       + '<h2 id="stats">实时数据<a href="#stats" class="anchor-icon">#</a></h2>'
       + '<p>登录后，小组件会显示你的真实数据：</p>'
       + '<ul><li><strong>站内信</strong>：未读条数、对话数量、最新一条消息预览</li>'
@@ -849,7 +850,7 @@ var docs = {
     title: '游戏总览',
     category: '游戏中心',
     meta: 'KJLLin 游戏中心提供的所有游戏一览',
-    toc: [['游戏列表', 'game-list'], ['继续上次', 'recent'], ['收藏置顶', 'pin'], ['我的战绩', 'records'], ['云端排行榜', 'leaderboard']],
+    toc: [['游戏列表', 'game-list'], ['继续上次', 'recent'], ['收藏置顶', 'pin'], ['我的战绩', 'records'], ['排行榜', 'leaderboard']],
     content: '<p>KJLLin 游戏中心提供多款精选小游戏，支持触屏和键盘操作，所有游戏均支持云端排行榜。</p>'
       + '<h2 id="game-list">游戏列表<a href="#game-list" class="anchor-icon">#</a></h2>'
       + '<div class="card-grid">'
@@ -865,8 +866,13 @@ var docs = {
       + '<p>把鼠标移到任意游戏卡片上，点右上角的<strong>星标</strong>即可收藏。收藏的游戏会自动排到列表最前面；再点一次取消收藏。收藏状态保存在本机。</p>'
       + '<h2 id="records">我的战绩<a href="#records" class="anchor-icon">#</a></h2>'
       + '<p>卡片上的金色小标签显示你在该游戏的<strong>本机最好成绩</strong>：2048 与贪吃蛇为最高分，舒尔特方格为最短用时。成绩由游戏自己记录，清空浏览器数据会一并清除。</p>'
-      + '<h2 id="leaderboard">云端排行榜<a href="#leaderboard" class="anchor-icon">#</a></h2>'
-      + '<p>登录后，你的最高分会自动同步到云端。更换设备游戏时，分数不会丢失。点击游戏页的排行榜可查看全站排名。</p>'
+      + '<h2 id="leaderboard">排行榜<a href="#leaderboard" class="anchor-icon">#</a></h2>'
+      + '<p>游戏中心右上角的「<strong>排行榜</strong>」进入 <a href="/game/rank/">榜单页</a>，可以切换查看每个游戏的排名：</p>'
+      + '<ul><li>每个游戏只记录<strong>你的最好成绩</strong>，反复玩不会刷出一堆记录</li>'
+      + '<li>恐龙快跑 / 2048 / 贪吃蛇比<strong>谁更高</strong>；舒尔特方格比<strong>谁更快</strong>（用时越短排名越靠前）</li>'
+      + '<li>榜单页顶部可以关掉「参加排行榜」。关闭后你的成绩仍会记录，但<strong>不会出现在公开榜单上</strong>，别人看不到你</li>'
+      + '<li>关闭状态下列表里也不会出现你，但「我的名次」一栏仍会显示自己的成绩</li></ul>'
+      + '<div class="admonition admonition--tip"><span class="admonition-icon"><i class="fas fa-lightbulb"></i></span><div class="admonition-content"><span class="admonition-heading">提示</span><p>排行榜默认开启，和以前的公开成绩一致。如果不想被看到，进榜单页关掉开关即可，即时生效。</p></div></div>'
   },
   'game-rps': {
     title: '石头剪刀布',
@@ -1233,6 +1239,9 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>更新提示：</strong>每次发版会在站内记录说明，用户下次打开时弹窗告知一次。</li>'
+      + '<li><strong>游戏排行榜：</strong>新增独立的排行榜页，支持按游戏切换、查看自己的名次，并可自行选择是否参加公开榜单。</li>'
+      + '<li><strong>修复：</strong>恐龙快跑只有页面加载后第一局的成绩会同步到云端，之后的高分不生效。</li>'
       + '<li><strong>通知接收设置：</strong>通知中心新增「设置」，可逐类开关站内信 / 点赞 / 关注 / 公告 / 系统通知，即时生效。</li>'
       + '<li><strong>站内信上限：</strong>单条消息上限由 500 字调整为 1000 字。</li>'
       + '<li><strong>资讯多源：</strong>新增中新网滚动新闻；取消导购黑名单，全部收录；支持按来源筛选。<code>news_feeds</code> 加一行即可接入新源。</li>'
