@@ -208,13 +208,12 @@
     var sb = null;
     try { sb = KJ.createSupabase(); } catch (e) {}
 
+    // 舒尔特只有 5×5 上公开榜（其他规格仍记录个人成绩）
     var GAMES = [
-      { key: 'dino',      name: '恐龙快跑',   icon: 'fa-dragon',            unit: '',   lower: false },
-      { key: 'tfe',       name: '2048',       icon: 'fa-puzzle-piece',      unit: '',   lower: false },
-      { key: 'snake',     name: '贪吃蛇',     icon: 'fa-staff-snake',       unit: '',   lower: false },
-      { key: 'schulte_3', name: '舒尔特 3×3', icon: 'fa-table-cells',       unit: ' 秒', lower: true },
-      { key: 'schulte_4', name: '舒尔特 4×4', icon: 'fa-table-cells',       unit: ' 秒', lower: true },
-      { key: 'schulte_5', name: '舒尔特 5×5', icon: 'fa-table-cells',       unit: ' 秒', lower: true }
+      { key: 'dino',      name: '恐龙快跑',   icon: 'fa-dragon',       unit: '',   lower: false },
+      { key: 'tfe',       name: '2048',       icon: 'fa-puzzle-piece', unit: '',   lower: false },
+      { key: 'snake',     name: '贪吃蛇',     icon: 'fa-staff-snake',  unit: '',   lower: false },
+      { key: 'schulte_5', name: '舒尔特 5×5', icon: 'fa-table-cells',  unit: ' 秒', lower: true }
     ];
 
     var state = { game: 'dino', joined: true, signedIn: false };

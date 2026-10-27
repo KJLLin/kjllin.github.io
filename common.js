@@ -536,7 +536,12 @@
    */
   function initReleaseNotice() {
     var p = (global.location && global.location.pathname) || '/';
-    if (/^\/(login|chat)/.test(p)) return;
+    // 只在「浏览类」页面提示；聊天 / 登录 / 管理后台等操作页不打断
+    var ALLOW = [/^\/$/, /^\/news\//, /^\/discuss\//, /^\/game\//, /^\/docs\//,
+                 /^\/u\//, /^\/settings\//, /^\/cloud\//];
+    var allowed = false;
+    for (var i = 0; i < ALLOW.length; i++) { if (ALLOW[i].test(p)) { allowed = true; break; } }
+    if (!allowed) return;
 
     var attempt = 0;
     var run = function () {

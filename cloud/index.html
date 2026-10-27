@@ -973,7 +973,7 @@
             <div class="file-actions">
               <button class="file-btn" data-action="preview" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" data-size="${Number(f.size)||0}" title="预览"><i class="fas fa-eye"></i></button>
               <button class="file-btn" data-action="download" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="下载"><i class="fas fa-download"></i></button>
-              <button class="file-btn" data-action="share" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" title="发送给站内信好友"><i class="fas fa-paper-plane"></i></button>
+              <button class="file-btn" data-action="share" data-path="${KJ.escapeHtml(f.name)}" data-name="${displayName}" data-type="${KJ.escapeHtml(f.type)}" data-size="${Number(f.size)||0}" title="发送给站内信好友"><i class="fas fa-paper-plane"></i></button>
               ${canDelete ? `<button class="file-btn del-btn" data-action="delete" data-name="${KJ.escapeHtml(f.name)}" title="删除"><i class="fas fa-trash"></i></button>` : ''}
             </div>
           </div>`;
@@ -1139,7 +1139,15 @@
       } else if (action === 'delete') {
         deleteFile(btn.dataset.name);
       } else if (action === 'share') {
-        openShare(btn.dataset.path, btn.dataset.name);
+        // 统一到站内信页面完成选人与发送（不再在云盘内弹层搜索）
+        const q = new URLSearchParams({
+          share: btn.dataset.path || '',
+          name: btn.dataset.name || '',
+          space: isPrivateSpace() ? 'private' : 'public',
+          size: btn.dataset.size || '0',
+          mime: btn.dataset.type || ''
+        });
+        window.location.href = '/chat/?' + q.toString();
       }
     });
 
