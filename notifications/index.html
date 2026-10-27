@@ -115,6 +115,81 @@
 
     /* ===== 通知中心重构新增 ===== */
     .head-unread { font-size: 13px; font-weight: 500; color: var(--accent, #0071e3); margin-left: 8px; }
+    /* ==================== 通知设置弹层 ==================== */
+    .pref-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0, 0, 0, .32);
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: prefFade .22s ease both;
+    }
+    @keyframes prefFade { from { opacity: 0; } }
+    .pref-sheet {
+      width: 100%; max-width: 520px;
+      background: var(--color-bg-glass-solid, #fff);
+      border-radius: 22px 22px 0 0;
+      padding: 8px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -8px 40px rgba(0, 0, 0, .22);
+      animation: prefUp .34s cubic-bezier(.2, .9, .25, 1) both;
+      max-height: 86vh; overflow-y: auto;
+    }
+    @keyframes prefUp { from { transform: translateY(100%); } }
+    .pref-head {
+      position: relative; padding: 18px 20px 6px; text-align: center;
+    }
+    .pref-head h3 { font-size: 16px; font-weight: 600; margin: 0; color: var(--text-primary); }
+    .pref-close {
+      position: absolute; right: 14px; top: 12px;
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: rgba(120, 120, 128, .14);
+      color: var(--text-secondary); font-size: 17px; line-height: 1;
+      cursor: pointer; font-family: inherit;
+    }
+    .pref-tip {
+      margin: 4px 20px 14px; font-size: 12.5px; line-height: 1.6;
+      color: var(--text-tertiary); text-align: center;
+    }
+    .pref-list { padding: 0 14px; }
+    .pref-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 8px; border-bottom: 1px solid var(--color-border);
+    }
+    .pref-row:last-child { border-bottom: none; }
+    .pref-ico {
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center; font-size: 14px; color: #fff;
+      background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+    }
+    .pref-ico.like { background: linear-gradient(135deg, #ff375f, #ff9f0a); }
+    .pref-ico.follow { background: linear-gradient(135deg, #30d158, #64d2ff); }
+    .pref-ico.announce { background: linear-gradient(135deg, #ff9f0a, #ff453a); }
+    .pref-ico.system { background: linear-gradient(135deg, #8e8e93, #636366); }
+    .pref-main { flex: 1; min-width: 0; }
+    .pref-name { display: block; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+    .pref-desc { display: block; font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+    .pref-switch {
+      position: relative; width: 46px; height: 28px; flex-shrink: 0;
+      border: none; border-radius: 999px; cursor: pointer; padding: 0;
+      background: rgba(120, 120, 128, .32);
+      transition: background .22s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pref-switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%; background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+      transition: transform .22s cubic-bezier(.2, .8, .2, 1);
+    }
+    .pref-switch[aria-checked="true"] { background: #34c759; }
+    .pref-switch[aria-checked="true"]::after { transform: translateX(18px); }
+    .pref-foot { padding: 14px 20px 0; }
+    .pref-foot button {
+      width: 100%; padding: 13px; border-radius: 14px; border: none;
+      background: var(--accent, #0071e3); color: #fff;
+      font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .pref-foot button:active { transform: scale(.985); }
+
     .notif-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
     .notif-tab {
       display: inline-flex; align-items: center; gap: 6px;
@@ -170,6 +245,7 @@
     <div class="page-head">
       <h1 class="page-title"><i class="fas fa-bell"></i> 通知<span class="head-unread" id="headUnread"></span></h1>
       <div class="head-actions">
+        <button class="btn" id="prefBtn" title="选择接收哪些通知"><i class="fas fa-sliders"></i> 设置</button>
         <button class="btn" id="deskNotifBtn" title="在后台收到新通知时弹出系统桌面通知"><i class="far fa-bell"></i> 开启桌面通知</button>
         <button class="btn" id="markAllBtn" style="display:none"><i class="fas fa-check-double"></i> 全部已读</button>
         <button class="btn" id="clearReadBtn" style="display:none"><i class="fas fa-broom"></i> 清空已读</button>
@@ -440,6 +516,104 @@
     }
 
     function bindActions() {
+      // ==================== 通知偏好 ====================
+      var PREFS = [
+        { key: 'pm',       name: '站内信', desc: '收到新的私信时提醒',     cls: 'pm',       icon: 'fa-envelope' },
+        { key: 'like',     name: '点赞',   desc: '你的文章被点赞',         cls: 'like',     icon: 'fa-heart' },
+        { key: 'follow',   name: '关注',   desc: '有人关注你',             cls: 'follow',   icon: 'fa-user-plus' },
+        { key: 'announce', name: '公告',   desc: '管理员发布的全站公告',   cls: 'announce', icon: 'fa-bullhorn' },
+        { key: 'system',   name: '系统',   desc: '平台级通知与账号提醒',   cls: 'system',   icon: 'fa-gear' }
+      ];
+      var prefState = null;
+
+      function prefVal(k) {
+        if (!prefState) return true;
+        return prefState[k] !== false;
+      }
+
+      function applyPrefs(obj) {
+        prefState = {};
+        for (var i = 0; i < PREFS.length; i++) {
+          prefState[PREFS[i].key] = !(obj && obj[PREFS[i].key] === false);
+        }
+      }
+
+      function loadPrefs() {
+        if (!sb) return;
+        sb.rpc('notif_prefs').then(function(r) {
+          if (!r.error && r.data) applyPrefs(r.data);
+        }).catch(function() {});
+      }
+
+      function closePrefs() {
+        var el = document.getElementById('prefOverlay');
+        if (el) el.remove();
+      }
+
+      function openPrefs() {
+        if (document.getElementById('prefOverlay')) return;
+        var rows = '';
+        for (var i = 0; i < PREFS.length; i++) {
+          var p = PREFS[i];
+          rows += '<div class="pref-row">' +
+              '<span class="pref-ico ' + p.cls + '"><i class="fas ' + p.icon + '"></i></span>' +
+              '<span class="pref-main">' +
+                '<span class="pref-name">' + p.name + '</span>' +
+                '<span class="pref-desc">' + p.desc + '</span>' +
+              '</span>' +
+              '<button type="button" class="pref-switch" role="switch" data-key="' + p.key +
+                '" aria-checked="' + (prefVal(p.key) ? 'true' : 'false') +
+                '" aria-label="' + p.name + '通知"></button>' +
+            '</div>';
+        }
+        var html = '<div class="pref-overlay" id="prefOverlay">' +
+          '<div class="pref-sheet" role="dialog" aria-modal="true" aria-label="通知设置">' +
+            '<div class="pref-head"><h3>接收哪些通知</h3>' +
+              '<button type="button" class="pref-close" id="prefClose" aria-label="关闭">×</button></div>' +
+            '<p class="pref-tip">关掉后不再产生这类新通知，已经收到的会保留。</p>' +
+            '<div class="pref-list">' + rows + '</div>' +
+            '<div class="pref-foot"><button type="button" id="prefDone">完成</button></div>' +
+          '</div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        var ov = document.getElementById('prefOverlay');
+        ov.addEventListener('click', function(e) { if (e.target === ov) closePrefs(); });
+        document.getElementById('prefClose').addEventListener('click', closePrefs);
+        document.getElementById('prefDone').addEventListener('click', closePrefs);
+
+        var btns = ov.querySelectorAll('.pref-switch');
+        for (var j = 0; j < btns.length; j++) {
+          btns[j].addEventListener('click', function() { togglePref(this); });
+        }
+      }
+
+      async function togglePref(btn) {
+        var key = btn.getAttribute('data-key');
+        var next = btn.getAttribute('aria-checked') !== 'true';
+        var prev = !next;
+        btn.setAttribute('aria-checked', next ? 'true' : 'false');
+        if (!prefState) applyPrefs({});
+        prefState[key] = next;
+
+        var payload = {};
+        for (var i = 0; i < PREFS.length; i++) payload[PREFS[i].key] = prefState[PREFS[i].key];
+
+        try {
+          var r = await sb.rpc('save_notif_prefs', { p_prefs: payload });
+          if (r.error) throw r.error;
+        } catch (e) {
+          btn.setAttribute('aria-checked', prev ? 'true' : 'false');
+          prefState[key] = prev;
+          KJ.toast('保存失败，请稍后重试');
+        }
+      }
+
+      $('#prefBtn').addEventListener('click', openPrefs);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closePrefs();
+      });
+      loadPrefs();
+
       $('#markAllBtn').addEventListener('click', async function() {
         var btn = this;
         if (btn.disabled) return;

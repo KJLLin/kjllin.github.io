@@ -376,7 +376,18 @@ input, textarea, button { font-family: inherit; }
 }
 
 /* ====================== 输入栏 — Liquid Glass ====================== */
+.char-count {
+  position: absolute; right: 16px; bottom: 5px;
+  font-size: 10.5px; color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none; opacity: 0; transition: opacity .18s ease, color .18s ease;
+}
+.char-count.show { opacity: 1; }
+.char-count.warn { color: #ff9f0a; }
+.char-count.over { color: #ff453a; font-weight: 600; }
+
 .input-bar {
+  position: relative;
   display: flex; align-items: flex-end; gap: 10px;
   padding: 12px 18px 16px;
   background: var(--color-bg-glass-solid);

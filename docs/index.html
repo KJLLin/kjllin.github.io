@@ -951,6 +951,7 @@ var docs = {
       + '<li><span class="step-content">搜索结果只显示昵称和<strong>脱敏提示</strong>（如 <code>g***@qq.com</code>），用于确认身份。</span></li>'
       + '<li><span class="step-content">点击用户即可打开对话，输入消息后按 Enter 发送，Shift + Enter 换行。</span></li>'
       + '</ol>'
+      + '<p>单条消息最长 <strong>1000 字</strong>，输入框右下角会显示已用字数。</p>'
       + '<h2 id="reading">消息阅读与分页<a href="#reading" class="anchor-icon">#</a></h2>'
       + '<ul><li>首次打开会话加载最近 <strong>30 条</strong>消息，向上滚动或点击「加载更早的消息」继续向上翻页</li>'
       + '<li>消息按日期分隔（今天 / 昨天 / 具体日期），同一人 3 分钟内的连续消息自动合并</li>'
@@ -1026,8 +1027,8 @@ var docs = {
   'notifications': {
     title: '通知中心',
     category: '社交功能',
-    meta: '筛选、批量已读、实时提醒与私信聚合',
-    toc: [['通知类型', 'types'], ['筛选与分页', 'filter'], ['批量操作', 'bulk'], ['通知铃铛', 'bell'], ['私信通知聚合', 'aggregate']],
+    meta: '筛选、接收设置、批量已读、实时提醒与私信聚合',
+    toc: [['通知类型', 'types'], ['筛选与分页', 'filter'], ['接收设置', 'prefs'], ['批量操作', 'bulk'], ['通知铃铛', 'bell'], ['私信通知聚合', 'aggregate']],
     content: '<p><a href="/notifications/">通知中心</a>集中展示你的所有站内通知，支持按类型筛选、批量管理与实时推送。</p>'
       + '<h2 id="types">通知类型<a href="#types" class="anchor-icon">#</a></h2>'
       + '<ul><li><strong>站内信</strong> — 收到新私信时提醒</li>'
@@ -1038,6 +1039,15 @@ var docs = {
       + '<p>顶部提供 5 个标签：<strong>全部 / 未读 / 站内信 / 互动 / 公告</strong>，每个标签上会显示对应的未读数量。</p>'
       + '<ul><li>列表按时间倒序排列，并按「今天 / 昨天 / N 天前」分隔</li>'
       + '<li>滚动到底部会自动加载更多，无需手动点击</li></ul>'
+      + '<h2 id="prefs">接收设置<a href="#prefs" class="anchor-icon">#</a></h2>'
+      + '<p>页头的「<strong>设置</strong>」按钮可以逐项决定要不要收某一类通知：</p>'
+      + '<ul><li><strong>站内信</strong> — 收到新私信时的提醒</li>'
+      + '<li><strong>点赞</strong> — 你的文章被点赞</li>'
+      + '<li><strong>关注</strong> — 有人关注你</li>'
+      + '<li><strong>公告</strong> — 管理员发布的全站公告</li>'
+      + '<li><strong>系统</strong> — 平台级通知与账号提醒</li></ul>'
+      + '<p>开关<strong>点一下立即生效</strong>，不需要再点保存。关掉某一类后，这类事件<strong>不再产生新通知</strong>，但<strong>已经收到的通知会保留</strong>，不会被删除。</p>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>通知设置只影响「是否提醒」，不影响功能本身。关掉站内信通知后，你仍然会收到私信，只是不再产生通知条目。设置跟账号走，换设备登录同样生效。</p></div></div>'
       + '<h2 id="bulk">批量操作<a href="#bulk" class="anchor-icon">#</a></h2>'
       + '<ul><li><strong>全部已读</strong> — 一键清除所有未读标记</li>'
       + '<li><strong>清空已读</strong> — 删除已读通知，公告会保留</li>'
@@ -1223,6 +1233,8 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>通知接收设置：</strong>通知中心新增「设置」，可逐类开关站内信 / 点赞 / 关注 / 公告 / 系统通知，即时生效。</li>'
+      + '<li><strong>站内信上限：</strong>单条消息上限由 500 字调整为 1000 字。</li>'
       + '<li><strong>资讯多源：</strong>新增中新网滚动新闻；取消导购黑名单，全部收录；支持按来源筛选。<code>news_feeds</code> 加一行即可接入新源。</li>'
       + '<li><strong>资讯频道：</strong>新增 <a href="/news/">资讯</a> 页，服务器每 25 分钟抓取 IT 之家 RSS，支持头条大卡、无限滚动与封面图；首页新增资讯组件，全站导航同步加入入口。</li>'
       + '<li><strong>自定义头像：</strong>支持上传图片作为头像（自动裁成方形并压缩），未上传时使用昵称首字 + 稳定渐变；头像同步显示在导航栏、个人主页、文章、站内信等位置。</li>'
