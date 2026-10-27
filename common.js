@@ -22,13 +22,22 @@
   // （双实例会用同一个 refresh token 竞争轮换，导致会话被误判登出）
   var _primaryClient = null;
 
+  var _sdkMissing = false;
+
+  /** SDK 是否加载失败（页面可据此给出更准确的提示） */
+  function sdkMissing() { return _sdkMissing; }
+
   /**
    * 创建 Supabase 客户端（安全存储）
    * @returns {object|null} Supabase client 或 null
    */
   function createSupabase() {
     try {
-      if (!global.supabase) return null;
+      if (!global.supabase) {
+        _sdkMissing = true;
+        try { console.error('[KJ] supabase-js 未加载：/vendor/supabase.min.js 可能不可访问'); } catch (e) {}
+        return null;
+      }
       if (_primaryClient) return _primaryClient;
       var client = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: {
@@ -1390,6 +1399,7 @@
     SUPABASE_KEY: SUPABASE_KEY,
     safeStorage: safeStorage,
     createSupabase: createSupabase,
+    sdkMissing: sdkMissing,
     escapeHtml: escapeHtml,
     avatarSrc: avatarSrc,
     avatarInitial: avatarInitial,
