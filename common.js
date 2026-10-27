@@ -23,6 +23,7 @@
   var _primaryClient = null;
 
   var _sdkMissing = false;
+  var _sdkWarned = false;
 
   /** SDK 是否加载失败（页面可据此给出更准确的提示） */
   function sdkMissing() { return _sdkMissing; }
@@ -35,7 +36,10 @@
     try {
       if (!global.supabase) {
         _sdkMissing = true;
-        try { console.error('[KJ] supabase-js 未加载：/vendor/supabase.min.js 可能不可访问'); } catch (e) {}
+        if (!_sdkWarned) {
+          _sdkWarned = true;
+          try { console.warn('[KJ] supabase-js 尚未就绪（/vendor/supabase.min.js 加载中或不可访问）'); } catch (e) {}
+        }
         return null;
       }
       if (_primaryClient) return _primaryClient;
