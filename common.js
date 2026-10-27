@@ -444,6 +444,11 @@
       return '暂时关闭注册功能，请联系管理员：LinLyndon153@163.com';
     }
     if (msg.includes('429')) return '请求频繁，请稍后重试';
+    // 网络层失败（请求根本没到服务器）：给出可操作的提示，而不是抛英文原文
+    if (/failed to fetch|networkerror|load failed|fetch failed|network request failed|err_network|err_connection|err_name_not_resolved|err_internet_disconnected/i.test(msg)) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    if (/timeout|timed out|aborted/i.test(msg)) return '连接超时，请稍后重试';
     if (msg.includes('JWT') || msg.includes('expired')) return '登录已过期，请重新登录';
     return msg;
   }
