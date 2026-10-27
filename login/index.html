@@ -164,6 +164,10 @@
     .sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--border)}
     .sep span{margin:0 14px}
 
+    .net-hint{text-align:center;font-size:12.5px;color:var(--text-tertiary);margin:12px 0 0;line-height:1.6}
+    .net-hint--always{margin-top:6px;opacity:.85}
+    #netHint{color:var(--color-danger,#ff453a)}
+    .net-hint a{color:var(--accent);text-decoration:none;font-weight:500}
     .back{display:block;text-align:center;margin-top:20px;font-size:14px;color:var(--text-tertiary);text-decoration:none;transition:color .2s}
     .back:hover{color:var(--accent)}
     .back i{font-size:12px;margin-right:4px}
@@ -337,6 +341,10 @@
       </div>
     </div>
     <a href="/" class="back"><i class="fas fa-arrow-left"></i>返回首页</a>
+    <p class="net-hint" id="netHint" style="display:none">
+      连不上服务器？<a href="/status/">打开网络诊断</a>，看看是哪一环出了问题
+    </p>
+    <p class="net-hint net-hint--always">登录遇到问题？<a href="/status/">网络诊断</a></p>
   </div>
 
   <script>
@@ -539,7 +547,11 @@
         window.location.href=redirect;
       }catch(e){
         console.error('Login error:',e);
-        toast('网络错误，请稍后重试（无需重新验证）');
+        var m = (e && (e.message || e.toString())) || '';
+        var isNet = /failed to fetch|networkerror|load failed|fetch failed|err_network|err_connection/i.test(m);
+        toast(isNet ? '连不上服务器，请检查网络（可点「登录遇到问题」）' : '网络错误，请稍后重试（无需重新验证）');
+        var hint = document.getElementById('netHint');
+        if (hint && isNet) hint.style.display = 'block';
         loginLocked=false;btn.disabled=false;btn.textContent='登 录';
       }
     });

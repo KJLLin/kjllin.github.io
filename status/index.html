@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co https://api.hcaptcha.com https://hcaptcha.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f7">
+  <title>网络诊断 · KJLLin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding: 28px 16px 60px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f5f7; color: #1d1d1f; -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.02em; }
+    .sub { font-size: 13px; color: #86868b; margin-bottom: 22px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,.72); border: 1px solid rgba(0,0,0,.06);
+      border-radius: 16px; padding: 6px 0; margin-bottom: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.05);
+    }
+    .row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .row:last-child { border-bottom: none; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #c7c7cc; flex-shrink: 0; }
+    .dot.ok { background: #34c759; }
+    .dot.bad { background: #ff453a; }
+    .dot.run { background: #ff9f0a; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    .name { flex: 1; min-width: 0; font-size: 14px; }
+    .name small { display: block; font-size: 11.5px; color: #86868b; margin-top: 2px; word-break: break-all; }
+    .ms { font-size: 12px; color: #86868b; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .verdict {
+      border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+      font-size: 13.5px; line-height: 1.7;
+    }
+    .verdict.good { background: rgba(52,199,89,.12); border: 1px solid rgba(52,199,89,.3); }
+    .verdict.bad  { background: rgba(255,69,58,.1);  border: 1px solid rgba(255,69,58,.26); }
+    .verdict b { display: block; font-size: 14.5px; margin-bottom: 6px; }
+    .verdict ul { margin: 8px 0 0; padding-left: 18px; }
+    .verdict li { margin-bottom: 4px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    button, a.btn {
+      flex: 1; min-width: 140px; padding: 12px 16px; border-radius: 999px;
+      border: 1px solid rgba(0,0,0,.08); background: #fff; color: #1d1d1f;
+      font-size: 14px; font-family: inherit; font-weight: 500; cursor: pointer;
+      text-align: center; text-decoration: none;
+      transition: transform .12s ease, background .18s ease;
+    }
+    button:active, a.btn:active { transform: scale(.97); }
+    button.primary { background: #0071e3; border-color: transparent; color: #fff; }
+    pre {
+      margin: 0; padding: 12px 16px; border-radius: 12px; background: rgba(0,0,0,.045);
+      font-size: 11.5px; line-height: 1.6; color: #3a3a3c; overflow-x: auto;
+      white-space: pre-wrap; word-break: break-all; display: none;
+    }
+    pre.show { display: block; }
+    .foot { margin-top: 22px; font-size: 12px; color: #86868b; text-align: center; line-height: 1.8; }
+    .foot a { color: #0071e3; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>网络诊断</h1>
+    <p class="sub">检查登录所需的几个服务能不能连通。如果登录报「网络错误」或「Failed to fetch」，先在这里看一眼是哪一环出的问题。</p>
+
+    <div id="verdict"></div>
+
+    <div class="card" id="list"></div>
+
+    <div class="btns">
+      <button class="primary" id="rerun">重新检测</button>
+      <button id="copy">复制结果</button>
+    </div>
+
+    <pre id="raw"></pre>
+
+    <p class="foot">
+      检测结果只在本机显示，不会上传。<br>
+      <a href="/login/">← 返回登录</a> · <a href="/">回首页</a>
+    </p>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var SUPABASE = 'https://vzqspcuxnwpakofwumat.supabase.co';
+    var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
+
+    var TESTS = [
+      { key: 'self', name: '本站静态资源', desc: '页面与脚本所在服务器', url: '/vendor/supabase.min.js',
+        opts: { method: 'HEAD' }, expect: 'any' },
+      { key: 'auth', name: 'Supabase 认证服务', desc: '登录接口（最关键）', url: SUPABASE + '/auth/v1/health',
+        opts: { headers: { apikey: ANON } }, expect: 'ok' },
+      { key: 'rest', name: 'Supabase 数据服务', desc: '文章、私信等数据接口', url: SUPABASE + '/rest/v1/',
+        opts: { headers: { apikey: ANON } }, expect: 'any' },
+      { key: 'hcaptcha', name: 'hCaptcha 验证', desc: '人机验证组件', url: 'https://api.hcaptcha.com/checksiteconfig?host=kjllin.dpdns.org&sitekey=10000000-ffff-ffff-ffff-000000000001&sc=1&swa=1',
+        opts: { mode: 'no-cors' }, expect: 'any' }
+    ];
+
+    var results = {};
+
+    function rowEl(t) {
+      var el = document.createElement('div');
+      el.className = 'row';
+      el.id = 'row-' + t.key;
+      el.innerHTML = '<span class="dot run"></span>' +
+        '<span class="name">' + t.name + '<small>' + t.desc + '</small></span>' +
+        '<span class="ms">…</span>';
+      return el;
+    }
+
+    function setRow(key, ok, ms, detail) {
+      var el = document.getElementById('row-' + key);
+      if (!el) return;
+      var dot = el.querySelector('.dot');
+      dot.className = 'dot ' + (ok ? 'ok' : 'bad');
+      el.querySelector('.ms').textContent = ms + ' ms';
+      if (detail) el.querySelector('small').textContent = detail;
+    }
+
+    async function probe(t) {
+      var t0 = performance.now();
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 9000);
+      try {
+        var res = await fetch(t.url, Object.assign({ cache: 'no-store', signal: ctrl.signal }, t.opts));
+        var ms = Math.round(performance.now() - t0);
+        var ok = t.expect === 'any' ? true : res.ok;
+        return { key: t.key, ok: ok, ms: ms, status: res.status };
+      } catch (e) {
+        return { key: t.key, ok: false, ms: Math.round(performance.now() - t0),
+                 error: (e && (e.name + ': ' + e.message)) || 'unknown' };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function render(runs) {
+      var authOk = runs.auth && runs.auth.ok;
+      var anyFail = Object.keys(runs).some(function (k) { return !runs[k].ok; });
+      var v = document.getElementById('verdict');
+
+      if (!anyFail) {
+        v.className = 'verdict good';
+        v.innerHTML = '<b>各项连接都正常</b>' +
+          '如果登录仍然失败，可能是账号密码问题，或验证码 token 已过期——刷新页面重新验证一次再试。';
+      } else if (!authOk) {
+        v.className = 'verdict bad';
+        v.innerHTML = '<b>连不上 Supabase 认证服务</b>' +
+          '这是登录失败的直接原因。请依次尝试：' +
+          '<ul><li>切换网络（WiFi ↔ 移动数据）后重新检测</li>' +
+          '<li>关闭 VPN、代理或「网络加速」类应用</li>' +
+          '<li>换一个浏览器（Safari / Chrome）打开本页再测</li>' +
+          '<li>如果都不行，把你的网络环境告知管理员</li></ul>';
+      } else {
+        v.className = 'verdict bad';
+        v.innerHTML = '<b>登录必需的认证服务正常，但有其他资源不通</b>' +
+          '如果登录时人机验证过不去，多半是 hCaptcha 被拦。可以尝试关闭代理后重试。';
+      }
+      document.getElementById('raw').textContent = JSON.stringify(runs, null, 2);
+    }
+
+    async function run() {
+      var list = document.getElementById('list');
+      list.innerHTML = '';
+      TESTS.forEach(function (t) { list.appendChild(rowEl(t)); });
+      document.getElementById('verdict').className = 'verdict';
+      document.getElementById('verdict').innerHTML = '<b>正在检测…</b>';
+      document.getElementById('raw').classList.remove('show');
+
+      results = {};
+      await Promise.all(TESTS.map(async function (t) {
+        var r = await probe(t);
+        results[t.key] = r;
+        setRow(t.key, r.ok, r.ms, r.error ? r.error : ('HTTP ' + r.status));
+      }));
+      render(results);
+    }
+
+    document.getElementById('rerun').addEventListener('click', run);
+    document.getElementById('copy').addEventListener('click', function () {
+      var txt = JSON.stringify({
+        ua: navigator.userAgent,
+        online: navigator.onLine,
+        time: new Date().toString(),
+        results: results
+      }, null, 2);
+      var pre = document.getElementById('raw');
+      pre.textContent = txt;
+      pre.classList.add('show');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(function () {
+          this.textContent = '已复制';
+        }.bind(this)).catch(function () {});
+      }
+    });
+
+    run();
+  })();
+  </script>
+</body>
+</html>
