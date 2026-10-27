@@ -237,7 +237,7 @@
         <div class="sess-row"><span>多设备登录</span><b>已允许</b></div>
         <p class="sess-note">同一账号可以在手机、平板、电脑上同时在线，互不挤下线。想收回某台设备，去 <a href="/settings/devices/">登录设备</a> 查看。</p>
         <label class="sess-toggle" for="sessPersist">
-          <span>下次登录时在此设备保持 3 个月</span>
+          <span>在此设备保持登录 3 个月</span>
           <input type="checkbox" id="sessPersist" checked>
           <i class="sess-switch" aria-hidden="true"></i>
         </label>
@@ -485,7 +485,7 @@
           sw.checked = KJ.authPersist();
           sw.addEventListener('change', function(){
             KJ.setAuthPersist(sw.checked);
-            KJ.toast(sw.checked ? '已开启：下次登录保持 3 个月' : '已关闭：下次登录仅保留到关闭浏览器');
+            KJ.toast(sw.checked ? '已开启：本机保持登录 3 个月' : '已关闭：关闭浏览器后需重新登录');
             var d2 = KJ.authRemainingDays();
             if (el) el.textContent = (d2 === null) ? '仅本次浏览' : ('3 个月（还剩 ' + d2 + ' 天）');
           });

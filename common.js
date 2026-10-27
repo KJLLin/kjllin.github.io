@@ -35,14 +35,48 @@
 
   function authPersist() { return safeStorage.getItem(AUTH_PERSIST_KEY) !== '0'; }
 
+  /** 本机是否存着登录凭证（决定要不要写续期时间戳） */
+  function hasStoredAuth() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+      for (var j = 0; j < sessionStorage.length; j++) keys.push(sessionStorage.key(j));
+      for (var k = 0; k < keys.length; k++) {
+        var key = keys[k];
+        if (key && key.indexOf('sb-') === 0 && key.indexOf('-auth-token') > 0) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function extendAuthUntil() {
     if (!authPersist()) return;
+    if (!hasStoredAuth()) return;      // 访客不写，避免留下无意义的 90 天标记
     try { safeStorage.setItem(AUTH_UNTIL_KEY, String(Date.now() + AUTH_KEEP_DAYS * 86400000)); } catch (e) {}
+  }
+
+  /** 把已存在的凭证在 localStorage / sessionStorage 之间搬运，切换立即生效 */
+  function migrateAuthStorage(toLocal) {
+    try {
+      var from = toLocal ? sessionStorage : localStorage;
+      var to = toLocal ? localStorage : sessionStorage;
+      var key = null;
+      for (var i = 0; i < from.length; i++) {
+        var k = from.key(i);
+        if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) { key = k; break; }
+      }
+      if (!key) return;
+      var val = from.getItem(key);
+      if (val == null) return;
+      to.setItem(key, val);
+      from.removeItem(key);
+    } catch (e) {}
   }
 
   function setAuthPersist(on) {
     try {
       safeStorage.setItem(AUTH_PERSIST_KEY, on ? '1' : '0');
+      migrateAuthStorage(on);
       if (on) extendAuthUntil();
       else safeStorage.removeItem(AUTH_UNTIL_KEY);
     } catch (e) {}
