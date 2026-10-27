@@ -38,7 +38,6 @@ const S = {
   searchSeq: 0,       // 搜索请求序号，丢弃过期响应
   convMenuPartner: null,
   unreadOnly: false,  // 会话列表：仅看未读
-  pendingShare: null, // 待发送的文件：{ name, size, url, mime, note }
 };
 
 // ====================== 工具 ======================
@@ -720,48 +719,13 @@ const ChatView = {
     }
   },
 
-  /** 渲染「待发送文件」提示条 */
-  renderPendingShare() {
-    const bar = $('#sharePending');
-    if (!bar) return;
-    const share = S.pendingShare;
-    if (!share) { bar.hidden = true; bar.innerHTML = ''; return; }
-    const [icon, cls] = U.fileIcon(share.name);
-    const size = U.bytes(share.size);
-    bar.hidden = false;
-    bar.innerHTML = '<span class="sp-ico fc-' + cls + '"><i class="fas ' + icon + '"></i></span>' +
-      '<span class="sp-main"><span class="sp-name">' + U.escape(share.name) + '</span>' +
-      '<span class="sp-meta">' + (size ? size + ' · ' : '') + '发送给当前对话</span></span>' +
-      '<button type="button" class="sp-cancel" id="shareCancelBtn" aria-label="取消发送">×</button>';
-    const btn = document.getElementById('shareCancelBtn');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        S.pendingShare = null;
-        ChatView.renderPendingShare();
-        try { history.replaceState(null, '', '/chat/'); } catch (e) {}
-      });
-    }
-  },
-
   async send() {
     if (!S.selectedId) return;
     const input = $('#msgInput');
     const text = (input?.value || '').trim();
-    const share = S.pendingShare || null;
 
-    if (!text && !share) { Toast.error('不能发送空消息'); return; }
+    if (!text) { Toast.error('不能发送空消息'); return; }
     if (text.length > MAX_LEN) { Toast.error(`消息不能超过${MAX_LEN}个字符`); return; }
-
-    // 分享模式下：一条消息同时承载文件与附言
-    const attachment = share ? {
-      kind: 'file',
-      name: String(share.name || '文件').slice(0, 200),
-      size: Number(share.size) || 0,
-      url: share.url,
-      mime: share.mime || '',
-      note: (text || share.note || '').slice(0, 100)
-    } : null;
-    const bodyText = share ? String(share.name || '文件').slice(0, 200) : text;
 
     const partnerId = S.selectedId;
     const btn = $('#sendBtn');
@@ -772,8 +736,7 @@ const ChatView = {
       id: 'tmp-' + Date.now() + '-' + Math.random().toString(16).slice(2),
       sender_id: S.user.id,
       recipient_id: partnerId,
-      text: bodyText,
-      attachment,
+      text,
       created_at: new Date().toISOString(),
       read: false,
       _pending: true,
@@ -788,11 +751,8 @@ const ChatView = {
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
     try {
-      const row = { sender_id: S.user.id, recipient_id: partnerId, text: bodyText };
-      if (attachment) row.attachment = attachment;
-
       const { data, error } = await sb.from('private_messages')
-        .insert([row])
+        .insert([{ sender_id: S.user.id, recipient_id: partnerId, text }])
         .select('id, sender_id, recipient_id, text, read, created_at, attachment')
         .single();
       if (error) throw error;
@@ -801,8 +761,7 @@ const ChatView = {
       if (i >= 0) S.messages[i] = data; else S.messages.push(data);
       S._lastNewId = data.id;
       this.render({ scroll: 'bottom' });
-      ConvList.touch(partnerId, share ? '[文件] ' + bodyText : bodyText, data.created_at, false);
-      if (share) { S.pendingShare = null; this.renderPendingShare(); }
+      ConvList.touch(partnerId, text, data.created_at, false);
       input.focus();
     } catch (e) {
       console.warn('发送失败:', e);
@@ -1125,52 +1084,6 @@ function bindEvents() {
 }
 
 // ====================== 初始化 ======================
-/**
- * 处理来自云盘的分享参数：算出可访问的下载地址，显示待发送条
- * 私有空间文件用 1 小时临时签名链接
- */
-async function prepareShareFromUrl(params) {
-  const path = params.get('share') || '';
-  const name = params.get('name') || path.split('/').pop() || '文件';
-  const space = params.get('space') === 'private' ? 'cloud-drive-private' : 'cloud-drive';
-  const size = Number(params.get('size')) || 0;
-  const mime = params.get('mime') || '';
-
-  if (!path) return;
-
-  let url = '';
-  let note = '';
-  try {
-    if (space === 'cloud-drive') {
-      url = KJ.SUPABASE_URL + '/storage/v1/object/public/cloud-drive/' +
-        path.split('/').map(encodeURIComponent).join('/');
-    } else {
-      const { data, error } = await sb.storage.from('cloud-drive-private')
-        .createSignedUrl(path, 3600 * 6);
-      if (error) throw error;
-      url = data?.signedUrl || '';
-      note = '私有空间链接 6 小时内有效';
-    }
-  } catch (e) {
-    console.warn('prepare share failed:', e);
-    Toast.error('无法生成下载链接，请回云盘重试');
-    return;
-  }
-
-  if (!/^https:\/\//i.test(url)) {
-    Toast.error('无法生成下载链接，请回云盘重试');
-    return;
-  }
-
-  S.pendingShare = { name, size, url, mime, note };
-  if (ChatView.renderPendingShare) ChatView.renderPendingShare();
-
-  // 清掉地址栏参数，避免刷新重复
-  try { history.replaceState(null, '', '/chat/' + (params.get('to') ? '?to=' + params.get('to') : '')); } catch (e) {}
-
-  if (!S.selectedId) Toast.info ? Toast.info('选一个对话即可发送文件') : Toast.error('选一个对话即可发送文件');
-}
-
 async function init() {
   Theme.init();
 
@@ -1221,10 +1134,10 @@ async function init() {
       Search.select(to, p?.nick || '用户', p?.isAdmin === true, p?.avatar_url || '');
     }
 
-    // ?share=<path>&name=..&space=public|private&size=..&mime=..
-    // 来自云盘的「发送给好友」：在站内信里完成选人与发送
+    // 老链接兜底：分享已独立成 /chat/share/，这里只做跳转
     if (params.get('share')) {
-      await prepareShareFromUrl(params);
+      location.replace('/chat/share/?' + params.toString());
+      return;
     }
   } catch (e) {
     console.error('Chat init failed:', e);

@@ -815,7 +815,7 @@ var docs = {
     title: '注册与登录',
     category: '开始使用',
     meta: '了解如何注册账号并登录 KJLLin 平台',
-    toc: [['邮箱注册', 'email-reg'], ['邮箱登录', 'email-login']],
+    toc: [['邮箱注册', 'email-reg'], ['邮箱登录', 'email-login'], ['保持登录', 'keep'], ['多设备登录', 'multi']],
     content: '<p>KJLLin 支持多种注册与登录方式，你可以选择最适合的方式。</p>'
       + '<h2 id="email-reg">邮箱注册<a href="#email-reg" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
@@ -829,7 +829,18 @@ var docs = {
       + '<li><span class="step-content">在登录页面输入邮箱和密码。</span></li>'
       + '<li><span class="step-content">完成 hCaptcha 验证后点击「登录」。</span></li>'
       + '</ol>'
-      + '<div class="admonition admonition--warning"><span class="admonition-icon"><i class="fas fa-triangle-exclamation"></i></span><div class="admonition-content"><span class="admonition-heading">警告</span><p>请妥善保管密码。平台不会以任何方式索要你的密码。</p></div></div>'
+      + '<h2 id="keep">保持登录<a href="#keep" class="anchor-icon">#</a></h2>'
+      + '<p>登录页的「<strong>在此设备保持登录 3 个月</strong>」默认勾选。开启后：</p>'
+      + '<ul><li>关掉浏览器、重启手机都不需要重新登录</li>'
+      + '<li>每访问一次会自动<strong>滚动续期</strong>到 3 个月后；连续 3 个月完全没登录过，才需要重新输入密码</li>'
+      + '<li>取消勾选后，本次登录只保留到<strong>关闭浏览器</strong>为止，适合公用电脑</li>'
+      + '<li>随时可以在 <a href="/settings/account/">账号安全</a> 里查看剩余天数并切换</li></ul>'
+      + '<h2 id="multi">多设备登录<a href="#multi" class="anchor-icon">#</a></h2>'
+      + '<p>同一个账号可以同时在<strong>多台设备</strong>上登录（手机、平板、电脑、不同浏览器），互不挤下线，消息与数据实时同步。</p>'
+      + '<ul><li>每台设备的登录记录可以在 <a href="/settings/devices/">登录设备</a> 里看到</li>'
+      + '<li>如果怀疑某台设备不再使用，可以在账号安全页点「<strong>登出所有设备</strong>」，一次性让所有设备的登录失效（包括自己当前这台）</li>'
+      + '<li>只想退出当前这台，用「退出登录」即可，不影响其他设备</li></ul>'
+      + '<div class="admonition admonition--warning"><span class="admonition-icon"><i class="fas fa-triangle-exclamation"></i></span><div class="admonition-content"><span class="admonition-heading">警告</span><p>请妥善保管密码。平台不会以任何方式索要你的密码。在公用设备上登录时，建议取消「保持登录」并记得退出。</p></div></div>'
   },
   'oauth': {
     title: '第三方登录',
@@ -964,16 +975,19 @@ var docs = {
       + '<li>当你停留在历史消息位置时，新消息不会打断阅读，而是显示「新消息 ↓」按钮</li>'
       + '<li>会话列表顶部可开启「仅看未读」，标签页标题会显示未读总数</li></ul>'
       + '<h2 id="file">发送文件<a href="#file" class="anchor-icon">#</a></h2>'
-      + '<p>把云盘里的文件发给好友，统一在站内信里完成（云盘不再单独弹窗）：</p>'
+      + '<p>把云盘里的文件发给好友时，会进入一个独立的<strong>分享页</strong>（<code>/chat/share/</code>），界面与微信「发送给朋友」一致：</p>'
       + '<ol class="steps">'
-      + '<li><span class="step-content">在 <a href="/cloud/">云盘</a> 点文件右侧的<strong>纸飞机</strong>按钮。</span></li>'
-      + '<li><span class="step-content">自动跳转到站内信，输入框上方出现<strong>待发送文件条</strong>。</span></li>'
-      + '<li><span class="step-content">选一个对话，可以顺手写一句附言，点发送。</span></li>'
+      + '<li><span class="step-content">在 <a href="/cloud/">云盘</a> 点文件右侧的<strong>纸飞机</strong>。</span></li>'
+      + '<li><span class="step-content">分享页顶部显示文件卡片（图标 / 文件名 / 大小 / 来源），下面是搜索框与最近聊天。</span></li>'
+      + '<li><span class="step-content">点选好友（<strong>最多 9 位</strong>），已选的会出现在上方，点小 × 可移除。</span></li>'
+      + '<li><span class="step-content">可以在底部写一句<strong>留言</strong>，点右上角「发送」。</span></li>'
       + '</ol>'
+      + '<p>发送完成后会出现结果页，提供三个选择：<strong>返回云盘</strong>、<strong>去站内信看对话</strong>、或<strong>留在本页再选几位</strong>。</p>'
       + '<p>对方收到的是<strong>文件卡片</strong>：图标按类型区分（Word / Excel / PDF / 压缩包 / 图片…），显示文件名、大小与下载按钮，点一下就能下载。</p>'
       + '<ul><li>私有空间的文件使用 <strong>6 小时临时链接</strong>，过期后卡片仍在但无法下载，需要重新分享</li>'
       + '<li>文件卡片同样支持撤回（2 分钟内）与已读回执</li>'
       + '<li>会话列表里这类消息显示为「[文件] 文件名」</li></ul>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">小提示</span><p>分享页只做「选人 + 发送」一件事，不会打断正在进行的对话；从微信里转发过来的旧链接也会自动跳转到新页面。</p></div></div>'
       + '<h2 id="draft">草稿与撤回<a href="#draft" class="anchor-icon">#</a></h2>'
       + '<ul><li><strong>草稿</strong>：输入后未发送的内容会按会话自动保存，切换对话或刷新页面后可继续编辑</li>'
       + '<li><strong>撤回</strong>：自己发送的 <strong>2 分钟内</strong>消息，时间行会出现「撤回」，撤回后双方实时消失</li></ul>'
@@ -1022,7 +1036,7 @@ var docs = {
     title: '文章广场',
     category: '社交功能',
     meta: '公共交流空间，支持 Markdown 与代码高亮',
-    toc: [['浏览文章', 'browse'], ['发布文章', 'post'], ['点赞与关注', 'social'], ['阅读模式', 'reading'], ['Markdown 支持', 'markdown']],
+    toc: [['浏览文章', 'browse'], ['发布文章', 'post'], ['点赞与关注', 'social'], ['阅读体验', 'reading'], ['收藏文章', 'bookmark'], ['Markdown 支持', 'markdown']],
     content: '<p>文章广场是用户交流的公共空间，支持写文章、回复、点赞与关注，内容支持 Markdown 格式和代码高亮。</p>'
       + '<h2 id="browse">浏览文章<a href="#browse" class="anchor-icon">#</a></h2>'
       + '<p>文章广场首页展示最新文章，支持分页浏览。每张卡片显示标题、<strong>两行内容摘要</strong>、作者头像与昵称、发布时间和点赞数，不用点进去也能大致判断内容。</p>'
@@ -1036,8 +1050,22 @@ var docs = {
       + '<h2 id="social">点赞与关注<a href="#social" class="anchor-icon">#</a></h2>'
       + '<p>在<strong>文章详情页</strong>可以点赞喜欢的文章；再次点击可取消点赞。点赞计数由系统实时维护。</p>'
       + '<p>点击文章作者昵称可进入其<strong>个人主页</strong>，在主页上可以关注对方，关注后对方的新动态会通过通知提醒你。</p>'
-      + '<h2 id="reading">阅读模式<a href="#reading" class="anchor-icon">#</a></h2>'
-      + '<p>文章详情页提供沉浸式阅读模式：浅色主题下为纯白背景，深色主题下为近纯黑背景，减少阅读干扰。可在详情页切换开启。</p>'
+      + '<h2 id="reading">阅读体验<a href="#reading" class="anchor-icon">#</a></h2>'
+      + '<p>文章详情页按「纸张」排版：浅色下纯白纸面、深色下近纯黑，正文限制在舒适的行宽与行高，长时间阅读也不累。</p>'
+      + '<ul><li><strong>阅读进度</strong>：页面顶部有一条细进度条，随滚动从左到右填满</li>'
+      + '<li><strong>目录</strong>：桌面端右侧自动根据小标题生成目录，滚动时高亮当前小节，点击可直接跳转</li>'
+      + '<li><strong>字号</strong>：右侧「字号」按钮在 小 / 标准 / 大 之间循环，选择会记住</li>'
+      + '<li><strong>图片放大</strong>：点正文里的任意图片可全屏查看，点一下或按 <kbd>Esc</kbd> 关闭</li>'
+      + '<li><strong>作者卡</strong>：文末显示作者头像与简介，可直接关注、查看主页或发私信</li>'
+      + '<li><strong>复制链接</strong>：一键复制当前文章的地址，方便发给别人</li></ul>'
+      + '<p>窄屏（手机、平板）下侧栏会收起，操作改为底部悬浮条：点赞 / 收藏 / 分享 / 回到顶部。</p>'
+      + '<h2 id="bookmark">收藏文章<a href="#bookmark" class="anchor-icon">#</a></h2>'
+      + '<p>看到想留着以后读的文章，点文末或底部的<strong>收藏</strong>按钮即可：</p>'
+      + '<ul><li>收藏是<strong>跟账号走</strong>的，换设备登录同样能看到</li>'
+      + '<li>在 <a href="/discuss/saved/">我的收藏</a> 里按收藏时间倒序排列，显示标题、摘要、作者与收藏时间</li>'
+      + '<li>文章广场工具栏也有「我的收藏」入口</li>'
+      + '<li>在收藏页点右上角 × 可取消收藏；作者删除文章后，收藏会自动消失</li>'
+      + '<li>收藏只影响你自己，作者不会收到通知，也不会显示收藏数</li></ul>'
       + '<h2 id="markdown">Markdown 支持<a href="#markdown" class="anchor-icon">#</a></h2>'
       + '<p>支持标题、粗体、斜体、链接、图片、代码块、表格等标准 Markdown 语法。代码块支持语法高亮。</p>'
   },
@@ -1251,6 +1279,10 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>分享页独立：</strong>文件分享改为独立的微信同款选人页（<code>/chat/share/</code>），支持多选、搜索、留言，发送后可选择返回云盘或留在站内信。</li>'
+      + '<li><strong>阅读页重构：</strong>文章详情页改为纸张式排版，新增阅读进度、自动目录、字号调节、图片放大、文末作者卡与分享复制。</li>'
+      + '<li><strong>文章收藏：</strong>新增收藏功能与「我的收藏」列表页，收藏跟账号走，换设备可见。</li>'
+      + '<li><strong>登录状态：</strong>新增「在此设备保持登录 3 个月」，默认开启并自动续期；明确支持多设备同时登录。</li>'
       + '<li><strong>站内信文件卡片：</strong>云盘分享统一跳到站内信完成，消息支持文件卡片（图标 / 文件名 / 大小 / 下载）。</li>'
       + '<li><strong>排行榜调整：</strong>舒尔特只排 5×5；成绩提交增加频率限制，防刷。</li>'
       + '<li><strong>分享封面：</strong>社交平台分享改用 1200×630 的 PNG 封面图。</li>'

@@ -1147,7 +1147,8 @@
           size: btn.dataset.size || '0',
           mime: btn.dataset.type || ''
         });
-        window.location.href = '/chat/?' + q.toString();
+        q.set('from', 'cloud');
+        window.location.href = '/chat/share/?' + q.toString();
       }
     });
 

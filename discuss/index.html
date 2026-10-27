@@ -202,6 +202,10 @@
     .filter-chip:hover { border-color: var(--border-mica-hover); color: var(--accent); }
     .filter-chip:active { transform: scale(0.95); transition: transform var(--duration-instant) var(--spring-default); }
     .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .saved-chip { text-decoration: none; }
+    .saved-chip i { color: #ff9f0a; }
+    .saved-chip:hover { border-color: rgba(255, 159, 10, .45); color: #ff9f0a; }
+    .saved-chip:hover i { color: #ff9f0a; }
 
     /* 最新 / 热榜 排序页签（借鉴洛谷） */
     .sort-tabs {
@@ -600,6 +604,7 @@
         <input type="search" id="searchInput" placeholder="搜索标题或内容..." autocomplete="off" enterkeyhint="search" aria-label="搜索文章">
       </div>
       <button class="filter-chip" id="followFilterChip" title="只显示已关注用户的文章"><i class="fas fa-user-check"></i> 只看关注</button>
+      <a class="filter-chip saved-chip" href="/discuss/saved/" title="我收藏的文章"><i class="fas fa-bookmark"></i> 我的收藏</a>
     </div>
 
     <!-- ==================== 排序页签：最新 / 热榜 ==================== -->

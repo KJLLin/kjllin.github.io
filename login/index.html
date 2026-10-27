@@ -136,6 +136,17 @@
     .captcha-row{display:flex;justify-content:center;margin-bottom:20px;min-height:78px}
 
     .forgot-row{text-align:right;margin-top:2px}
+    /* 保持登录 */
+    .keep-row{display:flex;align-items:center;gap:9px;margin:14px 0 0;cursor:pointer;user-select:none;-webkit-user-select:none}
+    .keep-row input{position:absolute;opacity:0;width:0;height:0}
+    .keep-box{width:19px;height:19px;border-radius:6px;border:1.5px solid var(--color-border-hover,#c7c7cc);
+      display:grid;place-items:center;color:transparent;font-size:10px;flex-shrink:0;
+      transition:background .16s ease,border-color .16s ease,color .16s ease}
+    .keep-row input:checked + .keep-box{background:var(--accent);border-color:var(--accent);color:#fff}
+    .keep-row input:focus-visible + .keep-box{outline:2px solid var(--accent);outline-offset:2px}
+    .keep-text{font-size:13px;color:var(--text-secondary)}
+    .keep-text b{font-weight:600;color:var(--accent)}
+    .keep-tip{margin:6px 0 0 28px;font-size:11px;color:var(--text-tertiary);line-height:1.5}
     .forgot-row a{font-size:13px;color:var(--accent);text-decoration:none;transition:color .2s}
     .forgot-row a:hover{color:var(--accent-hover);text-decoration:underline}
 
@@ -287,6 +298,12 @@
           </div>
           <div class="forgot-row"><a href="javascript:void(0)" id="forgotPwdLink">忘记密码？</a></div>
         </div>
+        <label class="keep-row" for="keepLogin">
+          <input type="checkbox" id="keepLogin" checked>
+          <span class="keep-box"><i class="fas fa-check"></i></span>
+          <span class="keep-text">在此设备保持登录 <b>3 个月</b></span>
+        </label>
+        <p class="keep-tip" id="keepTip">同一账号可以在多台设备同时登录，互不影响</p>
         <div class="captcha-row" id="captchaLoginContainer"></div>
         <button class="btn" id="loginBtn">登 录</button>
       </div>
@@ -517,6 +534,12 @@
       // 邮箱必须包含 @ 才走邮箱登录；否则当作手机号
       const cred=identifier.indexOf('@')>-1 ? {email:identifier} : (byPhone?{phone:normalizePhone(identifier)}:null);
       if(!cred){toast('请输入正确的邮箱或手机号');return}
+
+      // 记住登录状态：默认 3 个月，取消勾选则只保留到本次浏览结束
+      try{
+        const keep=document.getElementById('keepLogin');
+        KJ.setAuthPersist(keep ? keep.checked : true);
+      }catch(e){}
 
       loginLocked=true;
       const btn=$('#loginBtn');
