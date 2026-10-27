@@ -2,11 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; ">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#f3f3f3">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
@@ -1279,6 +1279,9 @@ var docs = {
     content: '<h2 id="2026-10">2026 年 10 月<a href="#2026-10" class="anchor-icon">#</a></h2>'
       + '<ul>'
       + '<li><strong>首页改版：</strong>全新 iCloud 风格小组件桌面，显示未读私信、未读通知、文章数与最新消息预览，附实时时钟。</li>'
+      + '<li><strong>全站依赖自托管：</strong>图标字体、Markdown 编辑器、代码高亮、数学公式全部搬到本站，境外 CDN 不可达时页面依然完整可用。</li>'
+      + '<li><strong>安全收敛：</strong>匿名角色不再能直接读取用户表，判定逻辑收进服务端函数；未激活公告仅管理员可见；触发器函数不再暴露给客户端。</li>'
+      + '<li><strong>细节修复：</strong>文章广场页「退出登录」按钮失效、恐龙页面重复 ID、首页访客控制台报 401、网络诊断页数据服务检测误判。</li>'
       + '<li><strong>分享页独立：</strong>文件分享改为独立的微信同款选人页（<code>/chat/share/</code>），支持多选、搜索、留言，发送后可选择返回云盘或留在站内信。</li>'
       + '<li><strong>阅读页重构：</strong>文章详情页改为纸张式排版，新增阅读进度、自动目录、字号调节、图片放大、文末作者卡与分享复制。</li>'
       + '<li><strong>文章收藏：</strong>新增收藏功能与「我的收藏」列表页，收藏跟账号走，换设备可见。</li>'

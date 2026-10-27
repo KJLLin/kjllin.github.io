@@ -2,11 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://cdn.bootcdn.net https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.hcaptcha.com https://hcaptcha.com https://newassets.hcaptcha.com https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co https://hcaptcha.com https://newassets.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com https://*.hcaptcha.com https://*.hcaptcha.com; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'; ">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#f3f3f3">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/theme.css">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
@@ -73,6 +73,14 @@
             margin-top: 5px;
             font-size: 14px;
             color: var(--color-text-secondary);
+        }
+        .game-tip {
+            margin-top: 6px;
+            padding: 0 12px;
+            font-size: 12.5px;
+            line-height: 1.7;
+            text-align: center;
+            color: var(--color-text-tertiary);
         }
         #groundTexture, #dinoSpriteSheet, #coinImage, #flyImage, #xrzImage { display: none; }
         /* 触屏按钮 */
@@ -185,8 +193,8 @@
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="gameInfoSub">分数: <span id="score">0</span> | 金币: <span id="coins">0</span></div>
     <div id="weatherInfo">天气: <span id="weatherText">晴朗</span> | 风向: <span id="windText">无</span></div>
-<div id="weatherInfo">角色可以按空格跳跃，A/D控制刮风天气，S下雨天气。</div>
-<div id="weatherInfo">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
+<div class="game-tip">角色可以按空格跳跃，A/D 控制刮风天气，S 下雨天气。</div>
+<div class="game-tip">碰到除金币以外的物体就会死掉，角色只有一条命，死掉后游戏就会结束。</div>
     <div id="cloudScores" style="margin-top:8px;font-size:14px;color:var(--color-text-secondary);text-align:center;">
       云端最高分: <span id="dinoCloudBest">-</span> | 我云最高分: <span id="dinoMyBest">-</span>
     </div>
