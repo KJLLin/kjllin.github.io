@@ -544,7 +544,7 @@
       try { sb = createSupabase(); } catch (e) {}
       if (!sb) {
         // SDK 可能还在动态加载（首页），稍后重试
-        if (attempt++ < 5) setTimeout(run, 1200);
+        if (attempt++ < 8) setTimeout(run, 700);
         return;
       }
       sb.rpc('latest_release').then(function (r) {
@@ -553,7 +553,7 @@
         var seen = '';
         try { seen = localStorage.getItem(RELEASE_SEEN_KEY) || ''; } catch (e) {}
         if (seen === rel.version) return;
-        setTimeout(function () { showReleaseModal(rel); }, 1400);
+        setTimeout(function () { showReleaseModal(rel); }, 900);
       }).catch(function () {});
     };
 
