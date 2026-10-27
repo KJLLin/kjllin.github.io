@@ -1087,6 +1087,13 @@ function bindEvents() {
 async function init() {
   Theme.init();
 
+  // 分享已独立成 /chat/share/：必须在登录守卫之前处理，
+  // 否则游客会被送去登录页并丢掉文件参数
+  if (new URLSearchParams(location.search).get('share')) {
+    location.replace('/chat/share/?' + location.search.slice(1));
+    return;
+  }
+
   sb = KJ.createSupabase();
   if (!sb) {
     Toast.error('Supabase 初始化失败，请刷新页面');
@@ -1134,11 +1141,6 @@ async function init() {
       Search.select(to, p?.nick || '用户', p?.isAdmin === true, p?.avatar_url || '');
     }
 
-    // 老链接兜底：分享已独立成 /chat/share/，这里只做跳转
-    if (params.get('share')) {
-      location.replace('/chat/share/?' + params.toString());
-      return;
-    }
   } catch (e) {
     console.error('Chat init failed:', e);
     Toast.error('加载失败，请刷新页面');
