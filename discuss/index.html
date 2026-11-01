@@ -858,7 +858,7 @@
       }
 
       // 批量拉取作者实时昵称与头像，覆盖 posts.nick 快照
-      // posts.nick 是发帖时的历史快照，用户改名后不会同步；此处以 profiles_public 为准
+      // posts.nick 是发帖时的历史快照，用户改名后不会同步；此处以服务端实时资料为准
       async function fillLiveNicks(posts) {
         if (!posts || !posts.length) return;
         var ids = [];
@@ -868,10 +868,7 @@
         }
         if (!ids.length) return;
         try {
-          var r = await sb.from('profiles_public').select('id,nick,avatar_url').in('id', ids);
-          if (r.error || !r.data) return;
-          var byId = {};
-          for (var j = 0; j < r.data.length; j++) byId[r.data[j].id] = r.data[j];
+          var byId = await KJ.fetchProfiles(sb, ids);
           for (var k = 0; k < posts.length; k++) {
             var row = byId[posts[k].user_id];
             if (!row) continue;

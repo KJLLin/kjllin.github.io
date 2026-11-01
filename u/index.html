@@ -341,13 +341,11 @@
       }
 
       async function loadProfile(targetId) {
-        // 资料来自公开视图（匿名可读，不含邮箱）
-        var pRes = await sb.from('profiles_public')
-          .select('id,nick,is_admin,created_at,avatar_url')
-          .eq('id', targetId).maybeSingle();
-        if (pRes.error) throw pRes.error;
-        if (!pRes.data) { showNotFound('找不到该用户'); return; }
-        profileUser = pRes.data;
+        // 资料来自服务端白名单接口（只按 id 取，不含邮箱，无法枚举）
+        var pm = await KJ.fetchProfiles(sb, [targetId]);
+        var row = pm[targetId];
+        if (!row) { showNotFound('找不到该用户'); return; }
+        profileUser = row;
 
         // 统计：文章数 / 获赞总数 / 粉丝 / 关注
         var stats = await Promise.all([
@@ -587,9 +585,8 @@
             listEl.innerHTML = '<div class="fmodal-empty">还没有' + (isFollowers ? '粉丝' : '关注的人') + '</div>';
             return;
           }
-          var uRes = await sb.from('profiles_public').select('id,nick,is_admin,avatar_url').in('id', ids);
-          if (uRes.error) throw uRes.error;
-          var users = uRes.data || [];
+          var pmap = await KJ.fetchProfiles(sb, ids);
+          var users = Object.keys(pmap).map(function (k) { return pmap[k]; });
           var byId = {};
           users.forEach(function(u) { byId[u.id] = u; });
 

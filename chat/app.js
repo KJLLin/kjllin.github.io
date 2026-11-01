@@ -44,6 +44,17 @@ const S = {
 const U = {
   escape(str) { return KJ.escapeHtml(str == null ? '' : String(str)); },
 
+  /** 幂等键：防止重试 / 双击产生重复消息 */
+  uuid() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {}
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  },
+
   /** 消息时间：今天只显示时分，其余带日期 */
   time(str) {
     if (!str) return '';
@@ -233,15 +244,12 @@ const Store = {
     return data || [];
   },
 
-  /** 单个用户的最小公开信息 */
+  /** 单个用户的最小公开信息（服务端白名单字段，无法枚举） */
   async profile(userId) {
-    const { data, error } = await sb
-      .from('profiles_public')
-      .select('id, nick, is_admin, avatar_url')
-      .eq('id', userId)
-      .maybeSingle();
+    const { data, error } = await sb.rpc('get_profiles', { p_ids: [userId] });
     if (error) return null;
-    return data ? { nick: data.nick || '', isAdmin: data.is_admin === true, avatar_url: data.avatar_url || '' } : null;
+    const row = Array.isArray(data) ? data[0] : null;
+    return row ? { nick: row.nick || '', isAdmin: row.is_admin === true, avatar_url: row.avatar_url || '' } : null;
   },
 
   async blocks() {
@@ -758,9 +766,23 @@ const ChatView = {
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
     try {
+      // 发送由服务端统一处理：屏蔽、隐私、限流、幂等都在那边
+      const res = await sb.rpc('send_message', {
+        p_recipients: [partnerId],
+        p_text: text,
+        p_attachment: null,
+        p_client_id: U.uuid(),
+      });
+      if (res.error) throw res.error;
+
+      const row = Array.isArray(res.data) ? res.data[0] : null;
+      if (!row) throw new Error('发送失败，请重试');
+      if (!row.ok) throw new Error(row.reason || '发送失败，请重试');
+
+      // 回读完整消息（RPC 只返回 id，时间戳与已读状态以库为准）
       const { data, error } = await sb.from('private_messages')
-        .insert([{ sender_id: S.user.id, recipient_id: partnerId, text }])
         .select('id, sender_id, recipient_id, text, read, created_at, attachment')
+        .eq('id', row.message_id)
         .single();
       if (error) throw error;
 
