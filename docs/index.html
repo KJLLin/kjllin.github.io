@@ -960,7 +960,7 @@ var docs = {
     title: '站内信',
     category: '社交功能',
     meta: '私密对话、已读回执、草稿与撤回',
-    toc: [['发起对话', 'start'], ['消息阅读与分页', 'reading'], ['发送文件', 'file'], ['草稿与撤回', 'draft'], ['已读回执', 'receipt'], ['屏蔽与删除', 'block'], ['游戏邀请', 'invite']],
+    toc: [['发起对话', 'start'], ['消息阅读与分页', 'reading'], ['发送文件', 'file'], ['草稿与撤回', 'draft'], ['已读回执', 'receipt'], ['屏蔽与删除', 'block'], ['游戏邀请', 'invite'], ['消息是怎么发出去的', 'safe']],
     content: '<p>站内信支持用户之间发送私密消息，具备已读回执、草稿保存、消息撤回与实时通知。</p>'
       + '<h2 id="start">发起对话<a href="#start" class="anchor-icon">#</a></h2>'
       + '<ol class="steps">'
@@ -1009,6 +1009,13 @@ var docs = {
       + '<li>邀请令牌是 <strong>12 位随机字符</strong>，不可猜测，也不用记房间号</li>'
       + '<li>房间 <strong>15 分钟</strong>内无人加入会自动关闭，离开页面前请留意倒计时</li></ul>'
       + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">小提示</span><p>游戏邀请的结果页只有「返回石头剪刀布」一个按钮 —— 邀请发出后回到房间等人，比在聊天里逗留更顺手。</p></div></div>'
+      + '<h2 id="safe">消息是怎么发出去的<a href="#safe" class="anchor-icon">#</a></h2>'
+      + '<p>所有私信 —— 包括文字、文件卡片和游戏邀请 —— 都由<strong>服务器统一发送</strong>，不是在浏览器里直接写数据库：</p>'
+      + '<ul><li>服务端会重新检查<strong>是否被对方屏蔽</strong>、对方的<strong>私信接收设置</strong>、你是否有<strong>发送权限</strong></li>'
+      + '<li>同一个请求带幂等标识，网络重试或手抖双击<strong>都不会产生重复消息</strong></li>'
+      + '<li>频率限制在服务端执行：每分钟最多约 30 条，超了会提示稍后重试</li>'
+      + '<li>浏览器端对消息表<strong>没有写入权限</strong>，想绕过界面直接调用接口也发不出去</li></ul>'
+      + '<p>好友列表同样如此：只能看到<strong>你自己的会话对象</strong>，或者按昵称/邮箱<strong>主动搜索</strong>（至少 2 个字符），没有「拉一份全站用户名单」这种接口。</p>'
   },
   'news': {
     title: 'IT 之家资讯',

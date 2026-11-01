@@ -773,6 +773,17 @@
       return;
     }
 
+    if (term.length < 2) {
+      state.mode = 'search';
+      state.results = [];
+      $('#listTitle').textContent = '搜索结果';
+      $('#listLink').style.display = 'none';
+      $('#peopleList').innerHTML = '';
+      $('#listHint').innerHTML = '<div class="wx-empty">至少输入 2 个字符</div>';
+      renderQuick();
+      return;
+    }
+
     state.mode = 'search';
     $('#listTitle').textContent = '搜索结果';
     $('#listLink').style.display = 'none';
