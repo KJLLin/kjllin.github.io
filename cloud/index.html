@@ -859,12 +859,12 @@
       const ids = [...new Set(userIds)].filter(id => id && !ownerCache[id]);
       if (ids.length === 0) return false;
       try {
-        const { data, error } = await sb.from('profiles_public').select('id,nick,is_admin').in('id', ids);
-        if (error) throw error;
-        for (const u of (data || [])) {
+        const map = await KJ.fetchProfiles(sb, ids);
+        const list = Object.keys(map).map(k => map[k]);
+        for (const u of list) {
           ownerCache[u.id] = { nick: u.nick || '', is_admin: u.is_admin === true };
         }
-        return (data || []).length > 0;
+        return list.length > 0;
       } catch(e) {
         console.warn('Fetch owner info failed:', e.message);
         return false;
@@ -1227,12 +1227,14 @@
       try {
         const url = await buildShareUrl(_sharePath);
         const body = '📎 我在云盘分享了文件「' + _shareName + '」\n' + (url || '(获取链接失败)') + (url && isPrivateSpace() ? '\n（私有空间链接 1 小时内有效）' : '');
-        const { error } = await sb.from('private_messages').insert({
-          sender_id: currentUser.id,
-          recipient_id: uid,
-          text: body
+        const r = await sb.rpc('send_message', {
+          p_recipients: [uid],
+          p_text: body,
+          p_client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
         });
-        if (error) throw error;
+        if (r.error) throw r.error;
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        if (!row || !row.ok) throw new Error((row && row.reason) || '发送失败');
         KJ.toast('已发送给好友');
         $('#shareModal').classList.add('hidden');
       } catch(e) {

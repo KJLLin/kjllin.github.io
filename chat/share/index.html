@@ -537,11 +537,23 @@
     sending: false,
     cardUrl: '',
     searchSeq: 0,
-    busy: false
+    busy: false,
+    lastClientId: '',
+    retryMode: false
   };
 
   // ---------------------------------------------------------------- 工具
   function esc(s) { return KJ.escapeHtml(s == null ? '' : s); }
+
+  function uuid() {
+    try {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {}
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
 
   var alertTimer = null;
   function toast(msg, ms) {
@@ -857,30 +869,45 @@
     var total = state.picked.length;
     var ok = [], bad = [], fatal = false;
 
-    for (var i = 0; i < total; i++) {
-      var u = state.picked[i];
-      btn.textContent = total > 1 ? '发送中 ' + (i + 1) + '/' + total : '发送中';
-      try {
-        var r = await sb.from('private_messages').insert([{
-          sender_id: me.id,
-          recipient_id: u.id,
-          text: text,
-          attachment: payload
-        }]);
-        if (r.error) {
-          // 会话失效 / 权限问题：不再逐个硬试
-          if (r.error.code === '42501' || r.error.code === 'PGRST301' || /jwt/i.test(r.error.message || '')) fatal = true;
-          throw r.error;
-        }
-        ok.push(u);
-      } catch (e) {
-        console.warn('send failed:', u.nick, e);
-        bad.push(u);
-        if (fatal) {
-          for (var j = i + 1; j < total; j++) bad.push(state.picked[j]);
-          break;
-        }
+    // 幂等键：整批共用一个，重试时复用，避免重复投递
+    var cid = (state.retryMode && state.lastClientId) ? state.lastClientId : uuid();
+    state.lastClientId = cid;
+    state.retryMode = false;
+
+    btn.textContent = total > 1 ? '正在发送给 ' + total + ' 位…' : '发送中…';
+
+    try {
+      var res = await sb.rpc('send_message', {
+        p_recipients: state.picked.map(function (u) { return u.id; }),
+        p_text: text,
+        p_attachment: payload,
+        p_client_id: cid
+      });
+      if (res.error) {
+        var msg = String(res.error.message || '');
+        fatal = /登录|限制/.test(msg);
+        throw res.error;
       }
+      var rows = Array.isArray(res.data) ? res.data : [];
+      var byId = {};
+      state.picked.forEach(function (u) { byId[u.id] = u; });
+      rows.forEach(function (row) {
+        var u = byId[row.recipient_id];
+        if (!u) return;
+        if (row.ok) ok.push(u);
+        else bad.push(Object.assign({}, u, { reason: row.reason || '' }));
+      });
+      // 服务端没返回的人（理论上不会发生）按失败处理
+      if (ok.length + bad.length < total) {
+        state.picked.forEach(function (u) {
+          var hit = rows.some(function (r) { return r.recipient_id === u.id; });
+          if (!hit) bad.push(Object.assign({}, u, { reason: '未收到服务端确认' }));
+        });
+      }
+    } catch (e) {
+      console.warn('send failed:', e);
+      fatal = fatal || /登录|限制/.test(String(e && e.message || ''));
+      bad = state.picked.slice();
     }
 
     // 邀请房间：把收到邀请的人登记进去，房主端才能校验加入者
@@ -935,7 +962,13 @@
     var names = ok.map(function (u) { return u.nick || '用户'; });
     var short = names.slice(0, 3).join('、') + (names.length > 3 ? ' 等 ' + names.length + ' 位' : '');
     var html = '已发送给 ' + esc(short);
-    if (bad.length) html += '<br><span style="color:var(--wx-danger)">' + bad.length + ' 位发送失败</span>';
+    if (bad.length) {
+      var why = '';
+      for (var i = 0; i < bad.length; i++) {
+        if (bad[i].reason) { why = '：' + bad[i].reason; break; }
+      }
+      html += '<br><span style="color:var(--wx-danger)">' + bad.length + ' 位发送失败' + esc(why) + '</span>';
+    }
     if (note) html += '<br>附言：' + esc(note);
     $('#resultSub').innerHTML = html;
     $('#resultTitle').textContent = FROM === 'game' ? '邀请已发出' : '已发送';
@@ -982,6 +1015,7 @@
       if (fatal) { toast('请重新登录后再试', 3000); return; }
       ov.hidden = true;
       state.picked = bad.slice();
+      state.retryMode = true;
       refresh();
       openSheet();
     });

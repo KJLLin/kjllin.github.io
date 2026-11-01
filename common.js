@@ -257,6 +257,54 @@
     document.head.appendChild(st);
   }
 
+  // ====================== 公开资料（服务端白名单） ======================
+  /**
+   * 批量取公开资料，返回 { id: {id, nick, avatar_url, is_admin, created_at} }
+   *
+   * 走 get_profiles RPC：只能按已知 id 查，无法枚举；
+   * 自动按 50 个分块（服务端上限 60），并做 60 秒内存缓存，减少重复请求。
+   */
+  var _profileCache = Object.create(null);
+  var _profileCacheAt = 0;
+  var PROFILE_TTL = 60000;
+
+  async function fetchProfiles(sb, ids) {
+    var out = Object.create(null);
+    if (!sb || !ids || !ids.length) return out;
+
+    var now = Date.now();
+    if (now - _profileCacheAt > PROFILE_TTL) {
+      _profileCache = Object.create(null);
+      _profileCacheAt = now;
+    }
+
+    var need = [];
+    var seen = Object.create(null);
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i];
+      if (!id || seen[id]) continue;
+      seen[id] = true;
+      if (_profileCache[id]) out[id] = _profileCache[id];
+      else need.push(id);
+    }
+
+    for (var s = 0; s < need.length; s += 50) {
+      var chunk = need.slice(s, s + 50);
+      try {
+        var r = await sb.rpc('get_profiles', { p_ids: chunk });
+        if (r.error || !r.data) continue;
+        for (var k = 0; k < r.data.length; k++) {
+          var row = r.data[k];
+          _profileCache[row.id] = row;
+          out[row.id] = row;
+        }
+      } catch (e) {
+        console.warn('get_profiles failed:', e);
+      }
+    }
+    return out;
+  }
+
   /**
    * 生成头像 HTML：有图用 img，无图用昵称首字 + 稳定渐变
    * @param {object} user  { id, nick, avatar_url }
@@ -1644,6 +1692,7 @@
     avatarSrc: avatarSrc,
     avatarInitial: avatarInitial,
     avatarHtml: avatarHtml,
+    fetchProfiles: fetchProfiles,
     paintAvatar: paintAvatar,
     injectAvatarStyle: injectAvatarStyle,
     toast: toast,
