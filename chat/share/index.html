@@ -6,120 +6,323 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#ededed">
-  <meta name="description" content="分享文件给站内信好友">
+  <meta name="description" content="选择聊天并发送给站内信好友">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
-  <title>发送给朋友 · KJLLin</title>
+  <title>选择聊天 · KJLLin</title>
 
   <style>
     /* ==========================================================================
-       微信「发送给朋友」同款选择页
-       配色刻意跟随微信：白底 #EDEDED 分隔，勾选与主按钮用 #07C160
+       微信「选择聊天」同款：选人页 + 底部发送面板
+       配色跟随微信：底色 #EDEDED，勾选/主按钮 #07C160
        ========================================================================== */
     :root {
       --wx-bg: #ededed;
       --wx-panel: #ffffff;
-      --wx-text: #191919;
-      --wx-sub: #888888;
-      --wx-line: rgba(0, 0, 0, .08);
+      --wx-text: #1a1a1a;
+      --wx-sub: #8a8a8a;
+      --wx-line: rgba(0, 0, 0, .09);
       --wx-green: #07c160;
-      --wx-green-dim: #9fdcb8;
-      --wx-field: #f2f2f2;
+      --wx-green-dim: #a8ddbe;
+      --wx-field: #ededed;
       --wx-danger: #fa5151;
+      --wx-sheet: #f2f2f2;
+      --wx-tap: rgba(0, 0, 0, .045);
     }
     html[data-theme="dark"] {
-      --wx-bg: #111111;
+      --wx-bg: #111112;
       --wx-panel: #1c1c1e;
       --wx-text: #ededed;
       --wx-sub: #8e8e93;
       --wx-line: rgba(255, 255, 255, .1);
+      --wx-green-dim: #2f6b47;
       --wx-field: #2c2c2e;
-      --wx-green-dim: #2b6b45;
+      --wx-sheet: #1c1c1e;
+      --wx-tap: rgba(255, 255, 255, .07);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html { transition: background-color .25s ease; }
     body {
-      font-family: -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
       background: var(--wx-bg);
       color: var(--wx-text);
       -webkit-font-smoothing: antialiased;
       min-height: 100vh;
       display: flex; justify-content: center;
+      overflow: hidden;
     }
 
-    /* 桌面端：收窄成一列，模拟手机分享面板 */
+    /* 桌面端收窄成一列，模拟手机 */
     .wx-app {
-      width: 100%; max-width: 520px; min-height: 100vh;
+      width: 100%; max-width: 520px; min-height: 100vh; max-height: 100vh;
       background: var(--wx-bg);
       display: flex; flex-direction: column;
-      position: relative;
+      position: relative; overflow: hidden;
+      height: 100vh; height: 100dvh;
     }
     @media (min-width: 640px) {
-      body { background: #d8d8d8; align-items: center; padding: 24px 0; }
+      body { background: #d6d6d6; align-items: center; padding: 22px 0; }
       html[data-theme="dark"] body { background: #000; }
       .wx-app {
-        min-height: 0; height: min(88vh, 780px);
-        border-radius: 14px; overflow: hidden;
-        box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
+        min-height: 0; height: min(90vh, 800px);
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .26);
       }
     }
 
     /* ==================== 顶栏 ==================== */
     .wx-bar {
-      flex-shrink: 0; height: 48px; padding: 0 14px;
+      flex-shrink: 0; height: 50px; padding: 0 14px;
       display: flex; align-items: center; justify-content: space-between;
       background: var(--wx-panel);
       border-bottom: 1px solid var(--wx-line);
-      position: sticky; top: 0; z-index: 5;
+      position: relative; z-index: 5;
     }
     .wx-bar__title {
-      font-size: 16px; font-weight: 600; letter-spacing: -.01em;
-      position: absolute; left: 50%; transform: translateX(-50%);
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      font-size: 17px; font-weight: 600; letter-spacing: -.01em;
       white-space: nowrap; pointer-events: none;
     }
-    .wx-btn {
-      border: none; background: none; font-family: inherit; font-size: 15.5px;
-      color: var(--wx-text); cursor: pointer; padding: 6px 2px; line-height: 1;
+    .wx-bar__btn {
+      border: none; background: none; font-family: inherit; font-size: 16px;
+      color: var(--wx-text); cursor: pointer; padding: 8px 2px; line-height: 1;
+      border-radius: 6px;
     }
-    .wx-btn--send {
-      font-weight: 600; color: var(--wx-green);
+    .wx-bar__btn:active { opacity: .55; }
+    .wx-done {
+      border: none; font-family: inherit; font-size: 14.5px; font-weight: 500;
+      background: var(--wx-green); color: #fff; cursor: pointer;
+      padding: 6px 13px; border-radius: 5px; line-height: 1.25;
+      transition: opacity .15s ease, transform .12s ease, background .18s ease;
     }
-    .wx-btn--send:disabled { color: var(--wx-green-dim); cursor: default; }
-    .wx-btn:active { opacity: .6; }
+    .wx-done:active { transform: scale(.96); }
+    .wx-done:disabled {
+      background: var(--wx-green-dim); color: rgba(255, 255, 255, .92);
+      cursor: default; transform: none;
+    }
 
     /* ==================== 滚动区 ==================== */
     .wx-scroll {
       flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-      background: var(--wx-bg);
-      padding-bottom: 12px;
+      background: var(--wx-bg); padding-bottom: 14px; overscroll-behavior: contain;
     }
 
-    /* 文件预览条 */
-    .wx-file {
-      display: flex; align-items: center; gap: 11px;
-      margin: 10px 0 0; padding: 11px 14px;
+    /* 已选头像 + 搜索同一行 */
+    .wx-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px 8px;
       background: var(--wx-panel);
     }
-    .wx-file__ico {
-      width: 42px; height: 42px; border-radius: 6px; flex-shrink: 0;
-      display: grid; place-items: center; color: #fff; font-size: 19px;
-      background: linear-gradient(135deg, #8e8e93, #636366);
+    .wx-picked {
+      display: flex; align-items: center; gap: 7px;
+      max-width: 58%; overflow-x: auto; scrollbar-width: none;
+      flex-shrink: 0;
     }
-    .wx-file__main { flex: 1; min-width: 0; }
-    .wx-file__name {
-      font-size: 15px; font-weight: 500; line-height: 1.35;
+    .wx-picked::-webkit-scrollbar { display: none; }
+    .wx-picked:empty { display: none; }
+    .wx-pick {
+      flex: 0 0 auto; width: 38px; height: 38px; border-radius: 5px;
+      position: relative; cursor: pointer;
+      animation: wxPick .18s ease both;
+    }
+    @keyframes wxPick { from { transform: scale(.7); opacity: 0; } }
+    .wx-pick .kj-av {
+      width: 38px; height: 38px; border-radius: 5px !important;
+    }
+    .wx-pick__x {
+      position: absolute; right: -5px; top: -5px; width: 15px; height: 15px;
+      border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff;
+      font-size: 7.5px; display: grid; place-items: center;
+      border: 1.5px solid var(--wx-panel); z-index: 2;
+    }
+
+    .wx-search {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 9px; height: 36px;
+      background: var(--wx-field); border-radius: 6px;
+      color: var(--wx-sub);
+    }
+    .wx-search i { font-size: 12px; flex-shrink: 0; }
+    .wx-search input {
+      flex: 1; min-width: 0; border: none; background: none; outline: none;
+      font-family: inherit; font-size: 15px; color: var(--wx-text);
+      -webkit-appearance: none; appearance: none;
+    }
+    .wx-search input::placeholder { color: var(--wx-sub); }
+    .wx-search input::-webkit-search-cancel-button { display: none; }
+    /* 覆盖全站 focus-visible 的蓝色描边，保持微信式克制 */
+    .wx-search input:focus,
+    .wx-search input:focus-visible,
+    .wx-compose__field input:focus,
+    .wx-compose__field input:focus-visible {
+      outline: none; box-shadow: none;
+    }
+    .wx-search__clear {
+      border: none; background: none; color: var(--wx-sub);
+      font-size: 13px; cursor: pointer; padding: 2px; display: none;
+      line-height: 1;
+    }
+    .wx-search__clear.on { display: block; }
+
+    /* ==================== 区块 ==================== */
+    /* 「最近联系人」独立成一块白底，与下方列表用灰色间隙分开 */
+    .wx-sec--quick { background: var(--wx-panel); margin-bottom: 8px; padding-bottom: 4px; }
+    .wx-sec__head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 14px 14px 8px;
+    }
+    .wx-sec__title { font-size: 13.5px; font-weight: 600; color: var(--wx-text); }
+    .wx-sec__link {
+      font-size: 13px; color: #576b95; text-decoration: none;
+      padding: 4px 0;
+    }
+    html[data-theme="dark"] .wx-sec__link { color: #7d90b8; }
+
+    /* 最近联系人横条 */
+    .wx-quick {
+      display: flex; gap: 12px; overflow-x: auto;
+      padding: 2px 14px 12px; scrollbar-width: none;
+    }
+    .wx-quick::-webkit-scrollbar { display: none; }
+    .wx-qi {
+      flex: 0 0 auto; width: 56px; cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+    }
+    .wx-qi__av { width: 56px; height: 56px; position: relative; }
+    .wx-qi__av .kj-av { width: 56px; height: 56px; border-radius: 8px !important; }
+    .wx-qi__ok {
+      position: absolute; right: -3px; bottom: -3px; width: 19px; height: 19px;
+      border-radius: 50%; background: var(--wx-green); color: #fff;
+      font-size: 9px; display: grid; place-items: center;
+      border: 2px solid var(--wx-bg); z-index: 2;
+      transform: scale(0); transition: transform .16s cubic-bezier(.2, .9, .3, 1.3);
+    }
+    .wx-qi.on .wx-qi__ok { transform: scale(1); }
+    .wx-qi__name {
+      margin-top: 5px; font-size: 11.5px; color: var(--wx-sub);
+      line-height: 1.3; max-height: 2.6em; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      word-break: break-all;
+    }
+
+    /* 列表 */
+    .wx-people { background: var(--wx-panel); }
+    .wx-row {
+      display: flex; align-items: center; gap: 11px;
+      padding: 0 14px; min-height: 56px; cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+      position: relative;
+    }
+    .wx-row:active { background: var(--wx-tap); }
+    .wx-row + .wx-row::before {
+      content: ''; position: absolute; left: 60px; right: 0; top: 0;
+      height: 1px; background: var(--wx-line);
+    }
+    .wx-check {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      border: 1.5px solid #c9c9c9; display: grid; place-items: center;
+      color: transparent; font-size: 10px;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    html[data-theme="dark"] .wx-check { border-color: #48484a; }
+    .wx-row.on .wx-check {
+      background: var(--wx-green); border-color: var(--wx-green); color: #fff;
+    }
+    .wx-row__av { width: 40px; height: 40px; flex-shrink: 0; }
+    .wx-row__av .kj-av { width: 40px; height: 40px; border-radius: 5px !important; }
+    .wx-row__name {
+      font-size: 16px; color: var(--wx-text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0;
+    }
+    .wx-row__tag {
+      flex-shrink: 0; font-size: 10.5px; color: var(--wx-sub);
+      border: 1px solid var(--wx-line); border-radius: 3px; padding: 1px 5px;
+    }
+
+    /* 空态 / 骨架 */
+    .wx-empty {
+      padding: 40px 22px; text-align: center; color: var(--wx-sub);
+      font-size: 13.5px; line-height: 1.75;
+    }
+    .wx-empty a { color: var(--wx-green); font-weight: 600; text-decoration: none; }
+    .wx-skel {
+      padding: 9px 14px; display: flex; gap: 11px; align-items: center;
+      background: var(--wx-panel); min-height: 56px;
+    }
+    .wx-skel__av {
+      width: 40px; height: 40px; border-radius: 5px; background: var(--wx-field);
+      flex-shrink: 0; animation: wxPulse 1.4s ease-in-out infinite;
+    }
+    .wx-skel__line {
+      height: 12px; border-radius: 6px; background: var(--wx-field); flex: 1;
+      max-width: 46%; animation: wxPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes wxPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+    /* ==================== 底部发送面板 ==================== */
+    .wx-mask {
+      position: absolute; inset: 0; background: rgba(0, 0, 0, .42);
+      z-index: 30; animation: wxMaskIn .2s ease both;
+    }
+    @keyframes wxMaskIn { from { opacity: 0; } }
+    .wx-mask[hidden] { display: none; }
+
+    .wx-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 31;
+      background: var(--wx-sheet);
+      border-radius: 14px 14px 0 0;
+      padding: 0 0 calc(10px + env(safe-area-inset-bottom, 0px));
+      max-height: 88%; overflow-y: auto;
+      animation: wxSheetIn .28s cubic-bezier(.2, .85, .28, 1) both;
+      box-shadow: 0 -6px 26px rgba(0, 0, 0, .12);
+    }
+    @keyframes wxSheetIn { from { transform: translateY(100%); } }
+    .wx-sheet[hidden] { display: none; }
+    .wx-sheet__title {
+      padding: 20px 20px 12px; font-size: 16px; font-weight: 600;
+      color: var(--wx-text);
+    }
+    .wx-sheet__list { background: var(--wx-panel); }
+    .wx-tgt {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 16px; position: relative;
+    }
+    .wx-tgt + .wx-tgt::before {
+      content: ''; position: absolute; left: 72px; right: 0; top: 0;
+      height: 1px; background: var(--wx-line);
+    }
+    .wx-tgt__av { width: 44px; height: 44px; flex-shrink: 0; }
+    .wx-tgt__av .kj-av { width: 44px; height: 44px; border-radius: 6px !important; }
+    .wx-tgt__name {
+      flex: 1; min-width: 0; font-size: 16px; color: var(--wx-text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .wx-tgt__more { color: #c4c4c4; font-size: 13px; }
+    html[data-theme="dark"] .wx-tgt__more { color: #5a5a5e; }
+
+    /* 卡片预览 */
+    .wx-cardwrap { padding: 12px 16px 0; }
+    .wx-card {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--wx-panel); border: 1px solid var(--wx-line);
+      border-radius: 7px; padding: 10px 11px;
+    }
+    .wx-card__main { flex: 1; min-width: 0; }
+    .wx-card__name {
+      font-size: 14.5px; font-weight: 500; line-height: 1.35; color: var(--wx-text);
       overflow: hidden; text-overflow: ellipsis;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       word-break: break-all;
     }
-    .wx-file__meta { font-size: 12px; color: var(--wx-sub); margin-top: 2px; }
-    .wx-file__badge {
-      font-size: 11px; color: var(--wx-green); border: 1px solid currentColor;
-      border-radius: 4px; padding: 1px 5px; flex-shrink: 0;
+    .wx-card__meta { font-size: 12px; color: var(--wx-sub); margin-top: 3px; }
+    .wx-card__ico {
+      width: 42px; height: 42px; border-radius: 6px; flex-shrink: 0;
+      display: grid; place-items: center; color: #fff; font-size: 19px;
+      background: linear-gradient(135deg, #8e8e93, #636366);
     }
-
     /* 文件类型配色 */
     .fc-doc  { background: linear-gradient(135deg, #2b579a, #1b3f7a); }
     .fc-xls  { background: linear-gradient(135deg, #217346, #145230); }
@@ -132,213 +335,162 @@
     .fc-code { background: linear-gradient(135deg, #30d158, #1f9c42); }
     .fc-txt  { background: linear-gradient(135deg, #64d2ff, #0a84ff); }
     .fc-gen  { background: linear-gradient(135deg, #8e8e93, #636366); }
+    .fc-game { background: linear-gradient(135deg, #ff9f0a, #ff375f); }
 
-    /* 搜索 */
-    .wx-search {
-      display: flex; align-items: center; gap: 6px;
-      margin: 10px 14px 8px; padding: 0 10px; height: 34px;
-      background: var(--wx-field); border-radius: 6px;
-      color: var(--wx-sub);
+    /* 输入 */
+    .wx-compose {
+      margin: 10px 16px 0; display: flex; align-items: center; gap: 10px;
     }
-    .wx-search i { font-size: 12px; }
-    .wx-search input {
+    .wx-compose__field {
+      flex: 1; min-width: 0; height: 42px; border-radius: 6px;
+      background: var(--wx-panel); display: flex; align-items: center;
+      padding: 0 10px; gap: 8px;
+    }
+    .wx-compose__field input {
       flex: 1; min-width: 0; border: none; background: none; outline: none;
-      font-family: inherit; font-size: 14.5px; color: var(--wx-text);
+      font-family: inherit; font-size: 15px; color: var(--wx-text);
       -webkit-appearance: none; appearance: none;
     }
-    .wx-search input:focus, .wx-note input:focus { outline: none; box-shadow: none; }
-    .wx-search input::placeholder { color: var(--wx-sub); }
-    .wx-search__clear {
-      border: none; background: none; color: var(--wx-sub);
-      font-size: 14px; cursor: pointer; padding: 2px 0; display: none;
+    .wx-compose__field input::placeholder { color: var(--wx-sub); }
+    .wx-compose__ico { color: var(--wx-sub); font-size: 15px; flex-shrink: 0; }
+    .wx-compose__emoji {
+      width: 42px; height: 42px; border-radius: 50%; border: none;
+      background: var(--wx-panel); color: var(--wx-sub); font-size: 18px;
+      display: grid; place-items: center; cursor: pointer; flex-shrink: 0;
     }
-    .wx-search__clear.on { display: block; }
+    .wx-compose__emoji:active { opacity: .6; }
 
-    /* 已选 */
-    .wx-selected {
-      display: flex; gap: 14px; overflow-x: auto;
-      padding: 10px 14px 12px; background: var(--wx-panel);
-      border-bottom: 1px solid var(--wx-line);
-      scrollbar-width: none;
+    /* 按钮 */
+    .wx-sheet__acts {
+      display: flex; gap: 12px; padding: 14px 16px 4px;
     }
-    .wx-selected::-webkit-scrollbar { display: none; }
-    .wx-sel {
-      flex: 0 0 auto; width: 50px; text-align: center; position: relative;
-      cursor: pointer;
+    .wx-act {
+      flex: 1; height: 44px; border-radius: 6px; border: none;
+      font-family: inherit; font-size: 16.5px; font-weight: 500; cursor: pointer;
+      transition: transform .12s ease, opacity .16s ease, background .2s ease;
     }
-    .wx-sel__av {
-      width: 46px; height: 46px; border-radius: 5px; overflow: hidden;
-      margin: 0 auto 4px; position: relative;
-    }
-    .wx-sel__av .kj-av { border-radius: 5px; width: 46px; height: 46px; }
-    .wx-sel__x {
-      position: absolute; right: -2px; top: -2px; width: 17px; height: 17px;
-      border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff;
-      font-size: 9px; display: grid; place-items: center;
-      border: 1.5px solid var(--wx-panel); z-index: 2;
-    }
-    .wx-sel__name {
-      font-size: 10.5px; color: var(--wx-sub);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-
-    /* 列表 */
-    .wx-sec-title {
-      padding: 12px 14px 6px; font-size: 12px; color: var(--wx-sub);
-    }
-    .wx-people { background: var(--wx-panel); }
-    .wx-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 9px 14px; cursor: pointer;
-      -webkit-user-select: none; user-select: none;
-    }
-    .wx-row:active { background: var(--wx-field); }
-    .wx-row + .wx-row .wx-row__body { border-top: 1px solid var(--wx-line); }
-    .wx-check {
-      width: 21px; height: 21px; border-radius: 50%; flex-shrink: 0;
-      border: 1.5px solid #c9c9c9; display: grid; place-items: center;
-      color: transparent; font-size: 10px;
-      transition: background .16s ease, border-color .16s ease, color .16s ease;
-    }
-    html[data-theme="dark"] .wx-check { border-color: #4a4a4c; }
-    .wx-row.on .wx-check {
-      background: var(--wx-green); border-color: var(--wx-green); color: #fff;
-    }
-    .wx-row__av { width: 40px; height: 40px; flex-shrink: 0; }
-    .wx-row__av .kj-av { border-radius: 5px; width: 40px; height: 40px; }
-    .wx-row__body {
-      flex: 1; min-width: 0; display: flex; align-items: center;
-      padding: 9px 0; margin: -9px 0;
-    }
-    .wx-row__name {
-      font-size: 15.5px; color: var(--wx-text);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .wx-row__tag {
-      flex-shrink: 0; margin-left: 8px; font-size: 10.5px; color: var(--wx-sub);
-      border: 1px solid var(--wx-line); border-radius: 4px; padding: 1px 5px;
-    }
-
-    /* 留言 */
-    .wx-note {
-      flex-shrink: 0; background: var(--wx-panel);
-      border-top: 1px solid var(--wx-line);
-      padding: 9px 14px calc(9px + env(safe-area-inset-bottom, 0px));
-    }
-    .wx-note input {
-      width: 100%; border: none; outline: none; background: none;
-      font-family: inherit; font-size: 14.5px; color: var(--wx-text);
-      -webkit-appearance: none; appearance: none;
-    }
-    .wx-note input::placeholder { color: var(--wx-sub); }
+    .wx-act:active { transform: scale(.985); opacity: .86; }
+    .wx-act--cancel { background: #e5e5e5; color: var(--wx-text); }
+    html[data-theme="dark"] .wx-act--cancel { background: #3a3a3c; }
+    .wx-act--send { background: var(--wx-green); color: #fff; }
+    .wx-act--send:disabled { background: var(--wx-green-dim); cursor: default; }
 
     /* ==================== 结果页 ==================== */
     .wx-result {
-      position: absolute; inset: 0; z-index: 40;
-      background: var(--wx-bg);
+      position: absolute; inset: 0; z-index: 60;
+      background: var(--wx-panel);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 32px 26px calc(32px + env(safe-area-inset-bottom, 0px));
-      animation: wxFade .22s ease both;
+      padding: 34px 30px calc(34px + env(safe-area-inset-bottom, 0px));
+      animation: wxFade .24s ease both;
     }
     @keyframes wxFade { from { opacity: 0; } }
     .wx-result[hidden] { display: none; }
     .wx-result__ring {
-      width: 74px; height: 74px; border-radius: 50%;
+      width: 76px; height: 76px; border-radius: 50%;
       background: var(--wx-green); color: #fff;
       display: grid; place-items: center; font-size: 34px;
-      box-shadow: 0 10px 30px rgba(7, 193, 96, .3);
-      animation: wxPop .42s cubic-bezier(.18, .9, .26, 1.12) both;
+      box-shadow: 0 12px 32px rgba(7, 193, 96, .28);
+      animation: wxPop .44s cubic-bezier(.18, .9, .26, 1.12) both;
     }
-    @keyframes wxPop { from { transform: scale(.4); opacity: 0; } }
+    @keyframes wxPop { from { transform: scale(.35); opacity: 0; } }
     .wx-result__title {
-      font-size: 19px; font-weight: 600; margin-top: 18px;
-      animation: wxUp .42s .06s cubic-bezier(.2, .8, .2, 1) both;
+      font-size: 20px; font-weight: 600; margin-top: 20px;
+      animation: wxUp .44s .05s cubic-bezier(.2, .8, .2, 1) both;
     }
     .wx-result__sub {
-      font-size: 13.5px; color: var(--wx-sub); margin-top: 7px;
-      text-align: center; line-height: 1.6;
-      animation: wxUp .42s .12s cubic-bezier(.2, .8, .2, 1) both;
+      font-size: 13.5px; color: var(--wx-sub); margin-top: 9px;
+      text-align: center; line-height: 1.65; max-width: 300px;
+      animation: wxUp .44s .11s cubic-bezier(.2, .8, .2, 1) both;
     }
     @keyframes wxUp { from { transform: translateY(10px); opacity: 0; } }
     .wx-result__acts {
-      width: 100%; max-width: 320px; margin-top: 30px;
+      width: 100%; max-width: 300px; margin-top: 32px;
       display: flex; flex-direction: column; gap: 10px;
-      animation: wxUp .42s .18s cubic-bezier(.2, .8, .2, 1) both;
+      animation: wxUp .44s .17s cubic-bezier(.2, .8, .2, 1) both;
     }
-    .wx-act {
+    .wx-rbtn {
       width: 100%; padding: 13px; border-radius: 8px; border: none;
-      font-family: inherit; font-size: 15.5px; font-weight: 600; cursor: pointer;
+      font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer;
       transition: transform .12s ease, opacity .16s ease;
     }
-    .wx-act:active { transform: scale(.98); opacity: .88; }
-    .wx-act--primary { background: var(--wx-green); color: #fff; }
-    .wx-act--ghost {
-      background: var(--wx-panel); color: var(--wx-text);
-      border: 1px solid var(--wx-line);
-    }
-    .wx-act--link {
-      background: none; color: var(--wx-sub); font-weight: 400; font-size: 13.5px;
-      padding: 6px;
-    }
+    .wx-rbtn:active { transform: scale(.98); opacity: .88; }
+    .wx-rbtn--primary { background: var(--wx-green); color: #fff; }
+    .wx-rbtn--ghost { background: var(--wx-bg); color: var(--wx-text); }
 
-    /* 空态 / 骨架 */
-    .wx-empty {
-      padding: 44px 20px; text-align: center; color: var(--wx-sub); font-size: 13.5px;
-      line-height: 1.7;
-    }
-    .wx-skel { padding: 12px 14px; display: flex; gap: 12px; align-items: center; background: var(--wx-panel); }
-    .wx-skel__av { width: 40px; height: 40px; border-radius: 5px; background: var(--wx-field); flex-shrink: 0;
-      animation: wxPulse 1.4s ease-in-out infinite; }
-    .wx-skel__line { height: 12px; border-radius: 6px; background: var(--wx-field); flex: 1;
-      animation: wxPulse 1.4s ease-in-out infinite; }
-    @keyframes wxPulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-
-    /* 失败提示条 */
+    /* 顶部提示条 */
     .wx-alert {
-      position: fixed; left: 50%; top: 22px; transform: translateX(-50%);
-      max-width: 90vw; padding: 10px 16px; border-radius: 8px;
+      position: absolute; left: 50%; top: 104px; transform: translateX(-50%);
+      max-width: 86%; padding: 10px 16px; border-radius: 8px;
       background: rgba(0, 0, 0, .82); color: #fff; font-size: 13.5px;
-      z-index: 90; animation: wxUp .24s ease both;
+      z-index: 90; animation: wxUp .22s ease both; text-align: center;
+      line-height: 1.5; pointer-events: none;
     }
   </style>
 </head>
 <body>
 
-<div class="wx-app">
+<div class="wx-app" id="app">
   <header class="wx-bar">
-    <button type="button" class="wx-btn" id="cancelBtn">取消</button>
-    <div class="wx-bar__title">发送给朋友</div>
-    <button type="button" class="wx-btn wx-btn--send" id="sendBtn" disabled>发送</button>
+    <button type="button" class="wx-bar__btn" id="cancelBtn">取消</button>
+    <div class="wx-bar__title">选择聊天</div>
+    <button type="button" class="wx-done" id="doneBtn" disabled>完成</button>
   </header>
 
   <div class="wx-scroll" id="scrollArea">
-    <div class="wx-file" id="fileCard">
-      <span class="wx-file__ico" id="fileIcon"><i class="fas fa-file"></i></span>
-      <span class="wx-file__main">
-        <span class="wx-file__name" id="fileName">文件</span>
-        <span class="wx-file__meta" id="fileMeta">正在准备…</span>
-      </span>
-      <span class="wx-file__badge" id="fileBadge" hidden>私有</span>
+    <div class="wx-head">
+      <div class="wx-picked" id="pickedBar"></div>
+      <div class="wx-search">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="search" id="searchInput" placeholder="搜索" autocomplete="off" enterkeyhint="search" aria-label="搜索好友">
+        <button type="button" class="wx-search__clear" id="searchClear" aria-label="清空搜索"><i class="fas fa-circle-xmark"></i></button>
+      </div>
     </div>
 
-    <div class="wx-search">
-      <i class="fas fa-search"></i>
-      <input type="search" id="searchInput" placeholder="搜索" autocomplete="off" enterkeyhint="search">
-      <button type="button" class="wx-search__clear" id="searchClear" aria-label="清空"><i class="fas fa-circle-xmark"></i></button>
+    <section class="wx-sec wx-sec--quick" id="quickSec" hidden>
+      <div class="wx-sec__head"><span class="wx-sec__title">最近联系人</span></div>
+      <div class="wx-quick" id="quickList"></div>
+    </section>
+
+    <section class="wx-sec">
+      <div class="wx-sec__head">
+        <span class="wx-sec__title" id="listTitle">最近聊天</span>
+        <a class="wx-sec__link" href="/chat/" id="listLink">创建聊天</a>
+      </div>
+      <div class="wx-people" id="peopleList"></div>
+      <div id="listHint" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div class="wx-mask" id="sheetMask" hidden></div>
+
+  <div class="wx-sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="确认发送">
+    <div class="wx-sheet__title" id="sheetTitle">发送给：</div>
+    <div class="wx-sheet__list" id="sheetList"></div>
+
+    <div class="wx-cardwrap">
+      <div class="wx-card">
+        <span class="wx-card__main">
+          <span class="wx-card__name" id="cardName">文件</span>
+          <span class="wx-card__meta" id="cardMeta">正在准备…</span>
+        </span>
+        <span class="wx-card__ico" id="cardIcon"><i class="fas fa-file"></i></span>
+      </div>
     </div>
 
-    <div class="wx-selected" id="selectedBar" hidden></div>
+    <div class="wx-compose">
+      <div class="wx-compose__field">
+        <input type="text" id="noteInput" placeholder="发消息" maxlength="100" autocomplete="off" aria-label="附言">
+        <i class="fas fa-microphone wx-compose__ico" aria-hidden="true"></i>
+      </div>
+      <button type="button" class="wx-compose__emoji" id="emojiBtn" aria-label="表情"><i class="far fa-smile"></i></button>
+    </div>
 
-    <div class="wx-sec-title" id="listTitle">最近聊天</div>
-    <div class="wx-people" id="peopleList"></div>
-    <div id="listHint"></div>
+    <div class="wx-sheet__acts">
+      <button type="button" class="wx-act wx-act--cancel" id="sheetCancel">取消</button>
+      <button type="button" class="wx-act wx-act--send" id="sheetSend">发送</button>
+    </div>
   </div>
 
-  <div class="wx-note">
-    <input type="text" id="noteInput" placeholder="留言（可选）" maxlength="100" autocomplete="off">
-  </div>
-
-  <!-- 发送结果 -->
   <div class="wx-result" id="resultOverlay" hidden>
     <div class="wx-result__ring"><i class="fas fa-check"></i></div>
     <div class="wx-result__title" id="resultTitle">已发送</div>
@@ -356,37 +508,51 @@
   var $ = function (s) { return document.querySelector(s); };
 
   var params = new URLSearchParams(location.search);
+
+  // ---- 分享对象：文件 / 游戏邀请 -------------------------------------------
+  var KIND = params.get('kind') === 'game' ? 'game' : 'file';
   var SHARE_PATH = params.get('share') || '';
   var SHARE_NAME = params.get('name') || (SHARE_PATH ? SHARE_PATH.split('/').pop() : '文件');
   var SHARE_SPACE = params.get('space') === 'private' ? 'private' : 'public';
   var SHARE_SIZE = Number(params.get('size')) || 0;
   var SHARE_MIME = params.get('mime') || '';
-  var FROM = params.get('from') || (params.get('space') ? 'cloud' : '');
-  var RETURN_URL = params.get('back') || (FROM === 'cloud' ? '/cloud/' : '');
+  var INVITE_CODE = String(params.get('invite') || '').toUpperCase();
+
+  var FROM = params.get('from') || (params.get('space') ? 'cloud' : (KIND === 'game' ? 'game' : ''));
+  var RETURN_URL = params.get('back') || (
+    FROM === 'cloud' ? '/cloud/' :
+    FROM === 'game' ? ('/game/rps/' + (INVITE_CODE ? '?host=' + encodeURIComponent(INVITE_CODE) : '')) :
+    ''
+  );
 
   var MAX_PICK = 9;
   var sb = null;
   var me = null;
 
   var state = {
-    picked: [],      // [{id, nick, avatar_url}]
+    picked: [],        // [{id, nick, avatar_url, is_admin}]
     recent: [],
     results: [],
-    mode: 'recent',  // recent | search
+    mode: 'recent',    // recent | search
     sending: false,
-    fileUrl: '',
-    fileNote: ''
+    cardUrl: '',
+    searchSeq: 0,
+    busy: false
   };
 
   // ---------------------------------------------------------------- 工具
   function esc(s) { return KJ.escapeHtml(s == null ? '' : s); }
 
-  function alertBar(msg, ms) {
+  var alertTimer = null;
+  function toast(msg, ms) {
+    var old = document.querySelector('.wx-alert');
+    if (old) old.remove();
+    clearTimeout(alertTimer);
     var el = document.createElement('div');
     el.className = 'wx-alert';
     el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(function () { el.remove(); }, ms || 2400);
+    $('#app').appendChild(el);
+    alertTimer = setTimeout(function () { el.remove(); }, ms || 2400);
   }
 
   function fileIcon(name) {
@@ -417,7 +583,7 @@
     return (v / 1073741824).toFixed(2) + ' GB';
   }
 
-  function avatarHtml(u, size) {
+  function av(u, size) {
     return KJ.avatarHtml({ id: u.id, nick: u.nick, avatar_url: u.avatar_url }, { size: size });
   }
 
@@ -426,23 +592,37 @@
     return false;
   }
 
-  // ---------------------------------------------------------------- 顶部文件卡
-  function paintFile() {
+  // ---------------------------------------------------------------- 卡片预览
+  function inviteUrl() {
+    return location.origin + '/game/rps/?invite=' + encodeURIComponent(INVITE_CODE);
+  }
+
+  function paintCard() {
+    var ico = $('#cardIcon');
+    var nameEl = $('#cardName');
+    var metaEl = $('#cardMeta');
+
+    if (KIND === 'game') {
+      ico.className = 'wx-card__ico fc-game';
+      ico.innerHTML = '<i class="fas fa-hand-scissors"></i>';
+      nameEl.textContent = '石头剪刀布对战邀请';
+      metaEl.textContent = '好友通过卡片直接加入房间';
+      return;
+    }
+
     var pair = fileIcon(SHARE_NAME);
-    var ico = $('#fileIcon');
+    ico.className = 'wx-card__ico fc-' + pair[1];
     ico.innerHTML = '<i class="fas ' + pair[0] + '"></i>';
-    ico.className = 'wx-file__ico fc-' + pair[1];
-    $('#fileName').textContent = SHARE_NAME;
+    nameEl.textContent = SHARE_NAME;
     var bits = [];
     var size = bytes(SHARE_SIZE);
     if (size) bits.push(size);
     bits.push(SHARE_SPACE === 'private' ? '私有空间 · 链接 6 小时有效' : '来自云盘 · 公开空间');
-    $('#fileMeta').textContent = bits.join(' · ');
-    $('#fileBadge').hidden = SHARE_SPACE !== 'private';
+    metaEl.textContent = bits.join(' · ');
   }
 
-  // 生成可下载地址
   async function resolveUrl() {
+    if (KIND === 'game') return INVITE_CODE ? inviteUrl() : '';
     if (!SHARE_PATH) return '';
     try {
       if (SHARE_SPACE === 'public') {
@@ -464,22 +644,24 @@
     var on = isPicked(u.id);
     return '<div class="wx-row' + (on ? ' on' : '') + '" data-id="' + esc(u.id) + '" role="checkbox" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="wx-check"><i class="fas fa-check"></i></span>' +
-        '<span class="wx-row__av">' + avatarHtml(u, 40) + '</span>' +
-        '<span class="wx-row__body"><span class="wx-row__name">' + esc(u.nick || '用户') + '</span>' +
-          (u.is_admin ? '<span class="wx-row__tag">管理员</span>' : '') +
-        '</span>' +
+        '<span class="wx-row__av">' + av(u, 40) + '</span>' +
+        '<span class="wx-row__name">' + esc(u.nick || '用户') + '</span>' +
+        (u.is_admin ? '<span class="wx-row__tag">管理员</span>' : '') +
       '</div>';
   }
 
   function renderList() {
     var box = $('#peopleList');
     var list = state.mode === 'search' ? state.results : state.recent;
-    $('#listTitle').textContent = state.mode === 'search' ? '搜索结果' : '最近聊天';
+    var searching = state.mode === 'search';
+
+    $('#listTitle').textContent = searching ? '搜索结果' : '最近聊天';
+    $('#listLink').style.display = searching ? 'none' : '';
 
     if (!list.length) {
       box.innerHTML = '';
       $('#listHint').innerHTML = '<div class="wx-empty">' +
-        (state.mode === 'search'
+        (searching
           ? '没有找到这个用户<br>试试昵称的一部分'
           : '还没有聊过天<br>用上面的搜索找个人吧') + '</div>';
       return;
@@ -488,46 +670,64 @@
     box.innerHTML = list.map(rowHtml).join('');
   }
 
-  function renderSelected() {
-    var bar = $('#selectedBar');
-    if (!state.picked.length) { bar.hidden = true; bar.innerHTML = ''; paintSendBtn(); return; }
-    bar.hidden = false;
-    bar.innerHTML = state.picked.map(function (u) {
-      return '<div class="wx-sel" data-id="' + esc(u.id) + '">' +
-          '<span class="wx-sel__av">' + avatarHtml(u, 46) +
-            '<span class="wx-sel__x"><i class="fas fa-xmark"></i></span></span>' +
-          '<span class="wx-sel__name">' + esc(u.nick || '用户') + '</span>' +
+  function renderQuick() {
+    var sec = $('#quickSec');
+    var box = $('#quickList');
+    var list = state.recent.slice(0, 10);
+    if (state.mode === 'search' || list.length < 2) { sec.hidden = true; return; }
+    sec.hidden = false;
+    box.innerHTML = list.map(function (u) {
+      return '<div class="wx-qi' + (isPicked(u.id) ? ' on' : '') + '" data-id="' + esc(u.id) + '" role="button" tabindex="0">' +
+          '<div class="wx-qi__av">' + av(u, 56) + '<span class="wx-qi__ok"><i class="fas fa-check"></i></span></div>' +
+          '<div class="wx-qi__name">' + esc(u.nick || '用户') + '</div>' +
         '</div>';
     }).join('');
-    paintSendBtn();
   }
 
-  function paintSendBtn() {
-    var btn = $('#sendBtn');
+  function renderPicked() {
+    var bar = $('#pickedBar');
+    bar.innerHTML = state.picked.map(function (u) {
+      return '<div class="wx-pick" data-id="' + esc(u.id) + '" title="' + esc(u.nick) + '">' +
+          av(u, 38) +
+          '<span class="wx-pick__x"><i class="fas fa-xmark"></i></span>' +
+        '</div>';
+    }).join('');
+    paintDone();
+  }
+
+  function paintDone() {
+    var btn = $('#doneBtn');
     var n = state.picked.length;
-    btn.textContent = n ? '发送(' + n + ')' : '发送';
+    btn.textContent = n ? '完成(' + n + ')' : '完成';
     btn.disabled = n === 0 || state.sending;
   }
 
+  function refresh() { renderList(); renderQuick(); renderPicked(); }
+
   // ---------------------------------------------------------------- 选择
   function togglePick(u) {
+    if (state.sending) return;
     var idx = -1;
     for (var i = 0; i < state.picked.length; i++) if (state.picked[i].id === u.id) { idx = i; break; }
     if (idx >= 0) {
       state.picked.splice(idx, 1);
     } else {
-      if (state.picked.length >= MAX_PICK) { alertBar('最多同时发给 ' + MAX_PICK + ' 位朋友'); return; }
-      state.picked.push({ id: u.id, nick: u.nick, avatar_url: u.avatar_url || '' });
+      if (state.picked.length >= MAX_PICK) { toast('最多同时发给 ' + MAX_PICK + ' 位朋友'); return; }
+      state.picked.push({ id: u.id, nick: u.nick || '用户', avatar_url: u.avatar_url || '', is_admin: !!u.is_admin });
+      if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
     }
-    renderList();
-    renderSelected();
+    refresh();
   }
 
   // ---------------------------------------------------------------- 加载
-  async function loadRecent() {
-    $('#peopleList').innerHTML = Array(4).fill(
+  function skel(n) {
+    return Array(n).fill(
       '<div class="wx-skel"><span class="wx-skel__av"></span><span class="wx-skel__line"></span></div>'
     ).join('');
+  }
+
+  async function loadRecent() {
+    $('#peopleList').innerHTML = skel(5);
     try {
       var r = await sb.rpc('chat_conversations');
       if (r.error) throw r.error;
@@ -537,8 +737,13 @@
     } catch (e) {
       console.warn('load conversations failed:', e);
       state.recent = [];
+      if (state.mode === 'recent') {
+        $('#peopleList').innerHTML = '';
+        $('#listHint').innerHTML = '<div class="wx-empty">联系人加载失败<br>可以下拉重试或用搜索找人</div>';
+        return;
+      }
     }
-    if (state.mode === 'recent') renderList();
+    if (state.mode === 'recent') { renderList(); renderQuick(); }
   }
 
   var searchTimer = null;
@@ -546,118 +751,232 @@
     var term = $('#searchInput').value.trim();
     $('#searchClear').classList.toggle('on', !!term);
     clearTimeout(searchTimer);
+    clearTimeout(alertTimer);
+
     if (!term) {
       state.mode = 'recent';
       state.results = [];
-      renderList();
+      state.searchSeq++;
+      refresh();
       return;
     }
-    searchTimer = setTimeout(async function () {
-      state.mode = 'search';
-      $('#listTitle').textContent = '搜索结果';
-      $('#peopleList').innerHTML = Array(3).fill(
-        '<div class="wx-skel"><span class="wx-skel__av"></span><span class="wx-skel__line"></span></div>'
-      ).join('');
-      try {
-        var r = await sb.rpc('chat_search_users', { term: term });
-        if (r.error) throw r.error;
-        state.results = (r.data || []).map(function (u) {
-          return { id: u.id, nick: u.nick || '用户', avatar_url: u.avatar_url || '', is_admin: u.is_admin === true };
-        });
-      } catch (e) {
-        state.results = [];
-      }
-      if (state.mode === 'search') renderList();
-    }, 260);
+
+    state.mode = 'search';
+    $('#listTitle').textContent = '搜索结果';
+    $('#listLink').style.display = 'none';
+    $('#peopleList').innerHTML = skel(3);
+    $('#listHint').innerHTML = '';
+    renderQuick();
+
+    searchTimer = setTimeout(runSearch, 260);
+  }
+
+  async function runSearch() {
+    var term = $('#searchInput').value.trim();
+    if (!term) return;
+    var seq = ++state.searchSeq;
+    try {
+      var r = await sb.rpc('chat_search_users', { term: term });
+      if (seq !== state.searchSeq) return;   // 过期响应丢弃
+      if (r.error) throw r.error;
+      state.results = (r.data || []).map(function (u) {
+        return { id: u.id, nick: u.nick || '用户', avatar_url: u.avatar_url || '', is_admin: u.is_admin === true };
+      });
+    } catch (e) {
+      if (seq !== state.searchSeq) return;
+      state.results = [];
+      $('#peopleList').innerHTML = '';
+      $('#listHint').innerHTML = '<div class="wx-empty">搜索失败，请检查网络后重试</div>';
+      return;
+    }
+    if (seq !== state.searchSeq || state.mode !== 'search') return;
+    renderList();
+  }
+
+  // ---------------------------------------------------------------- 发送面板
+  function openSheet() {
+    if (!state.picked.length) return;
+    var list = state.picked;
+    $('#sheetTitle').textContent = list.length > 1 ? '分别发送给：' : '发送给：';
+    $('#sheetList').innerHTML = list.map(function (u) {
+      return '<div class="wx-tgt">' +
+          '<span class="wx-tgt__av">' + av(u, 44) + '</span>' +
+          '<span class="wx-tgt__name">' + esc(u.nick || '用户') + '</span>' +
+          '<i class="fas fa-chevron-right wx-tgt__more"></i>' +
+        '</div>';
+    }).join('');
+
+    $('#sheetMask').hidden = false;
+    $('#sheet').hidden = false;
+    $('#sheet').style.animation = 'none';
+    void $('#sheet').offsetHeight;
+    $('#sheet').style.animation = '';
+    setTimeout(function () { try { $('#noteInput').focus(); } catch (e) {} }, 260);
+  }
+
+  function closeSheet() {
+    $('#sheet').hidden = true;
+    $('#sheetMask').hidden = true;
+    try { $('#noteInput').blur(); } catch (e) {}
   }
 
   // ---------------------------------------------------------------- 发送
   async function doSend() {
     if (state.sending || !state.picked.length) return;
-    if (!state.fileUrl) { alertBar('文件链接还没准备好，请稍候'); return; }
+    if (!state.cardUrl) { toast('内容还没准备好，请稍候'); return; }
+    if (!navigator.onLine) { toast('网络已断开，请检查连接'); return; }
 
     state.sending = true;
-    paintSendBtn();
-    $('#sendBtn').textContent = '发送中';
+    paintDone();
+
+    var btn = $('#sheetSend');
+    btn.disabled = true;
 
     var note = $('#noteInput').value.trim().slice(0, 100);
-    var payload = {
-      kind: 'file',
-      name: String(SHARE_NAME).slice(0, 200),
-      size: SHARE_SIZE,
-      url: state.fileUrl,
-      mime: SHARE_MIME,
-      note: note
-    };
+    var payload, text;
+    if (KIND === 'game') {
+      payload = { kind: 'invite', name: '石头剪刀布对战邀请', url: state.cardUrl, note: note };
+      text = '[邀请] 石头剪刀布对战';
+    } else {
+      payload = {
+        kind: 'file',
+        name: String(SHARE_NAME).slice(0, 200),
+        size: SHARE_SIZE,
+        url: state.cardUrl,
+        mime: SHARE_MIME,
+        note: note
+      };
+      text = '[文件] ' + String(SHARE_NAME).slice(0, 190);
+    }
 
-    var ok = [], bad = [];
-    for (var i = 0; i < state.picked.length; i++) {
+    var total = state.picked.length;
+    var ok = [], bad = [], fatal = false;
+
+    for (var i = 0; i < total; i++) {
       var u = state.picked[i];
+      btn.textContent = total > 1 ? '发送中 ' + (i + 1) + '/' + total : '发送中';
       try {
         var r = await sb.from('private_messages').insert([{
           sender_id: me.id,
           recipient_id: u.id,
-          text: '[文件] ' + String(SHARE_NAME).slice(0, 190),
+          text: text,
           attachment: payload
         }]);
-        if (r.error) throw r.error;
+        if (r.error) {
+          // 会话失效 / 权限问题：不再逐个硬试
+          if (r.error.code === '42501' || r.error.code === 'PGRST301' || /jwt/i.test(r.error.message || '')) fatal = true;
+          throw r.error;
+        }
         ok.push(u);
       } catch (e) {
         console.warn('send failed:', u.nick, e);
         bad.push(u);
+        if (fatal) {
+          for (var j = i + 1; j < total; j++) bad.push(state.picked[j]);
+          break;
+        }
       }
     }
 
+    // 邀请房间：把收到邀请的人登记进去，房主端才能校验加入者
+    if (ok.length && KIND === 'game' && INVITE_CODE) {
+      try { await registerInvitees(ok.map(function (u) { return u.id; })); }
+      catch (e) { console.warn('register invitees failed:', e); }
+    }
+
     state.sending = false;
+    btn.disabled = false;
+    btn.textContent = '发送';
+
     if (!ok.length) {
-      paintSendBtn();
-      alertBar('发送失败，请检查网络后重试', 3000);
+      paintDone();
+      toast(fatal ? '登录状态已失效，请重新登录后再试' : '发送失败，请检查网络后重试', 3200);
       return;
     }
-    showResult(ok, bad, note);
+
+    closeSheet();
+    showResult(ok, bad, note, fatal);
   }
 
-  function showResult(ok, bad, note) {
+  async function registerInvitees(ids) {
+    var r = await sb.from('rps_rooms').select('invited_users').ilike('code', INVITE_CODE).maybeSingle();
+    if (r.error) throw r.error;
+    var cur = (r.data && r.data.invited_users) || [];
+    var seen = {};
+    cur.forEach(function (id) { seen[id] = true; });
+    var merged = cur.slice();
+    ids.forEach(function (id) { if (!seen[id]) { seen[id] = true; merged.push(id); } });
+    if (merged.length === cur.length) return;
+    var up = await sb.from('rps_rooms').update({ invited_users: merged }).ilike('code', INVITE_CODE);
+    if (up.error) throw up.error;
+  }
+
+  function showResult(ok, bad, note, fatal) {
     var ov = $('#resultOverlay');
     ov.hidden = false;
 
     var names = ok.map(function (u) { return u.nick || '用户'; });
     var short = names.slice(0, 3).join('、') + (names.length > 3 ? ' 等 ' + names.length + ' 位' : '');
-    $('#resultSub').innerHTML = '已发送给 ' + esc(short) +
-      (bad.length ? '<br><span style="color:var(--wx-danger)">' + bad.length + ' 位发送失败</span>' : '') +
-      (note ? '<br>附言：' + esc(note) : '');
+    var html = '已发送给 ' + esc(short);
+    if (bad.length) html += '<br><span style="color:var(--wx-danger)">' + bad.length + ' 位发送失败</span>';
+    if (note) html += '<br>附言：' + esc(note);
+    $('#resultSub').innerHTML = html;
+    $('#resultTitle').textContent = FROM === 'game' ? '邀请已发出' : '已发送';
 
     var acts = [];
     if (RETURN_URL) {
-      acts.push('<button type="button" class="wx-act wx-act--primary" id="actBack">' +
-        '<i class="fas fa-arrow-left"></i> 返回' + (FROM === 'cloud' ? '云盘' : '上一页') + '</button>');
+      var label = FROM === 'game' ? '返回石头剪刀布' : (FROM === 'cloud' ? '返回云盘' : '返回上一页');
+      var icon = FROM === 'game' ? 'fa-hand-scissors' : 'fa-arrow-left';
+      acts.push('<button type="button" class="wx-rbtn wx-rbtn--primary" id="actBack">' +
+        '<i class="fas ' + icon + '"></i> ' + label + '</button>');
     }
-    acts.push('<button type="button" class="wx-act ' + (RETURN_URL ? 'wx-act--ghost' : 'wx-act--primary') + '" id="actChat">' +
-      '<i class="fas fa-comment-dots"></i> 去站内信看对话</button>');
-    acts.push('<button type="button" class="wx-act wx-act--link" id="actStay">留在本页，再选几位</button>');
+
+    // 游戏邀请只保留「返回石头剪刀布」，其余入口全部隐藏
+    if (FROM !== 'game') {
+      acts.push('<button type="button" class="wx-rbtn ' + (RETURN_URL ? 'wx-rbtn--ghost' : 'wx-rbtn--primary') + '" id="actChat">' +
+        '<i class="fas fa-comment-dots"></i> 去站内信看对话</button>');
+      if (!bad.length) {
+        acts.push('<button type="button" class="wx-rbtn wx-rbtn--ghost" id="actStay">继续分享给其他人</button>');
+      }
+    }
+    if (bad.length) {
+      acts.push('<button type="button" class="wx-rbtn wx-rbtn--ghost" id="actRetry">重试失败的 ' + bad.length + ' 位</button>');
+    }
     $('#resultActs').innerHTML = acts.join('');
 
-    $('#actBack') && $('#actBack').addEventListener('click', function () {
-      location.href = RETURN_URL;
-    });
-    $('#actChat').addEventListener('click', function () {
+    var back = $('#actBack');
+    if (back) back.addEventListener('click', function () { location.href = RETURN_URL; });
+
+    var chat = $('#actChat');
+    if (chat) chat.addEventListener('click', function () {
       location.href = ok.length === 1 ? '/chat/?to=' + ok[0].id : '/chat/';
     });
-    $('#actStay').addEventListener('click', function () {
+
+    var stay = $('#actStay');
+    if (stay) stay.addEventListener('click', function () {
       ov.hidden = true;
       state.picked = [];
-      renderList();
-      renderSelected();
       $('#noteInput').value = '';
+      refresh();
+    });
+
+    var retry = $('#actRetry');
+    if (retry) retry.addEventListener('click', function () {
+      if (fatal) { toast('请重新登录后再试', 3000); return; }
+      ov.hidden = true;
+      state.picked = bad.slice();
+      refresh();
+      openSheet();
     });
   }
 
   // ---------------------------------------------------------------- 启动
   async function boot() {
-    paintFile();
+    paintCard();
 
     sb = KJ.createSupabase();
     if (!sb) {
+      $('#peopleList').innerHTML = '';
       $('#listHint').innerHTML = '<div class="wx-empty">组件未加载成功，请刷新页面重试</div>';
       return;
     }
@@ -665,24 +984,28 @@
     var sess = null;
     try { sess = (await sb.auth.getSession()).data.session; } catch (e) {}
     if (!sess) {
-      $('#listHint').innerHTML = '<div class="wx-empty">登录后才能分享给好友<br><br>' +
-        '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) +
-        '" style="color:var(--wx-green);font-weight:600;text-decoration:none">去登录</a></div>';
       $('#peopleList').innerHTML = '';
+      $('#listHint').innerHTML = '<div class="wx-empty">登录后才能分享给好友<br><br>' +
+        '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '">去登录</a></div>';
       return;
     }
     me = sess.user;
 
-    if (!SHARE_PATH) {
-      $('#fileMeta').textContent = '缺少文件信息';
+    if (KIND === 'game' && !INVITE_CODE) {
+      $('#cardMeta').textContent = '邀请已失效';
+      $('#listHint').innerHTML = '<div class="wx-empty">邀请房间信息缺失，请回游戏重新创建</div>';
+      return;
+    }
+    if (KIND === 'file' && !SHARE_PATH) {
+      $('#cardMeta').textContent = '缺少文件信息';
       $('#listHint').innerHTML = '<div class="wx-empty">没有要分享的文件，请回云盘重新选择</div>';
       return;
     }
 
-    state.fileUrl = await resolveUrl();
-    if (!state.fileUrl) {
-      $('#fileMeta').textContent = '无法生成下载链接';
-      $('#listHint').innerHTML = '<div class="wx-empty">链接生成失败，请回云盘重试</div>';
+    state.cardUrl = await resolveUrl();
+    if (!state.cardUrl) {
+      $('#cardMeta').textContent = KIND === 'game' ? '邀请链接生成失败' : '无法生成下载链接';
+      $('#listHint').innerHTML = '<div class="wx-empty">链接生成失败，请返回重试</div>';
       return;
     }
 
@@ -690,15 +1013,46 @@
   }
 
   // ---------------------------------------------------------------- 事件
-  $('#cancelBtn').addEventListener('click', function () {
+  function leave() {
     if (RETURN_URL) location.href = RETURN_URL;
     else if (history.length > 1) history.back();
     else location.href = '/chat/';
+  }
+
+  $('#cancelBtn').addEventListener('click', function () {
+    if (state.picked.length) {
+      state.picked = [];
+      refresh();
+      toast('已清空选择，再点一次返回');
+      return;
+    }
+    leave();
   });
 
-  $('#sendBtn').addEventListener('click', doSend);
+  $('#doneBtn').addEventListener('click', openSheet);
+  $('#sheetCancel').addEventListener('click', closeSheet);
+  $('#sheetMask').addEventListener('click', closeSheet);
+  $('#sheetSend').addEventListener('click', doSend);
 
-  $('#peopleList').addEventListener('click', function (e) {
+  $('#emojiBtn').addEventListener('click', function () {
+    var input = $('#noteInput');
+    var emojis = ['👍', '🎉', '😄', '🙌', '🔥', '❤️'];
+    var pick = emojis[Math.floor(Math.random() * emojis.length)];
+    if (input.value.length < 90) input.value += pick;
+    input.focus();
+  });
+
+  $('#noteInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSend(); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (!$('#sheet').hidden) closeSheet();
+    }
+  });
+
+  function pickFromList(e) {
     var row = e.target.closest('.wx-row');
     if (!row) return;
     var id = row.getAttribute('data-id');
@@ -706,7 +1060,8 @@
     for (var i = 0; i < list.length; i++) {
       if (list[i].id === id) { togglePick(list[i]); return; }
     }
-  });
+  }
+  $('#peopleList').addEventListener('click', pickFromList);
 
   $('#peopleList').addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -716,15 +1071,23 @@
     row.click();
   });
 
-  $('#selectedBar').addEventListener('click', function (e) {
-    var chip = e.target.closest('.wx-sel');
+  $('#quickList').addEventListener('click', function (e) {
+    var qi = e.target.closest('.wx-qi');
+    if (!qi) return;
+    var id = qi.getAttribute('data-id');
+    for (var i = 0; i < state.recent.length; i++) {
+      if (state.recent[i].id === id) { togglePick(state.recent[i]); return; }
+    }
+  });
+
+  $('#pickedBar').addEventListener('click', function (e) {
+    var chip = e.target.closest('.wx-pick');
     if (!chip) return;
     var id = chip.getAttribute('data-id');
     for (var i = 0; i < state.picked.length; i++) {
       if (state.picked[i].id === id) { state.picked.splice(i, 1); break; }
     }
-    renderList();
-    renderSelected();
+    refresh();
   });
 
   $('#searchInput').addEventListener('input', onSearchInput);
@@ -735,6 +1098,16 @@
     $('#searchInput').value = '';
     $('#searchInput').focus();
     onSearchInput();
+  });
+
+  // 断网提示
+  window.addEventListener('offline', function () { toast('网络已断开', 2600); });
+
+  // 页面尺寸变化时重算视图（移动端键盘弹出）
+  window.addEventListener('resize', function () {
+    if (document.activeElement === $('#noteInput')) {
+      try { $('#sheet').scrollTop = $('#sheet').scrollHeight; } catch (e) {}
+    }
   });
 
   document.addEventListener('DOMContentLoaded', boot);

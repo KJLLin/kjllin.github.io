@@ -376,28 +376,9 @@
       <!-- 方式二：邀请卡片 -->
       <div id="connectInvite" style="display:none">
         <div class="invite-section">
-          <p class="invite-hint">向站内信好友发送对战邀请卡片，好友通过卡片链接加入</p>
-          <button class="btn btn-primary" id="createInviteBtn" onclick="createInviteRoom()" style="width:220px"><i class="fas fa-plus"></i> 创建房间并发起邀请</button>
-          <div id="inviteAfterCreate" style="display:none">
-            <!-- 隐藏房间号，仅后端持有 -->
-            <div class="divider-text" style="font-size:12px">选择好友发送邀请</div>
-
-            <!-- 站内信最近联系人 -->
-            <div class="conv-list-inline" id="convListInline">
-              <div style="color:var(--text3);font-size:13px;padding:8px">加载最近联系人...</div>
-            </div>
-
-            <!-- 搜索更多 -->
-            <div class="invite-search-box" style="margin-top:8px">
-              <input type="text" class="invite-input" id="inviteInput" placeholder="搜索其他用户邮箱..." autocomplete="off">
-              <div class="invite-results" id="inviteResults"></div>
-            </div>
-            <div class="sent-list" id="sentList"></div>
-
-            <!-- 跳转按钮 -->
-            <button class="btn btn-outline btn-sm" id="enterGameBtn" style="display:none;margin-top:8px" onclick="enterGameFromInvite()"><i class="fas fa-gamepad"></i> 进入游戏房间等待</button>
-            <div class="timeout-bar" id="inviteTimeout"></div>
-          </div>
+          <p class="invite-hint">创建房间后会在「选择聊天」里挑好友，邀请卡片直接发到对方站内信，对方点开即可加入</p>
+          <button class="btn btn-primary" id="createInviteBtn" onclick="createInviteRoom()" style="width:230px"><i class="fas fa-plus"></i> 创建房间并发起邀请</button>
+          <div class="timeout-bar" id="inviteTimeout"></div>
         </div>
       </div>
     </div>
@@ -454,6 +435,7 @@
       </div>
 
       <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" id="inviteMoreBtn" onclick="inviteMore()" style="display:none"><i class="fas fa-user-plus"></i> 再邀请好友</button>
         <button class="btn btn-outline btn-sm" id="rematchBtn" onclick="resetRound()" style="display:none"><i class="fas fa-redo"></i> 再来一局</button>
         <button class="btn btn-outline btn-sm" id="closeRoomBtn" onclick="closeCurrentRoom()" style="display:none"><i class="fas fa-door-closed"></i> 关闭房间</button>
         <button class="btn btn-danger btn-sm" onclick="leaveRoom()"><i class="fas fa-sign-out-alt"></i> 离开房间</button>
@@ -609,6 +591,20 @@ function checkUrlRoom() {
   var params = new URLSearchParams(window.location.search);
   var invite = params.get('invite');
   var room   = params.get('room');
+  var host   = params.get('host');
+
+  // 从「选择聊天」返回：房主恢复自己的邀请房间
+  if (host && host.length >= 4) {
+    fromInvite = true;
+    inviteRoomCode = host.toUpperCase();
+    switchMode('online');
+    switchConnect('invite');
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', '/game/rps/');
+    }
+    rejoinRoom(inviteRoomCode, true);
+    return;
+  }
 
   // 邀请链接（专属参数 ?invite=TOKEN，无法通过删除参数降级为 room 加入）
   if (invite && invite.length >= 8) {
@@ -633,21 +629,62 @@ function checkUrlRoom() {
 
 // ====================== 邀请确认弹窗 ======================
 var pendingInviteCode = null;
+var inviteInvalid = false;
 
 function showInviteConfirm(code) {
   pendingInviteCode = code;
-  // 从 DB 获取邀请者昵称
-  document.getElementById('inviteModalTitle').textContent = '石头剪刀布对战邀请';
-  document.getElementById('inviteModalMsg').textContent = '有人邀请你进行对战，是否接受？';
-  document.getElementById('inviteModal').style.display = '';
-  // 异步获取邀请者信息
-  if (sb) {
-    sb.from('rps_rooms').select('host_nick').ilike('code', code).maybeSingle().then(function(r) {
-      if (r && r.data && r.data.host_nick) {
-        document.getElementById('inviteModalMsg').textContent = r.data.host_nick + ' 邀请你进行石头剪刀布对战，是否接受？';
-      }
-    }).catch(function() {});
+  inviteInvalid = false;
+
+  var modal = document.getElementById('inviteModal');
+  var titleEl = document.getElementById('inviteModalTitle');
+  var msgEl = document.getElementById('inviteModalMsg');
+  var okBtn = document.getElementById('inviteAcceptBtn');
+  var noBtn = document.getElementById('inviteDeclineBtn');
+
+  titleEl.textContent = '石头剪刀布对战邀请';
+  msgEl.textContent = '正在确认房间状态…';
+  okBtn.style.display = 'none';
+  noBtn.innerHTML = '<i class="fas fa-times"></i> 拒绝';
+  modal.style.display = '';
+
+  function invalid(title, msg) {
+    inviteInvalid = true;
+    pendingInviteCode = null;
+    titleEl.textContent = title;
+    msgEl.textContent = msg;
+    okBtn.style.display = 'none';
+    noBtn.innerHTML = '<i class="fas fa-check"></i> 知道了';
   }
+
+  if (!sb) {
+    invalid('无法加入', '网络连接异常，请刷新页面后重试');
+    return;
+  }
+
+  // 先探明房间状态，避免「接受后才发现房间已失效」
+  sb.from('rps_rooms').select('host_nick, status, expires_at, joined_by')
+    .ilike('code', code).maybeSingle()
+    .then(function (r) {
+      var room = r && r.data;
+      if (!room || room.status === 'closed') {
+        invalid('邀请已失效', '房间不存在或已被关闭，请让对方重新发起邀请');
+        return;
+      }
+      if (new Date(room.expires_at) < new Date()) {
+        invalid('邀请已过期', '这个房间超过了有效期，请让对方重新发起邀请');
+        return;
+      }
+      if (room.joined_by && room.joined_by !== myUserId) {
+        invalid('房间已满', '对手已经被人抢先一步，让 TA 再开一局吧');
+        return;
+      }
+      msgEl.textContent = (room.host_nick || '有人') + ' 邀请你进行石头剪刀布对战，是否接受？';
+      okBtn.style.display = '';
+    })
+    .catch(function () {
+      msgEl.textContent = '房间状态查询失败，仍可直接尝试加入';
+      okBtn.style.display = '';
+    });
 }
 
 function acceptInvite() {
@@ -661,6 +698,11 @@ function acceptInvite() {
 function declineInvite() {
   document.getElementById('inviteModal').style.display = 'none';
   pendingInviteCode = null;
+  if (inviteInvalid) {
+    inviteInvalid = false;
+    switchMode('online');   // 失效提示：回到联机设置页，不打断当前模式
+    return;
+  }
   fromInvite = false;
   switchMode('ai');
 }
@@ -722,14 +764,7 @@ async function rejoinRoom(code, isInvite) {
   fromInvite = isInvite;
   if (isInvite) {
     inviteRoomCode = code;
-    // 加载受邀列表
-    try {
-      var { data } = await sb.from('rps_rooms').select('invited_users').ilike('code', code).maybeSingle();
-      if (data && data.invited_users) {
-        inviteSentUsers = data.invited_users.map(function(id) { return { id: id, nick: '' }; });
-      }
-    } catch(e) {}
-    await openHostChannel(code);
+    await openHostChannel(code);   // 内部会载入受邀名单并订阅房间
     enterGameRoom(code, null);
   } else {
     await setupOnlineRoom(code, true);
@@ -874,27 +909,60 @@ async function joinRoom() {
 
 // ====================== 邀请模式 ======================
 
-var inviteConvLoaded = false;
-
+/**
+ * 创建邀请房间后跳到 /chat/share/ 选人发送。
+ * 返回时带 ?host=CODE，页面自动恢复等待状态。
+ */
 async function createInviteRoom() {
   if (!sb) { KJ.toast('网络错误，请刷新重试'); return; }
-  var code = await genUniqueRoomCode(genInviteToken);
+  var btn = document.getElementById('createInviteBtn');
+  if (btn && btn.disabled) return;
+  var label = '<i class="fas fa-plus"></i> 创建房间并发起邀请';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> 创建中…'; }
+
+  var code = '';
+  var ok = false;
+  try {
+    code = await genUniqueRoomCode(genInviteToken);
+    ok = await createRoomInDB(code, true, []);
+  } catch (e) { ok = false; }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = label; }
+  if (!ok) { KJ.toast('创建房间失败，请重试'); return; }
+
   inviteRoomCode = code;
+  location.href = '/chat/share/?kind=game&invite=' + encodeURIComponent(code) + '&from=game';
+}
+
+/** 等待对手时再补发邀请 */
+function inviteMore() {
+  if (!inviteRoomCode) { KJ.toast('房间已过期，请重新创建'); return; }
+  location.href = '/chat/share/?kind=game&invite=' + encodeURIComponent(inviteRoomCode) + '&from=game';
+}
+
+/** 从「选择聊天」返回后，拉回 share 页登记过的受邀名单 */
+async function loadInvitedUsers(code) {
   inviteSentUsers = [];
+  if (!sb || !code) return;
+  try {
+    var { data } = await sb.from('rps_rooms').select('invited_users').ilike('code', code).maybeSingle();
+    if (data && data.invited_users) {
+      inviteSentUsers = data.invited_users.map(function (id) { return { id: id, nick: '' }; });
+    }
+  } catch (e) {}
+}
 
-  if (!(await createRoomInDB(code, true, []))) { KJ.toast('创建房间失败，请重试'); return; }
-
-  document.getElementById('createInviteBtn').style.display = 'none';
-  document.getElementById('inviteAfterCreate').style.display = '';
-  document.getElementById('sentList').innerHTML = '';
-  document.getElementById('enterGameBtn').style.display = 'none';
-  document.getElementById('inviteInput').value = '';
-  document.getElementById('inviteResults').classList.remove('show');
-
-  if (!inviteConvLoaded) { loadConversationList(); inviteConvLoaded = true; }
-  else { resetConvListSent(); }
-
-  await openHostChannel(code);
+/**
+ * 校验加入者身份。
+ * 名单为空时放行——邀请令牌本身是 12 位高熵凭证，
+ * 而 share 页登记失败不应导致整场邀请失效。
+ */
+function isInvitedUid(uid) {
+  if (!inviteSentUsers.length) return true;
+  for (var i = 0; i < inviteSentUsers.length; i++) {
+    if (inviteSentUsers[i].id === uid) return true;
+  }
+  return false;
 }
 
 async function openHostChannel(code) {
@@ -906,18 +974,15 @@ async function openHostChannel(code) {
   currentRoom = code;
   isHost = true;
 
+  await loadInvitedUsers(code);
+
   onlineChannel = sb.channel('rps-' + code, { config: { broadcast: { self: false } } });
 
   onlineChannel.on('broadcast', { event: 'join' }, function(payload) {
     // ★ 邀请模式：校验加入者是否在受邀名单中
     if (fromInvite || inviteRoomCode === code) {
       var joinUid = payload.payload.uid;
-      var invited = false;
-      for (var i = 0; i < inviteSentUsers.length; i++) {
-        if (inviteSentUsers[i].id === joinUid) { invited = true; break; }
-      }
-      if (!invited) {
-        // 非受邀用户 → 发送拒绝
+      if (!isInvitedUid(joinUid)) {
         try {
           onlineChannel.send({ type: 'broadcast', event: 'reject', payload: { reason: 'not_invited' } });
         } catch(e) {}
@@ -944,186 +1009,6 @@ async function openHostChannel(code) {
   });
 }
 
-// ====================== 站内信联系人列表 ======================
-
-async function loadConversationList() {
-  var el = document.getElementById('convListInline');
-  if (!sb || !myUserId) { el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">无法加载</div>'; return; }
-
-  try {
-    // 获取最近私信联系人
-    var { data: msgs, error } = await sb.from('private_messages')
-      .select('sender_id, recipient_id')
-      .or('sender_id.eq.' + myUserId + ',recipient_id.eq.' + myUserId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) throw error;
-
-    // 去重提取 partner ID
-    var partnerIds = [];
-    var seen = {};
-    for (var i = 0; i < (msgs || []).length; i++) {
-      var pid = msgs[i].sender_id === myUserId ? msgs[i].recipient_id : msgs[i].sender_id;
-      if (!seen[pid]) { seen[pid] = true; partnerIds.push(pid); }
-    }
-
-    if (!partnerIds.length) {
-      el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">暂无联系人，使用下方搜索查找好友</div>';
-      return;
-    }
-
-    // 获取用户信息（仅公开昵称，不含邮箱/手机号）
-    var { data: users, error: ue } = await sb.from('profiles_public')
-      .select('id, nick').in('id', partnerIds.slice(0, 15));
-
-    if (ue) throw ue;
-    renderConvList(users || []);
-  } catch(e) {
-    console.warn('加载联系人失败:', e);
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">加载失败，使用下方搜索</div>';
-  }
-}
-
-/** 列表渲染出首字头像后，再批量补上真实头像（一次 RPC，避免 N+1） */
-function paintListAvatars(rootEl, users) {
-  if (!rootEl || !users || !users.length) return;
-  var ids = users.map(function (u) { return u.id; });
-  sb.rpc('get_avatars', { p_ids: ids }).then(function (r) {
-    if (r.error || !r.data) return;
-    var map = {};
-    r.data.forEach(function (x) { map[x.id] = x.avatar_url || ''; });
-    users.forEach(function (u) {
-      var node = rootEl.querySelector('[data-uid="' + u.id + '"] .invite-avatar');
-      if (node) KJ.paintAvatar(node, { nick: u.nick || '用户', avatar_url: map[u.id] || '' });
-    });
-  }).catch(function () {});
-}
-
-function renderConvList(users) {
-  var el = document.getElementById('convListInline');
-  if (!users.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">暂无联系人</div>';
-    return;
-  }
-  el.innerHTML = users.map(function(u) {
-    var nick = u.nick || '用户';
-    return '<div class="conv-item-inline" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '" onclick="inviteFromConv(this)">'
-      + '<div class="invite-avatar">' + KJ.escapeHtml((nick[0] || '?').toUpperCase()) + '</div>'
-      + '<div class="invite-info"><div class="conv-name">' + KJ.escapeHtml(nick) + '</div></div>'
-      + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent);font-size:13px"></i>'
-      + '</div>';
-  }).join('');
-  paintListAvatars(el, users);
-}
-
-function resetConvListSent() {
-  document.querySelectorAll('.conv-item-inline').forEach(function(el) { el.classList.remove('sent'); });
-}
-
-async function inviteFromConv(el) {
-  if (el.classList.contains('sent')) return;
-  if (!inviteRoomCode) { KJ.toast('房间已过期，请重新创建'); return; }
-  var uid = el.dataset.uid;
-  var nick = el.dataset.nick;
-  await sendInviteMsg(uid, nick);
-  el.classList.add('sent');
-}
-
-// 搜索
-var inviteTimer = null;
-var inviteLock = false;
-
-document.getElementById('inviteInput').addEventListener('input', function() {
-  clearTimeout(inviteTimer);
-  var val = this.value.trim();
-  if (!val || val.length < 2) {
-    document.getElementById('inviteResults').classList.remove('show');
-    return;
-  }
-  inviteTimer = setTimeout(function() { searchUsers(val); }, 400);
-});
-
-async function searchUsers(query) {
-  if (inviteLock || !sb) return;
-  inviteLock = true;
-  try {
-    // 服务端搜索：只返回昵称与脱敏提示，不返回邮箱/手机号原值
-    var { data, error } = await sb.rpc('search_users', { p_term: query });
-    if (error) { console.warn('搜索失败:', error); return; }
-    renderInviteResults(data || []);
-  } catch(e) { console.warn('搜索异常:', e); }
-  finally { inviteLock = false; }
-}
-
-function renderInviteResults(users) {
-  var el = document.getElementById('inviteResults');
-  if (!users.length) {
-    el.innerHTML = '<div class="invite-result-item" style="color:var(--text3);cursor:default"><i class="fas fa-search"></i> 未找到用户</div>';
-    el.classList.add('show');
-    return;
-  }
-  el.innerHTML = users.map(function(u) {
-    var nick = u.nick || '用户';
-    var hint = u.hint || '';
-    return '<div class="invite-result-item" data-uid="' + u.id + '" data-nick="' + KJ.escapeHtml(nick) + '">'
-      + '<div class="invite-avatar">' + KJ.escapeHtml((nick[0] || '?').toUpperCase()) + '</div>'
-      + '<div class="invite-info"><div class="invite-nick">' + KJ.escapeHtml(nick) + '</div>' + (hint ? '<div class="invite-email">' + KJ.escapeHtml(hint) + '</div>' : '') + '</div>'
-      + '<i class="fas fa-paper-plane" style="margin-left:auto;color:var(--accent)"></i>'
-      + '</div>';
-  }).join('');
-  el.classList.add('show');
-  paintListAvatars(el, users);
-}
-
-document.getElementById('inviteResults').addEventListener('click', function(e) {
-  var item = e.target.closest('.invite-result-item');
-  if (!item) return;
-  var uid = item.dataset.uid;
-  var nick = item.dataset.nick;
-  if (uid && nick) sendInviteMsg(uid, nick);
-});
-
-async function sendInviteMsg(userId, nick) {
-  if (!inviteRoomCode) { KJ.toast('房间已过期，请重新创建'); return; }
-  if (!sb) { KJ.toast('网络错误'); return; }
-
-  var inviteLink = window.location.origin + '/game/rps/?invite=' + inviteRoomCode;
-  var inviteText = '[游戏邀请] ' + myNick + ' 邀请你进行石头剪刀布对战！\n点击链接加入：' + inviteLink;
-
-  try {
-    var { error } = await sb.from('private_messages').insert({
-      sender_id: myUserId, recipient_id: userId, text: inviteText
-    });
-    if (error) { KJ.toast('发送失败，请重试'); return; }
-    KJ.toast('已向 ' + nick + ' 发送对战邀请！');
-    document.getElementById('inviteInput').value = '';
-    document.getElementById('inviteResults').classList.remove('show');
-
-    if (inviteSentUsers.indexOf(userId) === -1) {
-      inviteSentUsers.push({ id: userId, nick: nick });
-      updateSentList();
-      // 同步到数据库
-      var ids = inviteSentUsers.map(function(u) { return u.id; });
-      sb.from('rps_rooms').update({ invited_users: ids }).ilike('code', inviteRoomCode).then(function() {}).catch(function() {});
-    }
-    document.getElementById('enterGameBtn').style.display = '';
-  } catch(e) { KJ.toast('发送失败'); }
-}
-
-function updateSentList() {
-  var el = document.getElementById('sentList');
-  el.innerHTML = inviteSentUsers.map(function(u) {
-    return '<span class="sent-tag"><i class="fas fa-check"></i> ' + KJ.escapeHtml(u.nick) + '</span>';
-  }).join('');
-}
-
-function enterGameFromInvite() {
-  if (!inviteRoomCode) { KJ.toast('房间已过期'); return; }
-  fromInvite = true;
-  enterGameRoom(inviteRoomCode, null);
-}
-
 // ====================== 进入游戏房间 ======================
 
 function enterGameRoom(code, oppName) {
@@ -1136,7 +1021,6 @@ function enterGameRoom(code, oppName) {
 
   // 隐藏设置页/邀请页，显示游戏
   document.getElementById('onlineSetup').style.display = 'none';
-  document.getElementById('inviteAfterCreate').style.display = 'none';
   document.getElementById('createInviteBtn').style.display = '';
   document.getElementById('onlineGame').style.display = '';
 
@@ -1172,10 +1056,15 @@ function enterGameRoom(code, oppName) {
     document.getElementById('onOppName').textContent = oppName;
     setStatus('ready', '对手已就绪，请出拳！');
     enableChoices();
+    var moreOn = document.getElementById('inviteMoreBtn');
+    if (moreOn) moreOn.style.display = 'none';
   } else {
     document.getElementById('onOppLabel').textContent = '对手';
     document.getElementById('onOppName').textContent = '等待中...';
     setStatus('waiting', '等待对方接受邀请...');
+    // 邀请房间等待中：可继续补发邀请
+    var moreBtn = document.getElementById('inviteMoreBtn');
+    if (moreBtn) moreBtn.style.display = fromInvite ? '' : 'none';
   }
 
   // 房间过期倒计时 - 由服务端管理
@@ -1186,22 +1075,17 @@ function enterGameRoom(code, oppName) {
     // 重绑事件（choice 不再通过广播，改用服务端 DB）
     onlineChannel.on('broadcast', { event: 'join' }, function(payload) {
       // ★ 邀请模式 Host：校验加入者身份
-      if (fromInvite) {
-        var juid = payload.payload.uid;
-        var ok = false;
-        for (var i = 0; i < inviteSentUsers.length; i++) {
-          if (inviteSentUsers[i].id === juid) { ok = true; break; }
-        }
-        if (!ok) {
-          try { onlineChannel.send({ type: 'broadcast', event: 'reject', payload: {} }); } catch(e) {}
-          return;
-        }
+      if (fromInvite && !isInvitedUid(payload.payload.uid)) {
+        try { onlineChannel.send({ type: 'broadcast', event: 'reject', payload: {} }); } catch(e) {}
+        return;
       }
       var name = payload.payload.name || '玩家';
       document.getElementById('onOppLabel').textContent = name;
       document.getElementById('onOppName').textContent = name;
       setStatus('ready', '对手已就绪，请出拳！');
       enableChoices();
+      var moreBtn = document.getElementById('inviteMoreBtn');
+      if (moreBtn) moreBtn.style.display = 'none';
     });
     onlineChannel.on('broadcast', { event: 'leave' }, function() {
       setStatus('waiting', '对手已离开，可等待新玩家加入');
@@ -1213,6 +1097,8 @@ function enterGameRoom(code, oppName) {
       document.getElementById('onMyEmoji').innerHTML = PLACEHOLDER_ICON;
       document.getElementById('rematchBtn').style.display = 'none';
   document.getElementById('closeRoomBtn').style.display = isHost ? '' : 'none';
+      var moreBack = document.getElementById('inviteMoreBtn');
+      if (moreBack) moreBack.style.display = (fromInvite && isHost) ? '' : 'none';
       enableChoices();
       // ★ host 收到 guest 离开 → 重置数据库房间，否则 status/joined_by 残留导致房间被判满永久锁死
       if (isHost && currentRoom) {
@@ -1491,25 +1377,13 @@ function leaveRoom() {
   inviteRoomCode = null;
   fromInvite = false;
   inviteSentUsers = [];
-  document.getElementById('sentList').innerHTML = '';
   document.getElementById('createInviteBtn').style.display = '';
-  document.getElementById('inviteAfterCreate').style.display = 'none';
-  document.getElementById('enterGameBtn').style.display = 'none';
-  document.getElementById('inviteInput').value = '';
-  document.getElementById('inviteResults').classList.remove('show');
+  document.getElementById('inviteMoreBtn').style.display = 'none';
   document.getElementById('onlineSetup').style.display = '';
   document.getElementById('onlineGame').style.display = 'none';
   document.getElementById('gameTimeout').style.display = 'none';
   loadMyActiveRooms();
-  inviteConvLoaded = false;
 }
-
-// 点击空白关闭搜索
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.invite-search-box')) {
-    document.getElementById('inviteResults').classList.remove('show');
-  }
-});
 </script>
 <div id="toast" class="toast hidden"></div>
 
@@ -1520,8 +1394,8 @@ document.addEventListener('click', function(e) {
     <h3 id="inviteModalTitle">石头剪刀布对战邀请</h3>
     <p id="inviteModalMsg" style="color:var(--text2);font-size:14px;margin:8px 0 20px"></p>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-outline" onclick="declineInvite()" style="min-width:100px"><i class="fas fa-times"></i> 拒绝</button>
-      <button class="btn btn-primary" onclick="acceptInvite()" style="min-width:100px"><i class="fas fa-check"></i> 接受</button>
+      <button class="btn btn-outline" id="inviteDeclineBtn" onclick="declineInvite()" style="min-width:100px"><i class="fas fa-times"></i> 拒绝</button>
+      <button class="btn btn-primary" id="inviteAcceptBtn" onclick="acceptInvite()" style="min-width:100px"><i class="fas fa-check"></i> 接受</button>
     </div>
   </div>
 </div>

@@ -404,6 +404,13 @@ input, textarea, button { font-family: inherit; }
 .fc-aud  { background: linear-gradient(135deg, #ff375f, #c4274a); }
 .fc-code { background: linear-gradient(135deg, #30d158, #1f9c42); }
 .fc-txt  { background: linear-gradient(135deg, #64d2ff, #0a84ff); }
+.fc-game { background: linear-gradient(135deg, #ff9f0a, #ff375f); }
+/* 对战邀请卡片：描边强调，和普通文件区分开 */
+.msg-file--invite {
+  border-color: rgba(255, 159, 10, .45);
+  background: linear-gradient(135deg, rgba(255, 159, 10, .09), rgba(255, 55, 95, .07));
+}
+.msg-file--invite .fc-name { color: var(--color-text-primary); }
 .fc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .fc-name {
   font-size: 13.5px; font-weight: 500; color: var(--color-text-primary);

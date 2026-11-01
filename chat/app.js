@@ -565,21 +565,28 @@ const ChatView = {
 
   _fileCardHtml(m) {
     const a = m.attachment || {};
-    const name = a.name || m.text || '文件';
-    const [icon, cls] = U.fileIcon(name);
+    const isInvite = a.kind === 'invite';
+    const name = a.name || m.text || (isInvite ? '对战邀请' : '文件');
+    const [icon, cls] = isInvite ? ['fa-hand-scissors', 'game'] : U.fileIcon(name);
     const size = U.bytes(a.size);
     const note = a.note ? String(a.note) : '';
     const url = /^https:\/\//i.test(a.url || '') ? a.url : '';
     const tag = url ? 'a' : 'div';
-    const hrefAttr = url ? ` href="${U.escape(url)}" target="_blank" rel="noopener noreferrer"` : '';
-    return `<${tag} class="msg-file"${hrefAttr}>
+    // 邀请卡片在同一标签打开（直接进房），文件卡片在新标签预览
+    const hrefAttr = url
+      ? ` href="${U.escape(url)}"${isInvite ? '' : ' target="_blank" rel="noopener noreferrer"'}`
+      : '';
+    const meta = isInvite
+      ? (url ? '点击进入对战' : '邀请已失效')
+      : `${size ? size + ' · ' : ''}${url ? '点击下载' : '链接已失效'}`;
+    return `<${tag} class="msg-file${isInvite ? ' msg-file--invite' : ''}"${hrefAttr}>
       <span class="fc-icon fc-${cls}"><i class="fas ${icon}"></i></span>
       <span class="fc-main">
         <span class="fc-name">${U.escape(name)}</span>
-        <span class="fc-meta">${size ? size + ' · ' : ''}${url ? '点击下载' : '链接已失效'}</span>
+        <span class="fc-meta">${meta}</span>
         ${note ? `<span class="fc-note">${U.escape(note)}</span>` : ''}
       </span>
-      ${url ? '<span class="fc-dl"><i class="fas fa-download"></i></span>' : ''}
+      ${url ? `<span class="fc-dl"><i class="fas ${isInvite ? 'fa-chevron-right' : 'fa-download'}"></i></span>` : ''}
     </${tag}>`;
   },
 
