@@ -825,6 +825,11 @@
     if (state.sending || !state.picked.length) return;
     if (!state.cardUrl) { toast('内容还没准备好，请稍候'); return; }
     if (!navigator.onLine) { toast('网络已断开，请检查连接'); return; }
+    // 邀请房间可能已过期（分享页停留过久），发出去也是死链
+    if (KIND === 'game') {
+      var alive = await roomAlive();
+      if (!alive) { toast('邀请房间已过期，请回游戏重新创建', 3200); return; }
+    }
 
     state.sending = true;
     paintDone();
@@ -896,6 +901,18 @@
 
     closeSheet();
     showResult(ok, bad, note, fatal);
+  }
+
+  /** 发送前确认邀请房间仍然有效 */
+  async function roomAlive() {
+    try {
+      var r = await sb.from('rps_rooms').select('status,expires_at').ilike('code', INVITE_CODE).maybeSingle();
+      if (r.error) return true;               // 查询失败不阻断发送
+      var room = r.data;
+      if (!room || room.status === 'closed') return false;
+      if (new Date(room.expires_at) < new Date()) return false;
+      return true;
+    } catch (e) { return true; }
   }
 
   async function registerInvitees(ids) {

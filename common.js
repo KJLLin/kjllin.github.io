@@ -647,7 +647,8 @@
   function initReleaseNotice() {
     var p = (global.location && global.location.pathname) || '/';
     // 只在「浏览类」页面提示；聊天 / 登录 / 管理后台等操作页不打断
-    var ALLOW = [/^\/$/, /^\/news\//, /^\/discuss\//, /^\/game\//, /^\/docs\//,
+    // 游戏内页（rps / dino / snake …）不弹，避免打断对战与邀请弹窗
+    var ALLOW = [/^\/$/, /^\/news\//, /^\/discuss\//, /^\/game\/$/, /^\/game\/rank\//, /^\/docs\//,
                  /^\/u\//, /^\/settings\//, /^\/cloud\//];
     var allowed = false;
     for (var i = 0; i < ALLOW.length; i++) { if (ALLOW[i].test(p)) { allowed = true; break; } }
