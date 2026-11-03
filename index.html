@@ -29,6 +29,8 @@
 
   <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/theme.css">
+  <!-- 预加载登录组件：内联脚本要到解析末尾才发起请求，提前声明可省下数秒 -->
+  <link rel="preload" as="script" href="/vendor/supabase.min.js" fetchpriority="high">
   <style>
     /* ====================== 首页专属样式 — 基于 theme.css 设计系统 ====================== */
 
@@ -996,15 +998,22 @@ html[data-theme="dark"] .catalog-sheet {
     // 加载超时兜底（loader 可能已被移除，需空值防护）
     var _t1=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='正在加载... (网络较慢)';},5000);
     var _t2=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='加载时间较长，请检查网络连接';},10000);
-    var _t3=setTimeout(function(){
+    // 兜底：6 秒后先把页面放出来，登录态等组件到齐后静默补上，
+    // 不让用户对着转圈干等（SDK 有 214KB，弱网下可能要十几秒）
+    setTimeout(function(){
       var l=document.getElementById('loader');
-      if(l){l.style.opacity='0';setTimeout(function(){l.remove();},300);}
-    },15000);
+      if(l && l.parentNode){ l.style.opacity='0'; setTimeout(function(){ if(l.parentNode) l.remove(); }, 320); }
+    }, 6000);
     function showError(msg){
       var el=document.getElementById('loaderError');
-      if(el){el.style.display='';el.textContent=el.textContent+' | '+msg;}
-      var lt=document.getElementById('loaderText');
-      if(lt)lt.innerHTML='<i class="fas fa-triangle-exclamation"></i> 加载出错 - 查看下方详情';
+      // 遮罩已经撤掉（6 秒兜底）时，改用轻提示，别让错误信息无处安放
+      if(el && el.isConnected){
+        el.style.display='';el.textContent=el.textContent+' | '+msg;
+        var lt=document.getElementById('loaderText');
+        if(lt)lt.innerHTML='<i class="fas fa-triangle-exclamation"></i> 加载出错 - 查看下方详情';
+        return;
+      }
+      try { if (window.KJ && KJ.toast) KJ.toast(msg, 5000); } catch(e) {}
     }
     window.onerror=function(msg,url,line){showError('JS错误: '+msg+' (行'+line+')');};
   </script>
