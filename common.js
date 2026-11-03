@@ -86,7 +86,12 @@
   function authRemainingDays() {
     if (!authPersist()) return null;
     var raw = Number(safeStorage.getItem(AUTH_UNTIL_KEY) || 0);
-    if (!raw) return AUTH_KEEP_DAYS;
+    if (!raw) {
+      // 旧版本可能没写过时间戳：这里补写一次，避免显示"90 天"但实际没有任何记录
+      extendAuthUntil();
+      raw = Number(safeStorage.getItem(AUTH_UNTIL_KEY) || 0);
+      if (!raw) return null;
+    }
     return Math.max(0, Math.ceil((raw - Date.now()) / 86400000));
   }
 
@@ -108,6 +113,13 @@
   // 按「是否保持登录」把 token 分发到 localStorage 或 sessionStorage
   var authStorage = {
     getItem: function(k) {
+      // 保持登录时以 localStorage 为准：sessionStorage 里可能残留切换前的旧 token，
+      // 若优先读它，刷新后会拿旧 refresh token 去换新，触发轮换复用检测 → 被迫登出
+      if (authPersist()) {
+        var local = safeStorage.getItem(k);
+        if (local != null) return local;
+        return safeSession.getItem(k);
+      }
       var v = safeSession.getItem(k);
       return v != null ? v : safeStorage.getItem(k);
     },
@@ -707,17 +719,22 @@
       var sb = null;
       try { sb = createSupabase(); } catch (e) {}
       if (!sb) {
-        // SDK 可能还在动态加载（首页），稍后重试
-        if (attempt++ < 8) setTimeout(run, 700);
+        // 首页是动态加载 SDK 的，弱网下可能要十几秒；给足 40 次（约 28 秒）
+        if (attempt++ < 40) setTimeout(run, 700);
         return;
       }
-      sb.rpc('latest_release').then(function (r) {
-        if (r.error || !r.data || !r.data.length) return;
-        var rel = r.data[0];
-        var seen = '';
-        try { seen = localStorage.getItem(RELEASE_SEEN_KEY) || ''; } catch (e) {}
-        if (seen === rel.version) return;
-        setTimeout(function () { showReleaseModal(rel); }, 900);
+      // 只在已登录时提示：访客不需要知道"更新了什么"
+      if (!hasStoredAuth()) return;
+      sb.auth.getSession().then(function (sess) {
+        if (!sess || !sess.data || !sess.data.session) return;
+        return sb.rpc('latest_release').then(function (r) {
+          if (r.error || !r.data || !r.data.length) return;
+          var rel = r.data[0];
+          var seen = '';
+          try { seen = localStorage.getItem(RELEASE_SEEN_KEY) || ''; } catch (e) {}
+          if (seen === rel.version) return;
+          setTimeout(function () { showReleaseModal(rel); }, 900);
+        });
       }).catch(function () {});
     };
 
@@ -857,9 +874,12 @@
   var _navSb = null;
   function getNavSupabase() {
     if (_navSb) return _navSb;
-    // 页面已通过 createSupabase() 创建过客户端则直接复用（避免双实例）
-    if (_primaryClient) return _primaryClient;
+    // 统一走 createSupabase()：全站只允许存在一个 GoTrue 客户端。
+    // 两个实例会各自持有内存 session 并争抢刷新，导致会话被清掉、用户被登出。
+    if (_primaryClient) { _navSb = _primaryClient; return _navSb; }
     if (!global.supabase) return null;
+    var shared = createSupabase();
+    if (shared) { _navSb = shared; return shared; }
     try {
       _navSb = global.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: {
@@ -968,8 +988,48 @@
     } catch (e) {}
   }
 
+  /** 导航样式：移动端把「退出登录」收进下拉菜单，不再常驻顶栏 */
+  function injectNavStyle() {
+    if (document.getElementById('kj-nav-style')) return;
+    var st = document.createElement('style');
+    st.id = 'kj-nav-style';
+    st.textContent = [
+      '/* 移动端：顶栏退出按钮隐藏，改由下拉菜单提供 */',
+      '@media (max-width: 980px) { #logoutBtn { display: none !important; } }',
+      '#mobileMenu .mobile-logout {',
+      '  display: none; width: 100%; text-align: left;',
+      '  background: none; border: 0; border-radius: var(--radius-sm);',
+      '  font: inherit; font-size: inherit; cursor: pointer;',
+      '  color: var(--color-danger, #e5484d);',
+      '}',
+      '#mobileMenu .mobile-logout:active { background: var(--color-bg-hover); }',
+      '@media (max-width: 980px) { #mobileMenu .mobile-logout.show { display: block; } }'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  /** 在移动端下拉菜单末尾补一个「退出登录」（仅在登录时显示） */
+  function ensureMobileLogout(onClick) {
+    var menu = document.getElementById('mobileMenu');
+    if (!menu) return null;
+    var btn = menu.querySelector('.mobile-logout');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'menu-item mobile-logout';
+      btn.innerHTML = '<i class="fas fa-right-from-bracket"></i> 退出登录';
+      menu.appendChild(btn);
+    }
+    if (onClick && !btn._kjBound) {
+      btn._kjBound = true;
+      btn.addEventListener('click', onClick);
+    }
+    return btn;
+  }
+
   function initNav(sb, opts) {
     opts = opts || {};
+    injectNavStyle();
     var logoutSel = opts.logoutBtn || '#logoutBtn';
     var userTagSel = opts.userTag || '#userTag';
     var loginUrl = opts.loginUrl || '/login/';
@@ -991,8 +1051,12 @@
     // 创建 Supabase 客户端（如果未传入；复用模块级懒初始化单例，而不是每次新建）
     if (!sb) sb = getNavSupabase();
 
+    function mobileLogoutEl() { return document.querySelector('#mobileMenu .mobile-logout'); }
+
     function hideLogout() {
       if (logoutBtn) logoutBtn.style.display = 'none';
+      var ml = mobileLogoutEl();
+      if (ml) ml.classList.remove('show');
       // 未登录：菜单项恢复默认"个人主页"文案，userTag 位置显示登录按钮
       setProfileMenuItem(null);
       if (userTag) {
@@ -1004,6 +1068,8 @@
 
     function showLogout() {
       if (logoutBtn) logoutBtn.style.display = '';
+      var ml = mobileLogoutEl();
+      if (ml) ml.classList.add('show');
     }
 
     // 头像缓存：uid → avatar_url（'' 表示确认没有）
@@ -1062,14 +1128,30 @@
       }
     }
 
-    // 绑定退出点击
+    // 退出登录：先让服务端失效会话，网络慢也不卡住（1.2 秒兜底跳转）
+    var _loggingOut = false;
+    function doLogout() {
+      if (_loggingOut) return;
+      if (!confirm('确定退出登录？')) return;
+      _loggingOut = true;
+      var finished = false;
+      function go() {
+        if (finished) return;
+        finished = true;
+        clearAuthLocal();
+        global.location.href = homeUrl;
+      }
+      try {
+        if (sb) sb.auth.signOut().then(go).catch(go);
+        else go();
+      } catch (e) { go(); }
+      setTimeout(go, 1200);
+    }
+
+    ensureMobileLogout(doLogout);
     if (logoutBtn && !logoutBtn._kjNavBound) {
       logoutBtn._kjNavBound = true;
-      logoutBtn.addEventListener('click', async function() {
-        if (!confirm('确定退出登录？')) return;
-        try { if (sb) await sb.auth.signOut(); } catch(e) {}
-        global.location.href = homeUrl;
-      });
+      logoutBtn.addEventListener('click', doLogout);
     }
 
     // 先从 localStorage 立即显示（无闪烁）
@@ -1135,11 +1217,14 @@
         if (key && key.indexOf('sb-') === 0 && key.indexOf('auth-token') !== -1) {
           var val = JSON.parse(localStorage.getItem(key));
           if (val && val.user) {
-            if (val.expires_at) {
-              if (val.expires_at * 1000 <= now) {
-                try { localStorage.removeItem(key); } catch(e) {}
-                return null;
-              }
+            // 注意：不要因为 access token 过期就删除凭证。
+            // access token 只有 1 小时，refresh token 仍可无限续期；
+            // 删掉整条记录等于把用户踢下线（这正是「保持登录留不住」的根因之一）。
+            // 只有连 refresh token 都没有时，才算彻底失效。
+            var expired = val.expires_at && (val.expires_at * 1000 <= now);
+            if (expired && !val.refresh_token) {
+              try { localStorage.removeItem(key); } catch (e) {}
+              return null;
             }
             return val.user;
           }

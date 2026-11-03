@@ -299,7 +299,7 @@
           <div class="forgot-row"><a href="javascript:void(0)" id="forgotPwdLink">忘记密码？</a></div>
         </div>
         <label class="keep-row" for="keepLogin">
-          <input type="checkbox" id="keepLogin" checked>
+          <input type="checkbox" id="keepLogin">
           <span class="keep-box"><i class="fas fa-check"></i></span>
           <span class="keep-text">在此设备保持登录 <b>3 个月</b></span>
         </label>
@@ -688,6 +688,11 @@
       if (loader) loader.style.display = 'none';
       if (card) card.style.display = '';
       renderCaptchaWidget('login');
+      // 「在此设备保持登录」跟随上次的选择，避免用户取消后又被默认勾上
+      try {
+        var keepBox = document.getElementById('keepLogin');
+        if (keepBox) keepBox.checked = KJ.authPersist();
+      } catch (e) {}
     })();
   </script>
 </body>
