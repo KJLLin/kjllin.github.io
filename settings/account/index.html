@@ -477,9 +477,15 @@
     // 登录状态面板
     (function initSessionCard(){
       try{
+        function keepLabel(d) {
+          if (d === null) return '仅本次浏览';
+          // 每次访问都会把有效期推到 90 天后，所以「剩余天数」会一直显示 90，
+          // 文案里说明这一点，避免看起来像没生效
+          return '还剩 ' + d + ' 天（使用中自动续期）';
+        }
         var days = KJ.authRemainingDays();
         var el = document.getElementById('sessKeepText');
-        if (el) el.textContent = (days === null) ? '仅本次浏览' : ('3 个月（还剩 ' + days + ' 天）');
+        if (el) el.textContent = keepLabel(days);
         var sw = document.getElementById('sessPersist');
         if (sw) {
           sw.checked = KJ.authPersist();
@@ -487,7 +493,7 @@
             KJ.setAuthPersist(sw.checked);
             KJ.toast(sw.checked ? '已开启：本机保持登录 3 个月' : '已关闭：关闭浏览器后需重新登录');
             var d2 = KJ.authRemainingDays();
-            if (el) el.textContent = (d2 === null) ? '仅本次浏览' : ('3 个月（还剩 ' + d2 + ' 天）');
+            if (el) el.textContent = keepLabel(d2);
           });
         }
       }catch(e){}
