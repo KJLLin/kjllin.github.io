@@ -252,9 +252,10 @@
               var key3 = localStorage.key(i3);
               if (key3 && key3.indexOf('sb-') === 0 && key3.indexOf('auth-token') !== -1) {
                 var val3 = JSON.parse(localStorage.getItem(key3));
-                if (val3 && val3.user && val3.expires_at) {
-                  if (val3.expires_at * 1000 > now3) return val3.user;
-                  try { localStorage.removeItem(key3); } catch(e) {}
+                if (val3 && val3.user) {
+                  // access token 只有 1 小时，refresh token 仍可续期；
+                  // 这里只用于「先显示已登录」，绝不能删凭证
+                  return val3.user;
                 }
               }
             }
