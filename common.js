@@ -760,15 +760,18 @@
    */
   function warmUpServices() {
     setTimeout(function() {
-      // 预热 REST API（轻量 HEAD 请求）
-      fetch(SUPABASE_URL + '/rest/v1/', {
-        method: 'HEAD',
+      var opts = { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined };
+      // 预热 REST：访问/rest/v1/ 根路径在任何权限下都返回 401，
+      // 会让控制台一直挂着两条红色错误；改成对一个公开表取一行。
+      fetch(SUPABASE_URL + '/rest/v1/posts?select=id&limit=1', {
+        method: 'GET',
         headers: { 'apikey': SUPABASE_KEY },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+        signal: opts.signal
       }).catch(function() {});
-      // 预热 Auth
+      // 预热 Auth：健康检查同样需要 apikey，否则 401
       fetch(SUPABASE_URL + '/auth/v1/health', {
-        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+        headers: { 'apikey': SUPABASE_KEY },
+        signal: opts.signal
       }).catch(function() {});
     }, 3000);
   }
