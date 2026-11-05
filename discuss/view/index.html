@@ -1248,7 +1248,7 @@
         btn.addEventListener('click', function () {
           Reader.fontIdx = (Reader.fontIdx + 1) % sizes.length;
           paper.style.setProperty('--read-fs', sizes[Reader.fontIdx] + 'px');
-          try { localStorage.setItem('kj_read_fs', String(Reader.fontIdx)); } catch (e) {}
+          try { KJ.safeStorage.setItem('kj_read_fs', String(Reader.fontIdx)); } catch (e) {}
           KJ.toast('字号：' + ['小', '标准', '大'][Reader.fontIdx]);
         });
       });

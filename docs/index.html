@@ -1186,7 +1186,7 @@ var docs = {
     category: '账号与安全',
     meta: '账户概览、安全、通知与隐私、外观、数据管理',
     toc: [['账户概览', 'overview'], ['账号与安全', 'account'], ['通知与隐私', 'notify'],
-          ['外观与阅读', 'appearance'], ['数据与存储', 'data'], ['退出登录', 'logout']],
+          ['外观与阅读', 'appearance'], ['跟着账号走', 'sync'], ['数据与存储', 'data'], ['退出登录', 'logout']],
     content: '<p><a href="/settings/">设置中心</a>把账号相关的开关集中在一处，分为五组。</p>'
       + '<h2 id="overview">账户概览<a href="#overview" class="anchor-icon">#</a></h2>'
       + '<p>顶部卡片显示头像、昵称、邮箱与管理员标识，并提供快捷入口：个人主页、站内信、编辑资料。</p>'
@@ -1212,9 +1212,17 @@ var docs = {
       + '<h2 id="appearance">外观与阅读<a href="#appearance" class="anchor-icon">#</a></h2>'
       + '<p><strong>主题</strong>可选浅色 / 深色 / 跟随系统，选择保存在本地并在全站生效。</p>'
       + '<p><strong>文章阅读字号</strong>分小 / 标准 / 大三档，只影响文章阅读页的正文；阅读页右上角的字号按钮改的是同一个设置。</p>'
+      + '<h2 id="sync">设置跟着账号走<a href="#sync" class="anchor-icon">#</a></h2>'
+      + '<p>主题、阅读字号、首页资讯组件这几项偏好会<strong>同步到账号</strong>：在手机上设成深色，回到电脑打开也是深色。</p>'
+      + '<ul><li><strong>登录时</strong> — 本地没改动过就直接采用账号里的设置；账号还没存过，就把当前设置存上去</li>'
+      + '<li><strong>未登录时改过</strong> — 登录后会弹一个小窗，列出「本机」和「账号」的差异，让你选<strong>合并我的</strong>还是<strong>用账号设置</strong>；点遮罩关掉就保持现状，下次再问</li>'
+      + '<li><strong>退出登录</strong> — 清空本机偏好，回到默认外观，换个人用这台机器不会看到上一个人的设置</li>'
+      + '<li><strong>首页排版</strong> — 走独立的一套同步。未登录时调过的排版，会在登录后首次同步时带到账号上（前提是账号里还没有排版）</li></ul>'
+      + '<p>只同步这三项：主题属于审美、字号属于阅读习惯、资讯组件属于首页布局偏好，跨设备一致才有意义。「更新提示看到哪了」「公告横幅收没收起来」这类则是<strong>每台设备各管各的</strong>，不同步。</p>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>同步以「最后一次改动」为准：同一条设置在 A 设备改完，B 设备下次打开会跟上；两台同时改，时间较晚的赢。</p></div></div>'
       + '<h2 id="data">数据与存储<a href="#data" class="anchor-icon">#</a></h2>'
       + '<ul><li><strong>导出我的数据</strong> — 下载一份 JSON，包含账号基本信息（昵称、邮箱、注册时间）、隐私与通知偏好、主题与字号、文章数等</li>'
-      + '<li><strong>清理本地缓存</strong> — 重置主题、字号、首页布局、更新提示等浏览器偏好。<strong>不会退出登录</strong>，也不影响云端数据</li></ul>'
+      + '<li><strong>重置外观与提示</strong> — 把主题、字号、更新提示等恢复默认。已登录时会<strong>一并重置账号里的设置</strong>（否则下次打开又被云端拉回来）；不会退出登录</li></ul>'
       + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>清理缓存会保留登录凭证，但会清掉本机保存的登录记录，之后只显示云端那份。</p></div></div>'
       + '<h2 id="logout">退出登录<a href="#logout" class="anchor-icon">#</a></h2>'
       + '<p>页面底部的「退出登录」会清除当前会话并返回首页；如果服务端响应慢，1.2 秒后也会直接跳走，不会卡在原地。</p>'

@@ -1423,6 +1423,24 @@ html[data-theme="dark"] .catalog-sheet {
     return null;
   }
 
+  /** 未登录时调过的排版（登录后云端为空时作为种子，不至于白调） */
+  function readGuestLayout() {
+    try {
+      var raw = localStorage.getItem('kj_home_layout_v1_guest');
+      if (!raw) return null;
+      var v = JSON.parse(raw);
+      if (Array.isArray(v)) {
+        var a = sanitizeLayout(v);
+        return a ? { order: a, ts: 0 } : null;
+      }
+      if (v && typeof v === 'object') {
+        var a2 = sanitizeLayout(v.order);
+        if (a2) return { order: a2, ts: Number(v.ts) || 0 };
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function writeLocal(order, ts) {
     try {
       localStorage.setItem(layoutKey(), JSON.stringify({ v: LAYOUT_VERSION, order: order, ts: ts }));
@@ -1495,9 +1513,12 @@ html[data-theme="dark"] .catalog-sheet {
         var localTs = loc ? loc.ts : 0;
 
         if (!row) {
-          // 云端还没有：把本地布局迁上去
-          var seed = ensureNewsIn(loc && loc.order.length ? loc.order.slice() : DEFAULT_LAYOUT.slice());
-          pushLayout(sb, userId, seed.slice(), localTs || Date.now());
+          // 云端还没有：把本机布局迁上去。
+          // 本机没有时再看未登录时调过的那份——游客态的心血不该白费。
+          var seedLoc = loc || readGuestLayout();
+          var seed = ensureNewsIn(seedLoc && seedLoc.order.length ? seedLoc.order.slice() : DEFAULT_LAYOUT.slice());
+          pushLayout(sb, userId, seed.slice(), localTs || (seedLoc && seedLoc.ts) || Date.now());
+          try { localStorage.removeItem('kj_home_layout_v1_guest'); } catch (e) {}
           return seed;
         }
 
@@ -1743,7 +1764,7 @@ html[data-theme="dark"] .catalog-sheet {
 
   function removeWidget(id) {
     if (FIXED.indexOf(id) >= 0) return;
-    if (id === 'news') { try { localStorage.setItem('kj_news_dismissed_v1', '1'); } catch (e) {} }
+    if (id === 'news') { try { KJ.safeStorage.setItem('kj_news_dismissed_v1', '1'); } catch (e) {} }
     STATE.layout = STATE.layout.filter(function(x) { return x !== id; });
     saveLayout();
     renderGrid();
@@ -1792,7 +1813,7 @@ html[data-theme="dark"] .catalog-sheet {
       adds[i].addEventListener('click', function() {
         var id = this.getAttribute('data-add');
         if (STATE.layout.indexOf(id) >= 0) return;
-        if (id === 'news') { try { localStorage.removeItem('kj_news_dismissed_v1'); } catch (e) {} }
+        if (id === 'news') { try { KJ.safeStorage.removeItem('kj_news_dismissed_v1'); } catch (e) {} }
         STATE.layout.push(id);
         saveLayout();
         renderGrid();

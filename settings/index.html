@@ -320,7 +320,7 @@
         </button>
         <button type="button" class="settings-item card-glass" id="clearCacheBtn">
           <span class="s-icon s-icon-data"><i class="fas fa-broom"></i></span>
-          <span class="s-body"><span class="s-title">清理本地缓存</span><span class="s-desc">重置主题、字号、布局等浏览器偏好，不会退出登录</span></span>
+          <span class="s-body"><span class="s-title">重置外观与提示</span><span class="s-desc">重置主题、字号等设置，已登录时同步到账号</span></span>
           <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
         </button>
       </div>
@@ -390,7 +390,7 @@
     });
     $('#themeBtn').addEventListener('click',function(){ KJ.toggleTheme(); applyThemeNow(); });
     KJ.onSystemThemeChange(function(){ if(KJ.getThemeState().mode==='auto') applyThemeNow(); });
-    updateThemeChips();
+    applyThemeNow();   // 进页面先按已保存的主题渲染，不能等用户点按钮才生效
 
     // ── 阅读字号 ──
     var FONT_IDX=1;
@@ -406,7 +406,7 @@
     document.querySelectorAll('[data-font]').forEach(function(c){
       c.addEventListener('click',function(){
         FONT_IDX=Number(c.dataset.font);
-        try{ localStorage.setItem('kj_read_fs',String(FONT_IDX)); }catch(e){}
+        try{ KJ.safeStorage.setItem('kj_read_fs',String(FONT_IDX)); }catch(e){}
         paintFontChips();
         KJ.toast('阅读字号：'+['小','标准','大'][FONT_IDX]);
       });
@@ -564,21 +564,44 @@
     $('#exportBtn').addEventListener('click',exportData);
 
     // ── 清理本地缓存 ──
+    // 只清「偏好类」的键：白名单式，避免误删游戏最高分、编辑器草稿、本机登录记录
+    var CLEAR_EXACT={
+      'kj_release_seen':1,          // 更新提示已读
+      'kj_pm_banner_watermark':1,   // 私信横幅水位
+      'kj_desktop_notif_on':1,      // 桌面通知开关
+      'kj_announcement_hidden':1,   // 公告横幅隐藏
+      'kj_onboarding_shown':1       // 新手引导
+    };
+
     $('#clearCacheBtn').addEventListener('click',function(){
-      if(!confirm('清理本站保存在浏览器里的偏好设置（主题、字号、首页布局、更新提示等）？\n\n不会退出登录，也不会影响云端数据。')) return;
+      var signedIn=!!user;
+      var tip=signedIn
+        ? '重置主题、字号、更新提示等设置？\n\n这些设置存在账号里，重置会同步到其他设备；不会退出登录。'
+        : '重置主题、字号、更新提示等设置？\n\n不会影响云端数据。';
+      if(!confirm(tip)) return;
+
       var removed=0;
+      // 主题 / 字号 / 资讯标记 / 首页布局本地副本 —— 交给统一模块，口径一致
+      var before=0;
+      try{ before=localStorage.length; }catch(e){}
+      try{ KJ.prefs.clearLocal(); }catch(e){}
+      try{ removed += Math.max(0, before-localStorage.length); }catch(e){}
+
+      // 其余设备级小状态
       try{
-        var keys=[];
-        for(var i=0;i<localStorage.length;i++){
-          var k=localStorage.key(i);
-          if(!k) continue;
-          if(k.indexOf('sb-')===0) continue;              // 登录凭证，绝不能动
-          if(k==='kj_auth_persist'||k==='kj_auth_until') continue; // 与登录保持相关
-          if(k.indexOf('kj')===0){ keys.push(k); }
+        for(var k in CLEAR_EXACT){
+          if(localStorage.getItem(k)!==null){ localStorage.removeItem(k); removed++; }
         }
-        for(var j=0;j<keys.length;j++){ localStorage.removeItem(keys[j]); removed++; }
       }catch(e){}
-      KJ.toast(removed?('已清理 '+removed+' 项本地数据，即将刷新'):'没有需要清理的本地数据');
+
+      // 已登录：把重置后的默认值推回云端，否则下次打开又被云端覆盖回来
+      try{ if(signedIn) KJ.prefs.pushNow(true); }catch(e){}
+
+      // 立刻回到浅色，让用户看到确实生效
+      try{ KJ.applyTheme('#f5f5f7','#0a0a0a'); updateThemeChips(); }catch(e){}
+      try{ FONT_IDX=1; paintFontChips(); }catch(e){}
+
+      KJ.toast(removed?('已重置 '+removed+' 项设置，即将刷新'):'没有需要重置的设置');
       if(removed) setTimeout(function(){ location.reload(); },1100);
     });
 
