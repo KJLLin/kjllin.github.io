@@ -127,6 +127,10 @@
         <div class="info-row"><span class="label">用户 ID</span><span class="value" id="infoUserId">--</span></div>
         <div class="info-row"><span class="label">注册时间</span><span class="value" id="infoCreated">--</span></div>
         <div class="info-row"><span class="label">邮箱验证</span><span class="value" id="infoVerified">--</span></div>
+        <div class="info-row"><span class="label">主页链接</span><span class="value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+          <a href="#" id="profileLink" target="_blank" rel="noopener" style="color:var(--color-accent);text-decoration:none;font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">/u/?id=…</a>
+          <button type="button" id="copyLinkBtn" style="border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);border-radius:999px;padding:2px 10px;font-size:11px;font-family:inherit;cursor:pointer">复制</button>
+        </span></div>
       </div>
     </div>
   </div>
@@ -155,6 +159,9 @@
         $('#nickInput').value=nick;
         $('#emailShow').value=user.email||'';
         $('#infoUserId').textContent=user.id.substring(0,12)+'...';
+        var link=location.origin+'/u/?id='+user.id;
+        var linkEl=$('#profileLink');
+        if(linkEl){ linkEl.href=link; linkEl.textContent='/u/?id='+user.id.substring(0,8)+'…'; linkEl.title=link; }
         $('#infoCreated').textContent=fmtDate(user.created_at);
         if(user.email_confirmed_at){$('#infoVerified').textContent='已验证';$('#infoVerified').innerHTML='已验证 <i class="fas fa-check"></i>';$('#infoVerified').style.color='var(--color-success)';}
         else{$('#infoVerified').textContent='未验证';$('#infoVerified').style.color='var(--color-warning)';}
@@ -278,21 +285,47 @@
       if(f)uploadAvatar(f);
     });
 
+    $('#copyLinkBtn').addEventListener('click',async function(){
+      if(!user) return;
+      var link=location.origin+'/u/?id='+user.id;
+      var btn=this, old=btn.textContent;
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(link); }
+        else{
+          var ta=document.createElement('textarea');
+          ta.value=link; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        }
+        btn.textContent='已复制';
+        setTimeout(function(){btn.textContent=old;},1500);
+      }catch(e){
+        KJ.toast('复制失败，可手动选中链接');
+      }
+    });
+
     $('#saveBtn').addEventListener('click',async function(){
       if(!KJ.rateLimit('profile_save', 5000)) return; // 5秒内只能保存一次
       var nick=$('#nickInput').value.trim();
       if(!nick||nick.length>20){KJ.toast('昵称需1-20个字符');return}
+      if(nick===currentNick){KJ.toast('昵称没有变化');return}
       var btn=$('#saveBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 保存中...';
       try{
+        // users 表是昵称的主数据源（文章作者、个人页都读它）：
+        // 这一步失败就不能装作成功，否则页面显示新昵称、别处还是旧的。
         var {error:usersErr}=await sb.from('users').update({nick:nick}).eq('id',user.id);
-        if(usersErr){KJ.toast('资料更新失败（users 表）');console.warn('users update error:',usersErr);}
-        await sb.auth.updateUser({data:{nick:nick}});
-        // 强制从服务端刷新用户元数据，确保本地缓存同步，防止刷新后回退旧昵称
-        try{await sb.auth.getUser()}catch(e){console.warn('getUser refresh failed:',e)}
-        $('#profileAvatarLarge').textContent=nick.charAt(0).toUpperCase();
+        if(usersErr) throw usersErr;
+        // auth 元数据只用于导航栏即时显示，失败不影响主流程
+        try{await sb.auth.updateUser({data:{nick:nick}});}catch(e){console.warn('metadata sync:',e)}
+        try{await sb.auth.getUser();}catch(e){}
+        currentNick=nick;
+        // 注意：不能直接写 textContent，否则会把自定义头像覆盖成首字母
+        setAvatarUI(currentAvatar);
         $('#nickFeedback').textContent='';$('#nickFeedback').className='form-feedback';
         KJ.toast('资料已更新');
-      }catch(e){KJ.toast('更新失败：'+e.message)}
+      }catch(e){
+        console.warn('profile save:',e);
+        KJ.toast('保存失败：'+(e&&e.message?e.message:'请稍后重试'));
+      }
       btn.disabled=false;btn.innerHTML='<i class="fas fa-save"></i> 保存修改';
     });
 

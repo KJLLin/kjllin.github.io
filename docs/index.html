@@ -1184,29 +1184,40 @@ var docs = {
   'settings': {
     title: '设置中心',
     category: '账号与安全',
-    meta: '账户概览、私信隐私、外观与会话管理',
-    toc: [['账户概览', 'overview'], ['头像', 'avatar'], ['私信接收设置', 'privacy'], ['外观', 'appearance'], ['退出登录', 'logout']],
-    content: '<p><a href="/settings/">设置中心</a>集中管理账号、隐私与外观。</p>'
+    meta: '账户概览、安全、通知与隐私、外观、数据管理',
+    toc: [['账户概览', 'overview'], ['账号与安全', 'account'], ['通知与隐私', 'notify'],
+          ['外观与阅读', 'appearance'], ['数据与存储', 'data'], ['退出登录', 'logout']],
+    content: '<p><a href="/settings/">设置中心</a>把账号相关的开关集中在一处，分为五组。</p>'
       + '<h2 id="overview">账户概览<a href="#overview" class="anchor-icon">#</a></h2>'
       + '<p>顶部卡片显示头像、昵称、邮箱与管理员标识，并提供快捷入口：个人主页、站内信、编辑资料。</p>'
-      + '<p>卡片下方展示三项实时数据：<strong>未读通知</strong>、<strong>登录设备数</strong>、<strong>我的文章数</strong>。</p>'
-      + '<h2 id="avatar">头像<a href="#avatar" class="anchor-icon">#</a></h2>'
-      + '<p>在 <a href="/settings/profile/">个人资料</a> 里可以换头像：</p>'
-      + '<ul><li>点一下头像即可选择本地图片，也可以直接把图片拖到头像上</li>'
-      + '<li>支持 JPG / PNG / WebP / GIF，<strong>最大 5MB</strong>；上传前会自动<strong>居中裁成方形</strong>并压到 512×512，所以上传大图也会很快</li>'
-      + '<li>不设置头像时，系统用<strong>昵称首字</strong>加一组随机的柔和渐变色作为默认头像，同一个人每次看到的颜色都一样</li>'
-      + '<li>点「恢复默认头像」会删除已上传的图片并回到首字头像</li>'
-      + '<li>头像会同步出现在导航栏、个人主页、文章列表与详情、站内信会话等位置</li></ul>'
-      + '<h2 id="privacy">私信接收设置<a href="#privacy" class="anchor-icon">#</a></h2>'
-      + '<p>决定谁可以给你发私信，修改后立即生效：</p>'
-      + '<ul><li><strong>所有人（拉黑除外）</strong> — 默认，最开放</li>'
-      + '<li><strong>关注的人与管理员</strong> — 只接受你关注的人和管理员</li>'
-      + '<li><strong>仅限管理员</strong> — 最严格</li></ul>'
-      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>无论选择哪一档，被你拉黑的用户都无法给你发送私信。</p></div></div>'
-      + '<h2 id="appearance">外观<a href="#appearance" class="anchor-icon">#</a></h2>'
-      + '<p>可选择<strong>浅色 / 深色 / 跟随系统</strong>三种主题，选择会保存在本地并在全站生效。</p>'
+      + '<p>卡片下方是三项实时数据：<strong>未读通知</strong>、<strong>登录设备</strong>、<strong>我的文章</strong>，点一下可以直接跳到对应页面。</p>'
+      + '<h2 id="account">账号与安全<a href="#account" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>账号安全中心</strong> — 安全概览、账号信息、当前设备、最近登录、第三方绑定</li>'
+      + '<li><strong>个人资料</strong> — 昵称、头像，以及账号信息与主页链接</li>'
+      + '<li><strong>修改密码</strong> — 更新登录密码，带实时强度提示</li>'
+      + '<li><strong>登录设备</strong> — 查看登录记录，一键退出其他设备</li></ul>'
+      + '<h2 id="notify">通知与隐私<a href="#notify" class="anchor-icon">#</a></h2>'
+      + '<p><strong>通知接收设置</strong>单独成页（<code>/settings/notifications/</code>），可以逐项开关：</p>'
+      + '<ul><li><strong>站内信</strong> — 收到新私信时提醒</li>'
+      + '<li><strong>点赞</strong> — 你的文章被点赞</li>'
+      + '<li><strong>关注</strong> — 有人关注你</li>'
+      + '<li><strong>公告</strong> — 管理员发布的全站公告</li>'
+      + '<li><strong>系统</strong> — 平台通知与账号提醒</li></ul>'
+      + '<p>关掉后不再<strong>产生这类新通知</strong>，已经收到的会保留。同一页还能开启<strong>浏览器桌面通知</strong>：页面在后台时用系统通知栏提醒你，前台仍只用站内铃铛，避免重复打扰。</p>'
+      + '<p><strong>私信接收设置</strong>决定谁可以给你发私信，修改后立即生效：</p>'
+      + '<ul><li><strong>所有人</strong> — 默认，最开放（被你拉黑的人除外）</li>'
+      + '<li><strong>关注 + 管理员</strong> — 只接受你关注的人和管理员</li>'
+      + '<li><strong>仅管理员</strong> — 最严格</li></ul>'
+      + '<p><strong>参与游戏排行榜</strong>开关关闭后，你不会出现在公开榜单里，但成绩仍会正常记录。</p>'
+      + '<h2 id="appearance">外观与阅读<a href="#appearance" class="anchor-icon">#</a></h2>'
+      + '<p><strong>主题</strong>可选浅色 / 深色 / 跟随系统，选择保存在本地并在全站生效。</p>'
+      + '<p><strong>文章阅读字号</strong>分小 / 标准 / 大三档，只影响文章阅读页的正文；阅读页右上角的字号按钮改的是同一个设置。</p>'
+      + '<h2 id="data">数据与存储<a href="#data" class="anchor-icon">#</a></h2>'
+      + '<ul><li><strong>导出我的数据</strong> — 下载一份 JSON，包含账号基本信息（昵称、邮箱、注册时间）、隐私与通知偏好、主题与字号、文章数等</li>'
+      + '<li><strong>清理本地缓存</strong> — 重置主题、字号、首页布局、更新提示等浏览器偏好。<strong>不会退出登录</strong>，也不影响云端数据</li></ul>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>清理缓存会保留登录凭证，但会清掉本机保存的登录记录，之后只显示云端那份。</p></div></div>'
       + '<h2 id="logout">退出登录<a href="#logout" class="anchor-icon">#</a></h2>'
-      + '<p>页面底部的「退出登录」会清除当前会话并返回首页。</p>'
+      + '<p>页面底部的「退出登录」会清除当前会话并返回首页；如果服务端响应慢，1.2 秒后也会直接跳走，不会卡在原地。</p>'
   },
   'admin': {
     title: '管理后台',
@@ -1235,27 +1246,39 @@ var docs = {
   'devices': {
     title: '设备管理',
     category: '账号与安全',
-    meta: '查看所有登录过你账号的设备记录',
-    toc: [['设备信息', 'device-info']],
-    content: '<p>设备管理页面展示所有登录过你账号的设备记录。</p>'
-      + '<h2 id="device-info">设备信息<a href="#device-info" class="anchor-icon">#</a></h2>'
-      + '<p>每条记录包含：</p>'
-      + '<ul><li>浏览器类型和版本</li><li>操作系统及版本</li><li>屏幕分辨率</li><li>IP 地址和登录时间</li></ul>'
-      + '<div class="admonition admonition--tip"><span class="admonition-icon"><i class="fas fa-lightbulb"></i></span><div class="admonition-content"><span class="admonition-heading">提示</span><p>如果发现可疑的设备登录记录，建议立即修改密码。</p></div></div>'
+    meta: '查看登录记录、退出其他设备',
+    toc: [['记录说明', 'device-info'], ['退出其他设备', 'revoke'], ['单台设备', 'single']],
+    content: '<p>在 <a href="/settings/devices/">登录设备</a> 页可以看到账号在哪些设备上登录过。</p>'
+      + '<h2 id="device-info">记录说明<a class="anchor-icon" href="#device-info">#</a></h2>'
+      + '<p>页面顶部是统计（设备记录、浏览器、操作系统、IP 地址数），下面分两块：</p>'
+      + '<ul><li><strong>当前设备</strong> — 你现在用的这台，显示浏览器、系统、屏幕与在线状态</li>'
+      + '<li><strong>其他登录记录</strong> — 最近一年内其他设备的登录时间与 IP</li></ul>'
+      + '<p>记录来源有两处：登录时写入云端的 <code>login_devices</code>，以及浏览器本地保存的最近 10 条。两处会去重合并显示。</p>'
+      + '<h2 id="revoke">退出其他设备<a class="anchor-icon" href="#revoke">#</a></h2>'
+      + '<p>如果怀疑账号在别处登录过，点「<strong>退出所有其他设备</strong>」：其他设备的会话立即失效，<strong>当前这台保持登录</strong>。</p>'
+      + '<h2 id="single">单台设备<a class="anchor-icon" href="#single">#</a></h2>'
+      + '<p>受限于当前的会话机制，<strong>暂不支持指定某一台设备远程下线</strong>。要踢掉某一台，在那台设备上点「退出登录」即可；如果设备已经不在手上，用上面的「退出所有其他设备」。</p>'
+      + '<div class="admonition admonition--tip"><span class="admonition-icon"><i class="fas fa-lightbulb"></i></span><div class="admonition-content"><span class="admonition-heading">提示</span><p>发现不认识的登录记录时，先退出其他设备，再改一次密码更稳妥。</p></div></div>'
   },
   'password': {
     title: '修改密码',
     category: '账号与安全',
-    meta: '更新你的登录密码',
-    toc: [['修改流程', 'steps']],
-    content: '<p>在 <a href="/settings/password/">密码修改页面</a> 可以更新你的登录密码。</p>'
-      + '<h2 id="steps">修改流程<a href="#steps" class="anchor-icon">#</a></h2>'
+    meta: '更新登录密码',
+    toc: [['密码要求', 'rules'], ['修改流程', 'steps'], ['忘了当前密码', 'forgot']],
+    content: '<p>在 <a href="/settings/password/">修改密码</a> 页可以更新登录密码。</p>'
+      + '<h2 id="rules">密码要求<a class="anchor-icon" href="#rules">#</a></h2>'
+      + '<p>新密码必须同时满足：</p>'
+      + '<ul><li><strong>至少 8 位</strong></li><li><strong>包含字母</strong></li><li><strong>包含数字</strong></li></ul>'
+      + '<p>输入时下方会实时显示规则命中情况与强度评级。大写字母和符号不是必填，但能让强度从「可用」升到「强」。</p>'
+      + '<h2 id="steps">修改流程<a class="anchor-icon" href="#steps">#</a></h2>'
       + '<ol class="steps">'
-      + '<li><span class="step-content">输入当前密码进行验证。</span></li>'
-      + '<li><span class="step-content">输入新密码（至少 8 位，建议包含大小写字母和数字）。</span></li>'
-      + '<li><span class="step-content">确认新密码，点击「更新密码」。</span></li>'
+      + '<li><span class="step-content">输入当前密码（用于确认是你本人）。</span></li>'
+      + '<li><span class="step-content">输入新密码，下方会实时提示是否满足要求。</span></li>'
+      + '<li><span class="step-content">再输入一次确认，点「更新密码」；三个输入框都支持回车提交。</span></li>'
       + '</ol>'
-      + '<div class="admonition admonition--danger"><span class="admonition-icon"><i class="fas fa-triangle-exclamation"></i></span><div class="admonition-content"><span class="admonition-heading">重要</span><p>修改密码后，所有设备上的登录状态将被清除，需要重新登录。</p></div></div>'
+      + '<h2 id="forgot">忘了当前密码<a class="anchor-icon" href="#forgot">#</a></h2>'
+      + '<p>点「当前密码」下方的<strong>忘记当前密码？发送重置邮件</strong>，系统会给你的注册邮箱发一封重置链接。也可以在登录页点「忘记密码？」。</p>'
+      + '<div class="admonition admonition--note"><span class="admonition-icon"><i class="fas fa-circle-info"></i></span><div class="admonition-content"><span class="admonition-heading">说明</span><p>改密码<strong>不会</strong>把其他设备踢下线。想一次性清掉别处的登录，去 <a href="/settings/devices/">登录设备</a> 点「退出所有其他设备」。</p></div></div>'
   },
   'faq': {
     title: '常见问题',

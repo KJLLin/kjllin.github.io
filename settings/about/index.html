@@ -33,6 +33,11 @@
     .about-logo-text{font-size:48px;font-weight:800;color:var(--color-accent);letter-spacing:-1px}
     .about-version{font-size:13px;color:var(--color-text-tertiary);margin-top:4px}
 
+    .rel-list{list-style:none;padding:0;margin:0}
+    .rel-list li{position:relative;padding:6px 0 6px 18px;font-size:13.5px;color:var(--color-text-secondary);line-height:1.7}
+    .rel-list li::before{content:'';position:absolute;left:3px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--color-accent);opacity:.6}
+    .rel-list li + li{border-top:1px dashed var(--color-border)}
+
     .link-list{list-style:none;padding:0;margin:0}
     .link-list li{margin-bottom:8px}
     .link-list li:last-child{margin-bottom:0}
@@ -91,9 +96,15 @@
     <div class="card">
       <div class="about-logo">
         <div class="about-logo-text">KJLLin</div>
-        <div class="about-version">版本 1.0 · Build 2026</div>
+        <div class="about-version" id="verLine">版本读取中…</div>
       </div>
       <p>KJLLin 是一个现代化的个人网站平台，融合了社交互动、云端存储、休闲游戏等功能。本站采用 <strong>Apple Design Language</strong> 设计语言，致力于提供优雅、流畅的用户体验。</p>
+    </div>
+
+    <div class="card" id="changelogCard" style="display:none">
+      <h2><i class="fas fa-clock-rotate-left"></i> 最近更新<span id="relDate" style="margin-left:auto;font-size:12px;font-weight:400;color:var(--color-text-tertiary)"></span></h2>
+      <p id="relTitle" style="font-weight:600;color:var(--color-text-primary)"></p>
+      <ul class="rel-list" id="relChanges"></ul>
     </div>
 
     <div class="card">
@@ -103,7 +114,7 @@
       <p><strong><i class="fas fa-gamepad"></i> 游戏中心</strong> — 石头剪刀布、恐龙快跑、2048、贪吃蛇、舒尔特方格</p>
       <p><strong><i class="fas fa-cloud"></i> 资源云盘</strong> — 云端文件存储，支持上传/下载/预览</p>
       <p><strong><i class="fas fa-book-open"></i> 文章广场</strong> — Markdown 社区文章，基于话题的交流</p>
-      <p><strong><i class="fas fa-gear"></i> 设置</strong> — 账号安全、个人资料、设备管理、主题外观</p>
+      <p><strong><i class="fas fa-gear"></i> 设置</strong> — 账号安全、个人资料、设备管理、通知与隐私、主题外观</p>
     </div>
 
     <div class="card">
@@ -139,6 +150,40 @@
   <script>
     (function(){
     var $=function(s){return document.querySelector(s);};
+    var sb=null;
+    try{ sb=KJ.createSupabase(); }catch(e){}
+
+    // ── 版本与更新记录（读站点发布表，不再硬编码） ──
+    (async function loadRelease(){
+      var line=$('#verLine');
+      if(!sb){ if(line) line.textContent='版本 1.0'; return; }
+      try{
+        var r=await sb.rpc('latest_release');
+        var rel=(!r.error&&r.data&&r.data.length)?r.data[0]:null;
+        if(!rel){ if(line) line.textContent='版本 1.0'; return; }
+
+        if(line) line.textContent='版本 '+rel.version;
+        var d=rel.released_at?new Date(rel.released_at):null;
+        if($('#relDate')&&d){
+          $('#relDate').textContent=d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+        }
+        if($('#relTitle')) $('#relTitle').textContent=rel.title||'';
+
+        var changes=rel.changes;
+        if(typeof changes==='string'){ try{ changes=JSON.parse(changes); }catch(e){ changes=[]; } }
+        if(Array.isArray(changes)&&changes.length&&$('#relChanges')){
+          var html='';
+          for(var i=0;i<changes.length;i++){
+            html+='<li>'+KJ.escapeHtml(String(changes[i]))+'</li>';
+          }
+          $('#relChanges').innerHTML=html;
+          $('#changelogCard').style.display='';
+        }
+      }catch(e){
+        console.warn('latest_release:',e);
+        if(line) line.textContent='版本 1.0';
+      }
+    })();
 
     var themeBtn=$('#themeBtn');
     function updateThemeUI(){var s=KJ.applyTheme('#f5f5f7','#0a0a0a');themeBtn.innerHTML=KJ.getThemeIcon(s.mode);}

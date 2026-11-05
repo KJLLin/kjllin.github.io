@@ -62,6 +62,20 @@
     .device-time .ip{font-size:11px;font-family:var(--font-mono);color:var(--color-text-tertiary)}
     .cloud-badge{font-size:10px;color:var(--color-accent);font-weight:500}
 
+    /* ── 会话操作 ── */
+    .sec-desc{font-size:12.5px;color:var(--color-text-tertiary);line-height:1.65;margin:6px 0 12px}
+    .btn-row{display:flex;gap:10px;flex-wrap:wrap}
+    .act-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-full);
+      border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);
+      font-size:13px;font-weight:500;font-family:var(--font-sans);cursor:pointer;
+      transition:background .18s ease,color .18s ease,border-color .18s ease,transform .12s ease}
+    .act-btn:hover{background:var(--color-bg-hover);color:var(--color-text-primary)}
+    .act-btn:active{transform:scale(.97)}
+    .act-btn:disabled{opacity:.5;cursor:not-allowed}
+    .act-btn.act-danger{color:var(--color-danger);border-color:rgba(255,59,48,.35)}
+    .act-btn.act-danger:hover{background:var(--color-danger-bg)}
+    .sec-note{font-size:11.5px;color:var(--color-text-tertiary);line-height:1.6;margin-top:12px}
+
     /* ── 空状态 ── */
     .empty-state{text-align:center;padding:40px 16px;color:var(--color-text-tertiary)}
     .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:0.5}
@@ -86,6 +100,8 @@
       .device-info{flex:1 1 60%}.device-info .name{font-size:13px}
       .device-info .detail{font-size:11px;flex-wrap:wrap;gap:4px}
       .device-time{font-size:11px;flex:1 1 auto;text-align:left;margin-top:4px;width:100%}
+      .btn-row{gap:8px}
+      .act-btn{flex:1 1 100%;justify-content:center;font-size:12.5px}
       .card-glass{padding:16px 14px !important}
     }
   </style>
@@ -134,7 +150,7 @@
       <!-- 统计 -->
       <div class="card card-glass stats-card">
         <div class="stats-bar">
-          <div class="stat-item"><div class="stat-num" id="statTotal">0</div><div class="stat-label">登录设备</div></div>
+          <div class="stat-item"><div class="stat-num" id="statTotal">0</div><div class="stat-label">设备记录</div></div>
           <div class="stat-item"><div class="stat-num" id="statBrowser">0</div><div class="stat-label">浏览器</div></div>
           <div class="stat-item"><div class="stat-num" id="statOS">0</div><div class="stat-label">操作系统</div></div>
           <div class="stat-item"><div class="stat-num" id="statIP">0</div><div class="stat-label">IP 地址</div></div>
@@ -149,8 +165,19 @@
 
       <!-- 历史设备 -->
       <div class="card card-glass section-card" style="animation-delay:0.18s">
-        <h2><i class="fas fa-clipboard"></i> 最近 1 年登录过的设备 <span class="count" id="historyCount"></span></h2>
+        <h2><i class="fas fa-clipboard"></i> 其他登录记录 <span class="count" id="historyCount"></span></h2>
         <div id="deviceList"></div>
+      </div>
+
+      <!-- 会话操作 -->
+      <div class="card card-glass section-card" style="animation-delay:0.24s">
+        <h2><i class="fas fa-shield-halved"></i> 会话操作</h2>
+        <p class="sec-desc">怀疑账号在别处登录过？可以让其他设备立刻下线，当前这台不受影响。</p>
+        <div class="btn-row">
+          <button type="button" class="act-btn act-danger" id="logoutOthers"><i class="fas fa-right-from-bracket"></i> 退出所有其他设备</button>
+          <button type="button" class="act-btn" id="clearLocal"><i class="fas fa-eraser"></i> 清除本机记录</button>
+        </div>
+        <p class="sec-note" id="sessionNote">单台设备暂不支持远程下线，可在该设备上点「退出登录」。</p>
       </div>
     </div>
   </div>
@@ -304,6 +331,35 @@
         loadDevices();
       }catch(e){showLoginPrompt()}
     }
+
+    // 退出所有其他设备（当前设备保持登录）
+    $('#logoutOthers').addEventListener('click',async function(){
+      if(!sb||!user) return;
+      if(!confirm('让其他所有设备退出登录？\n\n当前这台会保持登录。')) return;
+      var btn=this;
+      btn.disabled=true;
+      var old=btn.innerHTML;
+      btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> 处理中…';
+      try{
+        var r=await sb.auth.signOut({scope:'others'});
+        if(r&&r.error) throw r.error;
+        KJ.toast('其他设备已全部退出',2800);
+      }catch(e){
+        console.warn('signOut others:',e);
+        KJ.toast('操作失败，请稍后重试');
+      }finally{
+        btn.disabled=false;
+        btn.innerHTML=old;
+      }
+    });
+
+    // 清除本机登录记录（只删浏览器里那份历史）
+    $('#clearLocal').addEventListener('click',function(){
+      if(!confirm('清除这台设备上保存的登录记录？\n云端记录不受影响。')) return;
+      try{ localStorage.removeItem('kjllin_login_history'); }catch(e){}
+      KJ.toast('本机记录已清除');
+      loadDevices();
+    });
 
     function showLoginPrompt(){
       $('#loginPrompt').style.display='';$('#devicesContent').style.display='none';

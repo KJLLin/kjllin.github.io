@@ -1770,6 +1770,7 @@
     createSupabase: createSupabase,
     sdkMissing: sdkMissing,
     AUTH_KEEP_DAYS: AUTH_KEEP_DAYS,
+    clearAuthLocal: clearAuthLocal,
     authPersist: authPersist,
     setAuthPersist: setAuthPersist,
     authRemainingDays: authRemainingDays,
