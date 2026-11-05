@@ -620,7 +620,7 @@
         // 概览统计：任何一项失败都不影响其他项
         var st=await Promise.allSettled([
           sb.rpc('notif_stats'),
-          sb.from('login_devices').select('id',{count:'exact',head:true}).eq('user_id',user.id),
+          sb.from('login_devices').select('browser,os').eq('user_id',user.id),
           sb.from('posts').select('id',{count:'exact',head:true}).eq('user_id',user.id),
           sb.from('users').select('is_admin,avatar_url').eq('id',user.id).maybeSingle()
         ]);
@@ -629,8 +629,14 @@
           var un=Number(st[0].value.data[0].unread)||0;
           $('#statNotif').textContent=un;
         }else{ $('#statNotif').textContent='0'; }
-        if(st[1].status==='fulfilled'&&st[1].value&&typeof st[1].value.count==='number'){
-          $('#statDevices').textContent=st[1].value.count;
+        if(st[1].status==='fulfilled'&&st[1].value&&!st[1].value.error){
+          // 与设备管理页同口径：按「浏览器 + 系统」去重，而不是记录条数
+          var dRows=st[1].value.data||[], dSeen={}, dCount=0;
+          for(var di=0;di<dRows.length;di++){
+            var dk=(dRows[di].browser||'')+'|'+(dRows[di].os||'');
+            if(!dSeen[dk]){ dSeen[dk]=1; dCount++; }
+          }
+          $('#statDevices').textContent=dCount;
         }else{ $('#statDevices').textContent='0'; }
         if(st[2].status==='fulfilled'&&st[2].value&&typeof st[2].value.count==='number'){
           $('#statPosts').textContent=st[2].value.count;

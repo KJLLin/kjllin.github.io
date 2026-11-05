@@ -371,7 +371,8 @@
           var r2=await sb.from('users').select('last_login_time,status,is_admin,avatar_url').eq('id',user.id).limit(1);
           if(r2.data&&r2.data.length){ KJ.paintAvatar($('#profileAvatar'), { nick: nick, avatar_url: r2.data[0].avatar_url||'' }); }
           if(r2.data&&r2.data.length){
-            $('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);
+            // last_login_time 可能没回填（老数据），退回 Auth 的 last_sign_in_at
+            $('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time||user.last_sign_in_at);
             var st=r2.data[0].status==='active';
             var stEl=$('#infoStatus');
             stEl.textContent=st?'正常':'待审核';
