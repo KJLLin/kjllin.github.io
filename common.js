@@ -12,8 +12,14 @@
   // ====================== 防 Safari/Edge Tracking Prevention ======================
   const safeStorage = {
     getItem: function(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
-    setItem: function(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },
-    removeItem: function(k) { try { localStorage.removeItem(k); } catch(e) {} }
+    setItem: function(k, v) {
+      try { localStorage.setItem(k, v); } catch(e) {}
+      onPrefKeyWritten(k);          // 偏好改动 → 登录时同步到云端 / 未登录时打标记
+    },
+    removeItem: function(k) {
+      try { localStorage.removeItem(k); } catch(e) {}
+      onPrefKeyWritten(k);
+    }
   };
 
   const safeSession = {
@@ -108,6 +114,8 @@
         if (k2 && k2.indexOf('sb-') === 0 && k2.indexOf('-auth-token') > 0) sessionStorage.removeItem(k2);
       }
     } catch (e) {}
+    // 退出＝清空本地偏好：换个人用这台机器，不该看到上一个人的主题/字号
+    try { detachPrefs(); clearLocalPrefs(); } catch (e) {}
   }
 
   // 按「是否保持登录」把 token 分发到 localStorage 或 sessionStorage
@@ -530,6 +538,305 @@
    */
   function onSystemThemeChange(callback) {
     global.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', callback);
+  }
+
+  // ====================== 账号偏好（本地 ⇄ 云端） ======================
+  /**
+   * 三项跨设备有意义的偏好：主题、阅读字号、首页资讯组件是否被移除。
+   *
+   * 生命周期：
+   *   · 未登录 → 只写本地，并打 touched 标记（登录时才知道要不要问用户合并）
+   *   · 已登录 → 改动后防抖 1.2 秒推到 user_prefs
+   *   · 退出   → 清空本地，回到默认，换个人用这台机器看不到上一个人的设置
+   *
+   * 首页组件「布局」不在这里：它有自己的 home_layouts 表与 RPC，
+   * 由首页自己同步，避免两套机制互相覆盖。
+   */
+  var PREF_META_KEY = 'kj_prefs_meta';
+  var PREF_KEY_MAP = { theme: 1, kj_read_fs: 1, kj_news_dismissed_v1: 1 };
+  var LAYOUT_PREFIX = 'kj_home_layout_v1_';
+
+  var _prefsSb = null;
+  var _prefsTimer = null;
+  var _prefsApplying = false;   // 应用云端值时抑制写入钩子，避免回环
+  var _prefsLast = '';
+
+  function prefReadMeta() {
+    try {
+      var v = JSON.parse(safeStorage.getItem(PREF_META_KEY) || '{}');
+      return { touched: v && v.touched === true, ts: Number(v && v.ts) || 0 };
+    } catch (e) { return { touched: false, ts: 0 }; }
+  }
+
+  function prefMarkTouched() {
+    try {
+      safeStorage.setItem(PREF_META_KEY, JSON.stringify({ touched: true, ts: Date.now() }));
+    } catch (e) {}
+  }
+
+  function prefClearMeta() {
+    try { safeStorage.removeItem(PREF_META_KEY); } catch (e) {}
+  }
+
+  /** 本地当前的三项偏好 */
+  function readLocalPrefs() {
+    var fs = parseInt(safeStorage.getItem('kj_read_fs') || '1', 10);
+    if (!(fs >= 0 && fs <= 2)) fs = 1;
+    return {
+      theme: safeStorage.getItem('theme') || 'auto',
+      read_fs: fs,
+      news_dismissed: safeStorage.getItem('kj_news_dismissed_v1') === '1' ? 1 : 0
+    };
+  }
+
+  /** 只改 DOM 的深色标记；各页底色不同，具体 color 仍由页面自己的 applyTheme 决定 */
+  function refreshThemeDom() {
+    try {
+      var st = getThemeState();
+      document.documentElement.dataset.theme = st.dark ? 'dark' : '';
+    } catch (e) {}
+  }
+
+  function applyLocalPrefs(p) {
+    if (!p) return;
+    var t = p.theme;
+    if (t === 'light' || t === 'dark') safeStorage.setItem('theme', t);
+    else if (t === 'auto') safeStorage.removeItem('theme');
+
+    if (p.read_fs != null) {
+      var v = Number(p.read_fs);
+      if (v >= 0 && v <= 2) safeStorage.setItem('kj_read_fs', String(v));
+    }
+    if (p.news_dismissed === 1 || p.news_dismissed === true) {
+      safeStorage.setItem('kj_news_dismissed_v1', '1');
+    } else if (p.news_dismissed === 0 || p.news_dismissed === false) {
+      safeStorage.removeItem('kj_news_dismissed_v1');
+    }
+    refreshThemeDom();
+  }
+
+  /**
+   * 写入钩子：任何页面改动三项偏好之一都会走到这里。
+   * 由 safeStorage.setItem / removeItem 调用。
+   */
+  function onPrefKeyWritten(k) {
+    if (_prefsApplying || !PREF_KEY_MAP[k]) return;
+    if (_prefsSb) {
+      clearTimeout(_prefsTimer);
+      _prefsTimer = setTimeout(function () { pushPrefsNow(false); }, 1200);
+    } else {
+      prefMarkTouched();
+    }
+  }
+
+  function prefEqual(a, b) {
+    a = a || {}; b = b || {};
+    return String(a.theme || 'auto') === String(b.theme || 'auto')
+        && Number(a.read_fs == null ? 1 : a.read_fs) === Number(b.read_fs == null ? 1 : b.read_fs)
+        && Number(a.news_dismissed || 0) === Number(b.news_dismissed || 0);
+  }
+
+  async function pushPrefsNow(force) {
+    var sb = _prefsSb;
+    if (!sb) return null;
+    var p = readLocalPrefs();
+    var sig = JSON.stringify(p);
+    if (!force && sig === _prefsLast) return null;
+    try {
+      var r = await sb.rpc('save_prefs', { p_prefs: p, p_client_ts: Date.now() });
+      if (r.error) throw r.error;
+      var row = (r.data && r.data[0]) || null;
+      if (row && row.applied === false && row.prefs) {
+        // 另一台设备刚改过：以云端为准，本地跟着对齐
+        _prefsApplying = true;
+        applyLocalPrefs(row.prefs);
+        _prefsApplying = false;
+        _prefsLast = JSON.stringify(row.prefs);
+      } else {
+        _prefsLast = sig;
+      }
+      return row;
+    } catch (e) {
+      console.warn('save_prefs failed:', e);
+      return null;
+    }
+  }
+
+  /** 登录后调用：拉云端，决定静默采用还是询问合并 */
+  async function initPrefsSync(sb) {
+    if (!sb || _prefsSb) return;
+    try {
+      var sess = await sb.auth.getSession();
+      var user = sess && sess.data && sess.data.session && sess.data.session.user;
+      if (!user) return;
+      _prefsSb = sb;
+
+      var cloud = null;
+      try {
+        var r = await sb.rpc('get_prefs');
+        if (!r.error && r.data && r.data[0]) cloud = r.data[0];
+      } catch (e) { console.warn('get_prefs:', e); }
+
+      var cp = (cloud && cloud.prefs) || null;
+      var cloudHas = !!(cp && Object.keys(cp).length);
+      var meta = prefReadMeta();
+      var local = readLocalPrefs();
+
+      if (meta.touched && cloudHas && !prefEqual(local, cp)) {
+        showPrefsMerge(local, cp);
+        return;
+      }
+      if (meta.touched && !cloudHas) {
+        // 首次同步：把未登录时选的设置带上去
+        await pushPrefsNow(true);
+        prefClearMeta();
+        return;
+      }
+      if (meta.touched) prefClearMeta();
+
+      if (cloudHas) {
+        _prefsApplying = true;
+        applyLocalPrefs(cp);
+        _prefsApplying = false;
+        _prefsLast = JSON.stringify(cp);
+      } else {
+        _prefsLast = JSON.stringify(local);
+      }
+    } catch (e) {
+      console.warn('initPrefsSync:', e);
+    }
+  }
+
+  // ---------- 合并提示 ----------
+  var PREF_LABEL = {
+    theme: { auto: '跟随系统', light: '浅色', dark: '深色' },
+    read_fs: { 0: '小', 1: '标准', 2: '大' },
+    news_dismissed: { 0: '显示', 1: '已移除' }
+  };
+
+  function injectPrefsStyle() {
+    if (document.getElementById('kj-prefs-style')) return;
+    var st = document.createElement('style');
+    st.id = 'kj-prefs-style';
+    st.textContent = [
+      '.kj-pm-overlay{position:fixed;inset:0;z-index:9100;display:grid;place-items:center;padding:20px;',
+      '  background:rgba(0,0,0,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);',
+      '  animation:kjPmFade .2s ease both}',
+      '@keyframes kjPmFade{from{opacity:0}}',
+      '@keyframes kjPmUp{from{opacity:0;transform:translateY(12px) scale(.98)}}',
+      '.kj-pm-card{width:100%;max-width:380px;background:#fff;color:#1d1d1f;border-radius:20px;padding:24px 22px 18px;',
+      '  box-shadow:0 24px 60px rgba(0,0,0,.28);animation:kjPmUp .28s cubic-bezier(.2,.8,.2,1) both}',
+      'html[data-theme="dark"] .kj-pm-card{background:#1c1c1e;color:#f5f5f7}',
+      '.kj-pm-card h3{font-size:16.5px;font-weight:650;margin:0 0 6px;text-align:center}',
+      '.kj-pm-tip{font-size:12.5px;line-height:1.65;color:#8e8e93;margin:0 0 16px;text-align:center}',
+      '.kj-pm-head,.kj-pm-row{display:grid;grid-template-columns:1fr 78px 78px;align-items:center;gap:4px}',
+      '.kj-pm-head{font-size:11px;color:#8e8e93;padding:0 2px 6px;border-bottom:1px solid rgba(128,128,128,.18)}',
+      '.kj-pm-head span:not(:first-child),.kj-pm-v{text-align:center}',
+      '.kj-pm-row{font-size:13.5px;padding:9px 2px;border-bottom:1px solid rgba(128,128,128,.12)}',
+      '.kj-pm-k{color:#8e8e93}',
+      '.kj-pm-cloud{color:#8e8e93}',
+      '.kj-pm-row .kj-pm-v:not(.kj-pm-cloud){font-weight:600}',
+      '.kj-pm-acts{display:flex;gap:10px;margin-top:18px}',
+      '.kj-pm-btn{flex:1;padding:11px 8px;border-radius:999px;border:1px solid rgba(128,128,128,.3);',
+      '  background:transparent;color:inherit;font-size:13.5px;font-weight:500;font-family:inherit;cursor:pointer}',
+      '.kj-pm-btn.is-primary{background:#0a84ff;border-color:transparent;color:#fff}',
+      '.kj-pm-btn:active{transform:scale(.97)}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function showPrefsMerge(local, cloud) {
+    if (document.getElementById('kjPrefsMerge')) return;
+    // 两个弹层都在 9000+，同时出现会互相压住；先收掉更新提示（未标记已读，下次还会提示）
+    try {
+      var rel = document.getElementById('kjReleaseModal');
+      if (rel && rel.parentNode) rel.parentNode.removeChild(rel);
+    } catch (e) {}
+    injectPrefsStyle();
+
+    var rows = [];
+    function add(label, lv, cv) {
+      if (lv === cv) return;
+      rows.push('<div class="kj-pm-row"><span class="kj-pm-k">' + label + '</span>' +
+        '<span class="kj-pm-v">' + lv + '</span>' +
+        '<span class="kj-pm-v kj-pm-cloud">' + cv + '</span></div>');
+    }
+    add('主题',
+        PREF_LABEL.theme[local.theme] || '跟随系统',
+        PREF_LABEL.theme[cloud.theme] || '跟随系统');
+    add('阅读字号',
+        PREF_LABEL.read_fs[local.read_fs] || '标准',
+        PREF_LABEL.read_fs[Number(cloud.read_fs == null ? 1 : cloud.read_fs)] || '标准');
+    add('首页资讯',
+        PREF_LABEL.news_dismissed[local.news_dismissed] || '显示',
+        PREF_LABEL.news_dismissed[Number(cloud.news_dismissed || 0)] || '显示');
+
+    if (!rows.length) { prefClearMeta(); return; }
+
+    var html = '<div class="kj-pm-overlay" id="kjPrefsMerge">' +
+      '<div class="kj-pm-card" role="dialog" aria-modal="true" aria-labelledby="kjPmTitle">' +
+        '<h3 id="kjPmTitle">未登录时调过这些设置</h3>' +
+        '<p class="kj-pm-tip">这些改动还没同步到账号。<br>要合并，还是用账号里已有的设置？</p>' +
+        '<div class="kj-pm-head"><span></span><span>本机</span><span>账号</span></div>' +
+        rows.join('') +
+        '<div class="kj-pm-acts">' +
+          '<button type="button" class="kj-pm-btn" id="kjPmCloud">用账号设置</button>' +
+          '<button type="button" class="kj-pm-btn is-primary" id="kjPmMerge">合并我的</button>' +
+        '</div>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    var ov = document.getElementById('kjPrefsMerge');
+    function close() { if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }
+
+    document.getElementById('kjPmCloud').addEventListener('click', function () {
+      _prefsApplying = true;
+      applyLocalPrefs(cloud);
+      _prefsApplying = false;
+      _prefsLast = JSON.stringify(cloud);
+      prefClearMeta();
+      close();
+      KJ.toast('已使用账号里的设置');
+    });
+
+    document.getElementById('kjPmMerge').addEventListener('click', function () {
+      prefClearMeta();
+      close();
+      pushPrefsNow(true).then(function (row) {
+        if (row) KJ.toast('已把本机设置合并到账号');
+      });
+    });
+
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) {          // 点遮罩＝暂不决定，保留本地，下次再问
+        close();
+      }
+    });
+  }
+
+  /** 清空本地偏好（不碰登录凭证、游戏成绩、编辑器草稿、本机登录记录） */
+  function clearLocalPrefs() {
+    _prefsApplying = true;
+    try {
+      safeStorage.removeItem('theme');
+      safeStorage.removeItem('kj_read_fs');
+      safeStorage.removeItem('kj_news_dismissed_v1');
+      safeStorage.removeItem(PREF_META_KEY);
+      var del = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(LAYOUT_PREFIX) === 0) del.push(k);
+      }
+      for (var j = 0; j < del.length; j++) localStorage.removeItem(del[j]);
+    } catch (e) {}
+    _prefsApplying = false;
+    refreshThemeDom();
+  }
+
+  function detachPrefs() {
+    clearTimeout(_prefsTimer);
+    _prefsSb = null;
+    _prefsLast = '';
   }
 
   // ====================== 移动端汉堡菜单 ======================
@@ -1033,6 +1340,19 @@
   function initNav(sb, opts) {
     opts = opts || {};
     injectNavStyle();
+
+    // 偏好云同步与导航是否存在无关，放在最前面。
+    // 首页的 SDK 是动态加载的，这里做几次重试等它到齐。
+    (function bootPrefs() {
+      var tries = 0;
+      function tryInit() {
+        var c = sb || getNavSupabase();
+        if (c) { initPrefsSync(c); return; }
+        if (tries++ < 40) setTimeout(tryInit, 500);
+      }
+      setTimeout(tryInit, 400);
+    })();
+
     var logoutSel = opts.logoutBtn || '#logoutBtn';
     var userTagSel = opts.userTag || '#userTag';
     var loginUrl = opts.loginUrl || '/login/';
@@ -1774,6 +2094,15 @@
     sdkMissing: sdkMissing,
     AUTH_KEEP_DAYS: AUTH_KEEP_DAYS,
     clearAuthLocal: clearAuthLocal,
+    prefs: {
+      read: readLocalPrefs,
+      apply: applyLocalPrefs,
+      pushNow: pushPrefsNow,
+      init: initPrefsSync,
+      clearLocal: clearLocalPrefs,
+      detach: detachPrefs,
+      touched: function () { return prefReadMeta().touched; }
+    },
     authPersist: authPersist,
     setAuthPersist: setAuthPersist,
     authRemainingDays: authRemainingDays,
