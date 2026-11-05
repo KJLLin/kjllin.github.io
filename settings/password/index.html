@@ -52,6 +52,7 @@
     .pw-rule{font-size:11px;color:var(--color-text-tertiary);display:flex;align-items:center;gap:4px;transition:color 0.2s}
     .pw-rule.pass{color:var(--color-success)}
     .pw-rule.pass i{opacity:1}
+    .pw-rule.opt{opacity:.75}
     .pw-rule i{font-size:10px;opacity:0.4}
     .form-actions{margin-top:28px;display:flex;gap:12px}
     .btn-submit{padding:10px 28px;border:none;border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-text-on-accent);font-size:14px;font-weight:600;cursor:pointer;transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default)}
@@ -106,16 +107,16 @@
     <div id="formContent" style="display:none">
       <div class="card-glass-form">
         <h2><i class="fas fa-lock"></i> 修改登录密码</h2>
-        <div class="form-group"><label>当前密码</label><div class="pw-wrap"><input type="password" id="currentPassword" placeholder="输入当前密码" autocomplete="current-password"><button type="button" class="pw-toggle" data-target="currentPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div></div>
+        <div class="form-group" id="curGroup"><label>当前密码</label><div class="pw-wrap"><input type="password" id="currentPassword" placeholder="输入当前密码" autocomplete="current-password"><button type="button" class="pw-toggle" data-target="currentPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div><div class="form-hint"><a href="javascript:void(0)" id="forgotPwd" style="color:var(--color-accent);text-decoration:none">忘记当前密码？发送重置邮件</a></div></div>
         <div class="form-group"><label>新密码</label><div class="pw-wrap"><input type="password" id="newPassword" placeholder="至少 8 位，含字母与数字" autocomplete="new-password"><button type="button" class="pw-toggle" data-target="newPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div>
           <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
           <div class="pw-strength-text" id="pwStrengthText"></div>
           <div class="pw-rules" id="pwRules">
-            <span class="pw-rule" data-rule="length"><i class="fas fa-circle"></i> 至少 8 个字符</span>
-            <span class="pw-rule" data-rule="upper"><i class="fas fa-circle"></i> 含大写字母</span>
-            <span class="pw-rule" data-rule="lower"><i class="fas fa-circle"></i> 含小写字母</span>
+            <span class="pw-rule" data-rule="length"><i class="fas fa-circle"></i> 至少 8 位</span>
+            <span class="pw-rule" data-rule="alpha"><i class="fas fa-circle"></i> 含字母</span>
             <span class="pw-rule" data-rule="digit"><i class="fas fa-circle"></i> 含数字</span>
-            <span class="pw-rule" data-rule="special"><i class="fas fa-circle"></i> 特殊字符</span>
+            <span class="pw-rule opt" data-rule="upper"><i class="fas fa-circle"></i> 大写（建议）</span>
+            <span class="pw-rule opt" data-rule="special"><i class="fas fa-circle"></i> 符号（建议）</span>
           </div>
         </div>
         <div class="form-group"><label>确认新密码</label><div class="pw-wrap"><input type="password" id="confirmPassword" placeholder="再次输入新密码" autocomplete="new-password"><button type="button" class="pw-toggle" data-target="confirmPassword" aria-label="显示密码" title="显示/隐藏密码"><i class="fas fa-eye"></i></button></div></div>
@@ -136,7 +137,7 @@
 
     // recovery 流程（密码重置邮件跳转而来，URL 带 recovery=1）：已通过邮件验证身份，免校验当前密码
     var isRecovery=new URLSearchParams(location.search).get('recovery')==='1';
-    if(isRecovery){var _curGroup=$('#currentPassword').parentNode;if(_curGroup)_curGroup.style.display='none';}
+    if(isRecovery){var _cg=document.getElementById('curGroup');if(_cg)_cg.style.display='none';}
 
     function showLoginPrompt(){$('#formContent').style.display='none';$('#loginPrompt').style.display='';$('#loginMsg').textContent='请登录后修改密码';$('#loginLink').hidden=false;}
 
@@ -151,11 +152,36 @@
 
     if(!sb){$('#loginMsg').textContent='加载中，请稍候...';return}
 
+    var currentUser=null;
     sb.auth.onAuthStateChange(function(event,session){
       if(event==='INITIAL_SESSION'||event==='SIGNED_IN'){
-        if(session&&session.user){$('#loginPrompt').style.display='none';$('#formContent').style.display='block';return}
+        if(session&&session.user){
+          currentUser=session.user;
+          $('#loginPrompt').style.display='none';$('#formContent').style.display='block';
+          return;
+        }
         showLoginPrompt();
       }else if(event==='SIGNED_OUT')showLoginPrompt();
+    });
+
+    // 忘记当前密码：给本人邮箱发重置链接（不需要知道旧密码）
+    $('#forgotPwd').addEventListener('click',async function(){
+      if(!sb) return;
+      if(!KJ.rateLimit('pwd_reset_mail',60000,1,'重置邮件已发送，请一分钟后再试')) return;
+      var email=(currentUser&&currentUser.email)||'';
+      if(!email){KJ.toast('无法获取账号邮箱，请重新登录');return}
+      if(!confirm('向 '+email+' 发送密码重置邮件？')) return;
+      var self=this;
+      self.style.pointerEvents='none';
+      try{
+        var r=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/login/'});
+        if(r.error) throw r.error;
+        KJ.toast('重置邮件已发送，请到邮箱点击链接',3600);
+      }catch(e){
+        KJ.toast('发送失败：'+(KJ.formatSupabaseError(e)||'请稍后重试'));
+      }finally{
+        self.style.pointerEvents='';
+      }
     });
 
     $('#submitBtn').addEventListener('click',async function(){
@@ -164,6 +190,8 @@
       var cur=$('#currentPassword').value,np=$('#newPassword').value,cp=$('#confirmPassword').value;
       if((!isRecovery&&!cur.length)||!np.length||!cp.length){KJ.toast('请填写所有密码字段');return}
       if(np.length<8){KJ.toast('新密码至少 8 位');return}
+      if(!/[A-Za-z]/.test(np)||!/\d/.test(np)){KJ.toast('新密码需同时包含字母和数字');return}
+      if(!isRecovery&&np===cur){KJ.toast('新密码不能与当前密码相同');return}
       if(np!==cp){KJ.toast('两次输入的新密码不一致');return}
       var btn=$('#submitBtn');btn.disabled=true;btn.textContent='更新中...';
       try{
@@ -185,8 +213,9 @@
           KJ.toast(KJ.formatSupabaseError(updateErr)||'密码修改失败');
           return;
         }
-        KJ.toast('密码已更新');
+        KJ.toast('密码已更新，其他设备仍保持登录', 3200);
         $('#currentPassword').value='';$('#newPassword').value='';$('#confirmPassword').value='';
+        $('#confirmPassword').style.borderColor='';
         $('#pwStrengthFill').className='pw-strength-fill';$('#pwStrengthText').textContent='';
         document.querySelectorAll('.pw-rule').forEach(function(r){r.classList.remove('pass');});
         // 带 redirect 参数时（recovery 流程）改完跳回
@@ -197,21 +226,56 @@
     });
 
     // ── 实时密码强度检测 ──
-    var rules={length:/.{8,}/,upper:/[A-Z]/,lower:/[a-z]/,digit:/\d/,special:/[^A-Za-z0-9]/};
-    $('#newPassword').addEventListener('input',function(){
-      var pw=this.value,score=0,details=[];
-      document.querySelectorAll('.pw-rule').forEach(function(r){
-        var key=r.dataset.rule,ok=rules[key]&&rules[key].test(pw);
-        r.classList.toggle('pass',ok);r.querySelector('i').className=ok?'fas fa-check-circle':'fas fa-circle';
-        if(ok){score++;if(key==='length')details.push('长度 ✓');}
+    // 必须项：长度 ≥ 8、含字母、含数字（与提交校验严格一致）
+    // 建议项：大写字母、符号 —— 只影响强度评级，不阻断提交
+    var RULES = {
+      length:  function (v) { return v.length >= 8; },
+      alpha:   function (v) { return /[A-Za-z]/.test(v); },
+      digit:   function (v) { return /\d/.test(v); },
+      upper:   function (v) { return /[A-Z]/.test(v); },
+      special: function (v) { return /[^A-Za-z0-9]/.test(v); }
+    };
+    var MUST = ['length', 'alpha', 'digit'];
+    var BONUS = ['upper', 'special'];
+
+    $('#newPassword').addEventListener('input', function () {
+      var pw = this.value;
+      var mustOk = 0, bonusOk = 0;
+
+      document.querySelectorAll('.pw-rule').forEach(function (r) {
+        var key = r.dataset.rule;
+        var fn = RULES[key];
+        var ok = fn ? fn(pw) : false;
+        r.classList.toggle('pass', ok);
+        r.querySelector('i').className = ok ? 'fas fa-check-circle' : 'fas fa-circle';
+        if (ok) { if (MUST.indexOf(key) >= 0) mustOk++; else bonusOk++; }
       });
-      var fill=$('#pwStrengthFill'),txt=$('#pwStrengthText'),level='',color='';
-      fill.className='pw-strength-fill';
-      if(pw.length===0){txt.textContent='';}
-      else if(score<=1){fill.classList.add('weak');txt.textContent='弱 — 很容易被猜解';txt.style.color='var(--color-danger)';}
-      else if(score===2){fill.classList.add('fair');txt.textContent='一般 — 可以进一步加强';txt.style.color='var(--color-warning)';}
-      else if(score===3||score===4){fill.classList.add('good');txt.textContent='良好 — 安全性较高';txt.style.color='var(--color-accent)';}
-      else{fill.classList.add('strong');txt.textContent='强 — 非常安全';txt.style.color='var(--color-success)';}
+
+      var fill = $('#pwStrengthFill'), txt = $('#pwStrengthText');
+      fill.className = 'pw-strength-fill';
+
+      if (!pw.length) {
+        txt.textContent = '';
+        txt.style.color = '';
+        return;
+      }
+      if (mustOk < MUST.length) {
+        fill.classList.add('weak');
+        txt.textContent = '太短或过于简单 — 至少 8 位，且同时包含字母和数字';
+        txt.style.color = 'var(--color-danger)';
+      } else if (bonusOk === 0) {
+        fill.classList.add('fair');
+        txt.textContent = '可用 — 加上大写字母或符号会更安全';
+        txt.style.color = 'var(--color-warning)';
+      } else if (bonusOk === 1) {
+        fill.classList.add('good');
+        txt.textContent = '良好 — 安全性较高';
+        txt.style.color = 'var(--color-accent)';
+      } else {
+        fill.classList.add('strong');
+        txt.textContent = '强 — 非常安全';
+        txt.style.color = 'var(--color-success)';
+      }
     });
 
     // ── 确认密码实时匹配提示 ──
@@ -220,6 +284,14 @@
       if(!this.value){this.style.borderColor='';return}
       if(this.value===np){this.style.borderColor='var(--color-success)';}
       else{this.style.borderColor='var(--color-danger)';}
+    });
+
+    // 三个输入框都支持回车提交
+    ['currentPassword','newPassword','confirmPassword'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.addEventListener('keydown',function(e){
+        if(e.key==='Enter'){e.preventDefault();$('#submitBtn').click();}
+      });
     });
 
     // ── 密码显示/隐藏切换 ──

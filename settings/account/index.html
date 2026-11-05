@@ -51,7 +51,7 @@
     .admin-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:var(--radius-full);background:var(--color-accent-glow);color:var(--color-accent);font-size:12px;font-weight:600;letter-spacing:0.5px}
 
     /* ── 安全概览网格 ── */
-    .security-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .security-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .security-item{text-align:center;padding:14px 10px;border-radius:var(--radius-md);background:var(--color-bg-hover);transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)}
     .security-item:hover{background:var(--color-bg-active)}
     .security-item:active{transform:scale(0.97);transition:transform var(--duration-instant) var(--spring-default)}
@@ -111,14 +111,22 @@
     .binding-row .b-label{font-size:14px;color:var(--color-text-primary);font-weight:500}
     .binding-row .b-status{font-size:13px;display:flex;align-items:center;gap:6px;margin-left:auto}
 
+    .bind-btn{margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);
+      border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);
+      font-family:inherit;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease}
+    .bind-btn:hover{background:var(--color-bg-hover);color:var(--color-text-primary)}
+    .bind-btn.is-primary{color:var(--color-accent);border-color:var(--color-accent)}
+    .bind-btn.is-primary:hover{background:var(--color-accent-glow)}
+
     @media(max-width:520px){
       .container{padding:72px 12px calc(28px + env(safe-area-inset-bottom, 0px))}
       .page-header h1{font-size:22px}
       .page-header .icon{font-size:40px}
-      .security-grid{grid-template-columns:1fr 1fr;gap:8px}
-      .security-item{padding:12px 8px}
-      .security-item .si-icon{font-size:20px}
-      .security-item .si-value{font-size:13px}
+      .security-grid{grid-template-columns:repeat(3,1fr);gap:6px}
+      .security-item{padding:11px 4px}
+      .security-item .si-icon{font-size:18px;margin-bottom:4px}
+      .security-item .si-label{font-size:10px}
+      .security-item .si-value{font-size:12px}
       .profile-header{flex-direction:column;text-align:center;gap:12px}
       .avatar{width:52px;height:52px;font-size:22px}
       .profile-text .name{font-size:18px}
@@ -190,10 +198,9 @@
       <div class="card card-glass card-anim">
         <div class="card-header"><i class="fas fa-shield-halved"></i> 安全概览<a href="/settings/password/" class="card-action">修改密码 <i class="fas fa-chevron-right"></i></a></div>
         <div class="security-grid">
-          <div class="security-item"><div class="si-icon"><i class="fas fa-key"></i></div><div class="si-label">密码使用时长</div><div class="si-value" id="pwdStrength">检测中</div></div>
           <div class="security-item"><div class="si-icon"><i class="fas fa-envelope"></i></div><div class="si-label">绑定邮箱</div><div class="si-value" id="emailStatus">已验证</div></div>
-          <div class="security-item"><div class="si-icon"><i class="fas fa-lock"></i></div><div class="si-label">两步验证</div><div class="si-value" style="color:var(--color-text-tertiary)">未开启</div></div>
-          <div class="security-item"><div class="si-icon"><i class="fas fa-mobile-screen"></i></div><div class="si-label">绑定设备</div><div class="si-value" id="deviceCount">--</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-key"></i></div><div class="si-label">登录方式</div><div class="si-value" id="loginMethods">检测中</div></div>
+          <div class="security-item"><div class="si-icon"><i class="fas fa-mobile-screen"></i></div><div class="si-label">常用设备</div><div class="si-value" id="deviceCount">--</div></div>
         </div>
       </div>
 
@@ -281,7 +288,19 @@
     }
 
     // 从 Supabase login_devices 读取最近登录历史
+    var _historyBusy=false,_historyAgain=false;
     async function renderLoginHistory(){
+      var el=$('#loginHistory');if(!el)return;
+      // IP 回来与首屏渲染会各调一次，这里串行化，避免重复查询和闪烁
+      if(_historyBusy){ _historyAgain=true; return; }
+      _historyBusy=true;
+      try{ await _renderHistory(); } finally {
+        _historyBusy=false;
+        if(_historyAgain){ _historyAgain=false; renderLoginHistory(); }
+      }
+    }
+
+    async function _renderHistory(){
       var el=$('#loginHistory');if(!el)return;
       var records=[];
 
@@ -351,7 +370,12 @@
         try{
           var r2=await sb.from('users').select('last_login_time,status,is_admin,avatar_url').eq('id',user.id).limit(1);
           if(r2.data&&r2.data.length){ KJ.paintAvatar($('#profileAvatar'), { nick: nick, avatar_url: r2.data[0].avatar_url||'' }); }
-          if(r2.data&&r2.data.length){$('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);$('#infoStatus').textContent=r2.data[0].status==='active'?'正常':'待审核';
+          if(r2.data&&r2.data.length){
+            $('#infoLastLogin').textContent=fmtDate(r2.data[0].last_login_time);
+            var st=r2.data[0].status==='active';
+            var stEl=$('#infoStatus');
+            stEl.textContent=st?'正常':'待审核';
+            stEl.style.color=st?'var(--color-success)':'var(--color-warning)';
             if(r2.data[0].is_admin===true){var b=$('#adminBadge');if(b)b.style.display='';}
           }
         }catch(e){$('#infoLastLogin').textContent='加载失败';$('#infoStatus').textContent='--';}
@@ -363,116 +387,123 @@
 
         loadIP().then(function(ip){$('#deviceIP').textContent=ip;saveLoginRecord(ip);renderLoginHistory();});
         renderLoginHistory();
-        renderCpoauthBinding();
-        renderGithubBinding();
+        loadBindings();
 
-        var days=Math.floor((Date.now()-new Date(user.created_at).getTime())/86400000);
-        var el=$('#pwdStrength');el.textContent=days>90?days+' 天，建议修改密码':days+' 天';el.style.color=days>90?'var(--color-warning)':'var(--color-success)';
       }catch(e){console.error('loadUser:',e);showLoginPrompt();}
     }
 
     // ==================== 第三方账号绑定（Supabase 原生） ====================
-    async function renderCpoauthBinding(){
-      var statusEl=$('#cpoauthStatus');if(!statusEl)return;
-      // 从 Supabase auth.identities 检查是否已绑定
-      var isBound = false;
-      var identityName = '';
+    /**
+     * identities 只取一次。
+     * 原来 GitHub 与 CPOAuth 各调用一遍 getUserIdentities()，等于每次进页面
+     * 都发两个一模一样的请求；顺带用这份数据算「登录方式」。
+     */
+    var identitiesCache = null;
+
+    async function loadIdentities(force) {
+      if (identitiesCache && !force) return identitiesCache;
+      identitiesCache = [];
       try {
         if (sb && user) {
-          var { data: { identities } } = await sb.auth.getUserIdentities();
-          if (identities) {
-            for (var j = 0; j < identities.length; j++) {
-              if (identities[j].provider === 'custom:cpoauth') {
-                isBound = true;
-                identityName = identities[j].identity_data?.user_name 
-                  || identities[j].identity_data?.full_name 
-                  || identities[j].identity_data?.email 
-                  || 'CPOAuth 用户';
-                break;
-              }
-            }
-          }
+          var res = await sb.auth.getUserIdentities();
+          var list = res && res.data && res.data.identities;
+          if (Array.isArray(list)) identitiesCache = list;
         }
-      } catch(e) { console.warn('getUserIdentities failed:', e); }
+      } catch (e) { console.warn('getUserIdentities failed:', e); }
+      return identitiesCache;
+    }
 
-      if (isBound) {
-        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(identityName)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" id="cpoauthUnbindBtn">解绑</button>';
-        setTimeout(function(){ var b=$('#cpoauthUnbindBtn'); if(b) b.addEventListener('click',cpoauthUnbind); },0);
+    function providerLabel(p) {
+      if (p === 'email') return '密码';
+      if (p === 'github') return 'GitHub';
+      if (p === 'custom:cpoauth') return 'CPOAuth';
+      return p || '其他';
+    }
+
+    /** 安全概览：登录方式（密码 / 密码 + 1 …） */
+    function renderLoginMethods(ids) {
+      var el = $('#loginMethods');
+      if (!el) return;
+      var names = [];
+      for (var i = 0; i < ids.length; i++) {
+        var n = providerLabel(ids[i].provider);
+        if (names.indexOf(n) < 0) names.push(n);
+      }
+      if (!names.length) names.push('密码');
+      el.textContent = names.length === 1 ? names[0] : (names[0] + ' +' + (names.length - 1));
+      el.title = names.join(' · ');
+    }
+
+    /** 是否还有别的登录方式 —— 唯一的凭证不允许解绑，否则账号再也进不来 */
+    function canUnbind(provider) {
+      var ids = identitiesCache || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (ids[i].provider !== provider) return true;
+      }
+      return false;
+    }
+
+    function identityNameOf(hit, fallback) {
+      var d = (hit && hit.identity_data) || {};
+      return d.user_name || d.full_name || d.name || d.email || fallback;
+    }
+
+    function paintBindingRow(provider, ids) {
+      var statusEl = $('#' + (provider === 'github' ? 'githubStatus' : 'cpoauthStatus'));
+      if (!statusEl) return;
+      var hit = null;
+      for (var i = 0; i < ids.length; i++) {
+        if (ids[i].provider === provider) { hit = ids[i]; break; }
+      }
+      if (hit) {
+        var name = identityNameOf(hit, providerLabel(provider) + ' 用户');
+        statusEl.innerHTML = '<span style="color:var(--color-success)">已绑定 · ' + KJ.escapeHtml(name) + '</span>' +
+          ' <button type="button" class="bind-btn" data-bind="' + provider + '" data-act="unbind">解绑</button>';
       } else {
-        statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="cpoauthBindBtn">绑定</button>';
-        setTimeout(function(){ var b=$('#cpoauthBindBtn'); if(b) b.addEventListener('click',cpoauthBind); },0);
+        statusEl.innerHTML = '<span style="color:var(--color-text-tertiary)">未绑定</span>' +
+          ' <button type="button" class="bind-btn is-primary" data-bind="' + provider + '" data-act="bind">绑定</button>';
       }
     }
 
-    async function cpoauthBind(){
-      if(!KJ.rateLimit('oauth_bind', 5000)) return; // 5秒内只能操作一次
-      if (!sb) { KJ.toast('网络错误'); return; }
-      try {
-        await sb.auth.linkIdentity({ provider: 'custom:cpoauth', options: { redirectTo: window.location.href } });
-      } catch(e) { KJ.toast('绑定失败: ' + KJ.formatSupabaseError(e)); }
+    async function loadBindings(force) {
+      var ids = await loadIdentities(force);
+      renderLoginMethods(ids);
+      paintBindingRow('github', ids);
+      paintBindingRow('custom:cpoauth', ids);
     }
 
-    async function cpoauthUnbind(){
-      if(!KJ.rateLimit('oauth_unbind', 5000)) return; // 5秒内只能操作一次
-      if (!confirm('确定解绑 CPOAuth？')) return;
+    async function bindIdentity(provider) {
+      if (!KJ.rateLimit('oauth_bind', 5000)) return;
       if (!sb) { KJ.toast('网络错误'); return; }
       try {
-        await sb.auth.unlinkIdentity({ provider: 'custom:cpoauth' });
-        KJ.toast('已解绑 CPOAuth');
-        renderCpoauthBinding();
-      } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
+        await sb.auth.linkIdentity({ provider: provider, options: { redirectTo: window.location.href } });
+      } catch (e) { KJ.toast('绑定失败：' + KJ.formatSupabaseError(e)); }
     }
 
-    // ==================== GitHub 绑定（Supabase 内置 Provider） ====================
-    async function renderGithubBinding(){
-      var statusEl=$('#githubStatus');if(!statusEl)return;
-      var isBound = false;
-      var identityName = '';
-      try {
-        if (sb && user) {
-          var { data: { identities } } = await sb.auth.getUserIdentities();
-          if (identities) {
-            for (var j = 0; j < identities.length; j++) {
-              if (identities[j].provider === 'github') {
-                isBound = true;
-                identityName = identities[j].identity_data?.user_name 
-                  || identities[j].identity_data?.full_name 
-                  || identities[j].identity_data?.name 
-                  || 'GitHub 用户';
-                break;
-              }
-            }
-          }
-        }
-      } catch(e) { console.warn('getUserIdentities failed:', e); }
-
-      if (isBound) {
-        statusEl.innerHTML='<span style="color:var(--color-success)">已绑定 · '+KJ.escapeHtml(identityName)+'</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer" id="githubUnbindBtn">解绑</button>';
-        setTimeout(function(){ var b=$('#githubUnbindBtn'); if(b) b.addEventListener('click',githubUnbind); },0);
-      } else {
-        statusEl.innerHTML='<span style="color:var(--color-text-tertiary)">未绑定</span> <button style="margin-left:8px;padding:2px 12px;font-size:12px;border-radius:var(--radius-full);border:1px solid var(--color-border);background:transparent;color:var(--color-accent);cursor:pointer" id="githubBindBtn">绑定</button>';
-        setTimeout(function(){ var b=$('#githubBindBtn'); if(b) b.addEventListener('click',githubBind); },0);
+    async function unbindIdentity(provider) {
+      if (!KJ.rateLimit('oauth_unbind', 5000)) return;
+      if (!sb) { KJ.toast('网络错误'); return; }
+      var label = providerLabel(provider);
+      if (!canUnbind(provider)) {
+        KJ.toast('这是你唯一的登录方式，请先设置密码或绑定其他账号', 3600);
+        return;
       }
+      if (!confirm('确定解绑 ' + label + '？解绑后将不能用它登录。')) return;
+      try {
+        await sb.auth.unlinkIdentity({ provider: provider });
+        KJ.toast('已解绑 ' + label);
+        await loadBindings(true);
+      } catch (e) { KJ.toast('解绑失败：' + KJ.formatSupabaseError(e)); }
     }
 
-    async function githubBind(){
-      if(!KJ.rateLimit('oauth_bind', 5000)) return; // 5秒内只能操作一次
-      if (!sb) { KJ.toast('网络错误'); return; }
-      try {
-        await sb.auth.linkIdentity({ provider: 'github', options: { redirectTo: window.location.href } });
-      } catch(e) { KJ.toast('绑定失败: ' + KJ.formatSupabaseError(e)); }
-    }
-
-    async function githubUnbind(){
-      if(!KJ.rateLimit('oauth_unbind', 5000)) return; // 5秒内只能操作一次
-      if (!confirm('确定解绑 GitHub？')) return;
-      if (!sb) { KJ.toast('网络错误'); return; }
-      try {
-        await sb.auth.unlinkIdentity({ provider: 'github' });
-        KJ.toast('已解绑 GitHub');
-        renderGithubBinding();
-      } catch(e) { KJ.toast('解绑失败: ' + KJ.formatSupabaseError(e)); }
-    }
+    // 绑定行用事件委托，避免每次重绘都要重新绑一遍
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.bind-btn') : null;
+      if (!btn) return;
+      var provider = btn.getAttribute('data-bind');
+      if (btn.getAttribute('data-act') === 'unbind') unbindIdentity(provider);
+      else bindIdentity(provider);
+    });
 
     // 登录状态面板
     (function initSessionCard(){
@@ -500,7 +531,7 @@
     })();
 
     $('#accountLogoutBtn').addEventListener('click',async function(){if(!confirm('确定退出登录？'))return;if(!sb){window.location.href='/';return}try{await sb.auth.signOut();}catch(e){console.warn('Sign out:',e)}window.location.href='/';});
-    $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'others'});await sb.auth.signOut();KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
+    $('#logoutAllBtn').addEventListener('click',async function(){if(!confirm('确定登出所有设备？'))return;if(!sb){KJ.toast('网络错误');return}var btn=$('#logoutAllBtn');btn.disabled=true;btn.textContent='登出中...';try{await sb.auth.signOut({scope:'global'});KJ.toast('已登出所有设备');setTimeout(function(){window.location.href='/';},800);}catch(e){console.error('Sign out all:',e);KJ.toast('操作失败');btn.disabled=false;btn.textContent='登出所有设备';}});
 
     // Theme
     var themeBtn=$('#themeBtn');
