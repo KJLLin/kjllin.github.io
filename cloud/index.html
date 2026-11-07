@@ -494,6 +494,16 @@
       currentUser = user;
       $('#authPage').classList.add('hidden');
       $('#driveContent').classList.remove('hidden');
+      // 支持从设置页「私有云盘空间」直达私有空间
+      try {
+        if (new URLSearchParams(location.search).get('space') === 'private' && currentSpace !== 'private') {
+          currentSpace = 'private';
+          document.querySelectorAll('.space-tab').forEach(function (t) {
+            t.classList.toggle('active', t.dataset.space === 'private');
+          });
+          updateSpaceUI();
+        }
+      } catch (e) {}
       // 查询管理员权限后再加载文件（管理员可管理所有文件）
       fetchIsAdmin(user.id).then(function(admin) {
         isAdmin = admin;
