@@ -36,6 +36,7 @@ const S = {
   loadingMore: false,
   channel: null,
   searchSeq: 0,       // 搜索请求序号，丢弃过期响应
+  openSeq: 0,         // 会话打开序号，避免快速切换时旧响应覆盖新会话
   convMenuPartner: null,
   unreadOnly: false,  // 会话列表：仅看未读
 };
@@ -430,6 +431,8 @@ const BlockActions = {
       if (!S.blockedList.some((b) => b.blocked_id === partnerId)) {
         S.blockedList.push({ blocked_id: partnerId });
       }
+      // 正在和对方聊天时屏蔽：直接关闭会话，避免继续输入后发送失败
+      if (S.selectedId === partnerId) ChatView.close();
       ConvList.render();
       Toast.success('已屏蔽该用户');
     } catch (e) {
@@ -490,6 +493,7 @@ const ChatView = {
     S.loadingMore = false;
     S._lastNewId = null;
     S.canAutoLoad = false;   // 初始滚动到底之前，先不要触发「自动加载更早」
+    const seq = ++S.openSeq;
 
     $('#chatPlaceholder')?.classList.add('hidden');
     $('#chatView')?.classList.remove('hidden');
@@ -507,6 +511,8 @@ const ChatView = {
 
     try {
       const rows = await Store.messages(partnerId, null, PAGE_SIZE + 1);
+      // 快速切换会话时，丢弃上一个会话的慢响应
+      if (seq !== S.openSeq || S.selectedId !== partnerId) return;
       S.hasMore = rows.length > PAGE_SIZE;
       S.messages = S.hasMore ? rows.slice(rows.length - PAGE_SIZE) : rows;
       this.render({ scroll: 'bottom' });
@@ -515,6 +521,7 @@ const ChatView = {
       setTimeout(() => { S.canAutoLoad = true; }, 700);
     } catch (e) {
       console.warn('加载消息失败:', e);
+      if (seq !== S.openSeq || S.selectedId !== partnerId) return;
       if (list) list.innerHTML = '<div class="msg-error">消息加载失败，请重试</div>';
       return;
     }
@@ -618,6 +625,18 @@ const ChatView = {
   render(opts = {}) {
     const el = $('#msgList');
     if (!el) return;
+
+    // 防御性去重：实时推送与发送回执可能同时到达，同一 id 只保留一条
+    const seen = new Set();
+    const deduped = [];
+    for (const m of S.messages) {
+      if (!m) continue;
+      const key = m.id || ('tmp:' + (m.created_at || '') + ':' + (m.text || ''));
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(m);
+    }
+    if (deduped.length !== S.messages.length) S.messages = deduped;
 
     const prevHeight = el.scrollHeight;
     const prevTop = el.scrollTop;
@@ -734,6 +753,27 @@ const ChatView = {
     }
   },
 
+  /**
+   * 把「服务端回读到的正式消息」合并进当前列表。
+   * 关键：实时推送可能早于 RPC 响应到达，并已用正式 id 替换过临时消息，
+   * 此时再按临时 id 查找会失败、直接 push 就会产生重复行（刷新后才恢复）。
+   */
+  _mergeSent(tempId, msg) {
+    if (!msg || !msg.id) return;
+    const byId = S.messages.findIndex((m) => m.id === msg.id);
+    const byTmp = S.messages.findIndex((m) => m.id === tempId);
+    if (byId >= 0) {
+      S.messages[byId] = Object.assign({}, S.messages[byId], msg, { _pending: false });
+      if (byTmp >= 0 && byTmp !== byId) S.messages.splice(byTmp, 1);
+      return;
+    }
+    if (byTmp >= 0) {
+      S.messages[byTmp] = Object.assign({}, msg, { _pending: false });
+      return;
+    }
+    S.messages.push(Object.assign({}, msg, { _pending: false }));
+  },
+
   async send() {
     if (!S.selectedId) return;
     const input = $('#msgInput');
@@ -745,6 +785,7 @@ const ChatView = {
     const partnerId = S.selectedId;
     const btn = $('#sendBtn');
     const saved = input.value;
+    const cid = U.uuid();   // 幂等键，同时用于把实时推送合并回这条临时消息
 
     // 乐观渲染：先上屏，再发请求
     const temp = {
@@ -754,6 +795,7 @@ const ChatView = {
       text,
       created_at: new Date().toISOString(),
       read: false,
+      client_id: cid,
       _pending: true,
     };
     S.messages.push(temp);
@@ -771,7 +813,7 @@ const ChatView = {
         p_recipients: [partnerId],
         p_text: text,
         p_attachment: null,
-        p_client_id: U.uuid(),
+        p_client_id: cid,
       });
       if (res.error) throw res.error;
 
@@ -780,28 +822,53 @@ const ChatView = {
       if (!row.ok) throw new Error(row.reason || '发送失败，请重试');
 
       // 回读完整消息（RPC 只返回 id，时间戳与已读状态以库为准）
-      const { data, error } = await sb.from('private_messages')
-        .select('id, sender_id, recipient_id, text, read, created_at, attachment')
-        .eq('id', row.message_id)
-        .single();
-      if (error) throw error;
+      let data = null;
+      try {
+        const rd = await sb.from('private_messages')
+          .select('id, sender_id, recipient_id, text, read, created_at, attachment, client_id')
+          .eq('id', row.message_id)
+          .single();
+        if (!rd.error && rd.data) data = rd.data;
+      } catch (_) { /* 回读失败不影响「已发送」事实 */ }
 
-      const i = S.messages.findIndex((m) => m.id === temp.id);
-      if (i >= 0) S.messages[i] = data; else S.messages.push(data);
-      S._lastNewId = data.id;
-      this.render({ scroll: 'bottom' });
+      // 服务端已确认写入：即使回读失败也只补一条本地记录，不能提示发送失败，
+      // 否则用户重发会多出一条（服务端已插入成功）。
+      if (!data) {
+        data = {
+          id: row.message_id,
+          sender_id: S.user.id,
+          recipient_id: partnerId,
+          text,
+          read: false,
+          created_at: new Date().toISOString(),
+          attachment: null,
+          client_id: cid,
+        };
+      }
+
+      // 实时推送可能已经把临时消息替换成正式消息（甚至已渲染），
+      // 这里必须按 id 去重后再合并，否则同一行会被 push 两次 → 出现「发一条显示两条」。
+      if (S.selectedId === partnerId) {
+        this._mergeSent(temp.id, data);
+        S._lastNewId = data.id;
+        this.render({ scroll: 'bottom' });
+      }
       ConvList.touch(partnerId, text, data.created_at, false);
-      input.focus();
+      if (S.selectedId === partnerId) input.focus();
     } catch (e) {
       console.warn('发送失败:', e);
-      const i = S.messages.findIndex((m) => m.id === temp.id);
-      if (i >= 0) S.messages.splice(i, 1);
-      this.render({ scroll: 'keep' });
-      input.value = saved;
-      Draft.set(partnerId, saved);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (S.selectedId === partnerId) {
+        const i = S.messages.findIndex((m) => m.id === temp.id);
+        if (i >= 0) S.messages.splice(i, 1);
+        this.render({ scroll: 'keep' });
+        input.value = saved;
+        Draft.set(partnerId, saved);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      } else {
+        Draft.set(partnerId, saved);
+      }
       Toast.error(KJ.formatSupabaseError ? KJ.formatSupabaseError(e) : '发送失败，请重试');
-      input.focus();
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '发送'; }
     }
@@ -905,13 +972,24 @@ const Realtime = {
           const msg = payload.new;
           if (S.messages.some((m) => m.id === msg.id)) return;
 
-          // 与乐观渲染的临时消息合并，避免重复上屏
-          const idx = S.messages.findIndex((m) =>
-            m._pending && m.text === msg.text && m.recipient_id === msg.recipient_id);
+          // 与乐观渲染的临时消息合并，避免重复上屏。
+          // 优先用幂等键精确匹配；旧数据没有 client_id 时退回「文本 + 收件人 + 最近 30 秒」。
+          let idx = -1;
+          if (msg.client_id) {
+            idx = S.messages.findIndex((m) => m._pending && m.client_id === msg.client_id);
+          }
+          if (idx < 0) {
+            const now = Date.now();
+            idx = S.messages.findIndex((m) =>
+              m._pending &&
+              m.text === msg.text &&
+              m.recipient_id === msg.recipient_id &&
+              Math.abs(now - new Date(m.created_at).getTime()) < 30000);
+          }
           if (idx >= 0) {
-            S.messages[idx] = msg;
+            S.messages[idx] = Object.assign({}, msg, { _pending: false });
             S._lastNewId = msg.id;
-            ChatView.render({ scroll: 'keep' });
+            if (S.selectedId === msg.recipient_id) ChatView.render({ scroll: 'keep' });
           } else if (msg.recipient_id === S.selectedId) {
             ChatView.appendIncoming(msg);
           }
@@ -1078,6 +1156,20 @@ function bindEvents() {
       console.warn('recall failed:', err);
       Toast.error('撤回失败，请稍后重试');
     }
+  });
+
+  // 文件卡片：用真实文件名下载
+  // 直接点 <a href> 会在新标签打开存储地址，跨域链接的 download 属性不生效，
+  // 浏览器会拿编码后的对象名当文件名（表现为「名字乱码 + 没有后缀」）。
+  $('#msgList')?.addEventListener('click', (e) => {
+    const card = e.target.closest('a.msg-file');
+    if (!card) return;
+    const mid = card.closest('.msg-row')?.dataset.mid;
+    const m = S.messages.find((x) => x.id === mid);
+    const a = m && m.attachment;
+    if (!a || a.kind === 'invite' || !a.url) return;
+    e.preventDefault();
+    if (KJ.downloadUrl) KJ.downloadUrl(a.url, a.name || '文件');
   });
 
   // 加载更早（事件委托，按钮是动态渲染的）

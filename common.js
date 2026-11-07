@@ -930,6 +930,51 @@
     return msg;
   }
 
+  // ====================== 下载（指定真实文件名） ======================
+  /**
+   * 跨域链接直接用 <a download> 会被浏览器忽略，最终按 URL 末段命名
+   * （云盘对象名是编码后的路径，于是出现「文件名错乱、后缀丢失」）。
+   * 这里先 fetch 成 Blob 再用同源 objectURL 下载；失败时退回给地址加
+   * ?download= 让存储服务端返回 Content-Disposition。
+   */
+  async function downloadUrl(url, filename) {
+    var name = String(filename || '文件').replace(/[\\/:*?"<>|\r\n]/g, '_').trim().slice(0, 180) || '文件';
+    if (!url) { toast('下载地址无效'); return false; }
+    try {
+      var res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var blob = await res.blob();
+      var obj = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = obj;
+      a.download = name;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(obj); }, 10000);
+      return true;
+    } catch (e) {
+      try {
+        var u = new URL(url, location.href);
+        u.searchParams.set('download', name);
+        var link = document.createElement('a');
+        link.href = u.toString();
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return true;
+      } catch (_) {
+        toast('下载失败，请稍后重试');
+        return false;
+      }
+    }
+  }
+
   // ====================== 站点更新提示 ======================
   var RELEASE_SEEN_KEY = 'kj_release_seen';
 
@@ -2128,6 +2173,7 @@
     setupMobileMenu: setupMobileMenu,
     safeRedirect: safeRedirect,
     formatSupabaseError: formatSupabaseError,
+    downloadUrl: downloadUrl,
     formatDate: formatDate,
     warmUpServices: warmUpServices,
     recordLoginDevice: recordLoginDevice,

@@ -459,8 +459,8 @@
     function spaceLabel() { return isPrivateSpace() ? '私有空间' : '公共空间'; }
     function updateSpaceUI() {
       $('#headerSub').textContent = isPrivateSpace()
-        ? '私有空间 · 文件不公开，仅自己可见（下载链接限时有效）'
-        : '云端存储 · 随时随地访问你的文件';
+        ? '私有空间 · 仅自己可见（每人 50MB，下载链接限时有效）'
+        : '公共空间 · 所有登录用户共享，文件公开可访问';
     }
     var sb = KJ.createSupabase();
     KJ.initMessageBanner(sb);
@@ -578,6 +578,7 @@
         const prefix = scanAll ? '' : (adminTarget ? adminTarget.id + '/' : (currentUser?.id ? currentUser.id + '/' : ''));
         const bucket = sb.storage.from(bucketName());
         const { data, error } = await bucket.list(prefix, {
+          limit: 1000,
           sortBy: { column: 'created_at', order: 'desc' }
         });
         if (error) throw error;
@@ -596,6 +597,7 @@
               // 是用户目录，递归列出
               try {
                 const { data: subFiles } = await bucket.list(entry.name, {
+                  limit: 1000,
                   sortBy: { column: 'created_at', order: 'desc' }
                 });
                 for (const f of (subFiles || [])) {
@@ -640,29 +642,57 @@
     }
 
     // 存储对象名只允许 ASCII（字母/数字/下划线等）；中文等非 ASCII 字符（含 URL 编码的 %XX）
-    // 都会被存储端以 Invalid key 拒绝。因此把文件名可逆编码成只含十六进制+下划线的
-    // ASCII 安全串用于存储路径，展示时再用 decodeName 还原成中文等原名。
-    function encodeName(name) {
-      let out = '', s = String(name || '');
-      for (let i = 0; i < s.length; i++) {
-        const cp = s.codePointAt(i);
-        if (cp > 0xffff) i++; // 代理对，cp 已是完整码点
-        if (/[0-9a-fA-F]/.test(s[i])) out += s[i];
-        else out += '_' + cp.toString(16).toUpperCase() + '_';
-      }
-      return out.slice(0, 220);
+    // 都会被存储端以 Invalid key 拒绝。因此把文件名可逆编码成 ASCII 安全串用于存储路径，
+    // 展示/下载时再解码还原成原名。
+    //
+    // v2（b64- 前缀）：UTF-8 → base64url。每个中文字符只占 4 个字符，且完整保留后缀；
+    // v1（旧数据）：十六进制转义，形如 _62A5_，这里继续兼容解码。
+    function utf8ToB64Url(str) {
+      var bytes = new TextEncoder().encode(String(str || ''));
+      var bin = '';
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
-    // 仅含 十六进制+下划线 的才视为"已编码"并解码；其余（旧 ASCII 文件）原样返回
+
+    function b64UrlToUtf8(s) {
+      var b64 = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      var bin = atob(b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    function encodeName(name) {
+      try {
+        return 'b64-' + utf8ToB64Url(name);
+      } catch (e) {
+        // 极端环境不支持 TextEncoder 时退回 v1 编码
+        var out = '', s = String(name || '');
+        for (var i = 0; i < s.length; i++) {
+          var cp = s.codePointAt(i);
+          if (cp > 0xffff) i++;
+          if (/[0-9a-fA-F]/.test(s[i])) out += s[i];
+          else out += '_' + cp.toString(16).toUpperCase() + '_';
+        }
+        return out;
+      }
+    }
+
+    // 仅含十六进制+下划线的 v1 编码才解码；其余（旧 ASCII 文件）原样返回
     function decodeName(key) {
-      const s = String(key || '');
+      var s = String(key || '');
+      if (s.indexOf('b64-') === 0) {
+        try { return b64UrlToUtf8(s.slice(4)) || s; } catch (e) { return s.slice(4) || s; }
+      }
       if (!/^[0-9a-fA-F_]+$/.test(s)) return s;
-      let out = '', i = 0;
+      var out = '', i = 0;
       while (i < s.length) {
         if (s[i] === '_') {
-          const j = s.indexOf('_', i + 1);
+          var j = s.indexOf('_', i + 1);
           if (j === -1 || j === i + 1) { out += s[i]; i++; }
           else {
-            const h = s.slice(i + 1, j);
+            var h = s.slice(i + 1, j);
             if (/^[0-9a-fA-F]{1,6}$/.test(h)) { out += String.fromCodePoint(parseInt(h, 16)); i = j + 1; }
             else { out += s[i]; i++; }
           }
@@ -686,7 +716,6 @@
 
       // 对象名用 ASCII 安全编码（中文等非 ASCII 字符会因 Invalid key 被存储拒绝）
       const path = currentUser.id + '/' + Date.now() + '_' + encodeName(file.name);
-
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const wrap = $('#uploadProgressWrap');
@@ -714,9 +743,24 @@
           } else {
             let errMsg = '上传失败';
             try { const r = JSON.parse(xhr.responseText); errMsg = r.message || r.error || errMsg; } catch(_) {}
-            if (xhr.status === 401 || xhr.status === 403) errMsg = '登录已过期，请刷新页面后重新登录';
+            if (/P0001|DatabaseError/i.test(errMsg)) {
+              // 存储服务不会透传数据库触发器的具体文案，只能按场景给出可操作提示
+              if (isPrivateSpace()) {
+                errMsg = '上传被拒绝：私有空间可能已满（每人 50MB），请刷新后删除部分文件再试';
+                _quota.loaded = false;
+                setTimeout(refreshQuota, 300);
+              } else {
+                errMsg = '上传被服务器拒绝，请刷新页面后重试（大文件需先完成人机验证）';
+              }
+            }
+            else if (/私有空间|50\s*MB|quota|exceeded/i.test(errMsg)) {
+              errMsg = '私有空间已满（每人 50MB），请先删除部分文件';
+              _quota.loaded = false;
+              setTimeout(refreshQuota, 300);
+            }
+            else if (xhr.status === 401 || xhr.status === 403) errMsg = '登录已过期，请刷新页面后重新登录';
             else if (xhr.status === 404) errMsg = '存储桶不存在，请联系管理员';
-            else if (xhr.status === 413) errMsg = '文件过大';
+            else if (xhr.status === 413) errMsg = '文件超过 10MB 限制';
             KJ.toast('上传失败: ' + errMsg);
             resolve(false);
           }
@@ -728,7 +772,8 @@
           resolve(false);
         });
 
-        xhr.open('POST', KJ.SUPABASE_URL + '/storage/v1/object/' + bucketName() + '/' + path);
+        xhr.open('POST', KJ.SUPABASE_URL + '/storage/v1/object/' + bucketName() + '/' +
+          path.split('/').map(encodeURIComponent).join('/'));
         xhr.setRequestHeader('Authorization', 'Bearer ' + session?.access_token);
         xhr.setRequestHeader('Cache-Control', 'max-age=3600');
         xhr.send(file);
@@ -820,12 +865,14 @@
 
     // ====================== 文件图标 ======================
     function getFileIcon(type, name) {
-      if (type.startsWith('image/')) return '<i class="fas fa-file-image"></i>';
-      if (type.startsWith('video/')) return '<i class="fas fa-video"></i>';
-      if (type.startsWith('audio/')) return '<i class="fas fa-music"></i>';
-      if (type.includes('pdf')) return '<i class="fas fa-file-pdf"></i>';
-      if (type.includes('zip') || type.includes('rar') || type.includes('tar') || type.includes('7z')) return '<i class="fas fa-box-archive"></i>';
-      if (type.includes('text') || type.includes('javascript') || type.includes('json') || type.includes('html') || type.includes('css')) return '<i class="fas fa-file-lines"></i>';
+      type = String(type || '');
+      name = String(name || '');
+      if (type.indexOf('image/') === 0) return '<i class="fas fa-file-image"></i>';
+      if (type.indexOf('video/') === 0) return '<i class="fas fa-video"></i>';
+      if (type.indexOf('audio/') === 0) return '<i class="fas fa-music"></i>';
+      if (type.indexOf('pdf') !== -1) return '<i class="fas fa-file-pdf"></i>';
+      if (/zip|rar|tar|7z|gzip/.test(type)) return '<i class="fas fa-box-archive"></i>';
+      if (/text|javascript|json|html|css/.test(type)) return '<i class="fas fa-file-lines"></i>';
       if (name.endsWith('.md')) return '<i class="fas fa-file-pen"></i>';
       if (name.endsWith('.doc') || name.endsWith('.docx')) return '<i class="fas fa-file-word"></i>';
       if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '<i class="fas fa-file-excel"></i>';
@@ -834,7 +881,8 @@
     }
 
     function formatSize(bytes) {
-      if (!bytes || bytes === 0) return '--';
+      if (bytes == null || isNaN(bytes)) return '--';
+      if (bytes <= 0) return '0 B';
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
@@ -843,6 +891,7 @@
     function formatDate(iso) {
       if (!iso) return '--';
       const d = new Date(iso);
+      if (isNaN(d.getTime())) return '--';
       return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) + ' ' +
              d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     }
@@ -900,19 +949,30 @@
       document.querySelectorAll('#fileList .sk-file').forEach(el => el.remove());
     }
 
+    var _loadSeq = 0;
+
     async function loadAndRender() {
+      const seq = ++_loadSeq;
+      const space = currentSpace;
       renderFilesSkeleton();
       try {
-        cachedFiles = await listFiles();
+        const files = await listFiles();
+        // 切换空间/管理员目标后，丢弃上一次请求的慢响应
+        if (seq !== _loadSeq || space !== currentSpace) return;
+        cachedFiles = files;
         renderFiles(true);   // 仅首次加载播放进场动画
+        if (isPrivateSpace()) refreshQuota();
       } catch(e) {
+        if (seq !== _loadSeq) return;
         console.warn('loadAndRender error:', e);
         const empty = $('#emptyState');
         empty.querySelector('.empty-text').textContent = '加载文件失败，请刷新重试';
         empty.style.display = 'block';
       } finally {
-        showLoading(false);
-        removeFilesSkeleton();
+        if (seq === _loadSeq) {
+          showLoading(false);
+          removeFilesSkeleton();
+        }
       }
     }
 
@@ -1001,15 +1061,64 @@
       }
     }
 
+    // 私有空间配额：以服务端 cloud_quota() 为准（每人 50MB），本地列表只用于首屏估算
+    var _quota = { used: 0, quota: 50 * 1024 * 1024, loaded: false };
+
+    async function refreshQuota() {
+      if (!sb || !currentUser) return _quota;
+      try {
+        const { data, error } = await sb.rpc('cloud_quota');
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) {
+          _quota = {
+            used: Number(row.used_bytes) || 0,
+            quota: Number(row.quota_bytes) || 50 * 1024 * 1024,
+            loaded: true
+          };
+        }
+      } catch (e) {
+        // RPC 尚未部署时退回本地统计，不阻塞页面
+        const mine = cachedFiles.filter(f => f.owner === currentUser?.id);
+        _quota = { used: mine.reduce((s, f) => s + (f.size || 0), 0), quota: 50 * 1024 * 1024, loaded: true };
+      }
+      if (typeof _quotaAt === 'number') _quotaAt = Date.now();
+      updateStorage();
+      return _quota;
+    }
+
     function updateStorage() {
-      // 普通用户只统计自己的文件（公共空间全桶可见，仅计 owner 为自己的）；管理员显示全量
-      const scoped = isAdmin ? cachedFiles : cachedFiles.filter(f => f.owner === currentUser?.id);
-      const total = scoped.reduce((s, f) => s + (f.size || 0), 0);
-      const MAX = 50 * 1024 * 1024;
-      const pct = Math.min(100, Math.round((total / MAX) * 100));
-      $('#storageText').textContent = total ? `已用 ${formatSize(total)}` : '已用 --';
-      $('#storageBar').style.width = pct + '%';
-      $('#storageBar').style.background = pct > 95 ? 'var(--danger)' : pct > 80 ? '#f39c12' : 'var(--accent)';
+      const limit = _quota.quota || 50 * 1024 * 1024;
+      const bar = $('#storageBar');
+      let used = 0;
+
+      if (isPrivateSpace()) {
+        // 管理员查看某个用户时，展示该用户的空间占用
+        if (isAdmin && adminTarget) {
+          used = cachedFiles.reduce((s, f) => s + (f.size || 0), 0);
+          $('#storageText').textContent = '该用户已用 ' + formatSize(used) + ' / 50 MB';
+          if (bar) {
+            bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
+            bar.style.background = used >= limit ? 'var(--danger)' : used > limit * 0.8 ? '#f39c12' : 'var(--accent)';
+            bar.parentElement.style.display = '';
+          }
+          return;
+        }
+        used = _quota.loaded
+          ? _quota.used
+          : cachedFiles.filter(f => f.owner === currentUser?.id).reduce((s, f) => s + (f.size || 0), 0);
+        const pct = Math.min(100, Math.round((used / limit) * 100));
+        $('#storageText').textContent = '私有空间 ' + formatSize(used) + ' / 50 MB';
+        if (bar) {
+          bar.style.width = pct + '%';
+          bar.style.background = pct >= 100 ? 'var(--danger)' : pct > 80 ? '#f39c12' : 'var(--accent)';
+          bar.parentElement.style.display = '';
+        }
+      } else {
+        used = cachedFiles.reduce((s, f) => s + (f.size || 0), 0);
+        $('#storageText').textContent = '公共空间 · 共 ' + formatSize(used) + ' / ' + cachedFiles.length + ' 个文件';
+        if (bar) bar.parentElement.style.display = 'none';
+      }
     }
 
     // ====================== 上传 ======================
@@ -1030,12 +1139,33 @@
     ];
     var BLOCKED_EXTS = ['.exe','.dll','.bat','.cmd','.sh','.msi','.vbs','.ps1','.js','.vba','.scr','.com','.pif'];
 
+    // 私有空间每人 50MB：前端先提示，服务端触发器再强制一次
+    var _quotaAt = 0;
+
+    async function ensureQuota(files) {
+      if (!isPrivateSpace() || !currentUser) return true;
+      if (Date.now() - _quotaAt > 15000) await refreshQuota();
+      const need = files.reduce((s, f) => s + (f.size || 0), 0);
+      const remain = Math.max(0, (_quota.quota || 50 * 1024 * 1024) - (_quota.used || 0));
+      if (need > remain) {
+        KJ.toast('私有空间剩余 ' + formatSize(remain) + '，本次需要 ' + formatSize(need) + '，请先删除部分文件', 5000);
+        return false;
+      }
+      return true;
+    }
+
     async function handleFiles(fileList) {
       if (!KJ.rateLimit('cloud_upload', 2000, 1, '上传过于频繁，请稍后再试')) return;
-      const files = Array.from(fileList);
-      if (files.length === 0) return;
-      let success = 0;
-      for (const file of files) {
+      if (isPrivateSpace() && isAdmin && adminTarget) {
+        KJ.toast('正在管理他人空间，不能上传文件');
+        return;
+      }
+      const picked = Array.from(fileList);
+      if (picked.length === 0) return;
+
+      // 先做单文件校验，不合法的不进入队列
+      const files = [];
+      for (const file of picked) {
         if (file.size > 10 * 1024 * 1024) { KJ.toast(`"${file.name}" 超过 10MB 限制`); continue; }
         // 类型白名单检查
         var typeAllowed = false;
@@ -1048,8 +1178,38 @@
         // 纯文本文件允许（即使 MIME 不匹配）
         if (!typeAllowed && !file.type) { typeAllowed = true; }
         if (!typeAllowed) { KJ.toast(`"${file.name}" 文件类型不允许上传（${file.type || '未知'}）`); continue; }
+        files.push(file);
+      }
+      if (files.length === 0) return;
+
+      // 同名提醒：路径里带时间戳不会覆盖旧文件，但会生成副本、占用配额
+      try {
+        const existing = new Set(
+          cachedFiles
+            .filter(f => (isPrivateSpace() ? f.owner === currentUser?.id : true))
+            .map(f => parseDisplayName(f.name))
+        );
+        const dups = files.filter(f => existing.has(f.name));
+        if (dups.length) {
+          const names = dups.slice(0, 3).map(f => f.name).join('、') + (dups.length > 3 ? ' 等' : '');
+          if (!confirm('已存在同名文件：' + names + '\n继续上传会生成副本，是否继续？')) return;
+        }
+      } catch (_) {}
+
+      if (!(await ensureQuota(files))) return;
+
+      let success = 0;
+      for (const file of files) {
         const ok = await uploadFile(file);
-        if (ok) success++;
+        if (ok) { success++; continue; }
+        // 私有空间上传失败时复查配额：确实是空间不足就不再继续尝试后面的文件
+        if (isPrivateSpace()) {
+          await refreshQuota();
+          if (_quota.used + file.size > _quota.quota) {
+            KJ.toast('私有空间已满，剩余文件未上传', 5000);
+            break;
+          }
+        }
       }
       if (success > 0) {
         KJ.toast(`成功上传 ${success} 个文件`);
@@ -1069,6 +1229,8 @@
 
     // ====================== 预览 ======================
     function previewFile(url, name, type, size) {
+      name = String(name || '');
+      type = String(type || '');
       $('#previewTitle').textContent = name;
       const content = $('#previewContent');
       // 非图片且文件过大：不加载，提示下载
@@ -1115,15 +1277,19 @@
       $('#previewOverlay').classList.remove('hidden');
     }
 
+    // 下载：必须由前端指定真实文件名。
+    // 存储对象名是编码后的 ASCII 路径，直接把跨域 URL 交给 <a download>，
+    // 浏览器会忽略 download 属性，按 URL 末段命名 —— 于是中文名变成乱码、后缀也丢了。
     function downloadFile(url, name) {
+      if (KJ.downloadUrl) return KJ.downloadUrl(url, name);
       const a = document.createElement('a');
       a.href = url;
       a.download = name;
-      a.target = '_blank';
       a.rel = 'noopener';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
+      return true;
     }
 
     // 文件列表事件委托（预览/下载先取访问 URL：私有空间需签名）
@@ -1269,9 +1435,16 @@
       bar.classList.toggle('hidden', !showBar);
       const active = showBar && adminTarget;
       banner.classList.toggle('hidden', !active);
+      // 管理他人空间时禁止上传：上传会落到管理员自己的目录，容易误操作
+      const upBtn = document.getElementById('uploadBtn');
+      if (upBtn) {
+        upBtn.disabled = !!active;
+        upBtn.style.opacity = active ? '0.5' : '';
+        upBtn.title = active ? '管理他人空间时不能上传' : '';
+      }
       if (active) {
         const nick = adminTarget.nick || adminTarget.id.substring(0, 8);
-        banner.innerHTML = '<i class="fas fa-user-gear"></i> 正在管理用户 ' + KJ.escapeHtml(nick) + ' 的私有空间' +
+        banner.innerHTML = '<i class="fas fa-user-gear"></i> 正在管理用户 ' + KJ.escapeHtml(nick) + ' 的私有空间（只读）' +
           '<span class="banner-actions"><button class="btn btn-outline" id="adminTargetExitBtn" type="button" style="padding:6px 14px;font-size:13px"><i class="fas fa-xmark"></i> 退出管理</button></span>';
         const exitBtn = document.getElementById('adminTargetExitBtn');
         if (exitBtn) exitBtn.addEventListener('click', adminClearTarget);
@@ -1420,7 +1593,9 @@
     const _origHandleFiles = handleFiles;
     handleFiles = async function(fileList) {
       const files = Array.from(fileList);
-      const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+      // 配额先于验证码检查，避免用户白做一次人机验证
+      if (!(await ensureQuota(files.filter(f => f.size <= 10 * 1024 * 1024)))) return;
+      const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024 && f.size <= 10 * 1024 * 1024);
       if (largeFiles.length > 0) {
         const token = await requireCaptcha(largeFiles[0].name);
         if (!token) { KJ.toast('验证取消'); return; }
