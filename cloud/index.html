@@ -770,7 +770,7 @@
             }
             else if (xhr.status === 401 || xhr.status === 403) errMsg = '登录已过期，请刷新页面后重新登录';
             else if (xhr.status === 404) errMsg = '存储桶不存在，请联系管理员';
-            else if (xhr.status === 413) errMsg = '文件超过 10MB 限制';
+            else if (xhr.status === 413) errMsg = '文件超过服务器单文件上限（当前套餐为 50MB）';
             KJ.toast('上传失败: ' + errMsg);
             resolve(false);
           }
@@ -1173,10 +1173,9 @@
       const picked = Array.from(fileList);
       if (picked.length === 0) return;
 
-      // 先做单文件校验，不合法的不进入队列
+      // 先做类型校验，不合法的不进入队列（单文件大小不再单独限制）
       const files = [];
       for (const file of picked) {
-        if (file.size > 10 * 1024 * 1024) { KJ.toast(`"${file.name}" 超过 10MB 限制`); continue; }
         // 类型白名单检查
         var typeAllowed = false;
         for (var i = 0; i < ALLOWED_TYPES.length; i++) {
@@ -1604,8 +1603,8 @@
     handleFiles = async function(fileList) {
       const files = Array.from(fileList);
       // 配额先于验证码检查，避免用户白做一次人机验证
-      if (!(await ensureQuota(files.filter(f => f.size <= 10 * 1024 * 1024)))) return;
-      const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024 && f.size <= 10 * 1024 * 1024);
+      if (!(await ensureQuota(files))) return;
+      const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024);
       if (largeFiles.length > 0) {
         const token = await requireCaptcha(largeFiles[0].name);
         if (!token) { KJ.toast('验证取消'); return; }
