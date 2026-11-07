@@ -313,6 +313,11 @@
       <!-- 数据与存储 -->
       <div class="settings-group anim-4">
         <div class="group-label">数据与存储</div>
+        <a href="/cloud/" class="settings-item card-glass" id="cloudQuotaItem">
+          <span class="s-icon" style="background:rgba(0,113,227,0.12);color:#0071e3"><i class="fas fa-cloud"></i></span>
+          <span class="s-body"><span class="s-title">私有云盘空间</span><span class="s-desc" id="cloudQuotaDesc">每人 50MB，点击管理文件</span></span>
+          <span class="s-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
         <button type="button" class="settings-item card-glass" id="exportBtn">
           <span class="s-icon s-icon-data"><i class="fas fa-file-arrow-down"></i></span>
           <span class="s-body"><span class="s-title">导出我的数据</span><span class="s-desc">下载账号资料与偏好设置（JSON）</span></span>
@@ -502,6 +507,29 @@
       }catch(e){}
     }
 
+    // ── 私有云盘用量 ──
+    function fmtBytes(n){
+      n=Number(n)||0;
+      if(n<1024) return n+' B';
+      if(n<1024*1024) return (n/1024).toFixed(1)+' KB';
+      return (n/1024/1024).toFixed(2)+' MB';
+    }
+    async function loadCloudQuota(){
+      if(!sb||!user) return;
+      var el=$('#cloudQuotaDesc');
+      if(!el) return;
+      try{
+        var r=await sb.rpc('cloud_quota');
+        if(r.error) return;
+        var row=Array.isArray(r.data)?r.data[0]:r.data;
+        if(!row) return;
+        var used=Number(row.used_bytes)||0;
+        var quota=Number(row.quota_bytes)||52428800;
+        var pct=quota?Math.min(100,Math.round(used/quota*100)):0;
+        el.textContent='已用 '+fmtBytes(used)+' / 50MB（'+pct+'%）· 点击管理文件';
+      }catch(e){}
+    }
+
     // ── 导出数据 ──
     async function exportData(){
       if(!sb||!user) return;
@@ -676,6 +704,7 @@
         loadPrivacy();
         loadRank();
         loadNotifSummary();
+        loadCloudQuota();
       }catch(e){
         console.error('loadUser:',e);
         showLoginPrompt('加载失败，请刷新页面重试');
