@@ -1148,22 +1148,24 @@ var docs = {
   'cloud': {
     title: '资源云盘',
     category: '云盘',
-    meta: '上传、下载、分享与私有空间',
+    meta: '上传、下载、分享与 50MB 私有空间',
     toc: [['公共空间与私有空间', 'spaces'], ['上传文件', 'upload'], ['文件管理', 'manage'], ['分享给好友', 'share']],
     content: '<p>资源云盘提供文件上传、管理和分享功能，分为<strong>公共空间</strong>和<strong>私有空间</strong>两个独立区域。</p>'
       + '<h2 id="spaces">公共空间与私有空间<a href="#spaces" class="anchor-icon">#</a></h2>'
-      + '<ul><li><strong>公共空间</strong> — 文件可通过公开 URL 访问，适合分享</li>'
-      + '<li><strong>私有空间</strong> — 文件仅自己可见，预览和下载链接<strong>1 小时内有效</strong></li></ul>'
+      + '<ul><li><strong>公共空间</strong> — 所有登录用户共享，文件可通过公开 URL 访问，适合分享</li>'
+      + '<li><strong>私有空间</strong> — 文件仅自己可见，每人 <strong>50MB</strong> 配额；预览和下载使用<strong> 5 分钟临时链接</strong>，分享到站内信的卡片链接 <strong>6 小时</strong>内有效</li></ul>'
       + '<p>页面顶部可切换当前空间，两个空间的文件互相隔离。</p>'
-      + '<h2 id="upload">上传文件<a href="#upload" class="anchor-icon">#</a></h2>'
+      + '<h2 id="upload">上传文件<a class="anchor-icon" href="#upload">#</a></h2>'
       + '<ol class="steps">'
-      + '<li><span class="step-content">点击「上传文件」选择本地文件。</span></li>'
+      + '<li><span class="step-content">点击「上传文件」选择本地文件，单个文件最大 <strong>10MB</strong>。</span></li>'
       + '<li><span class="step-content">文件大于 5MB 时需要完成 hCaptcha 验证（由服务端签发一次性上传票据）。</span></li>'
+      + '<li><span class="step-content">私有空间按账号累计 <strong>50MB</strong>，超出后服务端会拒绝上传，需要先删除旧文件。</span></li>'
       + '<li><span class="step-content">上传完成后文件出现在列表中，可下载、分享或删除。</span></li>'
       + '</ol>'
       + '<h2 id="manage">文件管理<a class="anchor-icon" href="#manage">#</a></h2>'
-      + '<ul><li>支持批量下载选中文件</li><li>列表显示文件名、大小与上传时间</li><li>可创建文件夹组织文件</li>'
-      + '<li>文件按 <code>{用户ID}/</code> 前缀隔离，普通用户只能看到自己的文件</li></ul>'
+      + '<ul><li>支持按文件名搜索、预览、下载与删除</li><li>列表显示文件名、大小与上传时间</li>'
+      + '<li>中文文件名会完整保留：存储层使用编码路径，下载时还原为原始文件名与后缀</li>'
+      + '<li>公共空间按上传者分目录展示；私有空间普通用户只能看到自己的文件，管理员可按邮箱查看指定用户</li></ul>'
       + '<h2 id="share">分享给好友<a href="#share" class="anchor-icon">#</a></h2>'
       + '<p>在文件上点「纸飞机」，会<strong>跳转到站内信</strong>完成分享：顶部出现待发送的文件条，选好对话点发送即可，还能顺手写一句附言。</p>'
       + '<p>对方收到一张<strong>文件卡片</strong>（图标 + 文件名 + 大小 + 下载按钮）。私有空间的文件使用 <strong>6 小时临时链接</strong>，过期后需重新分享。</p>'
