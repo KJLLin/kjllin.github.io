@@ -27,7 +27,9 @@
   <title>KJLLin · 个人主页</title>
   <link rel="canonical" href="https://kjllin.dpdns.org/">
 
-  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+  <link rel="preconnect" href="https://vzqspcuxnwpakofwumat.supabase.co" crossorigin>
+  <link rel="stylesheet" href="/vendor/fontawesome/css/subset.min.css">
+  <link rel="preload" as="font" type="font/woff2" href="/vendor/fontawesome/webfonts/fa-solid-900.woff2" crossorigin>
   <link rel="stylesheet" href="/theme.css">
   <!-- 预加载登录组件：内联脚本要到解析末尾才发起请求，提前声明可省下数秒 -->
   <link rel="preload" as="script" href="/vendor/supabase.min.js" fetchpriority="high">
@@ -367,6 +369,26 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       grid-auto-rows: 156px;
       gap: 16px;
+    }
+    /* 首屏骨架：在 JS 渲染真实小组件之前占住网格高度，避免整块内容下移 */
+    .widget.home-skel { pointer-events: none; }
+    .home-skel .sk-ico {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: linear-gradient(90deg, rgba(120,120,128,.10) 25%, rgba(120,120,128,.20) 37%, rgba(120,120,128,.10) 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.5s linear infinite;
+    }
+    .home-skel .sk-bar {
+      height: 12px; border-radius: 6px; margin-top: 14px;
+      background: linear-gradient(90deg, rgba(120,120,128,.10) 25%, rgba(120,120,128,.20) 37%, rgba(120,120,128,.10) 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.5s linear infinite;
+    }
+    .home-skel .sk-bar + .sk-bar { margin-top: 8px; }
+    html[data-theme="dark"] .home-skel .sk-ico,
+    html[data-theme="dark"] .home-skel .sk-bar {
+      background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.13) 37%, rgba(255,255,255,.06) 63%);
+      background-size: 400% 100%;
     }
     .widget {
       position: relative;
@@ -998,12 +1020,12 @@ html[data-theme="dark"] .catalog-sheet {
     // 加载超时兜底（loader 可能已被移除，需空值防护）
     var _t1=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='正在加载... (网络较慢)';},5000);
     var _t2=setTimeout(function(){var e=document.getElementById('loaderText');if(e)e.textContent='加载时间较长，请检查网络连接';},10000);
-    // 兜底：6 秒后先把页面放出来，登录态等组件到齐后静默补上，
-    // 不让用户对着转圈干等（SDK 有 214KB，弱网下可能要十几秒）
+    // 兜底：最多等 1.2 秒就把页面放出来。页面本身的骨架已经渲染好，
+    // 登录态和统计晚到只会静默补齐，不让用户对着全屏转圈干等。
     setTimeout(function(){
       var l=document.getElementById('loader');
       if(l && l.parentNode){ l.style.opacity='0'; setTimeout(function(){ if(l.parentNode) l.remove(); }, 320); }
-    }, 6000);
+    }, 1200);
     function showError(msg){
       var el=document.getElementById('loaderError');
       // 遮罩已经撤掉（6 秒兜底）时，改用轻提示，别让错误信息无处安放
@@ -1061,7 +1083,23 @@ html[data-theme="dark"] .catalog-sheet {
     </section>
 
     <!-- ==================== 小组件桌面（由脚本渲染，可编辑/添加） ==================== -->
-    <section class="widget-grid" id="widgetGrid" aria-label="桌面小组件"></section>
+    <section class="widget-grid" id="widgetGrid" aria-label="桌面小组件" aria-busy="true">
+      <!-- 静态骨架：JS 就绪后由 renderGrid() 整体替换 -->
+      <div class="widget widget--lg home-skel" aria-hidden="true">
+        <div class="sk-ico"></div>
+        <div class="sk-bar" style="width:46%"></div>
+        <div class="sk-bar" style="width:28%"></div>
+      </div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:52%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:40%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:56%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:44%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:50%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:38%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:54%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:42%"></div></div>
+      <div class="widget home-skel" aria-hidden="true"><div class="sk-ico"></div><div class="sk-bar" style="width:48%"></div></div>
+    </section>
 
     <footer class="footer"><span>© 2026 KJLLin · All Rights Reserved</span> <span class="footer-sep">|</span> <a href="/docs/"><i class="fas fa-book"></i> 帮助文档</a></footer>
   </div>
@@ -1722,6 +1760,7 @@ html[data-theme="dark"] .catalog-sheet {
       html += '<button type="button" class="widget widget--add" id="addWidgetBtn" aria-label="添加组件">＋</button>';
     }
     grid.innerHTML = html;
+    grid.setAttribute('aria-busy', 'false');
     updateClock();
   }
 

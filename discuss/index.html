@@ -14,9 +14,10 @@
   <title>文章广场 · KJLLin</title>
   <link rel="canonical" href="https://kjllin.dpdns.org/discuss/">
 
+  <link rel="preconnect" href="https://vzqspcuxnwpakofwumat.supabase.co" crossorigin>
   <!-- Supabase -->
-  <script src="/vendor/supabase.min.js"></script>
-  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/subset.min.css">
+  <link rel="preload" as="font" type="font/woff2" href="/vendor/fontawesome/webfonts/fa-solid-900.woff2" crossorigin>
   <link rel="stylesheet" href="/theme.css">
 
   <style>
@@ -540,6 +541,7 @@
       <div id="loaderError" style="display:none;margin-top:12px;font-size:12px;color:var(--color-danger,#e74c3c);max-width:300px;text-align:center;word-break:break-all"></div>
     </div>
   </div>
+  <script src="/vendor/supabase.min.js"></script>
   <script src="/common.js"></script>
   <script>
     var _t1=setTimeout(function(){var t=document.getElementById('loaderText');if(t)t.textContent='正在加载... (网络较慢)';},5000);
