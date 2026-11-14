@@ -1005,7 +1005,7 @@
                 .replace(/[#>*_`~-]/g, ' ')
                 .replace(/\s+/g, ' ')
                 .trim();
-              if (plain) excerpt = '<a href="/discuss/view/' + p.id + '/" class="post-excerpt">' +
+              if (plain) excerpt = '<a href="/discuss/view/?id=' + p.id + '" class="post-excerpt">' +
                 KJ.escapeHtml(plain.slice(0, 96)) + (plain.length > 96 ? '…' : '') + '</a>';
             }
             var authorAv = KJ.avatarHtml(
@@ -1014,7 +1014,7 @@
             );
             return '<div class="post-card mica' + (actions ? ' has-actions' : '') + '">' +
               '<div class="post-main">' +
-                '<a href="/discuss/view/' + p.id + '/" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
+                '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
                 (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
               '</div>' +
               actions +

@@ -105,14 +105,6 @@
 
   <script src="/common.js"></script>
   <script>
-    // 静态托管的兜底：文章 / 文档的路径没预渲染到时，交回客户端渲染
-    (function(){
-      var p = location.pathname;
-      var a = p.match(/^\/discuss\/view\/([^\/]+)\/?$/);
-      if (a) { location.replace('/discuss/view/?id=' + encodeURIComponent(a[1]) + '&fallback=1'); return; }
-      var d = p.match(/^\/docs\/([^\/]+)\/?$/);
-      if (d) { location.replace('/docs/#/' + encodeURIComponent(d[1])); }
-    })();
     (function(){
     var $=function(s){return document.querySelector(s)};
     var themeBtn=$('#themeBtn');

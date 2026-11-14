@@ -718,21 +718,13 @@ function buildSidebar() {
     html += '<button class="sidebar-category-title" onclick="toggleCategory(this)">' + group[0] + '</button>';
     html += '<ul class="sidebar-category-items">';
     group[1].forEach(function(item) {
-      html += '<a class="sidebar-link" href="/docs/' + item[0] + '/" data-section="' + item[0] + '" onclick="return sidebarGo(event, \'' + item[0] + '\')">';
+      html += '<a class="sidebar-link" data-section="' + item[0] + '" onclick="navigateTo(\'' + item[0] + '\', this)">';
       html += '<i class="fas fa-' + item[2] + '" style="width:15px;text-align:center;font-size:12px;opacity:0.6"></i>';
       html += item[1] + '</a>';
     });
     html += '</ul></li>';
   });
   document.getElementById('sidebarMenu').innerHTML = html;
-}
-
-// 侧边栏用真实 href（爬虫能发现、可新标签页打开），普通点击仍走无刷新路由
-function sidebarGo(e, section) {
-  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return true;
-  e.preventDefault();
-  navigateTo(section, e.currentTarget);
-  return false;
 }
 
 function toggleCategory(btn) {
@@ -1339,9 +1331,6 @@ var docs = {
     toc: [['2026 年 11 月', '2026-11'], ['2026 年 10 月', '2026-10'], ['2026 年 8 月', '2026-08'], ['2026 年 7 月', '2026-07']],
     content: '<h2 id="2026-11">2026 年 11 月<a href="#2026-11" class="anchor-icon">#</a></h2>'
       + '<ul>'
-      + '<li><strong>正文直接写进 HTML：</strong>文章与文档改为构建时预渲染，关掉 JS、弱网、搜索引擎爬虫都能直接读到全文。文章地址改为 <code>/discuss/view/&lt;id&gt;/</code>，文档每章有独立路径（如 <code>/docs/cloud/</code>），旧链接自动跳转。</li>'
-      + '<li><strong>首屏提速：</strong>脚本从 <code>&lt;head&gt;</code> 移到页尾，图标字体按需裁剪（102KB → 22KB），首页与文章页加骨架占位，布局偏移（CLS）从 0.15 降到 0.01 以内。</li>'
-      + '<li><strong>能被搜到了：</strong>新增 <code>sitemap.xml</code> 与 <code>robots.txt</code>，每篇文章有独立的标题、摘要、社交卡片和结构化数据。</li>'
       + '<li><strong>站内信重复修复：</strong>实时推送与发送回执同时到达时按消息 id 合并，发一条只显示一条；快速切换会话也不会串消息。</li>'
       + '<li><strong>私有云盘配额：</strong>每个账号 50MB，上传前提示剩余空间，服务端同步强制校验；单文件不再单独限制。</li>'
       + '<li><strong>下载文件名修复：</strong>云盘与站内信文件卡片下载时按原始文件名保存，中文名不再乱码、后缀不再丢失。</li>'
@@ -1421,12 +1410,9 @@ function navigateTo(section, el) {
   // 滚动到顶部
   document.getElementById('docMain').scrollIntoView({ behavior: 'smooth' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  // 更新 URL：预渲染的章节页用真实路径，总览页保留 hash 路由
-  var target = /^\/docs\/[^\/]+\/$/.test(window.location.pathname)
-    ? '/docs/' + section + '/'
-    : '#/' + section;
-  if (target !== window.location.pathname + window.location.hash) {
-    history.pushState(null, '', target);
+  // 更新 URL hash
+  if (window.location.hash !== '#' + section) {
+    history.pushState(null, '', '#/' + section);
   }
 }
 
@@ -1508,28 +1494,13 @@ buildSidebar();
 
 // URL路由
 function resolveRoute() {
-  // 优先级：hash 路由 > 静态路径 /docs/<slug>/ > 预渲染标记 > 默认首页
-  var section = '';
+  var section = 'getting-started';
   var hash = window.location.hash;
-  if (hash && /^#\//.test(hash)) {
-    // #/section 是路由；指向不存在的章节时明确提示，不静默跳回首页
-    var h = hash.slice(2);
-    if (docs[h]) section = h;
-    else { renderContent(h); return; }
-  } else if (hash) {
-    // 纯 #section：可能是章节路由，也可能是文内锚点，匹配不到就忽略
-    var h2 = hash.slice(1);
-    if (docs[h2]) section = h2;
+  if (hash) {
+    // 支持 #/section 和 #section 两种格式
+    var s = hash.replace(/^#\//, '').replace(/^#/, '');
+    if (docs[s]) section = s;
   }
-  if (!section) {
-    var m = window.location.pathname.match(/^\/docs\/([^\/]+)\/$/);
-    if (m && docs[m[1]]) section = m[1];
-  }
-  if (!section) {
-    section = document.body.getAttribute('data-doc-section') || 'getting-started';
-  }
-  if (!docs[section]) section = 'getting-started';
-
   var el = document.querySelector('.sidebar-link[data-section="' + section + '"]');
   navigateTo(section, el);
 }

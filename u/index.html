@@ -478,7 +478,7 @@
           }
           var html = '';
           posts.forEach(function(p, i) {
-            html += '<a class="post-item" href="/discuss/view/' + encodeURIComponent(p.id) + '/" style="animation-delay:' + (0.05 + i * 0.03).toFixed(2) + 's">' +
+            html += '<a class="post-item" href="/discuss/view/?id=' + encodeURIComponent(p.id) + '" style="animation-delay:' + (0.05 + i * 0.03).toFixed(2) + 's">' +
               '<span class="pi-title">' + esc(p.title || '无标题') + '</span>' +
               '<span class="pi-likes"><i class="fas fa-heart"></i>' + (p.likes_count || 0) + '</span>' +
               '<span class="pi-date">' + fmtDate(p.created_at) + '</span>' +

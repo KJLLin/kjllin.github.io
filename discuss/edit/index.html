@@ -238,7 +238,7 @@
           }else{throw error}
         }
         toast('文章已更新！');
-        window.location.href='/discuss/view/'+postId+'/';
+        window.location.href='/discuss/view/?id='+postId;
       }catch(e){toast('更新失败：'+(e.message||'未知错误'));captchaToken='';try{hcaptcha.reset('captchaDiscuss')}catch(_){}}
       finally{_submitting=false;btn.disabled=false;btn.textContent='更新文章'}
     });

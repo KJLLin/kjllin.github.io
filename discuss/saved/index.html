@@ -212,7 +212,7 @@
   function cardHtml(it) {
     var av = KJ.avatarHtml({ id: it.author_id, nick: it.author_nick, avatar_url: it.author_avatar }, { size: 20 });
     return '<div class="bm-card" data-post="' + esc(it.post_id) + '">' +
-        '<a class="bm-title" href="/discuss/view/' + encodeURIComponent(it.post_id) + '/">' +
+        '<a class="bm-title" href="/discuss/view/?id=' + encodeURIComponent(it.post_id) + '">' +
           esc(it.title) + (it.visibility === 'private' ? ' <span class="lock">🔒</span>' : '') + '</a>' +
         (plainExcerpt(it.excerpt, 120) ? '<div class="bm-excerpt">' + esc(plainExcerpt(it.excerpt, 120)) + '</div>' : '') +
         '<div class="bm-meta">' +
