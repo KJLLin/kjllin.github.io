@@ -347,8 +347,8 @@
     @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ====================== 页脚 ====================== */
+    .article-loading .footer { visibility: hidden; }
     .footer { text-align: center; padding: 40px 20px; font-size: 13px; color: var(--text-tertiary); border-top: 1px solid var(--border-mica); margin-top: 40px; }
-
     /* ====================== 返回顶部 ====================== */
     #backTop {
       position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
@@ -716,7 +716,7 @@
     input, textarea { -webkit-user-select: text; user-select: text; }
   </style>
 </head>
-<body>
+<body class="article-loading">
   <div class="bg-base"></div>
   <canvas id="particlesCanvas"></canvas>
   <div class="bg-mica-glow-1"></div>
@@ -1128,6 +1128,7 @@
         '</div>';
 
       mainContainer.innerHTML = html;
+      document.body.classList.remove('article-loading');
       Reader.postId = post.id;
 
       // ---- 渲染后处理 ----
@@ -1272,6 +1273,7 @@
         '<p>文章可能已被删除，或者链接地址不正确</p>' +
         '<a href="/discuss/" class="btn">← 回到文章广场</a>' +
         '</div>';
+      document.body.classList.remove('article-loading');
     }
 
     function showError(msg) {
@@ -1286,6 +1288,7 @@
         '<p>' + KJ.escapeHtml(msg || '未知错误') + '</p>' +
         '<a href="/discuss/" class="btn">← 回到文章广场</a>' +
         '</div>';
+      document.body.classList.remove('article-loading');
     }
 
     // ====================== 核心：加载文章 ======================
