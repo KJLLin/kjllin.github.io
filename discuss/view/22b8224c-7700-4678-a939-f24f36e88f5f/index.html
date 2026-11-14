@@ -798,12 +798,9 @@
   <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
 
   <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
+  <!-- 预渲染命中时正文已在 HTML 里，Markdown / 高亮 / 公式运行时按需加载，
+       首屏不再为它们付出约 500KB 的下载与解析 -->
   <script src="/vendor/supabase.min.js"></script>
-  <script src="/vendor/marked.min.js"></script>
-  <script src="/vendor/purify.min.js"></script>
-  <script src="/vendor/highlight.min.js"></script>
-  <script src="/vendor/katex/katex.min.js"></script>
-  <script src="/vendor/katex/auto-render.min.js"></script>
   <script src="/common.js"></script>
   <script>
     // ====================== 元素引用 ======================
@@ -957,48 +954,71 @@
         ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     }
 
+    // 运行时标记放内存里：写进 DOM 的 dataset 会被预渲染快照序列化，
+    // 客户端再加载时就会误判成「已经绑过」，事件反而丢了
+    var _copyBound = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+    var _tocBound = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+    var _fontBound = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+
+    /** 代码块复制：幂等绑定，预渲染快照里已有按钮时直接复用 */
+    function attachCopyHandler(pre, copyBtn) {
+      if (!copyBtn) return;
+      if (_copyBound) {
+        if (_copyBound.has(copyBtn)) return;
+        _copyBound.add(copyBtn);
+      }
+
+      function done() {
+        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+        copyBtn.classList.add('copied');
+        setTimeout(function () {
+          copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      }
+
+      function fallbackCopy(code) {
+        var ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+        done();
+      }
+
+      copyBtn.addEventListener('click', function () {
+        var code = pre.textContent || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done).catch(function () { fallbackCopy(code); });
+        } else {
+          fallbackCopy(code);
+        }
+      });
+
+      // touch devices: always show
+      copyBtn.addEventListener('touchstart', function (e) { e.stopPropagation(); });
+    }
+
     function wrapCodeBlocks(container) {
-      container.querySelectorAll('pre').forEach(pre => {
-        if (pre.parentElement.classList.contains('code-block-wrapper')) return;
-        const wrapper = document.createElement('div');
+      container.querySelectorAll('pre').forEach(function (pre) {
+        if (pre.parentElement.classList.contains('code-block-wrapper')) {
+          attachCopyHandler(pre, pre.parentElement.querySelector('.copy-btn'));
+          return;
+        }
+        var wrapper = document.createElement('div');
         wrapper.className = 'code-block-wrapper';
         pre.parentNode.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 
-        const copyBtn = document.createElement('button');
+        var copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
         copyBtn.title = '复制代码';
         wrapper.appendChild(copyBtn);
-
-        copyBtn.addEventListener('click', () => {
-          const code = pre.textContent || '';
-          navigator.clipboard.writeText(code).then(() => {
-            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-            copyBtn.classList.add('copied');
-            setTimeout(() => {
-              copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
-              copyBtn.classList.remove('copied');
-            }, 2000);
-          }).catch(() => {
-            // fallback
-            const ta = document.createElement('textarea');
-            ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            try { document.execCommand('copy'); } catch(_) {}
-            document.body.removeChild(ta);
-            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-            copyBtn.classList.add('copied');
-            setTimeout(() => {
-              copyBtn.innerHTML = '<i class="fas fa-clipboard"></i>';
-              copyBtn.classList.remove('copied');
-            }, 2000);
-          });
-        });
-
-        // touch devices: always show
-        copyBtn.addEventListener('touchstart', e => e.stopPropagation());
+        attachCopyHandler(pre, copyBtn);
       });
     }
 
@@ -1198,24 +1218,31 @@
       bindFontSize();
     }
 
-    /** 给 h2/h3 加 id 与悬停锚点，方便目录跳转与外链引用 */
+    /** 给 h2/h3 加 id 与悬停锚点；重复调用只重建目录数据，不重复插入锚点 */
     function decorateHeadings(root) {
       Reader.toc = [];
       var used = {};
       root.querySelectorAll('h2, h3').forEach(function (h, i) {
-        var text = (h.textContent || '').trim();
+        var clone = h.cloneNode(true);
+        var oldAnchor = clone.querySelector('.h-anchor');
+        if (oldAnchor) oldAnchor.remove();
+        var text = (clone.textContent || '').trim();
         if (!text) return;
-        var slug = 'sec-' + (i + 1);
+
+        var slug = h.id || ('sec-' + (i + 1));
         if (used[slug]) slug += '-' + i;
         used[slug] = 1;
         h.id = slug;
-        var a = document.createElement('a');
-        a.className = 'h-anchor';
-        a.href = '#' + slug;
-        a.textContent = '#';
-        a.setAttribute('aria-label', '本节链接');
-        a.addEventListener('click', function (e) { e.stopPropagation(); });
-        h.appendChild(a);
+
+        if (!h.querySelector('.h-anchor')) {
+          var a = document.createElement('a');
+          a.className = 'h-anchor';
+          a.href = '#' + slug;
+          a.textContent = '#';
+          a.setAttribute('aria-label', '本节链接');
+          a.addEventListener('click', function (e) { e.stopPropagation(); });
+          h.appendChild(a);
+        }
         Reader.toc.push({ id: slug, text: text, level: h.tagName === 'H3' ? 3 : 2 });
       });
     }
@@ -1232,16 +1259,19 @@
           KJ.escapeHtml(t.text) + '</a>';
       }).join('');
 
-      box.addEventListener('click', function (e) {
-        var a = e.target.closest('.toc-link');
-        if (!a) return;
-        e.preventDefault();
-        var el = document.getElementById(a.getAttribute('data-toc'));
-        if (el) {
-          var top = el.getBoundingClientRect().top + window.scrollY - 84;
-          window.scrollTo({ top: top, behavior: 'smooth' });
-        }
-      });
+      if (!_tocBound || !_tocBound.has(box)) {
+        if (_tocBound) _tocBound.add(box);
+        box.addEventListener('click', function (e) {
+          var a = e.target.closest('.toc-link');
+          if (!a) return;
+          e.preventDefault();
+          var el = document.getElementById(a.getAttribute('data-toc'));
+          if (el) {
+            var top = el.getBoundingClientRect().top + window.scrollY - 84;
+            window.scrollTo({ top: top, behavior: 'smooth' });
+          }
+        });
+      }
     }
 
     /** 滚动：进度条 + 目录高亮 */
@@ -1289,6 +1319,10 @@
       Reader.fontIdx = saved;
 
       document.querySelectorAll('[data-act="font"]').forEach(function (btn) {
+        if (_fontBound) {
+          if (_fontBound.has(btn)) return;
+          _fontBound.add(btn);
+        }
         btn.addEventListener('click', function () {
           Reader.fontIdx = (Reader.fontIdx + 1) % sizes.length;
           paper.style.setProperty('--read-fs', sizes[Reader.fontIdx] + 'px');
@@ -1552,6 +1586,125 @@
       return out;
     }
 
+    // ====================== Markdown 运行时（按需） ======================
+    // 预渲染命中时正文已在 HTML 里，用不到这些库；只有新文章或兜底路径才加载。
+    var _vendorsPromise = null;
+    function ensureRenderVendors() {
+      if (window.marked && window.DOMPurify) return Promise.resolve();
+      if (_vendorsPromise) return _vendorsPromise;
+      var list = [
+        '/vendor/marked.min.js',
+        '/vendor/purify.min.js',
+        '/vendor/highlight.min.js',
+        '/vendor/katex/katex.min.js',
+        '/vendor/katex/auto-render.min.js'
+      ];
+      _vendorsPromise = Promise.all(list.map(function (src) {
+        return new Promise(function (resolve) {
+          var el = document.createElement('script');
+          el.src = src;
+          el.async = false;   // 保证按插入顺序执行（marked 先于页面脚本使用）
+          el.onload = resolve;
+          el.onerror = resolve;
+          document.head.appendChild(el);
+        });
+      })).then(function () {
+        return new Promise(function (r) { setTimeout(r, 0); });
+      });
+      return _vendorsPromise;
+    }
+
+    // ====================== 预渲染快照增强 ======================
+    // 正文、排版、代码高亮、公式都已经在 HTML 里，不重建 DOM，
+    // 只补登录态入口与互动状态，再重新绑定丢失的事件。
+
+    function updateAvatar(host, url) {
+      if (!host) return;
+      var img = host.querySelector('img');
+      if (url) {
+        if (!img) {
+          img = document.createElement('img');
+          img.alt = '';
+          img.loading = 'lazy';
+          img.decoding = 'async';
+          img.onerror = function () { this.remove(); };
+          host.appendChild(img);
+        }
+        if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+      } else if (img) {
+        img.remove();
+      }
+    }
+
+    function hydrateFromSnapshot(sb, post, liked, following, bookmarked) {
+      var uid = currentUser && currentUser.id;
+      var isMine = !!(uid && post.user_id && uid === post.user_id);
+
+      // 作者昵称 / 头像以最新数据为准（构建之后可能改过）
+      var chip = mainContainer.querySelector('.author-chip');
+      if (chip) {
+        var nameSpan = chip.querySelector('span:not([class])');
+        if (nameSpan && post.nick) nameSpan.textContent = post.nick;
+        updateAvatar(chip.querySelector('.kj-av'), post.avatar_url || '');
+      }
+
+      // 登录后才有的入口
+      var crumb = mainContainer.querySelector('.paper-crumb');
+      if (crumb && uid && !crumb.querySelector('[data-crumb-saved]')) {
+        var savedLink = document.createElement('a');
+        savedLink.className = 'crumb-link';
+        savedLink.href = '/discuss/saved/';
+        savedLink.setAttribute('data-crumb-saved', '1');
+        savedLink.innerHTML = '<i class="fas fa-bookmark"></i> 我的收藏';
+        crumb.appendChild(savedLink);
+      }
+
+      var meta = mainContainer.querySelector('.paper-meta');
+      if (meta && isMine && !meta.querySelector('.meta-edit')) {
+        var editLink = document.createElement('a');
+        editLink.className = 'mini-btn meta-edit';
+        editLink.href = '/discuss/edit/?id=' + encodeURIComponent(post.id);
+        editLink.innerHTML = '<i class="fas fa-pen-to-square"></i> 编辑';
+        meta.appendChild(editLink);
+      }
+      if (meta && uid && post.user_id && !isMine && !document.getElementById('followBtn')) {
+        var followBtn = document.createElement('button');
+        followBtn.className = 'follow-btn' + (following ? ' following' : '');
+        followBtn.id = 'followBtn';
+        followBtn.setAttribute('data-follow', '');
+        followBtn.textContent = following ? '已关注' : '＋ 关注';
+        var sep = meta.querySelector('.meta-sep');
+        if (sep) meta.insertBefore(followBtn, sep); else meta.appendChild(followBtn);
+      }
+
+      // 点赞 / 收藏状态与数字
+      mainContainer.querySelectorAll('[data-act="like"]').forEach(function (btn) {
+        btn.classList.toggle('is-on', !!liked);
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = (liked ? 'fas' : 'far') + ' fa-heart';
+        var cnt = btn.querySelector('.cnt');
+        if (cnt) cnt.textContent = post.likes_count || 0;
+      });
+      mainContainer.querySelectorAll('[data-act="bookmark"]').forEach(function (btn) {
+        btn.classList.toggle('is-on', !!bookmarked);
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = (bookmarked ? 'fas' : 'far') + ' fa-bookmark';
+        var lbl = btn.querySelector('.lbl');
+        if (lbl) lbl.textContent = bookmarked ? '已收藏' : '收藏';
+      });
+
+      Reader.postId = post.id;
+      var mdBody = document.getElementById('markdownBody');
+      if (mdBody) {
+        wrapCodeBlocks(mdBody);      // 已包裹的只补事件
+        decorateHeadings(mdBody);    // 已有 id / 锚点的只重建目录数据
+      }
+      buildToc();
+      setupReaderScroll();
+      bindFontSize();
+      bindPostInteractions(sb, post, liked, following, bookmarked);
+    }
+
     async function loadPost() {
       var pathId = parsePathId();
       var qs = new URLSearchParams(window.location.search);
@@ -1620,9 +1773,12 @@
             pre.likes_count = likeRow.data.likes_count;
           }
 
-          renderPost(pre, st0.liked, st0.following, st0.bookmarked);
+          hydrateFromSnapshot(sb, pre, st0.liked, st0.following, st0.bookmarked);
           return;
         }
+
+        // 未预渲染（新文章 / 兜底路径）：按需拉起 Markdown 运行时再渲染
+        await ensureRenderVendors();
 
         const { data, error } = await sb.from('posts').select('*').eq('id', postId).single();
 
