@@ -7,7 +7,8 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#f3f3f3">
-  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/subset.min.css">
+  <link rel="preload" as="font" type="font/woff2" href="/vendor/fontawesome/webfonts/fa-solid-900.woff2" crossorigin>
   <link rel="stylesheet" href="/theme.css">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/favicon.svg">
@@ -15,9 +16,7 @@
   <link rel="canonical" href="https://kjllin.dpdns.org/login/">
 
   <meta name="description" content="登录 KJLLin - 邮箱、CPOAuth 或 GitHub 登录">
-  <script src="/vendor/supabase.min.js"></script>
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
-  <script src="/common.js"></script>
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -364,6 +363,8 @@
     <p class="net-hint net-hint--always">登录遇到问题？<a href="/status/">网络诊断</a></p>
   </div>
 
+  <script src="/vendor/supabase.min.js"></script>
+  <script src="/common.js"></script>
   <script>
     const $=s=>document.querySelector(s);
 

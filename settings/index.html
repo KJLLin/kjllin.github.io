@@ -14,10 +14,10 @@
   <title>设置 · KJLLin</title>
   <link rel="canonical" href="https://kjllin.dpdns.org/settings/">
 
-  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/subset.min.css">
+  <link rel="preload" as="font" type="font/woff2" href="/vendor/fontawesome/webfonts/fa-solid-900.woff2" crossorigin>
   <link rel="stylesheet" href="/theme.css">
-  <script src="/vendor/supabase.min.js"></script>
-  <style>
+<style>
     /* ── 布局 ── */
     .container{max-width:680px;margin:0 auto;padding:86px 16px 40px;position:relative;z-index:1;padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
 
@@ -357,7 +357,8 @@
     </div>
   </div>
 
-  <script src="/common.js"></script>
+  <script src="/vendor/supabase.min.js"></script>
+<script src="/common.js"></script>
   <script>
   (function(){
     var $=function(s){return document.querySelector(s);};
