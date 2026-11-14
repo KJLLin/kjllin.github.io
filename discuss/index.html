@@ -343,6 +343,33 @@
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
     }
     .post-card .like-btn:hover { background: var(--accent-glow); color: var(--color-danger); }
+    .post-card .read-time { display: inline-flex; align-items: center; gap: 4px; }
+    /* flex 容器里的图标不要被压缩，否则会渲染成小方块 */
+    .post-card .read-time i,
+    .list-meta .hint i { flex: 0 0 auto; }
+    .post-card .post-title .hl,
+    .post-card .post-excerpt .hl,
+    .post-empty .hl {
+      background: rgba(255, 208, 0, .34); color: inherit;
+      border-radius: 3px; padding: 0 1px; font-style: normal;
+      box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    }
+    html[data-theme="dark"] .post-card .post-title .hl,
+    html[data-theme="dark"] .post-card .post-excerpt .hl { background: rgba(255, 208, 0, .24); }
+
+    .list-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin: 0 2px 12px; font-size: 12.5px; color: var(--text-tertiary);
+    }
+    .list-meta .hint { display: inline-flex; align-items: center; gap: 5px; }
+
+    .post-empty .retry-btn {
+      display: block; margin: 14px auto 0; padding: 8px 18px; border-radius: 999px;
+      border: 1px solid var(--border-mica); background: transparent;
+      color: var(--accent); font-size: 13px; cursor: pointer; font-family: inherit;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
+    }
+    .post-empty .retry-btn:hover { background: var(--accent-glow); border-color: var(--accent); }
     .post-card .like-btn:active { transform: scale(0.9); transition: transform var(--duration-instant) var(--spring-default); }
     .post-card .like-btn .like-count { font-weight: 600; }
     .post-card .like-btn.like-static { cursor: default; }
@@ -842,6 +869,27 @@
         return String(raw || '').replace(/[,()%`]/g, ' ').trim();
       }
 
+      /** 粗估阅读时长（中文 400 字/分钟，英文 220 词/分钟） */
+      function readingMinutes(raw) {
+        var str = String(raw || '');
+        var cjk = (str.match(/[\u4e00-\u9fa5]/g) || []).length;
+        var words = (str.replace(/[\u4e00-\u9fa5]/g, ' ').match(/[A-Za-z0-9]+/g) || []).length;
+        return Math.max(1, Math.round(cjk / 400 + words / 220));
+      }
+
+      /** 搜索词高亮：先转义再包 mark，避免把用户输入当 HTML */
+      function highlightText(text) {
+        var safe = KJ.escapeHtml(text == null ? '' : text);
+        if (!searchQuery) return safe;
+        var q = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (!q) return safe;
+        try {
+          return safe.replace(new RegExp('(' + q + ')', 'gi'), '<mark class="hl">$1</mark>');
+        } catch (e) {
+          return safe;
+        }
+      }
+
       // 登录后批量拉取我的关注关系（卡片关注按钮与"只看关注"过滤依赖）
       async function loadMyInteractions() {
         myFollows = new Set();
@@ -892,6 +940,10 @@
         if (onlyFollowing) {
           q = q.in('user_id', Array.from(myFollows));
         }
+        if (sortBy === 'hot') {
+          // 热榜只看最近 30 天，避免很久以前的文章一直霸榜
+          q = q.gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString());
+        }
         return q;
       }
 
@@ -925,6 +977,7 @@
         const empty = document.getElementById('postEmpty');
 
         // SDK/会话阶段结束：关闭全屏 loader，由骨架屏接替数据加载阶段
+        removePostsSkeleton();   // 切换排序/翻页时避免骨架叠加
         renderPostsSkeleton();
         updatePaginationState();
         _closeLoader();
@@ -973,8 +1026,31 @@
           if (data.length === 0) {
             list.innerHTML = '';
             if (empty) {
-              empty.innerHTML = '<i class="fas fa-inbox"></i> ' + (searchQuery ? '未找到相关文章' : '暂无文章');
+              if (searchQuery) {
+                empty.innerHTML = '<i class="fas fa-magnifying-glass"></i> 没有找到和「' + KJ.escapeHtml(searchQuery) + '」相关的文章' +
+                  '<button class="retry-btn" type="button" id="clearSearchBtn">清除搜索</button>';
+              } else if (onlyFollowing) {
+                empty.innerHTML = '<i class="fas fa-user-check"></i> 关注的人还没有发文章' +
+                  '<button class="retry-btn" type="button" id="clearFollowBtn">看看全部文章</button>';
+              } else {
+                empty.innerHTML = '<i class="fas fa-book-open"></i> 还没有文章，来写第一篇吧' +
+                  '<button class="retry-btn" type="button" id="firstPostBtn">写第一篇</button>';
+              }
               empty.style.display = '';
+
+              var clearSearchBtn = document.getElementById('clearSearchBtn');
+              if (clearSearchBtn) clearSearchBtn.addEventListener('click', function () {
+                var si = document.getElementById('searchInput');
+                if (si) { si.value = ''; si.dispatchEvent(new Event('input')); }
+              });
+              var clearFollowBtn = document.getElementById('clearFollowBtn');
+              if (clearFollowBtn) clearFollowBtn.addEventListener('click', function () {
+                followFilterChip && followFilterChip.click();
+              });
+              var firstPostBtn = document.getElementById('firstPostBtn');
+              if (firstPostBtn) firstPostBtn.addEventListener('click', function () {
+                location.href = '/discuss/new/';
+              });
             }
             renderPagination(totalCount);
             return;
@@ -984,7 +1060,11 @@
           await fillLiveNicks(data);
 
           if (empty) empty.style.display = 'none';
-          list.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">共 ' + totalCount + ' 篇文章</div>' + data.map((p, i) => {
+          var metaHint = searchQuery
+            ? '<i class="fas fa-magnifying-glass"></i> 搜索「' + KJ.escapeHtml(searchQuery) + '」'
+            : (sortBy === 'hot' ? '<i class="fas fa-fire"></i> 近 30 天最受欢迎' : '<i class="fas fa-clock"></i> 按发布时间排序');
+          list.innerHTML = '<div class="list-meta"><span>共 ' + totalCount + ' 篇文章</span>' +
+            '<span class="hint">' + metaHint + '</span></div>' + data.map((p, i) => {
             const isOwner = currentUser && currentUser.id === p.user_id;
             const actions = isOwner
               ? '<span class="post-actions">' +
@@ -1006,7 +1086,7 @@
                 .replace(/\s+/g, ' ')
                 .trim();
               if (plain) excerpt = '<a href="/discuss/view/?id=' + p.id + '" class="post-excerpt">' +
-                KJ.escapeHtml(plain.slice(0, 96)) + (plain.length > 96 ? '…' : '') + '</a>';
+                highlightText(plain.slice(0, 96)) + (plain.length > 96 ? '…' : '') + '</a>';
             }
             var authorAv = KJ.avatarHtml(
               { id: p.user_id, nick: p.nick || '匿名', avatar_url: p.avatar_url },
@@ -1014,7 +1094,7 @@
             );
             return '<div class="post-card mica' + (actions ? ' has-actions' : '') + '">' +
               '<div class="post-main">' +
-                '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + KJ.escapeHtml(p.title || '无标题') + '</a>' +
+                '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + highlightText(p.title || '无标题') + '</a>' +
                 (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
               '</div>' +
               actions +
@@ -1025,6 +1105,7 @@
                   ? '<button class="follow-btn' + (following ? ' following' : '') + '" data-author="' + p.user_id + '">' + (following ? '已关注' : '＋ 关注') + '</button>'
                   : '') +
                 '<span>' + formatDate(p.created_at) + '</span>' +
+                '<span class="read-time"><i class="fas fa-book-open"></i> ' + readingMinutes(p.content) + ' 分钟</span>' +
                 '<span class="footer-spacer"></span>' +
                 '<span class="like-btn like-static" title="点赞数（进入文章详情可点赞）">' +
                   '<i class="fas fa-heart" style="color:var(--color-danger)"></i>' +
@@ -1057,8 +1138,14 @@
 
         } catch(e) {
           console.warn('Load posts error:', e);
-          empty.textContent = '加载文章失败，请刷新页面重试';
-          empty.style.display = '';
+          list.innerHTML = '';
+          if (empty) {
+            empty.innerHTML = '<i class="fas fa-circle-exclamation"></i> 加载文章失败，可能是网络不稳定' +
+              '<button class="retry-btn" type="button" id="retryPostsBtn">重新加载</button>';
+            empty.style.display = '';
+            var retryBtn = document.getElementById('retryPostsBtn');
+            if (retryBtn) retryBtn.addEventListener('click', function () { loadPosts(); });
+          }
         } finally {
           // 所有路径（含空列表提前 return）都必须移除骨架、复位防重入锁并关闭遮罩
           removePostsSkeleton();
@@ -1108,6 +1195,8 @@
         _totalPages = totalCount > 0 ? Math.ceil(totalCount / PAGE_SIZE) : 0;
         var pag = document.getElementById('pagination');
         if (!pag) return;
+        // 没有结果时整块隐藏，避免出现「共 0 页」的空壳
+        if (_totalPages === 0) { pag.style.display = 'none'; return; }
         pag.style.display = '';
         var html = '<button class="page-btn nav-btn" data-page="' + (currentPage - 1) + '" id="prevPageBtn" aria-label="上一页"><i class="fas fa-chevron-left"></i></button>';
         var seq = _totalPages > 0 ? pageSequence(_totalPages, currentPage) : [];

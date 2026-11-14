@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b0f10">
+  <meta name="description" content="Coil 线圈 —— 用你的轨迹把敌人圈起来的 HTML5 经典小游戏，MIT 开源，原作者 Hakim El Hattab。">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <title>Coil 线圈 · 游戏中心 · KJLLin</title>
+
+  <link href="css/reset.css" rel="stylesheet" media="screen">
+  <link href="css/main.css" rel="stylesheet" media="screen">
+
+  <!-- WebGL vertex shader (background effect) -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec2 position;
+    varying vec2 pos;
+    void main() {
+      pos = position;
+      gl_Position = vec4( position.x, position.y, 0.0, 1.0 );
+    }
+  </script>
+
+  <!-- WebGL fragment shader (background effect) -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision highp float;
+    #endif
+
+    varying vec2 pos;
+    uniform vec2 mouse;
+    uniform vec2 resolution;
+    uniform float time;
+    uniform sampler2D texture;
+
+    uniform vec3 e0;
+    uniform vec3 e1;
+    uniform vec3 e2;
+    uniform vec3 e3;
+    uniform vec3 e4;
+    uniform vec3 e5;
+    uniform vec3 e6;
+    uniform vec3 e7;
+    uniform vec3 e8;
+    uniform vec3 e9;
+
+    float distance(vec2 p1, vec2 p2) {
+      float dx = p1.x-p2.x;
+      float dy = p1.y-p2.y;
+      return sqrt(dx*dx + dy*dy);
+    }
+
+    float lightEffect( vec3 e, vec2 p ) {
+      if( e.z == 0.0 ) return 0.0;
+      vec2 ep = -1.0 + 2.0 * e.xy / resolution.xy;
+      float dist = ( 1.0 - min( distance( ep, p ) * 2.0, 1.0 ) );
+      return dist * 0.3 * e.z;
+    }
+
+    vec2 deformEffect( vec3 e, vec2 p ) {
+      if( e.z == 0.0 ) return vec2(0.0, 0.0);
+      vec2 ep = -1.0 + 2.0 * e.xy / resolution.xy;
+      float dist = ( 1.0 - min( distance( ep, p ) * 2.0, 1.0 ) );
+      vec2 offset = vec2( dist * (p.x-ep.x) * cos(time), dist * (p.y-ep.y) * sin(time) );
+      return offset * e.z * 0.5;
+    }
+
+    void main(void) {
+      vec2 p = -1.0 + 2.0 * gl_FragCoord.xy / resolution.xy;
+      vec2 m = -1.0 + 2.0 * mouse.xy / resolution.xy;
+      p.y = -p.y;
+
+      float light = 0.0;
+      light += lightEffect( e0, p );
+      light += lightEffect( e1, p );
+      light += lightEffect( e2, p );
+      light += lightEffect( e3, p );
+      light += lightEffect( e4, p );
+      light += lightEffect( e5, p );
+      light += lightEffect( e6, p );
+      light += lightEffect( e7, p );
+      light += lightEffect( e8, p );
+      light += lightEffect( e9, p );
+      light += ( 1.0 - ( distance( m, p ) ) ) * 0.08;
+      light = min( light, 1.0 );
+
+      vec2 uv = pos;
+      uv += deformEffect( e0, p );
+      uv += deformEffect( e1, p );
+      uv += deformEffect( e2, p );
+      uv += deformEffect( e3, p );
+      uv += deformEffect( e4, p );
+      uv += deformEffect( e5, p );
+      uv += deformEffect( e6, p );
+      uv += deformEffect( e7, p );
+      uv += deformEffect( e8, p );
+      uv += deformEffect( e9, p );
+
+      vec3 col = texture2D(texture, uv).xyz * light;
+      gl_FragColor = vec4( col, 0.8 * light );
+    }
+  </script>
+
+  <style>
+    /* ---- 站点外壳：返回按钮 / 帮助 / 弹层 ---- */
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0b0f10;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .coil-btn {
+      position: fixed;
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: rgba(12, 20, 22, .62);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      backdrop-filter: blur(14px) saturate(160%);
+      color: #d9f6f2;
+      font-size: 16px;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .2s ease, transform .2s ease, border-color .2s ease;
+      top: max(14px, env(safe-area-inset-top));
+    }
+    .coil-btn:hover { background: rgba(30, 60, 64, .8); border-color: rgba(120, 240, 220, .4); }
+    .coil-btn:active { transform: scale(.94); }
+
+    #coilBack { left: max(14px, env(safe-area-inset-left)); font-size: 18px; }
+    #coilHelp { right: max(14px, env(safe-area-inset-right)); font-weight: 600; font-size: 15px; }
+
+    .coil-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(4, 8, 9, .72);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+    .coil-modal.open { display: flex; }
+
+    .coil-modal__card {
+      width: min(520px, 100%);
+      max-height: 80vh;
+      overflow: auto;
+      padding: 26px 24px 22px;
+      border-radius: 16px;
+      border: 1px solid rgba(120, 240, 220, .18);
+      background: linear-gradient(160deg, rgba(18, 32, 34, .97), rgba(10, 16, 18, .97));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+      color: #d8e6e4;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .coil-modal__card h2 {
+      margin: 0 0 14px;
+      font-size: 19px;
+      color: #7ef0da;
+      letter-spacing: .02em;
+    }
+    .coil-modal__card p { margin: 0 0 12px; }
+    .coil-modal__card ul { margin: 0 0 14px; padding-left: 20px; }
+    .coil-modal__card li { margin-bottom: 7px; }
+    .coil-modal__card kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, .1);
+      border: 1px solid rgba(255, 255, 255, .16);
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .coil-modal__card a { color: #7ef0da; }
+    .coil-modal__foot {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, .08);
+      font-size: 12px;
+      color: #7e9491;
+      line-height: 1.6;
+    }
+    .coil-modal__close {
+      margin-top: 18px;
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid rgba(120, 240, 220, .3);
+      background: rgba(30, 90, 88, .5);
+      color: #d9f6f2;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .coil-modal__close:hover { background: rgba(40, 120, 116, .6); }
+
+    /* 菜单在移动端要能自适应，原版固定 830×440 会溢出 */
+    /* 高度必须给确定值：菜单隐藏时 jQuery 读不到 auto 高度，居中会算错 */
+    #menu {
+      width: min(830px, calc(100vw - 44px)) !important;
+      height: min(440px, calc(100vh - 60px)) !important;
+      max-height: calc(100vh - 60px);
+      overflow: auto;
+      padding: 0 0 16px;
+      box-sizing: border-box;
+    }
+    #menu h1 { font-family: inherit; }
+    #menu .welcome p { max-width: 560px; margin: 0 auto 18px; }
+    #menu .button { font-family: inherit; }
+
+    #lag-warning { font-family: inherit; }
+
+    /* 全屏时让背景图铺满，并去掉桌面端的描边 */
+    #game {
+      background-size: cover !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+    }
+    @media (max-width: 620px) {
+      /* 全屏时不再拉伸 900×510 的背景图，改用同色系渐变，避免放大后的接缝 */
+      #game {
+        border: none !important; border-radius: 0 !important; box-shadow: none !important;
+        background: radial-gradient(circle at 50% 38%, #17343c 0%, #0b1618 55%, #06090b 100%) !important;
+      }
+      /* 小屏把返回/帮助挪到底部，避免压住顶部状态栏 */
+      .coil-btn {
+        width: 38px; height: 38px;
+        top: auto;
+        bottom: max(18px, env(safe-area-inset-bottom));
+        opacity: .85;
+      }
+      #coilBack { left: 14px; }
+      #coilHelp { right: 14px; }
+    }
+
+    /* 顶部 30px 是游戏自己预留的状态条，这里放一行提示，避免空着 */
+    .coil-hint {
+      position: fixed;
+      top: max(14px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(10, 18, 20, .55);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, .08);
+      color: #8fb3af;
+      font-size: 12px;
+      letter-spacing: .02em;
+      pointer-events: none;
+      transition: opacity .5s ease;
+    }
+    .coil-hint.hide { opacity: 0; }
+    @media (max-width: 480px) {
+      .coil-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <a id="coilBack" class="coil-btn" href="/game/" title="返回游戏中心" aria-label="返回游戏中心">←</a>
+  <button id="coilHelp" class="coil-btn" type="button" title="玩法说明" aria-label="玩法说明">?</button>
+  <div class="coil-hint" id="coilHint">移动鼠标拖动光球，把蓝色宝珠圈起来</div>
+
+  <div class="coil-modal" id="coilModal" role="dialog" aria-modal="true" aria-labelledby="coilModalTitle">
+    <div class="coil-modal__card">
+      <h2 id="coilModalTitle">Coil 线圈</h2>
+      <p>你控制一颗发光球，身后拖着一条尾巴。尾巴自己交叉时，围出的区域会被「封印」，区域里的敌人全部消灭。</p>
+      <ul>
+        <li><strong>蓝色宝珠</strong>：在它能量耗尽前圈住，每次 +1 能量、加分；漏掉会掉能量。</li>
+        <li><strong>红色炸弹</strong>：千万别圈进去，误封会扣 30 能量并清空连击。</li>
+        <li><strong>连击</strong>：一次圈住多个宝珠，倍率会上涨，最高 4 倍。</li>
+        <li><strong>操作</strong>：桌面移动鼠标，手机手指滑动；不用点击，轨迹自动跟随。</li>
+      </ul>
+      <p>没有关卡，活得越久、连击越高，分数越高。</p>
+      <div class="coil-modal__foot">
+        原作者 <a href="https://hakim.se/" target="_blank" rel="noopener noreferrer">Hakim El Hattab</a>（reveal.js 作者），2011 年发布，MIT 许可。<br>
+        本站自托管副本仅做外壳适配，游戏逻辑与素材未作修改。
+      </div>
+      <button class="coil-modal__close" type="button" id="coilModalClose">知道了</button>
+    </div>
+  </div>
+
+  <div id="game">
+    <canvas id="effects"></canvas>
+    <canvas id="world"></canvas>
+    <p id="lag-warning">运行有点卡顿，<a href="#">关闭网格特效？</a></p>
+    <div id="menu">
+      <h1>Coil</h1>
+      <div id="score">
+        <h3>本局得分</h3>
+        <p>0</p>
+      </div>
+      <section class="welcome">
+        <h2>玩法</h2>
+        <p>用轨迹把蓝色宝珠圈起来，别圈到红色炸弹。一次圈住多个可以拿到连击加成。</p>
+        <a class="button" id="start-button" href="#">开始游戏</a>
+      </section>
+    </div>
+  </div>
+
+  <script src="js/libs/jquery-1.6.2.min.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/coil.js"></script>
+  <script>
+    (function () {
+      var modal = document.getElementById('coilModal');
+      var hint = document.getElementById('coilHint');
+
+      document.getElementById('coilHelp').addEventListener('click', function () {
+        modal.classList.add('open');
+      });
+      document.getElementById('coilModalClose').addEventListener('click', function () {
+        modal.classList.remove('open');
+      });
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.classList.remove('open');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') modal.classList.remove('open');
+      });
+
+      // 首次操作后淡出提示
+      var hideHint = function () {
+        if (hint) hint.classList.add('hide');
+        window.removeEventListener('mousemove', hideHint);
+        window.removeEventListener('touchstart', hideHint);
+      };
+      window.addEventListener('mousemove', hideHint, { passive: true });
+      window.addEventListener('touchstart', hideHint, { passive: true });
+      setTimeout(hideHint, 6000);
+    })();
+  </script>
+</body>
+</html>

@@ -183,6 +183,19 @@
     .game-card:nth-child(3) { animation-delay: 0.5s; -webkit-animation-delay: 0.5s; }
     .game-card:nth-child(4) { animation-delay: 0.55s; -webkit-animation-delay: 0.55s; }
     .game-card:nth-child(5) { animation-delay: 0.6s; -webkit-animation-delay: 0.6s; }
+    .game-card:nth-child(6) { animation-delay: 0.65s; -webkit-animation-delay: 0.65s; }
+    .game-card:nth-child(7) { animation-delay: 0.7s; -webkit-animation-delay: 0.7s; }
+    /* 搜索过滤时不再重播入场动画，否则卡片会先空白几百毫秒 */
+    #gameGrid.is-filtering .game-card { animation: none; -webkit-animation: none; opacity: 1; }
+
+    /* 关闭动画偏好 / 动画被禁用时，卡片必须直接可见 */
+    @media (prefers-reduced-motion: reduce) {
+      .game-card {
+        animation: none !important;
+        -webkit-animation: none !important;
+        opacity: 1 !important;
+      }
+    }
 
     .card-shine {
       position: absolute; top: 0; left: -100%;
@@ -460,6 +473,30 @@
           </div>
         </a>
 
+        <a href="/game/coil/" class="game-card mica" data-keywords="线圈 coil 轨迹 反应 圈住 封印 连击 开源 触屏">
+          <div class="card-shine"></div>
+          <div class="card-icon"><i class="fas fa-circle-notch"></i></div>
+          <h3 class="card-title">Coil 线圈</h3>
+          <p class="card-desc">拖出一条发光轨迹，把蓝色宝珠圈起来消灭。一次圈住多个可以叠加连击，小心别把红色炸弹封进去。</p>
+          <div class="card-tags">
+            <span class="tag">反应</span>
+            <span class="tag">触屏</span>
+            <span class="tag">开源</span>
+          </div>
+        </a>
+
+        <a href="/game/sandboxels/" class="game-card mica" data-keywords="沙盒 落沙 sandboxels 物理 元素 化学 反应 模拟 开源">
+          <div class="card-shine"></div>
+          <div class="card-icon"><i class="fas fa-flask"></i></div>
+          <h3 class="card-title">Sandboxels 沙盒</h3>
+          <p class="card-desc">500 多种元素的像素物理模拟：沙子会滑落、水会流动、火会蔓延，混在一起还会发生化学反应。</p>
+          <div class="card-tags">
+            <span class="tag">沙盒</span>
+            <span class="tag">物理</span>
+            <span class="tag">开源</span>
+          </div>
+        </a>
+
       </div>
       <div class="no-results" id="noResults"><i class="fas fa-face-frown"></i> 没有找到匹配的游戏</div>
     </section>
@@ -503,6 +540,7 @@
         c.style.display = show ? '' : 'none';
         if (show) any = true;
       });
+      document.getElementById('gameGrid').classList.toggle('is-filtering', !!q);
       $('#noResults').classList.toggle('show', !any);
     }
 
