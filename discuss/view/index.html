@@ -1582,21 +1582,19 @@
     // 只补登录态入口与互动状态，再重新绑定丢失的事件。
 
     function updateAvatar(host, url) {
-      if (!host) return;
+      // 只有拿到确定的新地址才替换；空值保持快照里的头像不动，
+      // 避免资料接口偶发返回空字段时把头像误删成首字母
+      if (!host || !url) return;
       var img = host.querySelector('img');
-      if (url) {
-        if (!img) {
-          img = document.createElement('img');
-          img.alt = '';
-          img.loading = 'lazy';
-          img.decoding = 'async';
-          img.onerror = function () { this.remove(); };
-          host.appendChild(img);
-        }
-        if (img.getAttribute('src') !== url) img.setAttribute('src', url);
-      } else if (img) {
-        img.remove();
+      if (!img) {
+        img = document.createElement('img');
+        img.alt = '';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.onerror = function () { this.remove(); };
+        host.appendChild(img);
       }
+      if (img.getAttribute('src') !== url) img.setAttribute('src', url);
     }
 
     function hydrateFromSnapshot(sb, post, liked, following, bookmarked) {
@@ -1730,7 +1728,7 @@
           if (pm && pm[pre.user_id]) {
             var live = pm[pre.user_id];
             if (live.nick && String(live.nick).trim()) pre.nick = live.nick;
-            pre.avatar_url = live.avatar_url || '';
+            if (live.avatar_url) pre.avatar_url = live.avatar_url;
           }
           if (likeRow && likeRow.data && typeof likeRow.data.likes_count === 'number') {
             pre.likes_count = likeRow.data.likes_count;
