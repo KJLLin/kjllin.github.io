@@ -1511,10 +1511,15 @@ function resolveRoute() {
   // 优先级：hash 路由 > 静态路径 /docs/<slug>/ > 预渲染标记 > 默认首页
   var section = '';
   var hash = window.location.hash;
-  if (hash) {
-    // 支持 #/section 和 #section 两种格式
-    var h = hash.replace(/^#\//, '').replace(/^#/, '');
+  if (hash && /^#\//.test(hash)) {
+    // #/section 是路由；指向不存在的章节时明确提示，不静默跳回首页
+    var h = hash.slice(2);
     if (docs[h]) section = h;
+    else { renderContent(h); return; }
+  } else if (hash) {
+    // 纯 #section：可能是章节路由，也可能是文内锚点，匹配不到就忽略
+    var h2 = hash.slice(1);
+    if (docs[h2]) section = h2;
   }
   if (!section) {
     var m = window.location.pathname.match(/^\/docs\/([^\/]+)\/$/);
