@@ -233,13 +233,13 @@
     <div class="empty" id="emptyBox" hidden>
       <i class="fas fa-satellite-dish"></i>
       <p>暂时还没有资讯</p>
-      <small>服务器每 25 分钟抓取一次，稍后再来看看</small>
+      <small>服务器每隔几分钟抓取一次，稍后再来看看</small>
     </div>
     <div class="list-status" id="listStatus"></div>
 
     <p class="foot-note">
-      资讯内容版权归 <a href="https://www.ithome.com/" target="_blank" rel="noopener noreferrer">IT 之家</a> 所有，
-      本站仅做标题与摘要聚合，版权归原媒体所有，点击卡片跳转原文阅读。
+      资讯内容来自 IT 之家、中新网及公开服务状态页，版权归原作者与媒体所有。
+      本站仅做标题与摘要聚合，点击卡片跳转原文阅读。
     </p>
   </div>
 
@@ -274,7 +274,9 @@
     }
 
     function safeLink(u) {
-      return /^https:\/\/([a-z0-9-]+\.)*ithome\.com\//i.test(u || '') ? u : 'https://www.ithome.com/';
+      // 数据入库前已在服务端按各源的 link_host 校验过域名，
+      // 这里只确保是 https，避免 javascript: 之类的伪协议
+      return /^https:\/\//i.test(u || '') ? u : '/news/';
     }
 
     function imgTag(url, alt) {
