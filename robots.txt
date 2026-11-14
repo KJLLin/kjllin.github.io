@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# 需要登录的页面不收录
+Disallow: /chat/
+Disallow: /cloud/
+Disallow: /settings/
+Disallow: /notifications/
+Disallow: /admin/
+Disallow: /login/
+Disallow: /u/
+Disallow: /discuss/new/
+Disallow: /discuss/edit/
+Disallow: /discuss/saved/
+Disallow: /migration/
+Disallow: /scripts/
+
+Sitemap: https://kjllin.dpdns.org/sitemap.xml
