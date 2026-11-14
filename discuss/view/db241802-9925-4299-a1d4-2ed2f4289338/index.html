@@ -20,13 +20,10 @@
 
   <link rel="preconnect" href="https://vzqspcuxnwpakofwumat.supabase.co" crossorigin>
   <!-- CDN -->
-  <!-- 代码高亮 / 数学公式样式只在正文出现对应内容时才需要，异步加载避免阻塞首屏 -->
-  <link rel="stylesheet" href="/vendor/highlight/github.min.css" id="hljsThemeLight" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="/vendor/katex/katex.min.css" media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet" href="/vendor/highlight/github.min.css">
-    <link rel="stylesheet" href="/vendor/katex/katex.min.css">
-  </noscript>
+  <!-- 正文已在 HTML 里，代码高亮与公式样式必须同步就位：
+       异步加载会让已渲染的公式/代码在样式到达后重新排版，反而造成布局偏移 -->
+  <link rel="stylesheet" href="/vendor/highlight/github.min.css" id="hljsThemeLight">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
 
   <style>
     /* ====================== Win11 全局规范 ====================== */
