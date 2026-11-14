@@ -718,13 +718,21 @@ function buildSidebar() {
     html += '<button class="sidebar-category-title" onclick="toggleCategory(this)">' + group[0] + '</button>';
     html += '<ul class="sidebar-category-items">';
     group[1].forEach(function(item) {
-      html += '<a class="sidebar-link" data-section="' + item[0] + '" onclick="navigateTo(\'' + item[0] + '\', this)">';
+      html += '<a class="sidebar-link" href="/docs/' + item[0] + '/" data-section="' + item[0] + '" onclick="return sidebarGo(event, \'' + item[0] + '\')">';
       html += '<i class="fas fa-' + item[2] + '" style="width:15px;text-align:center;font-size:12px;opacity:0.6"></i>';
       html += item[1] + '</a>';
     });
     html += '</ul></li>';
   });
   document.getElementById('sidebarMenu').innerHTML = html;
+}
+
+// 侧边栏用真实 href（爬虫能发现、可新标签页打开），普通点击仍走无刷新路由
+function sidebarGo(e, section) {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return true;
+  e.preventDefault();
+  navigateTo(section, e.currentTarget);
+  return false;
 }
 
 function toggleCategory(btn) {
@@ -1410,9 +1418,12 @@ function navigateTo(section, el) {
   // 滚动到顶部
   document.getElementById('docMain').scrollIntoView({ behavior: 'smooth' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  // 更新 URL hash
-  if (window.location.hash !== '#' + section) {
-    history.pushState(null, '', '#/' + section);
+  // 更新 URL：预渲染的章节页用真实路径，总览页保留 hash 路由
+  var target = /^\/docs\/[^\/]+\/$/.test(window.location.pathname)
+    ? '/docs/' + section + '/'
+    : '#/' + section;
+  if (target !== window.location.pathname + window.location.hash) {
+    history.pushState(null, '', target);
   }
 }
 
@@ -1494,13 +1505,23 @@ buildSidebar();
 
 // URL路由
 function resolveRoute() {
-  var section = 'getting-started';
+  // 优先级：hash 路由 > 静态路径 /docs/<slug>/ > 预渲染标记 > 默认首页
+  var section = '';
   var hash = window.location.hash;
   if (hash) {
     // 支持 #/section 和 #section 两种格式
-    var s = hash.replace(/^#\//, '').replace(/^#/, '');
-    if (docs[s]) section = s;
+    var h = hash.replace(/^#\//, '').replace(/^#/, '');
+    if (docs[h]) section = h;
   }
+  if (!section) {
+    var m = window.location.pathname.match(/^\/docs\/([^\/]+)\/$/);
+    if (m && docs[m[1]]) section = m[1];
+  }
+  if (!section) {
+    section = document.body.getAttribute('data-doc-section') || 'getting-started';
+  }
+  if (!docs[section]) section = 'getting-started';
+
   var el = document.querySelector('.sidebar-link[data-section="' + section + '"]');
   navigateTo(section, el);
 }

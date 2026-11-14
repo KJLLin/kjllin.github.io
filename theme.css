@@ -1110,3 +1110,22 @@ html[data-theme="dark"] .menu-bar.scrolled { background: rgba(28, 28, 30, 0.78);
 html[data-theme="dark"] .mobile-menu-dropdown { background: rgba(28, 28, 30, 0.72); }
 .mobile-menu-dropdown .menu-item { padding: 11px 14px; border-radius: var(--radius-sm); }
 .mobile-menu-dropdown .menu-item.active { font-weight: 600; }
+
+/* ====================== 头像（全局基础样式） ======================
+   原先由 common.js 在运行时注入，禁用 JS / 爬虫抓取时头像会失去尺寸约束，
+   变成撑满容器的原图。这里落到静态样式表，保证任何情况下都正常。 */
+.kj-av {
+  position: relative; display: inline-grid; place-items: center; flex: 0 0 auto;
+  width: var(--av-size, 40px); height: var(--av-size, 40px);
+  border-radius: 50%; overflow: hidden;
+  background: linear-gradient(135deg, hsl(var(--av-hue, 212) 86% 62%), hsl(calc(var(--av-hue, 212) + 14) 80% 50%));
+  color: #fff; font-weight: 700; font-size: var(--av-fs, 16px); line-height: 1;
+  letter-spacing: .02em; user-select: none; -webkit-user-select: none; vertical-align: middle;
+}
+.kj-av__txt { display: block; }
+.kj-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.kj-av--ring { box-shadow: 0 0 0 2px rgba(255,255,255,.85), 0 4px 14px rgba(0,0,0,.14); }
+html[data-theme="dark"] .kj-av--ring { box-shadow: 0 0 0 2px rgba(30,30,32,.9), 0 4px 14px rgba(0,0,0,.45); }
+.kj-av--nav { --av-size: 18px; --av-fs: 9px; margin-right: 6px; vertical-align: -2px; }
+.kj-av-host { position: relative; overflow: hidden; }
+.kj-av-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }

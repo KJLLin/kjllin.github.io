@@ -1391,7 +1391,7 @@
     }
 
     async function copyPostLink() {
-      var url = location.origin + location.pathname + '?id=' + encodeURIComponent(PostState.postId || '');
+      var url = location.origin + '/discuss/view/' + encodeURIComponent(PostState.postId || '') + '/';
       try {
         await navigator.clipboard.writeText(url);
         KJ.toast('链接已复制');
@@ -1472,13 +1472,75 @@
       bindImageZoom();
     }
 
-    async function loadPost() {
-      const params = new URLSearchParams(window.location.search);
-      const postId = params.get('id');
+    // ====================== URL 与预渲染 ======================
+    // 文章详情支持静态路径 /discuss/view/<id>/：构建时把正文写进 HTML，
+    // 爬虫和首屏都能直接拿到内容。旧链接 ?id= 会自动跳到静态路径。
+    function parsePathId() {
+      var m = window.location.pathname.match(/^\/discuss\/view\/([^\/]+)\/?$/);
+      if (!m) return null;
+      var id = '';
+      try { id = decodeURIComponent(m[1]); } catch (e) { return null; }
+      return /^[0-9a-fA-F-]{36}$/.test(id) ? id.toLowerCase() : null;
+    }
 
-      if (!postId) {
-        showNotFound();
+    function readPreloaded() {
+      var el = document.getElementById('__post');
+      if (!el) return null;
+      try {
+        var d = JSON.parse(el.textContent || '');
+        return d && d.id ? d : null;
+      } catch (e) { return null; }
+    }
+
+    /** 当前登录用户对这篇文章的点赞 / 收藏 / 关注状态 */
+    async function readInteractState(sb, postId, authorId) {
+      var out = { liked: false, following: false, bookmarked: false };
+      var uid = currentUser && currentUser.id;
+      if (!uid) return out;
+      try {
+        var jobs = [
+          sb.from('post_likes').select('post_id').eq('post_id', postId).eq('user_id', uid).maybeSingle(),
+          sb.from('post_bookmarks').select('post_id').eq('post_id', postId).eq('user_id', uid).maybeSingle()
+        ];
+        if (authorId) {
+          jobs.push(sb.from('user_follows').select('followed_id').eq('follower_id', uid).eq('followed_id', authorId).maybeSingle());
+        }
+        var res = await Promise.all(jobs);
+        out.liked = !!(res[0] && res[0].data);
+        out.bookmarked = !!(res[1] && res[1].data);
+        out.following = authorId ? !!(res[2] && res[2].data) : false;
+      } catch (e) {
+        console.warn('Load interact state error:', e);
+      }
+      return out;
+    }
+
+    async function loadPost() {
+      var pathId = parsePathId();
+      var qs = new URLSearchParams(window.location.search);
+      var queryId = qs.get('id');
+
+      // 旧链接：?id=xxx → /discuss/view/xxx/（保留章节锚点）
+      // prerender=1 只给构建脚本抓快照用，正常访问不会带
+      if (!pathId && queryId && qs.get('prerender') !== '1' && qs.get('fallback') !== '1') {
+        window.location.replace('/discuss/view/' + encodeURIComponent(queryId) + '/' + window.location.hash);
         return;
+      }
+
+      var postId = pathId || queryId;
+      if (!postId) {
+        // 只访问 /discuss/view/ 而没有文章 id：回到文章广场，避免空白页
+        window.location.replace('/discuss/');
+        return;
+      }
+
+      var pre = readPreloaded();
+      var preHit = !!(pre && String(pre.id).toLowerCase() === postId);
+
+      // 预渲染命中：立刻撤掉遮罩，正文已经在 DOM 里，用户可以开始读
+      if (preHit) {
+        document.body.classList.remove('article-loading');
+        if (loader && loader.parentNode) loader.remove();
       }
 
       const sb = KJ.createSupabase();
@@ -1488,13 +1550,44 @@
         return;
       }
 
-      // 同时获取当前用户和文章
       try {
-        const [{ data: { session } }, { data, error }] = await Promise.all([
-          sb.auth.getSession(),
-          sb.from('posts').select('*').eq('id', postId).single()
-        ]);
-        currentUser = session?.user || null;
+        var session = null;
+        try {
+          var sr = await sb.auth.getSession();
+          session = sr && sr.data ? sr.data.session : null;
+        } catch (e) {}
+        currentUser = (session && session.user) || null;
+
+        // 预渲染命中：正文与排版已在 HTML 中，只补登录态与互动状态
+        if (preHit) {
+          // 作者昵称/头像、点赞数可能已经变了，和正文并行补齐
+          var jobs = [readInteractState(sb, pre.id, pre.user_id)];
+          if (pre.user_id) {
+            jobs.push(KJ.fetchProfiles(sb, [pre.user_id]).catch(function () { return null; }));
+          }
+          jobs.push(sb.from('posts').select('likes_count')
+            .eq('id', pre.id).maybeSingle()
+            .then(function (r) { return r; }).catch(function () { return null; }));
+
+          var out = await Promise.all(jobs);
+          var st0 = out[0];
+          var pm = out[1];
+          var likeRow = out[2];
+
+          if (pm && pm[pre.user_id]) {
+            var live = pm[pre.user_id];
+            if (live.nick && String(live.nick).trim()) pre.nick = live.nick;
+            pre.avatar_url = live.avatar_url || '';
+          }
+          if (likeRow && likeRow.data && typeof likeRow.data.likes_count === 'number') {
+            pre.likes_count = likeRow.data.likes_count;
+          }
+
+          renderPost(pre, st0.liked, st0.following, st0.bookmarked);
+          return;
+        }
+
+        const { data, error } = await sb.from('posts').select('*').eq('id', postId).single();
 
         if (error) {
           if (error.code === 'PGRST116') {
@@ -1526,28 +1619,11 @@
           }
         }
 
-        // 登录时查询我的点赞 / 关注状态（maybeSingle：无行时返回 null 不报错）
-        var liked = false;
-        var following = false;
-        var bookmarked = false;
-        var uid = currentUser && currentUser.id;
-        if (uid && data.user_id) {
-          try {
-            var stateRes = await Promise.all([
-              sb.from('post_likes').select('post_id').eq('post_id', postId).eq('user_id', uid).maybeSingle(),
-              sb.from('user_follows').select('followed_id').eq('follower_id', uid).eq('followed_id', data.user_id).maybeSingle(),
-              sb.from('post_bookmarks').select('post_id').eq('post_id', postId).eq('user_id', uid).maybeSingle()
-            ]);
-            liked = !!(stateRes[0] && stateRes[0].data);
-            following = !!(stateRes[1] && stateRes[1].data);
-            bookmarked = !!(stateRes[2] && stateRes[2].data);
-          } catch(e) {
-            console.warn('Load like/follow state error:', e);
-          }
-        }
+        // 登录时查询我的点赞 / 关注 / 收藏状态
+        var st = await readInteractState(sb, postId, data.user_id);
 
-        renderPost(data, liked, following, bookmarked);
-        bindPostInteractions(sb, data, liked, following, bookmarked);
+        renderPost(data, st.liked, st.following, st.bookmarked);
+        bindPostInteractions(sb, data, st.liked, st.following, st.bookmarked);
       } catch(e) {
         showError('加载文章时发生错误');
         console.warn('Load post error:', e);
@@ -1559,7 +1635,14 @@
       updateThemeUI();
       KJ.onSystemThemeChange(updateThemeUI);
       await loadPost();
-      setTimeout(() => { loader.style.opacity = 0; setTimeout(() => loader.remove(), 500); }, 400);
+      // 预渲染命中时 loader 已在 loadPost 里移除
+      if (loader && loader.parentNode) {
+        setTimeout(() => {
+          if (!loader.parentNode) return;
+          loader.style.opacity = 0;
+          setTimeout(() => { if (loader.parentNode) loader.remove(); }, 500);
+        }, 400);
+      }
     });
   </script>  <div id="toast" class="toast hidden"></div>
 </body>
