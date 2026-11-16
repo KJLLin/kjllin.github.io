@@ -335,6 +335,22 @@
   });
 
   document.addEventListener('DOMContentLoaded', function () {
+    // 收藏页此前完全没接主题：深色系统下会停在浅色底，按钮点了也没反应
+    var themeBtn = document.getElementById('themeBtn');
+    if (themeBtn && KJ.applyTheme) {
+      var st0 = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(st0.mode);
+      themeBtn.addEventListener('click', function () {
+        KJ.toggleTheme();
+        var st = KJ.applyTheme('#f5f5f7', '#000');
+        themeBtn.innerHTML = KJ.getThemeIcon(st.mode);
+      });
+      if (KJ.onSystemThemeChange) {
+        KJ.onSystemThemeChange(function () {
+          themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+        });
+      }
+    }
     try {
       if (KJ.initNav) KJ.initNav(sb);
       else if (KJ.setupMobileMenu) KJ.setupMobileMenu();

@@ -461,11 +461,14 @@
     // 启动
     var themeBtn = document.getElementById('themeBtn');
     if (themeBtn) {
+      // 首屏必须先应用主题，否则深色系统下会停在浅色底
+      var th0 = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(th0.mode);
       themeBtn.addEventListener('click', function () {
-        var st = KJ.toggleTheme();
+        KJ.toggleTheme();
+        var st = KJ.applyTheme('#f5f5f7', '#000');
         themeBtn.innerHTML = KJ.getThemeIcon(st.mode);
       });
-      themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
       KJ.onSystemThemeChange(function () {
         themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
       });

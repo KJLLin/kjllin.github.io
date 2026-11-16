@@ -89,6 +89,37 @@ html {
   --color-danger: #ff3b30;        --color-danger-bg: rgba(255, 59, 48, 0.10);
   --color-info: #0071e3;          --color-info-bg: rgba(0, 113, 227, 0.10);
 
+  /* ══════════ 语义别名（旧命名 → 设计令牌） ══════════
+     部分页面早期用 --accent / --text-primary / --bg-mica 这套短名字，
+     此前各自 :root 里补一遍，漏掉的页面变量悬空、样式直接失效
+     （例如资讯页的激活标签：背景取不到 --accent，白字压在浅底上）。
+     这里统一映射一次，深色模式因为引用的是 --color-* 会自动跟随。 */
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-glow: var(--color-accent-glow);
+  --accent-glow-weak: var(--color-accent-glow);
+  --accent-ring: var(--color-accent-ring);
+
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --text-inverse: var(--color-text-inverse);
+
+  --bg-body: var(--color-bg);
+  --bg-mica: var(--color-bg-glass);
+  --bg-mica-hover: var(--color-bg-glass-hover);
+  --bg-glass-soft: var(--color-bg-glass);
+  --bg-glass-solid: var(--color-bg-glass-solid);
+
+  --border-mica: var(--color-border);
+  --color-border-strong: var(--color-border-hover);
+  --color-scrollbar-thumb: rgba(0, 0, 0, 0.18);
+
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+  --info: var(--color-info);
+
   /* ══════════ Apple Spring Curves ══════════
      Apple 用「阻尼比 + 响应时间」描述弹簧，而非固定时长：
      - damping 1.0 = 临界阻尼，无 overshoot（默认 UI）
@@ -333,6 +364,7 @@ button:focus-visible {
 
   --scrollbar-thumb: rgba(255,255,255,0.12);
   --scrollbar-thumb-hover: rgba(255,255,255,0.22);
+  --color-scrollbar-thumb: rgba(255, 255, 255, 0.16);
 }
 
 /* ====================== Global Styles ====================== */

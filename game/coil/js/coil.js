@@ -119,6 +119,7 @@ var Coil = (function(){
 		// Game state
 		playing = false,
 		score = 0,
+		stopNotified = false,
 		duration = 0,
 		difficulty = 1,
 		multiplier = new Multiplier( 0.2, MULTIPLIER_LIMIT ),	
@@ -390,6 +391,16 @@ var Coil = (function(){
 		
 		playing = false;
 		menu.fadeIn( MENU_FADE_IN_DURATION );
+		
+		// 一局结束：把最终分数交给外层页面（云端成绩 / 排行榜）
+		if( !stopNotified ) {
+			stopNotified = true;
+			try {
+				window.dispatchEvent( new CustomEvent( 'coil:gameover', {
+					detail: { score: Math.floor( score ) }
+				} ) );
+			} catch( e ) {}
+		}
 	}
 	
 	function reset() {
@@ -404,6 +415,7 @@ var Coil = (function(){
 		effects = [];
 		
 		score = 0;
+		stopNotified = false;
 		duration = 0;
 		playing = false;
 		difficulty = 1;

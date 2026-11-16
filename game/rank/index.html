@@ -107,14 +107,26 @@
     }
     .row:last-child { border-bottom: none; }
     .row.me { background: rgba(10,132,255,.08); }
+    .row { transition: background .16s ease; }
+    .row:hover { background: var(--bg-mica-hover); }
     .rk {
       width: 26px; flex-shrink: 0; text-align: center;
       font-size: 14px; font-weight: 700; color: var(--text-tertiary);
       font-variant-numeric: tabular-nums;
     }
-    .rk.top1 { color: #f5a623; }
-    .rk.top2 { color: #9aa0a6; }
-    .rk.top3 { color: #c07a3e; }
+    /* 前三名：奖牌圆牌，比纯数字更有仪式感 */
+    .rk.m {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: grid; place-items: center;
+      color: #fff; font-size: 12.5px; letter-spacing: -.02em;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .16);
+    }
+    .rk.m1 { background: linear-gradient(145deg, #ffd869, #f0a521); }
+    .rk.m2 { background: linear-gradient(145deg, #d8dce2, #a2a8b0); }
+    .rk.m3 { background: linear-gradient(145deg, #e2a97a, #c07a3e); }
+    .rk.m1, .rk.m2, .rk.m3 { box-shadow: 0 3px 10px rgba(240, 165, 33, .26); }
+    .rk.m2 { box-shadow: 0 3px 10px rgba(154, 160, 166, .24); }
+    .rk.m3 { box-shadow: 0 3px 10px rgba(192, 122, 62, .26); }
     .row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
     .row-name { font-size: 14px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row-name .me-tag {
@@ -127,11 +139,82 @@
     }
     .row-score small { font-size: 10px; font-weight: 500; color: var(--text-tertiary); margin-left: 2px; }
 
-    .status { text-align: center; font-size: 12.5px; color: var(--text-tertiary); padding: 22px 0; }
-    .empty { text-align: center; padding: 44px 20px; color: var(--text-tertiary); font-size: 13px; }
+    /* 榜单收尾：去玩一局 / 名次说明 */
+    .board-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px 0;
+      font-size: 12px; color: var(--text-tertiary);
+    }
+    .board-foot a {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: var(--accent); text-decoration: none; font-weight: 500;
+    }
+    .board-foot a:hover { text-decoration: underline; }
+
+    .status { text-align: center; font-size: 12.5px; color: var(--text-tertiary); padding: 18px 0 0; }
+    .empty { text-align: center; padding: 40px 20px 36px; color: var(--text-tertiary); font-size: 13px; line-height: 1.6; }
     .empty i { display: block; font-size: 30px; opacity: .3; margin-bottom: 12px; }
+    .empty a {
+      display: flex; width: fit-content; margin: 14px auto 0;
+      align-items: center; gap: 5px;
+      padding: 7px 16px; border-radius: 999px;
+      background: var(--accent); color: #fff; font-size: 12.5px; text-decoration: none;
+      transition: transform .14s ease, opacity .14s ease;
+    }
+    .empty a:active { transform: scale(.97); }
     .skeleton { height: 52px; border-bottom: 1px solid var(--color-border); background: var(--bg-mica); }
     .skeleton:last-child { border-bottom: none; }
+
+    /* 未登录的「我的名次」引导 */
+    .mine-card.guest {
+      background: var(--bg-mica);
+      border-style: dashed;
+    }
+    .mine-card.guest .mine-rank {
+      background: linear-gradient(135deg, rgba(142,142,147,.28), rgba(142,142,147,.16));
+      color: var(--text-tertiary);
+      font-size: 20px;
+    }
+    .mine-card.guest .mine-score { font-size: 15px; font-weight: 600; }
+    .mine-login {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 999px; text-decoration: none;
+      background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 500;
+      transition: transform .14s ease;
+    }
+    .mine-login:active { transform: scale(.97); }
+
+    /* 移动端标签横向滚动时两端渐隐，提示还有内容 */
+    @media (max-width: 560px) {
+      .game-tabs {
+        -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 20px), transparent 100%);
+      }
+    }
+
+    .page-foot {
+      margin-top: 28px; text-align: center;
+      font-size: 12px; color: var(--text-tertiary);
+    }
+    .page-foot a { color: var(--text-secondary); text-decoration: none; }
+    .page-foot a:hover { color: var(--accent); }
+
+    /* 榜单规则：给短榜单补一点信息密度，避免页面下半屏全空 */
+    .rank-tips {
+      margin-top: 22px; padding: 16px 18px;
+      border-radius: 14px;
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      font-size: 12.5px; color: var(--text-secondary); line-height: 1.7;
+    }
+    .rank-tips__title {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 600; color: var(--text-primary); margin-bottom: 6px;
+    }
+    .rank-tips__title i { color: var(--accent); font-size: 12px; }
+    .rank-tips ul { margin: 0; padding-left: 18px; }
+    .rank-tips li { margin-bottom: 2px; }
+    .rank-tips li:last-child { margin-bottom: 0; }
 
     @media (max-width: 560px) {
       .container { padding: 84px 14px 56px; }
@@ -192,12 +275,39 @@
       </div>
     </div>
 
+    <div class="mine-card guest" id="guestCard" hidden>
+      <div class="mine-rank"><i class="fas fa-user"></i></div>
+      <div class="mine-main">
+        <div class="mine-label">我的名次</div>
+        <div class="mine-score">登录后查看排名</div>
+        <div class="mine-note">成绩自动同步到云端，换设备也不会丢</div>
+      </div>
+      <a class="mine-login" id="guestLogin" href="/login/?redirect=/game/rank/">登录</a>
+    </div>
+
     <div class="board" id="board">
       <div class="skeleton"></div>
       <div class="skeleton"></div>
       <div class="skeleton"></div>
     </div>
+    <div class="board-foot" id="boardFoot" hidden>
+      <span id="boardHint">只展示前 20 名</span>
+      <a id="playLink" href="/game/">去玩一局 <i class="fas fa-arrow-right"></i></a>
+    </div>
     <div class="status" id="status"></div>
+
+    <div class="rank-tips">
+      <div class="rank-tips__title"><i class="fas fa-circle-info"></i> 榜单规则</div>
+      <ul>
+        <li>每位玩家每个游戏只保留历史最高分，破纪录后自动更新。</li>
+        <li>舒尔特方格按 5×5 用时排名，时间越短越靠前。</li>
+        <li>上方的「参加排行榜」开关可以退出公开榜，成绩仅自己可见。</li>
+      </ul>
+    </div>
+
+    <div class="page-foot">
+      <a href="/game/">游戏中心</a> · <a href="/">返回首页</a>
+    </div>
   </div>
 
   <script src="/vendor/supabase.min.js"></script>
@@ -211,13 +321,22 @@
 
     // 舒尔特只有 5×5 上公开榜（其他规格仍记录个人成绩）
     var GAMES = [
-      { key: 'dino',      name: '恐龙快跑',   icon: 'fa-dragon',       unit: '',   lower: false },
-      { key: 'tfe',       name: '2048',       icon: 'fa-puzzle-piece', unit: '',   lower: false },
-      { key: 'snake',     name: '贪吃蛇',     icon: 'fa-staff-snake',  unit: '',   lower: false },
-      { key: 'schulte_5', name: '舒尔特 5×5', icon: 'fa-table-cells',  unit: ' 秒', lower: true }
+      { key: 'dino',      name: '恐龙快跑',   icon: 'fa-dragon',       unit: '',   lower: false, href: '/game/dino/' },
+      { key: 'tfe',       name: '2048',       icon: 'fa-puzzle-piece', unit: '',   lower: false, href: '/game/tfe/' },
+      { key: 'snake',     name: '贪吃蛇',     icon: 'fa-staff-snake',  unit: '',   lower: false, href: '/game/snake/' },
+      { key: 'coil',      name: 'Coil 线圈',  icon: 'fa-atom',         unit: '',   lower: false, href: '/game/coil/' },
+      { key: 'schulte_5', name: '舒尔特 5×5', icon: 'fa-table-cells',  unit: ' 秒', lower: true,  href: '/game/schulte/' }
     ];
 
     var state = { game: 'dino', joined: true, signedIn: false };
+
+    // 支持从游戏页带 ?game=coil 直接落到对应榜单
+    try {
+      var want = (new URLSearchParams(location.search).get('game') || '').toLowerCase();
+      for (var wi = 0; wi < GAMES.length; wi++) {
+        if (GAMES[wi].key === want) { state.game = want; break; }
+      }
+    } catch (e) {}
 
     var tabsEl = document.getElementById('gameTabs');
     var boardEl = document.getElementById('board');
@@ -225,6 +344,10 @@
     var mineCard = document.getElementById('mineCard');
     var joinCard = document.getElementById('joinCard');
     var joinSwitch = document.getElementById('joinSwitch');
+    var boardFoot = document.getElementById('boardFoot');
+    var playLink = document.getElementById('playLink');
+    var guestCard = document.getElementById('guestCard');
+    var guestLogin = document.getElementById('guestLogin');
 
     function gameMeta(key) {
       for (var i = 0; i < GAMES.length; i++) if (GAMES[i].key === key) return GAMES[i];
@@ -251,6 +374,11 @@
           loadBoard();
         });
       });
+      // 窄屏标签会横向溢出：把当前选中项滚到中间，避免 ?game=coil 落进来时看不见
+      var activeTab = tabsEl.querySelector('.g-tab.active');
+      if (activeTab && tabsEl.scrollWidth > tabsEl.clientWidth) {
+        tabsEl.scrollLeft = Math.max(0, activeTab.offsetLeft - (tabsEl.clientWidth - activeTab.offsetWidth) / 2);
+      }
     }
 
     function loadBoard() {
@@ -258,6 +386,12 @@
       boardEl.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
       statusEl.textContent = '';
       mineCard.hidden = true;
+      if (!state.signedIn) showGuest();
+      boardFoot.hidden = true;
+      playLink.href = meta.href;
+      document.getElementById('boardSub').textContent = meta.lower
+        ? '各游戏的最高成绩排名 · ' + meta.name + '用时越短越好'
+        : '各游戏的最高成绩排名 · 当前：' + meta.name;
 
       if (!sb) {
         boardEl.innerHTML = '<div class="empty"><i class="fas fa-plug-circle-xmark"></i>服务暂不可用，请刷新重试</div>';
@@ -268,13 +402,16 @@
         if (r.error) throw r.error;
         var rows = r.data || [];
         if (!rows.length) {
-          boardEl.innerHTML = '<div class="empty"><i class="fas fa-trophy"></i>还没有人上榜，来当第一个吧</div>';
+          boardEl.innerHTML =
+            '<div class="empty"><i class="fas fa-trophy"></i>还没有人上榜，来当第一个吧' +
+            '<a href="' + meta.href + '">去玩一局 <i class="fas fa-arrow-right"></i></a></div>';
+          boardFoot.hidden = true;
         } else {
           boardEl.innerHTML = rows.map(function (row) {
             var rk = Number(row.rank);
-            var cls = rk === 1 ? ' top1' : rk === 2 ? ' top2' : rk === 3 ? ' top3' : '';
+            var medal = rk <= 3 ? ' m m' + rk : '';
             return '<div class="row' + (row.is_me ? ' me' : '') + '">' +
-              '<div class="rk' + cls + '">' + rk + '</div>' +
+              '<div class="rk' + medal + '">' + rk + '</div>' +
               '<div class="row-main">' +
                 KJ.avatarHtml({ id: row.user_id, nick: row.nick, avatar_url: row.avatar_url }, { size: 32 }) +
                 '<span class="row-name">' + KJ.escapeHtml(row.nick || '用户') +
@@ -284,14 +421,26 @@
                 (meta.unit ? '<small>' + meta.unit + '</small>' : '') + '</div>' +
             '</div>';
           }).join('');
+          boardFoot.hidden = false;
         }
-        statusEl.textContent = rows.length ? '共 ' + rows.length + ' 位玩家' : '';
+        document.getElementById('boardHint').textContent = rows.length >= 20
+          ? '共 20 位玩家 · 只展示前 20 名'
+          : '共 ' + rows.length + ' 位玩家';
+        statusEl.textContent = '';
       }).catch(function (e) {
         console.warn('leaderboard:', e);
-        boardEl.innerHTML = '<div class="empty"><i class="fas fa-triangle-exclamation"></i>加载失败，请稍后重试</div>';
+        boardEl.innerHTML =
+          '<div class="empty"><i class="fas fa-triangle-exclamation"></i>加载失败，请稍后重试' +
+          '<a href="javascript:location.reload()">刷新页面</a></div>';
       });
 
       loadMine();
+    }
+
+    function showGuest() {
+      guestCard.hidden = false;
+      mineCard.hidden = true;
+      guestLogin.href = '/login/?redirect=' + encodeURIComponent('/game/rank/?game=' + state.game);
     }
 
     function loadMine() {
@@ -301,6 +450,7 @@
         if (r.error || !r.data || !r.data.length) return;
         var m = r.data[0];
         mineCard.hidden = false;
+        guestCard.hidden = true;
         document.getElementById('mineRank').textContent = m.has_score ? ('#' + m.rank) : '--';
         document.getElementById('mineScore').textContent =
           m.has_score ? (fmtScore(meta, m.score) + (meta.unit || '')) : '还没有成绩';
@@ -313,11 +463,15 @@
     }
 
     function loadJoinState() {
-      if (!sb) return;
+      if (!sb) { showGuest(); return; }
       sb.auth.getSession().then(function (r) {
         state.signedIn = !!(r && r.data && r.data.session);
         joinCard.hidden = !state.signedIn;
-        if (!state.signedIn) return;
+        guestCard.hidden = state.signedIn;
+        if (!state.signedIn) {
+          showGuest();
+          return;
+        }
         sb.rpc('game_public').then(function (g) {
           if (!g.error) {
             state.joined = g.data !== false;
@@ -352,7 +506,9 @@
     // 主题 / 导航
     var themeBtn = document.getElementById('themeBtn');
     if (themeBtn) {
-      themeBtn.innerHTML = KJ.getThemeIcon(KJ.getThemeState().mode);
+      // 之前漏了这一步：深色系统下刷新会停在浅色，必须首屏就先应用主题
+      var th = KJ.applyTheme('#f5f5f7', '#000');
+      themeBtn.innerHTML = KJ.getThemeIcon(th.mode);
       themeBtn.addEventListener('click', function () {
         var st = KJ.toggleTheme();
         themeBtn.innerHTML = KJ.getThemeIcon(st.mode);
