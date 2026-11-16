@@ -370,6 +370,8 @@
           var k = btn.getAttribute('data-game');
           if (k === state.game) return;
           state.game = k;
+          // 地址栏跟着走，方便直接分享某个游戏的榜单 / 刷新后停在原标签
+          try { history.replaceState(null, '', '?game=' + encodeURIComponent(k)); } catch (e) {}
           renderTabs();
           loadBoard();
         });
