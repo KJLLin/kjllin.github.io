@@ -280,7 +280,7 @@
       justify-content: center;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: -18px;
+      margin-top: 2px;
       font-size: 12px;
       color: #7e9491;
       letter-spacing: .02em;
@@ -342,6 +342,18 @@
     .coil-toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    /* 小屏：分数数字收一点，给「云端最佳 / 我的最佳」留出行高 */
+    @media (max-width: 620px) {
+      #score p { font-size: 48px; }
+      #score h3 { font-size: 17px; }
+      .coil-meta { font-size: 11.5px; }
+      /* 一局结束后菜单高度不够，收起玩法说明，保证排行榜入口可见 */
+      body.coil-over #menu h1 { font-size: 54px; margin: 12px 20px 8px; }
+      body.coil-over .welcome p:not(.coil-links) { display: none; }
+      body.coil-over .welcome h2 { display: none; }
+      body.coil-over #menu .welcome { padding: 10px 15px; }
     }
   </style>
 </head>
@@ -570,9 +582,18 @@
 
       window.addEventListener('coil:gameover', function (e) {
         var score = e && e.detail ? Math.floor(Number(e.detail.score) || 0) : 0;
+        document.body.classList.add('coil-over');
         if (score > 0) submit(score);
         else render();
       });
+
+      // 重新开局时恢复完整菜单
+      var startBtn = document.getElementById('start-button');
+      if (startBtn) {
+        startBtn.addEventListener('click', function () {
+          document.body.classList.remove('coil-over');
+        });
+      }
 
       init();
     })();
