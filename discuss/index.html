@@ -826,12 +826,14 @@
             '<a href="/discuss/new/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4"><i class="fas fa-pen-to-square"></i> 写文章</a>' +
             '<button class="btn btn-secondary btn-sm" id="logoutBtnInline">退出登录</button>';
           loginPrompt.style.display = 'none';
+          var authAreaShow = document.getElementById('authArea');
+          if (authAreaShow) authAreaShow.style.display = '';
           var inlineOut = document.getElementById('logoutBtnInline');
           if (inlineOut) inlineOut.addEventListener('click', doLogout);
         } else {
-          userInfo.innerHTML = '<span style="color:var(--text-tertiary);font-size:14px;">未登录</span>';
-          authBtns.innerHTML =
-            '<a href="/login/?redirect=/discuss/" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-block;line-height:1.4;">前往登录</a>';
+          // 未登录时隐藏顶部条，只保留下方一条更完整的登录引导，避免同一屏出现两个「登录」
+          var authAreaEl = document.getElementById('authArea');
+          if (authAreaEl) authAreaEl.style.display = 'none';
           loginPrompt.style.display = 'flex';
         }
       }

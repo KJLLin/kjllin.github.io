@@ -42,7 +42,7 @@
       --danger: var(--color-danger);
       --shadow-rest: var(--shadow-sm);
     }
-    .container { max-width: 860px; margin: 0 auto; padding: 80px 20px 80px; }
+    .container { max-width: 860px; margin: 0 auto; padding: 96px 20px 80px; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
     /* ====================== 资料卡 ====================== */
@@ -230,10 +230,31 @@
     .profile-pager .pg-info { font-size: 12px; color: var(--text-tertiary); margin: 0 8px; white-space: nowrap; }
 
     .empty-state {
-      text-align: center; padding: 48px 20px; color: var(--text-tertiary);
-      background: var(--bg-mica); border-radius: var(--radius-md);
+      text-align: center; padding: 56px 24px 52px; color: var(--text-tertiary);
+      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      border-radius: var(--radius-lg);
     }
     .empty-state i { font-size: 32px; margin-bottom: 12px; display: block; opacity: 0.5; }
+    .empty-state__ico {
+      width: 68px; height: 68px; margin: 0 auto 18px;
+      display: grid; place-items: center;
+      border-radius: 22px;
+      background: var(--accent-glow); color: var(--accent);
+    }
+    .empty-state__ico i { font-size: 26px; margin: 0; opacity: 1; }
+    .empty-state__title {
+      font-size: 17px; font-weight: 600; color: var(--text-primary);
+      letter-spacing: -.01em; margin: 0 0 8px;
+    }
+    .empty-state__desc {
+      font-size: 13px; color: var(--text-tertiary);
+      line-height: 1.65; max-width: 340px; margin: 0 auto 20px;
+    }
+    .empty-state__actions {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .empty-state__actions .btn { text-decoration: none; }
     .skeleton { height: 120px; border-radius: var(--radius-lg); background: var(--bg-mica); animation: pulse 1.4s ease infinite; margin-bottom: 16px; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
     @media (max-width: 560px) { .container { padding: 72px 14px 60px; } .profile-card { padding: 22px; gap: 16px; } }
@@ -310,17 +331,23 @@
         document.title = '登录后查看 · KJLLin';
         $('#main').innerHTML =
           '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both">' +
-          '<i class="fas fa-user-lock"></i>' +
-          '<div style="font-size:15px;margin-bottom:16px">登录后查看个人主页</div>' +
-          '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="btn btn-primary">前往登录</a></div>';
+          '<div class="empty-state__ico"><i class="fas fa-user-lock"></i></div>' +
+          '<h2 class="empty-state__title">登录后查看个人主页</h2>' +
+          '<p class="empty-state__desc">主页包含你的头像、简介、文章与收藏，换设备登录也能看到。</p>' +
+          '<div class="empty-state__actions">' +
+            '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="btn btn-primary">前往登录</a>' +
+            '<a href="/" class="btn">返回首页</a>' +
+          '</div></div>';
       }
 
       function showNotFound(msg) {
         $('#main').innerHTML =
           '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both">' +
-          '<i class="fas fa-user-slash"></i>' +
-          '<div style="font-size:15px;margin-bottom:8px">' + esc(msg || '用户不存在') + '</div>' +
-          '<a href="/" class="btn">← 回到首页</a></div>';
+          '<div class="empty-state__ico"><i class="fas fa-user-slash"></i></div>' +
+          '<h2 class="empty-state__title">' + esc(msg || '用户不存在') + '</h2>' +
+          '<p class="empty-state__desc">链接可能已经失效，或者对方注销了账号。</p>' +
+          '<div class="empty-state__actions"><a href="/" class="btn">返回首页</a></div>' +
+          '</div>';
       }
 
       async function resolveTargetId() {

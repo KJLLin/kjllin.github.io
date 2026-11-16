@@ -6,8 +6,10 @@
   <meta name="theme-color" content="#0b0f10">
   <meta name="description" content="Coil 线圈 —— 用你的轨迹把敌人圈起来的 HTML5 经典小游戏，MIT 开源，原作者 Hakim El Hattab。">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://vzqspcuxnwpakofwumat.supabase.co https://*.supabase.co wss://*.supabase.co; media-src 'self'; base-uri 'self'; form-action 'self' https://vzqspcuxnwpakofwumat.supabase.co; object-src 'none'">
   <title>Coil 线圈 · 游戏中心 · KJLLin</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="canonical" href="https://kjllin.dpdns.org/game/coil/">
 
   <link href="css/reset.css" rel="stylesheet" media="screen">
   <link href="css/main.css" rel="stylesheet" media="screen">
@@ -270,6 +272,77 @@
     @media (max-width: 480px) {
       .coil-hint { display: none; }
     }
+
+    /* ---- 云端成绩：贴合游戏的暗色青调，不破坏原版菜单排版 ---- */
+    .coil-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: -18px;
+      font-size: 12px;
+      color: #7e9491;
+      letter-spacing: .02em;
+    }
+    .coil-meta[hidden] { display: none; }
+    .coil-meta b {
+      font-weight: 600;
+      color: #a9d8d1;
+      font-variant-numeric: tabular-nums;
+    }
+    .coil-meta .dot { opacity: .45; }
+
+    #menu .welcome p.coil-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 16px auto 0;
+      font-size: 12.5px;
+      line-height: 1.5;
+      max-width: none;
+    }
+    .coil-links a {
+      color: #7ef0da;
+      text-decoration: none;
+      padding: 4px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(126, 240, 218, .24);
+      background: rgba(20, 60, 58, .35);
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
+    }
+    .coil-links a:hover {
+      background: rgba(30, 92, 88, .55);
+      border-color: rgba(126, 240, 218, .42);
+    }
+    .coil-links .coil-login { color: #7e9491; }
+
+    /* 轻量 Toast：不引入 theme.css，避免影响原版暗色界面 */
+    .coil-toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(26px, env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(10px);
+      z-index: 30;
+      max-width: calc(100vw - 40px);
+      padding: 9px 18px;
+      border-radius: 999px;
+      background: rgba(8, 16, 18, .9);
+      border: 1px solid rgba(126, 240, 218, .22);
+      color: #cdeae5;
+      font-size: 13px;
+      line-height: 1.4;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .24s ease, transform .24s cubic-bezier(.2, .8, .2, 1);
+    }
+    .coil-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -305,11 +378,20 @@
       <div id="score">
         <h3>本局得分</h3>
         <p>0</p>
+        <div class="coil-meta" id="coilMeta" hidden>
+          <span>云端最佳 <b id="coilBest">--</b></span>
+          <span class="dot">·</span>
+          <span>我的最佳 <b id="coilMine">--</b></span>
+        </div>
       </div>
       <section class="welcome">
         <h2>玩法</h2>
         <p>用轨迹把蓝色宝珠圈起来，别圈到红色炸弹。一次圈住多个可以拿到连击加成。</p>
         <a class="button" id="start-button" href="#">开始游戏</a>
+        <p class="coil-links">
+          <a href="/game/rank/?game=coil">排行榜 <span aria-hidden="true">→</span></a>
+          <span class="coil-login" id="coilLoginHint">登录后可同步云端成绩</span>
+        </p>
       </section>
     </div>
   </div>
@@ -344,6 +426,155 @@
       window.addEventListener('mousemove', hideHint, { passive: true });
       window.addEventListener('touchstart', hideHint, { passive: true });
       setTimeout(hideHint, 6000);
+    })();
+  </script>
+
+  <div class="coil-toast" id="coilToast" role="status" aria-live="polite"></div>
+
+  <!-- 云端成绩：登录后自动把每局最高分同步到排行榜 -->
+  <script src="/vendor/supabase.min.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var SB_URL = 'https://vzqspcuxnwpakofwumat.supabase.co';
+      var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
+      var LOCAL_KEY = 'kj_coil_best';
+
+      var elBest = document.getElementById('coilBest');
+      var elMine = document.getElementById('coilMine');
+      var elMeta = document.getElementById('coilMeta');
+      var elHint = document.getElementById('coilLoginHint');
+      var elToast = document.getElementById('coilToast');
+
+      var sb = null;
+      var session = null;
+      var lastUid = null;
+      var cloudBest = 0;
+      var myBest = 0;
+      var submitting = false;
+      var toastTimer = null;
+
+      function say(msg) {
+        if (!elToast) return;
+        elToast.textContent = msg;
+        elToast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { elToast.classList.remove('show'); }, 2600);
+      }
+
+      function readLocal() {
+        try { return parseInt(localStorage.getItem(LOCAL_KEY) || '0', 10) || 0; } catch (e) { return 0; }
+      }
+      function writeLocal(v) {
+        try { localStorage.setItem(LOCAL_KEY, String(v)); } catch (e) {}
+      }
+
+      function render() {
+        var best = Math.max(cloudBest, myBest, readLocal());
+        var mine = Math.max(myBest, readLocal());
+        if (elBest) elBest.textContent = best > 0 ? String(best) : '--';
+        if (elMine) elMine.textContent = mine > 0 ? String(mine) : '--';
+        if (elMeta) elMeta.hidden = false;
+      }
+
+      function updateAuthUI() {
+        if (!elHint) return;
+        if (session) {
+          elHint.innerHTML = '已登录 · 成绩自动同步';
+        } else {
+          elHint.innerHTML = '<a href="/login/?redirect=/game/coil/" style="color:#7ef0da;text-decoration:none;border:none;background:none;padding:0">登录</a>后可同步云端成绩';
+        }
+      }
+
+      function loadScores() {
+        if (!sb) { render(); return; }
+        var tasks = [];
+
+        tasks.push(sb.rpc('game_board_stats').then(function (r) {
+          if (r.error || !r.data) return;
+          for (var i = 0; i < r.data.length; i++) {
+            if (r.data[i].game === 'coil') cloudBest = Number(r.data[i].best) || 0;
+          }
+        }));
+
+        if (session) {
+          tasks.push(sb.rpc('game_my_scores').then(function (r) {
+            if (r.error || !r.data) return;
+            for (var i = 0; i < r.data.length; i++) {
+              if (r.data[i].game === 'coil') myBest = Number(r.data[i].score) || 0;
+            }
+          }));
+        }
+
+        Promise.all(tasks).catch(function () {}).then(render);
+      }
+
+      function submit(score) {
+        var local = readLocal();
+        if (score > local) { writeLocal(score); }
+        render();
+
+        if (!sb || !session || submitting) return;
+        if (score <= Math.max(myBest, 0)) return;   // 只把破纪录的成绩送上去
+
+        submitting = true;
+        sb.rpc('submit_game_score', { p_game: 'coil', p_score: score }).then(function (r) {
+          submitting = false;
+          if (r.error) {
+            say('成绩同步失败：' + (r.error.message || '请稍后重试'));
+            return;
+          }
+          myBest = score;
+          if (score > cloudBest) cloudBest = score;
+          render();
+          say('新纪录 ' + score + ' 分，已同步到排行榜');
+        }).catch(function () {
+          submitting = false;
+          say('成绩同步失败，请检查网络');
+        });
+      }
+
+      function applySession(s) {
+        session = s || null;
+        var uid = session && session.user ? session.user.id : '';
+        updateAuthUI();
+        // getSession 与 onAuthStateChange 首次回调会各来一次，按 uid 去重避免重复请求
+        if (uid !== lastUid) {
+          lastUid = uid;
+          myBest = 0;
+          loadScores();
+        } else {
+          render();
+        }
+      }
+
+      function init() {
+        render();
+        if (!window.supabase || !window.supabase.createClient) { updateAuthUI(); return; }
+
+        try {
+          sb = window.supabase.createClient(SB_URL, SB_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+          });
+        } catch (e) { updateAuthUI(); return; }
+
+        sb.auth.getSession().then(function (r) {
+          applySession((r && r.data && r.data.session) || null);
+        }).catch(function () { updateAuthUI(); render(); });
+
+        sb.auth.onAuthStateChange(function (_evt, s) {
+          applySession(s || null);
+        });
+      }
+
+      window.addEventListener('coil:gameover', function (e) {
+        var score = e && e.detail ? Math.floor(Number(e.detail.score) || 0) : 0;
+        if (score > 0) submit(score);
+        else render();
+      });
+
+      init();
     })();
   </script>
 </body>
