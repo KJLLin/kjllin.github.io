@@ -1414,6 +1414,37 @@ time,
   }
 }
 
+/* ── 导航活跃指示器：一块会滑动的底 ───────────────────────────
+   点击/悬停时背景块跟过去，比"每项各自变色"更像同一件东西在移动。
+   由 common.js 注入 .nav-pill，纯增量，不依赖页面结构。 */
+.menu-bar { position: relative; }
+.nav-pill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 0; height: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-glow);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    transform 380ms var(--spring-release),
+    width 380ms var(--spring-release),
+    height 220ms var(--spring-default),
+    opacity 220ms var(--spring-default);
+}
+.menu-bar .menu-item { position: relative; z-index: 1; }
+/* 背景交给滑动块，项本身不再各自上色 */
+.menu-bar .menu-item:hover,
+.menu-bar .menu-item.active { background: transparent; box-shadow: none; }
+.menu-bar .menu-item.active { color: var(--color-accent); }
+@media (max-width: 980px) {
+  .nav-pill { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill { transition: opacity 150ms linear; }
+}
+
 /* ── 页面顶部的一层空气光 ───────────────────────────────────
    纯色底大面积铺开容易"死平"，顶部给一点强调色的散射光，
    滚下去就自然消失，不需要 fixed 的滚动开销。
