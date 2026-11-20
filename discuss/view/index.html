@@ -232,7 +232,9 @@
     /* ====================== Markdown 内容区 ====================== */
     .markdown-body {
       color: var(--text-primary);
-      line-height: 1.8; font-size: 15px;
+      /* 中文正文 16px 起步，行高 1.8 是长文阅读的舒适区；
+         之前 15px 在高分屏上偏小，读三屏就累。 */
+      line-height: 1.82; font-size: 16px;
       word-break: break-word; overflow-wrap: break-word;
     }
     .markdown-body h1, .markdown-body h2, .markdown-body h3,
@@ -349,16 +351,7 @@
     /* ====================== 页脚 ====================== */
     .article-loading .footer { visibility: hidden; }
     .footer { text-align: center; padding: 40px 20px; font-size: 13px; color: var(--text-tertiary); border-top: 1px solid var(--border-mica); margin-top: 40px; }
-    /* ====================== 返回顶部 ====================== */
-    #backTop {
-      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
-      border-radius: var(--radius-sm); border: none; font-size: 17px;
-      cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
-      transition: opacity var(--transition-fast), transform var(--transition-fast);
-    }
-    #backTop.show { opacity: 1; pointer-events: all; }
-    #backTop:active { transform: scale(0.95); }
-    #backTop:hover { transform: translateY(-2px); }
+    /* ====================== 返回顶部（全局 #kj-top 统一接管） ====================== */
 
     /* ====================== 滚动条 ====================== */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -760,7 +753,6 @@
 
   <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
 
-  <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
   <script src="/vendor/supabase.min.js"></script>
   <script src="/vendor/marked.min.js"></script>
   <script src="/vendor/purify.min.js"></script>
@@ -775,7 +767,6 @@
     const metaTheme = $('meta[name="theme-color"]');
     const themeBtn = $('#themeBtn');
     const loader = $('#loader');
-    const backTop = $('#backTop');
     const menuBar = $('#menuBar');
     const mainContainer = $('#mainContainer');
     let isScrolling = false;
@@ -882,12 +873,10 @@
       if (isScrolling) return;
       isScrolling = true;
       requestAnimationFrame(() => {
-        backTop.classList.toggle('show', window.scrollY > 300);
         menuBar.classList.toggle('scrolled', window.scrollY > 20);
         isScrolling = false;
       });
     }
-    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ====================== 移动端菜单 ======================
     KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
@@ -896,10 +885,6 @@
     // ====================== 事件绑定 ======================
     themeBtn.addEventListener('click', toggleTheme);
     
-    
-    backTop.addEventListener('click', goToTop);
-    backTop.addEventListener('touchstart', handleTouchStart);
-    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);

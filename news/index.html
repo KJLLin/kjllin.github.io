@@ -92,12 +92,27 @@
     .news-card {
       display: flex; gap: 14px; align-items: flex-start;
       padding: 16px 18px; border-radius: 16px;
-      background: var(--bg-mica); border: 1px solid var(--border-mica);
+      /* 之前用半透明玻璃，叠在灰底上整片发灰、卡片边界要靠猜。
+         直接用抬升面（浅色纯白 / 深色 #1c1c1e），层次一眼能读出来。 */
+      background: var(--color-bg-raised);
+      border: 1px solid var(--color-border);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
       text-decoration: none; color: inherit;
-      transition: background .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease;
+      transition:
+        transform 340ms var(--spring-release, cubic-bezier(.2,.9,.25,1.04)),
+        box-shadow 300ms var(--spring-default),
+        border-color 200ms var(--spring-default),
+        background 200ms var(--spring-default);
     }
-    .news-card:hover { background: var(--bg-mica-hover); transform: translateY(-1px); }
-    .news-card:active { transform: scale(.995); }
+    .news-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-border-hover);
+    }
+    .news-card:active {
+      transform: translateY(0) scale(.995);
+      transition: transform 90ms var(--spring-press);
+    }
 
     .nc-main { flex: 1; min-width: 0; }
     .nc-title {

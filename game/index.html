@@ -172,19 +172,29 @@
       box-shadow: var(--shadow-rest);
       text-decoration: none; color: inherit; cursor: pointer;
       position: relative; overflow: hidden;
-      opacity: 0;
-      animation: fadeUp 0.7s var(--win-ease) forwards;
-      -webkit-animation: fadeUp 0.7s var(--win-ease) forwards;
+      /* 基线就是"最终可见"，入场动画用 backwards 只填延迟期。
+         之前写 forwards 会把 transform 锁在动画结束帧，hover 抬升被吃掉。 */
+      opacity: 1;
+      animation: fadeUp 0.55s var(--spring-default) backwards;
+      -webkit-animation: fadeUp 0.55s var(--spring-default) backwards;
       user-select: none; -webkit-user-select: none;
       z-index: 1; will-change: transform, box-shadow;
+      /* hover 抬升与阴影分层走同一条弹簧，松手才不会"跳"一下 */
+      transition:
+        transform 380ms var(--spring-release),
+        box-shadow 380ms var(--spring-default),
+        border-color 220ms var(--spring-default),
+        background-color 220ms var(--spring-default);
     }
-    .game-card:nth-child(1) { animation-delay: 0.3s; -webkit-animation-delay: 0.3s; }
-    .game-card:nth-child(2) { animation-delay: 0.4s; -webkit-animation-delay: 0.4s; }
-    .game-card:nth-child(3) { animation-delay: 0.5s; -webkit-animation-delay: 0.5s; }
-    .game-card:nth-child(4) { animation-delay: 0.55s; -webkit-animation-delay: 0.55s; }
-    .game-card:nth-child(5) { animation-delay: 0.6s; -webkit-animation-delay: 0.6s; }
-    .game-card:nth-child(6) { animation-delay: 0.65s; -webkit-animation-delay: 0.65s; }
-    .game-card:nth-child(7) { animation-delay: 0.7s; -webkit-animation-delay: 0.7s; }
+    .game-card:nth-child(1) { animation-delay: 0.04s; -webkit-animation-delay: 0.04s; }
+    .game-card:nth-child(2) { animation-delay: 0.09s; -webkit-animation-delay: 0.09s; }
+    .game-card:nth-child(3) { animation-delay: 0.14s; -webkit-animation-delay: 0.14s; }
+    .game-card:nth-child(4) { animation-delay: 0.19s; -webkit-animation-delay: 0.19s; }
+    .game-card:nth-child(5) { animation-delay: 0.24s; -webkit-animation-delay: 0.24s; }
+    .game-card:nth-child(6) { animation-delay: 0.29s; -webkit-animation-delay: 0.29s; }
+    .game-card:nth-child(7) { animation-delay: 0.34s; -webkit-animation-delay: 0.34s; }
+    .game-card:nth-child(8) { animation-delay: 0.39s; -webkit-animation-delay: 0.39s; }
+    .game-card:nth-child(9) { animation-delay: 0.44s; -webkit-animation-delay: 0.44s; }
     /* 搜索过滤时不再重播入场动画，否则卡片会先空白几百毫秒 */
     #gameGrid.is-filtering .game-card { animation: none; -webkit-animation: none; opacity: 1; }
 
@@ -214,17 +224,18 @@
     .game-card:active {
       transform: translateY(-2px) scale(0.98);
       -webkit-transform: translateY(-2px) scale(0.98);
-      transition: transform var(--duration-instant) var(--spring-default);
+      transition: transform var(--dur-press, 90ms) var(--spring-press, cubic-bezier(.32,.72,0,1));
     }
 
     .card-icon {
       font-size: 42px; margin-bottom: 14px; position: relative; z-index: 2;
       pointer-events: none;
-      transition: transform var(--transition-fast);
-      -webkit-transition: transform var(--transition-fast);
+      transition: transform 320ms var(--spring-release);
+      -webkit-transition: transform 320ms var(--spring-release);
     }
     .game-card:hover .card-icon {
-      transform: scale(1.12); -webkit-transform: scale(1.12);
+      transform: scale(1.12) rotate(-3deg);
+      -webkit-transform: scale(1.12) rotate(-3deg);
     }
     .card-title {
       font-size: 18px; font-weight: 600; margin-bottom: 8px;

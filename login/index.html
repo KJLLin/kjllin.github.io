@@ -31,11 +31,11 @@
       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
     }
     [data-theme="dark"]{
-      --bg:var(--color-bg);--card-bg:var(--color-bg-glass);--card-hover:var(--color-bg-glass-hover);
-      --border:var(--color-border);--border-focus:var(--color-border-hover);
+      --bg:var(--color-bg);--card-bg:var(--color-bg-glass-solid);--card-hover:var(--color-bg-glass-hover);
+      --border:rgba(255,255,255,.10);--border-focus:rgba(255,255,255,.16);
       --text:var(--color-text-primary);--text-secondary:var(--color-text-secondary);--text-tertiary:var(--color-text-tertiary);
       --accent:var(--color-accent);--accent-hover:var(--color-accent-hover);--accent-ring:var(--color-accent-glow);
-      --input-bg:var(--color-bg-input);--danger:var(--color-danger);
+      --input-bg:rgba(255,255,255,.055);--danger:var(--color-danger);
       --shadow:var(--shadow-lg);--shadow-hover:var(--shadow-xl);
       --radius:18px;--radius-sm:10px;--radius-btn:24px;
     }
@@ -95,9 +95,19 @@
       flex:1;padding:9px 0;border:none;border-radius:8px;
       font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;
       background:transparent;color:var(--text-tertiary);
-      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform 320ms var(--spring-release);
     }
+    .tab:active{transform:scale(.97);transition:transform 90ms var(--spring-press)}
     .tab.active{background:var(--card-bg);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+    /* 深色下 .tab.active 和卡片同色会"消失"，改用抬升一级的表面 */
+    [data-theme="dark"] .card{
+      background:rgba(38,38,41,.90);
+      border-color:rgba(255,255,255,.08);
+      border-top-color:rgba(255,255,255,.12);
+      box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    [data-theme="dark"] .tabs{background:rgba(255,255,255,.04)}
+    [data-theme="dark"] .tab.active{background:rgba(58,58,60,.95);box-shadow:0 1px 3px rgba(0,0,0,.4)}
 
     /* 表单 */
     .panel{display:none}
@@ -154,10 +164,12 @@
       width:100%;padding:14px;border-radius:var(--radius-btn);border:none;
       font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;
       background:var(--accent);color:#fff;
-      transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--duration-instant) var(--spring-default);letter-spacing:.2px;
+      transition: background var(--transition-fast), color var(--transition-fast),
+                  box-shadow 320ms var(--spring-default), transform 320ms var(--spring-release);
+      letter-spacing:.2px;
     }
     .btn:hover{background:var(--accent-hover);transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-ring)}
-    .btn:active{transform:scale(.98)}
+    .btn:active{transform:scale(.975);transition:transform 90ms var(--spring-press)}
     .btn:disabled{opacity:.55;pointer-events:none;filter:grayscale(30%)}
 
     /* 表单内联错误提示 */

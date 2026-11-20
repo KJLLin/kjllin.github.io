@@ -241,26 +241,7 @@
     }
     @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
 
-    /* ── 返回顶部 ── */
-    #backTop {
-      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
-      border-radius: var(--radius-sm); border: 1px solid var(--color-border);
-      font-size: 17px; cursor: pointer;
-      background: var(--color-bg-glass);
-      backdrop-filter: var(--blur-button);
-      -webkit-backdrop-filter: var(--blur-button);
-      color: var(--color-text-primary);
-      opacity: 0; pointer-events: none; z-index: 80;
-      box-shadow: var(--shadow-sm);
-      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-    }
-    #backTop.show { opacity: 1; pointer-events: all; }
-    #backTop:active { transform: scale(0.95); }
-    #backTop:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--color-accent);
-    }
+    /* ── 返回顶部已统一为全局 #kj-top（common.js 注入），这里不再重复 ── */
 
     /* ── 页脚 ── */
     .footer {
@@ -306,7 +287,9 @@
       padding-bottom: 40px;
       min-height: 100vh;
     }
-    /* 背景光斑（不依赖图片） */
+    /* 背景光斑（不依赖图片）
+       之前五色叠加（蓝/紫/绿/橙/青）在浅底上会混成一片灰雾，
+       深色下又艳得像灯球。收成三色、压低透明度，保留"有一点空气感"的克制。 */
     .home-shell::before {
       content: '';
       position: fixed;
@@ -314,19 +297,15 @@
       z-index: -1;
       pointer-events: none;
       background:
-        radial-gradient(46% 38% at 12% 8%, rgba(10,132,255,.34), transparent 62%),
-        radial-gradient(40% 34% at 88% 0%, rgba(191,90,242,.28), transparent 62%),
-        radial-gradient(44% 40% at 74% 90%, rgba(48,209,88,.24), transparent 62%),
-        radial-gradient(36% 36% at 4% 94%, rgba(255,159,10,.24), transparent 62%),
-        radial-gradient(30% 26% at 46% 52%, rgba(90,200,250,.18), transparent 66%);
+        radial-gradient(58% 46% at 8% 0%, rgba(10, 132, 255, .20), transparent 64%),
+        radial-gradient(46% 40% at 94% 2%, rgba(191, 90, 242, .15), transparent 66%),
+        radial-gradient(52% 44% at 78% 98%, rgba(48, 209, 88, .11), transparent 66%);
     }
     html[data-theme="dark"] .home-shell::before {
       background:
-        radial-gradient(46% 38% at 12% 8%, rgba(10,132,255,.36), transparent 62%),
-        radial-gradient(40% 34% at 88% 0%, rgba(191,90,242,.30), transparent 62%),
-        radial-gradient(44% 40% at 74% 90%, rgba(48,209,88,.22), transparent 62%),
-        radial-gradient(36% 36% at 4% 94%, rgba(255,159,10,.18), transparent 62%),
-        radial-gradient(30% 26% at 46% 52%, rgba(90,200,250,.16), transparent 66%);
+        radial-gradient(58% 46% at 8% 0%, rgba(10, 132, 255, .17), transparent 64%),
+        radial-gradient(46% 40% at 94% 2%, rgba(120, 90, 242, .13), transparent 66%),
+        radial-gradient(52% 44% at 78% 98%, rgba(48, 209, 88, .08), transparent 66%);
     }
 
     .home-hero {
@@ -397,16 +376,32 @@
       justify-content: space-between;
       padding: 16px;
       border-radius: 24px;
-      background: var(--color-bg-glass);
-      backdrop-filter: var(--blur-button);
-      -webkit-backdrop-filter: var(--blur-button);
+      /* 比全局玻璃更实一点：小组件下面就是彩色光斑，
+         太透会把颜色带上卡片，显脏。 */
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
       border: 1px solid var(--color-border);
-      box-shadow: 0 8px 26px rgba(0,0,0,.06);
+      border-top-color: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .04);
       text-decoration: none;
       color: inherit;
       overflow: hidden;
-      transition: transform .28s var(--spring-default, cubic-bezier(.2,.8,.2,1)),
-                  box-shadow .28s ease, border-color .28s ease;
+      transition: transform 340ms var(--spring-release, cubic-bezier(.2,.9,.25,1.04)),
+                  box-shadow 340ms var(--spring-default, cubic-bezier(.22,.03,.06,1)),
+                  border-color 220ms var(--spring-default);
+    }
+    html[data-theme="dark"] .widget {
+      background: rgba(36, 36, 38, 0.88);
+      border-color: rgba(255, 255, 255, 0.06);
+      border-top-color: rgba(255, 255, 255, 0.09);
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, .42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    /* 小屏设备 GPU 更吃紧，24px 模糊叠七八张卡容易掉帧，降到 14px */
+    @media (max-width: 700px) {
+      .widget { backdrop-filter: blur(14px) saturate(170%); -webkit-backdrop-filter: blur(14px) saturate(170%); }
     }
     .widget::after {
       content: '';
@@ -427,14 +422,29 @@
     .widget:active { transform: translateY(-1px) scale(.998); }
 
     .widget--chat { grid-column: span 2; grid-row: span 2; justify-content: flex-start; }
+    /* 大卡留白多，内容垂直居中比贴顶舒服；右下角补一团同色光，避免空荡 */
+    .widget--chat::before {
+      content: '';
+      position: absolute;
+      right: -46px; bottom: -70px;
+      width: 210px; height: 210px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(10, 132, 255, .16), transparent 68%);
+      pointer-events: none;
+    }
+    html[data-theme="dark"] .widget--chat::before {
+      background: radial-gradient(circle, rgba(10, 132, 255, .20), transparent 68%);
+    }
     .widget--chat .w-body {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
-      margin-top: 16px;
+      justify-content: center;
+      margin-top: 10px;
+      position: relative;
+      z-index: 1;
     }
-    .widget--chat .w-foot { margin-top: auto; }
+    .widget--chat .w-foot { margin-top: auto; position: relative; z-index: 1; }
 
     .w-top { display: flex; align-items: flex-start; justify-content: space-between; }
     .w-icon {
@@ -444,6 +454,13 @@
       color: #fff; font-size: 18px;
       box-shadow: 0 6px 16px rgba(0,0,0,.14);
       flex-shrink: 0;
+      transition: transform 320ms var(--spring-release, cubic-bezier(.2,.9,.25,1.04)),
+                  box-shadow 320ms var(--spring-default, cubic-bezier(.22,.03,.06,1));
+    }
+    /* 图标在整卡 hover 时轻轻离地，比整卡缩放更有"物件感" */
+    .widget:hover .w-icon {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
     }
     .w-icon--chat    { background: linear-gradient(135deg, #0a84ff, #5ac8fa); }
     .w-icon--notif   { background: linear-gradient(135deg, #ff453a, #ff9f0a); }
@@ -503,7 +520,12 @@
       margin-top: 10px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .w-foot i { font-size: 9px; opacity: .55; margin-left: auto; }
+    .w-foot i {
+      font-size: 9px; opacity: .55; margin-left: auto;
+      transition: transform 280ms var(--spring-release, cubic-bezier(.2,.9,.25,1.04)),
+                  opacity 200ms var(--spring-default);
+    }
+    .widget:hover .w-foot i { transform: translateX(3px); opacity: .85; }
 
     .w-badge {
       min-width: 22px; height: 22px; padding: 0 7px;
@@ -1104,8 +1126,6 @@ html[data-theme="dark"] .catalog-sheet {
     <footer class="footer"><span>© 2026 KJLLin · All Rights Reserved</span> <span class="footer-sep">|</span> <a href="/docs/"><i class="fas fa-book"></i> 帮助文档</a></footer>
   </div>
 
-  <button id="backTop" aria-label="返回顶部">↑</button>
-
   <script src="/common.js"></script>
   <script>
     // ====================== 工具函数 ======================
@@ -1113,7 +1133,6 @@ html[data-theme="dark"] .catalog-sheet {
 
     const themeBtn = $('#themeBtn');
     const loader = $('#loader');
-    const backTop = $('#backTop');
     const menuBar = $('#menuBar');
     let isScrolling = false;
 
@@ -1208,16 +1227,13 @@ html[data-theme="dark"] .catalog-sheet {
       if (isScrolling) return;
       isScrolling = true;
       requestAnimationFrame(() => {
-        backTop.classList.toggle('show', window.scrollY > 300);
         menuBar.classList.toggle('scrolled', window.scrollY > 20);
         isScrolling = false;
       });
     }
-    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ====================== 移动端菜单 ======================
     KJ.setupMobileMenu('#hamburgerBtn','#mobileMenu');
-    backTop.addEventListener('click', goToTop);
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);

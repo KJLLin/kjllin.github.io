@@ -248,7 +248,8 @@
     }
     .empty-state__desc {
       font-size: 13px; color: var(--text-tertiary);
-      line-height: 1.65; max-width: 340px; margin: 0 auto 20px;
+      line-height: 1.7; max-width: 320px; margin: 0 auto 22px;
+      text-wrap: pretty;
     }
     .empty-state__actions {
       display: flex; align-items: center; justify-content: center;
@@ -333,7 +334,7 @@
           '<div class="empty-state" style="animation:fadeUp .4s var(--win-ease) both">' +
           '<div class="empty-state__ico"><i class="fas fa-user-lock"></i></div>' +
           '<h2 class="empty-state__title">登录后查看个人主页</h2>' +
-          '<p class="empty-state__desc">主页包含你的头像、简介、文章与收藏，换设备登录也能看到。</p>' +
+          '<p class="empty-state__desc">主页包含头像、简介、文章与收藏。</p>' +
           '<div class="empty-state__actions">' +
             '<a href="/login/?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="btn btn-primary">前往登录</a>' +
             '<a href="/" class="btn">返回首页</a>' +
