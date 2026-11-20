@@ -133,11 +133,22 @@
 
     /* 页头 */
     .page-header {
-      text-align: center; margin-bottom: 50px;
-      animation: fadeUp 0.8s var(--win-ease) forwards;
+      text-align: center; margin-bottom: 46px;
+      animation: fadeUp 0.55s var(--spring-default, cubic-bezier(.22,.03,.06,1)) backwards;
       will-change: transform, opacity;
     }
-    .header-icon { font-size: 64px; margin-bottom: 16px; }
+    /* 页头图标给一块渐变底，和首页小组件的图标是同一套语言；
+       之前是一个 64px 的裸图标，浅色下发黑、深色下发白，都比较单薄。 */
+    .header-icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 18px;
+      display: grid; place-items: center;
+      border-radius: 22px;
+      font-size: 30px;
+      color: #fff;
+      background: linear-gradient(135deg, #bf5af2, #5e5ce6);
+      box-shadow: 0 12px 28px rgba(94, 92, 230, .26), inset 0 1px 0 rgba(255,255,255,.25);
+    }
     .header-title {
       font-size: 32px; font-weight: 700;
       background: linear-gradient(90deg, var(--text-primary), var(--accent));
@@ -158,8 +169,8 @@
     /* 游戏卡片网格 */
     .section-title {
       font-size: 20px; font-weight: 600; margin-bottom: 20px;
-      opacity: 0; animation: fadeUp 0.7s var(--win-ease) forwards 0.2s;
-      -webkit-animation: fadeUp 0.7s var(--win-ease) forwards 0.2s;
+      opacity: 0; animation: fadeUp 0.5s var(--spring-default) forwards 0.06s;
+      -webkit-animation: fadeUp 0.5s var(--spring-default) forwards 0.06s;
     }
     .card-grid {
       display: grid;
