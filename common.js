@@ -2130,6 +2130,287 @@
     return true;
   }
 
+  // ====================== Motion v2 — 连续性交互 ======================
+  /**
+   * 全站动效控制器。只做四件事，且全部可降级：
+   *   · 把滚动进度写进 --kj-scroll（驱动背景视差等 CSS）
+   *   · 用 IntersectionObserver 给 .kj-reveal 做错峰浮现
+   *   · 封装 document.startViewTransition（不支持时直接执行）
+   *   · 数字 count-up（统计类数值从 0 滚到目标）
+   *
+   * 约定：任何依赖 JS 的初始隐藏状态都必须挂在 html.kj-motion 下，
+   * 脚本没跑时内容照常可见 —— 宁可没动画，也不能白屏。
+   */
+  var motion = (function() {
+    var reduceMotion = false;
+    try { reduceMotion = global.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+    var booted = false;
+    var _io = null;
+
+    /* ---------- 滚动进度 ---------- */
+    function initScrollProgress() {
+      var root = document.documentElement;
+      var ticking = false;
+
+      function update() {
+        ticking = false;
+        var max = root.scrollHeight - root.clientHeight;
+        var y = global.pageYOffset || root.scrollTop || 0;
+        var p = max > 8 ? Math.min(1, Math.max(0, y / max)) : 0;
+        root.style.setProperty('--kj-scroll', p.toFixed(4));
+      }
+
+      function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+
+      global.addEventListener('scroll', onScroll, { passive: true });
+      global.addEventListener('resize', onScroll, { passive: true });
+      update();
+    }
+
+    /* ---------- 错峰浮现 ---------- */
+    function ensureObserver() {
+      if (_io || !('IntersectionObserver' in global)) return _io;
+      _io = new IntersectionObserver(function(entries) {
+        for (var i = 0; i < entries.length; i++) {
+          var en = entries[i];
+          if (!en.isIntersecting) continue;
+          en.target.classList.add('is-in');
+          _io.unobserve(en.target);
+        }
+      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.05 });
+      return _io;
+    }
+
+    /**
+     * 观察容器内（或全页）未进场的 .kj-reveal
+     * 同一父级下的元素自动按顺序错峰 55ms，最多 8 档
+     * @param {Element|string} [rootEl]
+     */
+    function observe(rootEl) {
+      var scope = rootEl
+        ? (typeof rootEl === 'string' ? document.querySelector(rootEl) : rootEl)
+        : document;
+      if (!scope) return;
+
+      var items = [].slice.call(scope.querySelectorAll('.kj-reveal:not(.is-in)'));
+      if (!items.length) return;
+
+      if (reduceMotion || !('IntersectionObserver' in global)) {
+        items.forEach(function(el) { el.classList.add('is-in'); });
+        return;
+      }
+
+      var io = ensureObserver();
+      items.forEach(function(el) {
+        if (!el.hasAttribute('data-reveal-delay')) {
+          var parent = el.parentNode;
+          var sibs = parent ? [].slice.call(parent.children).filter(function(c) {
+            return c.classList && c.classList.contains('kj-reveal');
+          }) : [];
+          var idx = sibs.indexOf(el);
+          if (idx > 0) el.style.setProperty('--kj-reveal-delay', Math.min(idx, 8) * 55 + 'ms');
+        }
+        io.observe(el);
+      });
+    }
+
+    /* ---------- 转场封装 ---------- */
+    /**
+     * 在 View Transition 中执行 DOM 变更；不支持或用户要求减弱动效时直接执行
+     * @param {Function} fn 同步或返回 Promise 的变更函数
+     */
+    function transition(fn) {
+      if (typeof fn !== 'function') return;
+      if (reduceMotion || typeof document.startViewTransition !== 'function') {
+        try { fn(); } catch (e) { console.warn('transition:', e); }
+        return;
+      }
+      try {
+        document.startViewTransition(function() { return fn(); });
+      } catch (e) {
+        try { fn(); } catch (e2) {}
+      }
+    }
+
+    /* ---------- 数字滚动 ---------- */
+    /**
+     * @param {Element|string} el
+     * @param {number} to 目标值
+     * @param {object} [opts] { duration=700, decimals=0, suffix='', prefix='' }
+     */
+    function countUp(el, to, opts) {
+      if (typeof el === 'string') el = document.querySelector(el);
+      if (!el) return;
+      opts = opts || {};
+      var decimals = opts.decimals || 0;
+      var prefix = opts.prefix || '';
+      var suffix = opts.suffix || '';
+      var target = Number(to);
+      if (!isFinite(target)) { el.textContent = prefix + String(to) + suffix; return; }
+
+      function fmt(n) {
+        return prefix + (decimals
+          ? n.toFixed(decimals)
+          : Math.round(n).toLocaleString('zh-CN')) + suffix;
+      }
+
+      if (reduceMotion) { el.textContent = fmt(target); return; }
+
+      var raw = (el.textContent || '').replace(/[^\d.-]/g, '');
+      var from = Number(raw);
+      if (!isFinite(from) || Math.abs(from - target) < 1) { el.textContent = fmt(target); return; }
+
+      var dur = opts.duration || 700;
+      var start = 0;
+      function step(ts) {
+        if (!start) start = ts;
+        var p = Math.min(1, (ts - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);   // easeOutCubic，收尾自然
+        el.textContent = fmt(from + (target - from) * eased);
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = fmt(target);
+      }
+      requestAnimationFrame(step);
+    }
+
+    /* ---------- 启动 ---------- */
+    function start() {
+      if (booted) return;
+      booted = true;
+      document.documentElement.classList.add('kj-motion');
+      initScrollProgress();
+      observe();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+
+    return {
+      start: start,
+      observe: observe,
+      transition: transition,
+      countUp: countUp,
+      reduceMotion: function() { return reduceMotion; }
+    };
+  })();
+
+  // ====================== 回到顶部（长页面） ======================
+  /**
+   * 右下角浮动圆钮，滚过一屏才出现。
+   * 站内信是固定高度布局，右下角常驻输入区，跳过。
+   */
+  function initBackToTop() {
+    if (document.getElementById('kj-top')) return;
+    if (!document.querySelector('.top-menu')) return;
+    if (/^\/chat(\/|$)/.test(location.pathname) || /^\/login(\/|$)/.test(location.pathname)) return;
+
+    var btn = document.createElement('button');
+    btn.id = 'kj-top';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', '回到顶部');
+    btn.innerHTML = '<i class="fas fa-arrow-up" aria-hidden="true"></i>';
+    document.body.appendChild(btn);
+
+    var shown = false;
+    var ticking = false;
+
+    function update() {
+      ticking = false;
+      var y = global.pageYOffset || document.documentElement.scrollTop || 0;
+      var max = document.documentElement.scrollHeight - global.innerHeight;
+      // 阈值跟着页面长度走：短页面滚到一半就该出现，
+      // 固定 560px 会让只有一屏半的页面永远等不到按钮。
+      var threshold = Math.max(300, Math.min(700, max * 0.45));
+      var next = max > 240 && y > threshold;
+      if (next === shown) return;
+      shown = next;
+      btn.classList.toggle('is-on', shown);
+    }
+
+    global.addEventListener('scroll', function() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    }, { passive: true });
+
+    btn.addEventListener('click', function() {
+      try { global.scrollTo({ top: 0, behavior: 'smooth' }); }
+      catch (e) { global.scrollTo(0, 0); }
+    });
+
+    // 文档页右下角有目录浮钮，别叠在一起
+    function avoidFab() {
+      var fab = document.querySelector('.mobile-sidebar-toggle');
+      var clash = false;
+      if (fab) {
+        try { clash = global.getComputedStyle(fab).display !== 'none'; } catch (e) {}
+      }
+      btn.classList.toggle('kj-top-lift', clash);
+    }
+    avoidFab();
+    global.addEventListener('resize', avoidFab, { passive: true });
+
+    update();
+  }
+
+  // ====================== 页面离场（同源跳转淡出） ======================
+  /**
+   * 点击站内链接时先让页面轻微淡出再跳转，避免"啪"一下换页。
+   * 只在明确安全的情况下接管：左键、无修饰键、同源、非新窗口、非下载。
+   * 任何异常都放行原始跳转 —— 绝不能因为动画把导航弄坏。
+   */
+  function initPageLeave() {
+    var reduce = false;
+    try { reduce = global.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (reduce) return;
+
+    var leaving = false;
+
+    document.addEventListener('click', function(e) {
+      if (leaving) return;
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      if (a.target && a.target !== '_self') return;
+      if (a.hasAttribute('download')) return;
+      if (a.hasAttribute('data-no-transition')) return;
+
+      var href = a.getAttribute('href') || '';
+      if (!href || href.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(href)) return;
+
+      var url;
+      try { url = new URL(a.href, location.href); } catch (err) { return; }
+      if (url.origin !== location.origin) return;
+      // 同页仅 hash/查询变化的，交给浏览器自己处理
+      if (url.pathname === location.pathname && url.search === location.search) return;
+
+      e.preventDefault();
+      leaving = true;
+      document.documentElement.classList.add('kj-leaving');
+
+      setTimeout(function() {
+        if (!leaving) return;
+        location.href = url.href;
+      }, 130);
+
+      // 兜底：万一跳转被拦（扩展、下载策略等），把页面恢复回来
+      setTimeout(function() {
+        leaving = false;
+        document.documentElement.classList.remove('kj-leaving');
+      }, 1600);
+    });
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -2161,6 +2442,7 @@
     toast: toast,
     injectToastStyle: injectToastStyle,
     smoothScrollTo: smoothScrollTo,
+    motion: motion,
     initGlobalFeedback: initGlobalFeedback,
     applyScrollEdgeMask: applyScrollEdgeMask,
     getSystemDark: getSystemDark,
@@ -2196,6 +2478,17 @@
 
   // 注入全局交互反馈
   initGlobalFeedback();
+
+  // 回到顶部 / 页面离场淡出
+  function initChrome() {
+    try { initBackToTop(); } catch (e) {}
+    try { initPageLeave(); } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initChrome);
+  } else {
+    initChrome();
+  }
 
   // ====================== Font Awesome CDN 回退 ======================
   /**

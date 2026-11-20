@@ -276,11 +276,15 @@
     .post-card {
       padding: 24px; border-radius: var(--radius-lg);
       position: relative;
-      animation: fadeUp 0.4s var(--win-ease) both;
-      transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+      /* 入场交给 .kj-reveal（IO 驱动），这里只管 hover/按压的弹簧 */
+      transition:
+        box-shadow 320ms var(--spring-default, cubic-bezier(.22,.03,.06,1)),
+        transform 320ms var(--spring-release, cubic-bezier(.2,.9,.25,1.04)),
+        border-color 220ms var(--spring-default);
     }
     .post-card:hover {
       transform: translateY(-2px);
+      box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,.05));
     }
     /* 作者自己的编辑/删除：固定在右上角，不参与正文排版 */
     .post-card .post-actions {
@@ -512,15 +516,7 @@
     @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
     /* ====================== 返回顶部 ====================== */
-    #backTop {
-      position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px;
-      border-radius: var(--radius-sm); border: none; font-size: 17px;
-      cursor: pointer; opacity: 0; pointer-events: none; z-index: 80;
-      transition: opacity var(--transition-fast), transform var(--transition-fast);
-    }
-    #backTop.show { opacity: 1; pointer-events: all; }
-    #backTop:active { transform: scale(0.95); }
-    #backTop:hover { transform: translateY(-2px); }
+    /* 返回顶部已统一为全局 #kj-top（common.js 注入） */
 
     /* ====================== 页脚 ====================== */
     .footer { text-align: center; padding: 40px 20px; font-size: 13px; color: var(--text-tertiary); border-top: 1px solid var(--border-mica); margin-top: 40px; }
@@ -660,15 +656,12 @@
     <footer class="footer">© 2026 KJLLin · All Rights Reserved</footer>
   </div>
 
-  <button id="backTop" class="mica" aria-label="返回顶部">↑</button>
-
   <script>
     // ====================== 工具函数 ======================
     const $ = s => document.querySelector(s);
     const root = document.documentElement;
 
     const themeBtn = $('#themeBtn');
-    const backTop = $('#backTop');
     const menuBar = $('#menuBar');
     let isScrolling = false;
     let touchStartData = {};
@@ -768,20 +761,15 @@
       if (isScrolling) return;
       isScrolling = true;
       requestAnimationFrame(() => {
-        backTop.classList.toggle('show', window.scrollY > 300);
         menuBar.classList.toggle('scrolled', window.scrollY > 20);
         isScrolling = false;
       });
     }
-    function goToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ====================== 移动端菜单 ======================
     KJ.setupMobileMenu('#hamburgerBtn', '#mobileMenu');
   KJ.initNav(null, { homeUrl: '/' });
 
-    backTop.addEventListener('click', goToTop);
-    backTop.addEventListener('touchstart', handleTouchStart);
-    backTop.addEventListener('touchend', e => handleTouchEnd(e, goToTop));
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('beforeunload', () => {
       window.removeEventListener('scroll', handleScroll);
@@ -1094,7 +1082,7 @@
               { id: p.user_id, nick: p.nick || '匿名', avatar_url: p.avatar_url },
               { size: 22, className: 'author-av' }
             );
-            return '<div class="post-card mica' + (actions ? ' has-actions' : '') + '">' +
+            return '<div class="post-card mica kj-reveal' + (actions ? ' has-actions' : '') + '">' +
               '<div class="post-main">' +
                 '<a href="/discuss/view/?id=' + p.id + '" class="post-title" style="text-decoration:none;color:var(--text-primary)">' + highlightText(p.title || '无标题') + '</a>' +
                 (p.visibility === 'private' ? ' <span class="vis-badge"><i class="fas fa-lock"></i> 私有</span>' : '') +
@@ -1118,6 +1106,9 @@
           }).join('');
 
           renderPagination(totalCount);
+
+          // 列表是整块重建的，进场观察要重新挂一次（已进场的元素会被跳过）
+          try { KJ.motion && KJ.motion.observe(list); } catch (e) {}
 
           // 绑定删除
           list.querySelectorAll('.del-post-btn').forEach(btn => {
