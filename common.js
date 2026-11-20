@@ -2411,6 +2411,88 @@
     });
   }
 
+  // ====================== 导航活跃指示器 ======================
+  /**
+   * 在 .menu-bar 里塞一块绝对定位的底，跟着 active / hover 滑动。
+   * 纯增量：拿不到菜单就直接跳过，页面结构一行都不用改。
+   */
+  function initNavPill() {
+    var bar = document.querySelector('.menu-bar');
+    if (!bar) return;
+    if (bar.querySelector('.nav-pill')) return;
+
+    var items = [].slice.call(bar.querySelectorAll('.menu-item'));
+    if (!items.length) return;
+
+    var pill = document.createElement('span');
+    pill.className = 'nav-pill';
+    pill.setAttribute('aria-hidden', 'true');
+    bar.insertBefore(pill, bar.firstChild);
+
+    var current = null;
+
+    function place(el) {
+      if (!el) { pill.style.opacity = '0'; return; }
+      var r = el.getBoundingClientRect();
+      var br = bar.getBoundingClientRect();
+      if (!r.width) { pill.style.opacity = '0'; return; }
+      pill.style.width = r.width + 'px';
+      pill.style.height = r.height + 'px';
+      pill.style.transform = 'translate(' + (r.left - br.left) + 'px,' + (r.top - br.top) + 'px)';
+      pill.style.opacity = '1';
+    }
+
+    function activeItem() {
+      // 没有 active 的页面（比如 404）就不显示底块
+      return bar.querySelector('.menu-item.active');
+    }
+
+    function refresh() {
+      current = activeItem();
+      place(current);
+    }
+
+    // 用委托而不是逐个绑定：资讯等菜单项可能是 initNav 之后才插进来的
+    bar.addEventListener('mouseover', function(e) {
+      var it = e.target && e.target.closest ? e.target.closest('.menu-item') : null;
+      if (it && bar.contains(it)) place(it);
+    });
+    bar.addEventListener('focusin', function(e) {
+      var it = e.target && e.target.closest ? e.target.closest('.menu-item') : null;
+      if (it && bar.contains(it)) place(it);
+    });
+    bar.addEventListener('mouseleave', function() { place(activeItem()); });
+
+    var tick = false;
+    global.addEventListener('resize', function() {
+      if (tick) return;
+      tick = true;
+      requestAnimationFrame(function() { tick = false; place(activeItem()); });
+    }, { passive: true });
+
+    // 字体加载完成后宽度会变，等它稳定再量一次
+    pill.style.transition = 'none';       // 首帧直接就位，不要从左上角滑进来
+    refresh();
+    requestAnimationFrame(function() {
+      place(activeItem());
+      requestAnimationFrame(function() { pill.style.transition = ''; });
+    });
+    try {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() {
+          pill.style.transition = 'none';
+          place(activeItem());
+          requestAnimationFrame(function() { pill.style.transition = ''; });
+        });
+      }
+    } catch (e) {}
+    setTimeout(function() {
+      pill.style.transition = 'none';
+      place(activeItem());
+      requestAnimationFrame(function() { pill.style.transition = ''; });
+    }, 600);
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -2483,6 +2565,7 @@
   function initChrome() {
     try { initBackToTop(); } catch (e) {}
     try { initPageLeave(); } catch (e) {}
+    try { initNavPill(); } catch (e) {}
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initChrome);
