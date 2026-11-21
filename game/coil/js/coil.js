@@ -369,6 +369,11 @@ var Coil = (function(){
 	function start() {
 		reset();
 		
+		// 通知外层页面：新的一局开始（页面据此向服务端领取对局凭据）
+		try {
+			document.dispatchEvent( new CustomEvent( 'coil:start' ) );
+		} catch ( e ) {}
+		
 		timeStart = Date.now();
 		timeLastFrame = timeStart;
 		

@@ -444,10 +444,9 @@ pre, code, .mono, .tile, .score-val {
       if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
       const userId = session.user.id;
 
-      const { error: submitErr } = await supabase.rpc('submit_game_score', {
-        p_game: GAME_NAME, p_score: finalScore
-      });
-      if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
+      const submitted = await KJ.gameRun.submit(supabase, GAME_NAME, finalScore);
+      if (submitted.error) { console.warn('Submit score failed:', submitted.error); KJ.toast(submitted.error.message || '云端同步失败'); return; }
+      if (submitted.data === false) { KJ.toast('成绩异常，已转人工核验'); return; }
 
       const { data: cloudBest } = await supabase
         .from('game_scores').select('score').eq('game', GAME_NAME)
@@ -471,6 +470,7 @@ pre, code, .mono, .tile, .score-val {
   let gameOver = false;
   let gameWon = false;
   let winShown = false;
+  let runStarted = false;   // 本局是否已向服务端领取对局凭据
 
   // ==================== Board Grid ====================
   for (let i = 0; i < SIZE * SIZE; i++) {
@@ -702,6 +702,10 @@ pre, code, .mono, .tile, .score-val {
 
   function doMove(dir) {
     if (gameOver) return;
+    if (!runStarted) {
+      runStarted = true;
+      if (window.KJ && KJ.gameRun) KJ.gameRun.begin(supabase, GAME_NAME);   // 首次移动即开局
+    }
     const { moved, mergedSet } = moveGrid(dir);
     if (moved) {
       addRandomTile();
@@ -723,6 +727,7 @@ pre, code, .mono, .tile, .score-val {
     gameOver = false;
     gameWon = false;
     winShown = false;
+    runStarted = false;   // 第一次移动时再向服务端领票
     overlay.classList.add('hidden');
     addRandomTile();
     addRandomTile();

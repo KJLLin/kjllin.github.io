@@ -523,10 +523,9 @@
         if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
         const userId = session.user.id;
 
-        const { error: submitErr } = await sb.rpc('submit_game_score', {
-          p_game: GAME_NAME, p_score: finalScore
-        });
-        if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
+        const submitted = await KJ.gameRun.submit(sb, GAME_NAME, finalScore);
+        if (submitted.error) { console.warn('Submit score failed:', submitted.error); KJ.toast(submitted.error.message || '云端同步失败'); return; }
+        if (submitted.data === false) { KJ.toast('成绩异常，已转人工核验'); return; }
 
         const { data: cloudBest } = await sb
           .from('game_scores').select('score').eq('game', GAME_NAME)
@@ -705,6 +704,7 @@
       gameStarted = true;
       lastTimestamp = 0;
       lastMoveTime = 0;
+      if (window.KJ && KJ.gameRun) KJ.gameRun.begin(sb, GAME_NAME);   // 开局领票，结算时校验时长
       $('#startHint').classList.add('hidden');
       gameLoopId = requestAnimationFrame(gameLoop);
     }

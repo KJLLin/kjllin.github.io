@@ -314,10 +314,10 @@
             if (!session) { KJ.toast('请先登录以同步游戏记录'); return; }
             const userId = session.user.id;
 
-            const { error: submitErr } = await sb.rpc('submit_game_score', {
-              p_game: GAME_NAME, p_score: finalScore
-            });
-            if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
+            const submitted = await KJ.gameRun.submit(sb, GAME_NAME, finalScore);
+            if (submitted.error) { console.warn('Submit score failed:', submitted.error); KJ.toast(submitted.error.message || '云端同步失败'); return; }
+            // false = 成绩异常，已进人工核验队列，暂不上榜
+            if (submitted.data === false) { KJ.toast('成绩异常，已转人工核验'); return; }
 
             const { data: cloudBest } = await sb
               .from('game_scores').select('score').eq('game', GAME_NAME)
@@ -980,6 +980,8 @@
             scoreSaved = false;
             score = 0;
             coinsCollected = 0;
+            // 每局开局向服务端领一张对局票据（结算时校验时长）
+            if (window.KJ && KJ.gameRun) KJ.gameRun.begin(sb, GAME_NAME);
             // --- 基础速度降低50% ---
             gameSpeed = 2.5;
             obstacles = []; // 重置障碍物数组
