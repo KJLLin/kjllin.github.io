@@ -223,6 +223,7 @@
       <div class="admin-tabs" id="adminTabs" role="tablist">
         <button type="button" class="admin-tab active" data-panel="users" role="tab"><i class="fas fa-users"></i> 用户</button>
         <button type="button" class="admin-tab" data-panel="content" role="tab"><i class="fas fa-bullhorn"></i> 内容</button>
+        <button type="button" class="admin-tab" data-panel="scores" role="tab"><i class="fas fa-trophy"></i> 成绩</button>
         <button type="button" class="admin-tab" data-panel="tools" role="tab"><i class="fas fa-screwdriver-wrench"></i> 工具</button>
       </div>
 
@@ -280,6 +281,18 @@
         <div class="feed-actions">
           <button type="button" class="save-btn" id="newsSyncBtn"><i class="fas fa-rotate"></i> 立即同步</button>
           <span class="feed-note" id="feedNote"></span>
+        </div>
+      </div>
+      </div>
+
+      <div class="admin-panel" data-panel="scores" hidden>
+      <div class="card card-glass card-anim">
+        <div class="card-header"><i class="fas fa-trophy c-accent"></i> 成绩核验队列</div>
+        <div class="search-hint"><i class="fas fa-circle-info"></i> 服务端判定异常的成绩不会直接上榜：通过后按最佳成绩合并，驳回则丢弃。</div>
+        <div id="flagList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        <div class="feed-actions">
+          <button type="button" class="save-btn" id="flagReloadBtn"><i class="fas fa-rotate"></i> 刷新队列</button>
+          <span class="feed-note" id="flagNote"></span>
         </div>
       </div>
       </div>
@@ -392,9 +405,11 @@
         bindTabs();
         bindAnnounce();
         bindFeeds();
+        bindFlagActions();
         loadUsers();
         loadAnnouncements();
         loadFeeds();
+        loadGameFlags();
       }catch(e){console.error('loadUser:',e);showGate('加载失败','网络异常，请刷新页面重试');}
     }
 
@@ -505,7 +520,66 @@
         var panels=document.querySelectorAll('.admin-panel');
         for(var j=0;j<panels.length;j++)panels[j].hidden=panels[j].getAttribute('data-panel')!==target;
         if(target==='content')loadFeeds();
+        if(target==='scores')loadGameFlags();
       });
+    }
+
+    // ==================== 成绩核验队列 ====================
+    var GAME_LABEL={coil:'Coil 线圈',dino:'小恐龙',snake:'贪吃蛇',tfe:'2048',schulte_3:'舒尔特 3×3',schulte_4:'舒尔特 4×4',schulte_5:'舒尔特 5×5',schulte_6:'舒尔特 6×6',schulte_7:'舒尔特 7×7'};
+
+    async function loadGameFlags(){
+      var el=$('#flagList');
+      if(!el)return;
+      el.innerHTML='<div class="list-empty"><i class="fas fa-circle-notch fa-spin"></i> 加载核验队列...</div>';
+      try{
+        var r=await sb.rpc('game_flags',{p_status:'pending',p_limit:50});
+        if(r.error){el.innerHTML='<div class="list-empty">加载失败：'+esc(r.error.message||'未知错误')+'</div>';return}
+        var rows=r.data||[];
+        if($('#flagNote'))$('#flagNote').textContent=rows.length?('待处理 '+rows.length+' 条'):'暂无待处理';
+        if(!rows.length){el.innerHTML='<div class="list-empty"><i class="fas fa-circle-check"></i> 队列为空，没有异常成绩</div>';return}
+        el.innerHTML=rows.map(function(f){
+          var d=f.detail||{};
+          var meta=esc(f.reason)
+            +(d.elapsed!=null?(' · 用时 '+d.elapsed+'s'):'')
+            +(d.top!=null?(' · 全站最佳 '+d.top):'')
+            +(d.best!=null?(' · 个人最佳 '+d.best):'');
+          return '<div class="card card-glass" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">'
+            +'<div style="display:flex;align-items:baseline;gap:8px;justify-content:space-between">'
+            +'<div style="font-size:13.5px;font-weight:600">'+esc(f.nick||'用户')+' · '+esc(GAME_LABEL[f.game]||f.game)+'</div>'
+            +'<div style="font-size:16px;font-weight:700;color:var(--color-accent)">'+f.score+'</div>'
+            +'</div>'
+            +'<div style="font-size:12.5px;color:var(--color-text-secondary);line-height:1.65">'+meta
+            +'<br>'+fmtAgo(f.created_at)+'提交</div>'
+            +'<div style="display:flex;gap:8px">'
+            +'<button type="button" class="save-btn" data-flag="'+f.id+'" data-ok="1" style="margin-left:0"><i class="fas fa-check"></i> 通过</button>'
+            +'<button type="button" class="save-btn" data-flag="'+f.id+'" data-ok="0" style="margin-left:0;background:var(--color-danger);box-shadow:none"><i class="fas fa-xmark"></i> 驳回</button>'
+            +'</div></div>';
+        }).join('');
+      }catch(e){console.error('loadGameFlags:',e);el.innerHTML='<div class="list-empty">加载失败，请刷新重试</div>';}
+    }
+
+    async function resolveFlag(id,ok,btn){
+      if(btn)btn.disabled=true;
+      try{
+        var r=await sb.rpc('game_flag_resolve',{p_id:Number(id),p_approve:!!ok});
+        if(r.error){KJ.toast('处理失败：'+(r.error.message||'未知错误'));if(btn)btn.disabled=false;return}
+        KJ.toast(ok?'已通过，成绩已合并上榜':'已驳回');
+        loadGameFlags();
+      }catch(e){if(btn)btn.disabled=false;KJ.toast('处理失败，请稍后重试');}
+    }
+
+    function bindFlagActions(){
+      var el=$('#flagList');
+      if(el&&!el._bound){
+        el._bound=true;
+        el.addEventListener('click',function(e){
+          var btn=e.target.closest?e.target.closest('[data-flag]'):null;
+          if(!btn)return;
+          resolveFlag(btn.getAttribute('data-flag'),btn.getAttribute('data-ok')==='1',btn);
+        });
+      }
+      var rb=$('#flagReloadBtn');
+      if(rb&&!rb._bound){rb._bound=true;rb.addEventListener('click',loadGameFlags);}
     }
 
     // ==================== 资讯源 ====================
