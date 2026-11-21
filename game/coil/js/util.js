@@ -19,14 +19,21 @@ var WebGLUtil = {
 	    {
 			var infoLog = gl.getShaderInfoLog(vs);
 			gl.deleteProgram( program );
-			alert( "VS ERROR: " + infoLog );
+			gl.deleteShader( vs );
+			gl.deleteShader( fs );
+			// 不用 alert 阻塞游戏：背景特效失败也不该拦住玩家
+			console.error( "VS ERROR: " + infoLog );
+			return null;
 	    }
 	
 	    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS))
 		{
 			var infoLog = gl.getShaderInfoLog(fs);
 			gl.deleteProgram( program );
-			alert( "FS ERROR: " + infoLog );
+			gl.deleteShader( vs );
+			gl.deleteShader( fs );
+			console.error( "FS ERROR: " + infoLog );
+			return null;
 	    }
 	
 	    gl.attachShader(program, vs);
