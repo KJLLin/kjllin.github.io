@@ -450,10 +450,9 @@
       try {
         var { data: { session } } = await sbGame.auth.getSession();
         if (!session || !session.user) { KJ.toast('请先登录以同步游戏纪录'); return; }
-        var { error: submitErr } = await sbGame.rpc('submit_game_score', {
-          p_game: getGameName(), p_score: Math.round(finalScore * 100)
-        });
-        if (submitErr) { console.warn('Submit score failed:', submitErr); KJ.toast(submitErr.message || '云端同步失败'); return; }
+        var submitted = await KJ.gameRun.submit(sbGame, getGameName(), Math.round(finalScore * 100));
+        if (submitted.error) { console.warn('Submit score failed:', submitted.error); KJ.toast(submitted.error.message || '云端同步失败'); return; }
+        if (submitted.data === false) { KJ.toast('成绩异常，已转人工核验'); return; }
 
         var { data: best } = await sbGame
           .from('game_scores').select('score').eq('game', getGameName())
@@ -531,6 +530,8 @@
       if (isRunning) return;
       isRunning = true;
       startTime = Date.now();
+      // 计时开始 = 开局，向服务端领票（结算时校验用时是否可能）
+      if (window.KJ && KJ.gameRun) KJ.gameRun.begin(sbGame, getGameName());
       timerInterval = setInterval(updateTimer, 50);
     }
 

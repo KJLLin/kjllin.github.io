@@ -467,6 +467,25 @@
       var myBest = 0;
       var submitting = false;
       var toastTimer = null;
+      var runTicket = null;      // 服务端签发的对局票据
+      var runTicketP = null;     // 领票请求（避免开局瞬间竞态）
+      var runTicketAt = 0;
+      var runUsed = true;
+
+      // 开局领票：结算时服务端按「这张票 + 对局时长」校验分数是否可能
+      function beginRun() {
+        if (!sb || !session) return;
+        if (!runUsed && runTicketP && Date.now() - runTicketAt < 1500) return;
+
+        runUsed = false;
+        runTicketAt = Date.now();
+        runTicket = null;
+        runTicketP = sb.rpc('game_start', { p_game: 'coil' }).then(function (r) {
+          if (!r.error && r.data) { runTicket = r.data; return r.data; }
+          if (r.error) console.warn('[coil] 开局凭据获取失败:', r.error.message);
+          return null;
+        }).catch(function () { return null; });
+      }
 
       function say(msg) {
         if (!elToast) return;
@@ -532,10 +551,18 @@
         if (score <= Math.max(myBest, 0)) return;   // 只把破纪录的成绩送上去
 
         submitting = true;
-        sb.rpc('submit_game_score', { p_game: 'coil', p_score: score }).then(function (r) {
+        var ready = runTicketP || Promise.resolve(null);
+        ready.then(function (token) {
+          return sb.rpc('submit_game_score', { p_game: 'coil', p_score: score, p_token: token });
+        }).then(function (r) {
           submitting = false;
+          runUsed = true;
           if (r.error) {
             say('成绩同步失败：' + (r.error.message || '请稍后重试'));
+            return;
+          }
+          if (r.data === false) {
+            say('成绩异常，已转人工核验');
             return;
           }
           myBest = score;
@@ -595,6 +622,9 @@
           document.body.classList.remove('coil-over');
         });
       }
+
+      // 每一局真正开始时领票（coil.js 在 start() 里派发）
+      document.addEventListener('coil:start', beginRun);
 
       init();
     })();

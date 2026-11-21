@@ -2493,6 +2493,61 @@
     }, 600);
   }
 
+  // ====================== 游戏对局票据 ======================
+  // 服务端只认「开局时签发的票据」+ 对局时长，客户端不能凭空造成绩。
+  // 用法：开局 begin(client, game)；结算 submit(client, game, score)。
+  var gameRunState = {};
+
+  function beginGameRun(client, game) {
+    if (!client || !game) { return Promise.resolve(null); }
+
+    var st = gameRunState[game];
+    // 1.5 秒内的重复调用（连点、开局逻辑重入）复用同一张票，其余情况重新领
+    if (st && !st.used && st.at && (Date.now() - st.at) < 1500) { return st.promise; }
+
+    st = { promise: null, token: null, used: false, at: Date.now() };
+    gameRunState[game] = st;
+
+    st.promise = client.auth.getSession().then(function(sr) {
+      // 未登录不必领票，省一次请求
+      if (!sr || !sr.data || !sr.data.session) { return null; }
+
+      return client.rpc('game_start', { p_game: game }).then(function(r) {
+        if (r && !r.error && r.data) {
+          st.token = r.data;
+          return r.data;
+        }
+        if (r && r.error) { console.warn('[game] 开局凭据获取失败: ' + r.error.message); }
+        return null;
+      });
+    }).catch(function() {
+      return null;
+    });
+
+    return st.promise;
+  }
+
+  function submitGameScore(client, game, score) {
+    if (!client || !game) {
+      return Promise.resolve({ data: null, error: { message: '云端服务未就绪' } });
+    }
+
+    var st = gameRunState[game];
+    var ready = st ? st.promise : Promise.resolve(null);
+
+    return ready.then(function(token) {
+      return client.rpc('submit_game_score', {
+        p_game: game,
+        p_score: score,
+        p_token: token
+      });
+    }).then(function(r) {
+      var cur = gameRunState[game];
+      if (cur) { cur.used = true; }   // 一局一票，下次开局重新领
+      return r;
+    });
+  }
+
   // ====================== 暴露 API ======================
   var KJ = {
     SUPABASE_URL: SUPABASE_URL,
@@ -2522,6 +2577,11 @@
     paintAvatar: paintAvatar,
     injectAvatarStyle: injectAvatarStyle,
     toast: toast,
+    gameRun: {
+      begin: beginGameRun,
+      submit: submitGameScore,
+      reset: function(game) { if (game) { delete gameRunState[game]; } else { gameRunState = {}; } }
+    },
     injectToastStyle: injectToastStyle,
     smoothScrollTo: smoothScrollTo,
     motion: motion,
