@@ -1032,6 +1032,7 @@ var Coil = (function(){
 	}
 	
 	function renderEffects() {
+		if ( !effectsShaderProgram ) return;
 		effectsTime += 0.01;
 		
 		var l1 = context3d.getAttribLocation( effectsShaderProgram, "position" );

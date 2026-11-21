@@ -47,7 +47,8 @@
     uniform vec3 e8;
     uniform vec3 e9;
 
-    float distance(vec2 p1, vec2 p2) {
+    /* 注意：不能叫 distance —— 它是 GLSL 内置函数，新版 ANGLE 会直接拒绝重定义 */
+    float kjDist(vec2 p1, vec2 p2) {
       float dx = p1.x-p2.x;
       float dy = p1.y-p2.y;
       return sqrt(dx*dx + dy*dy);
@@ -56,14 +57,14 @@
     float lightEffect( vec3 e, vec2 p ) {
       if( e.z == 0.0 ) return 0.0;
       vec2 ep = -1.0 + 2.0 * e.xy / resolution.xy;
-      float dist = ( 1.0 - min( distance( ep, p ) * 2.0, 1.0 ) );
+      float dist = ( 1.0 - min( kjDist( ep, p ) * 2.0, 1.0 ) );
       return dist * 0.3 * e.z;
     }
 
     vec2 deformEffect( vec3 e, vec2 p ) {
       if( e.z == 0.0 ) return vec2(0.0, 0.0);
       vec2 ep = -1.0 + 2.0 * e.xy / resolution.xy;
-      float dist = ( 1.0 - min( distance( ep, p ) * 2.0, 1.0 ) );
+      float dist = ( 1.0 - min( kjDist( ep, p ) * 2.0, 1.0 ) );
       vec2 offset = vec2( dist * (p.x-ep.x) * cos(time), dist * (p.y-ep.y) * sin(time) );
       return offset * e.z * 0.5;
     }
@@ -84,7 +85,7 @@
       light += lightEffect( e7, p );
       light += lightEffect( e8, p );
       light += lightEffect( e9, p );
-      light += ( 1.0 - ( distance( m, p ) ) ) * 0.08;
+      light += ( 1.0 - ( kjDist( m, p ) ) ) * 0.08;
       light = min( light, 1.0 );
 
       vec2 uv = pos;
