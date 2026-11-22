@@ -454,6 +454,46 @@
       var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cXNwY3V4bndwYWtvZnd1bWF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODI4MTUsImV4cCI6MjA5OTQ1ODgxNX0.AlV_3gWTWTrFBO-_nYD_8RaKoC-m5p-7VpZwbnPp-Pg';
       var LOCAL_KEY = 'kj_coil_best';
 
+      // ---------------------------------------------------------------
+      // 登录凭证存储：必须与全站 common.js 的策略保持一致
+      //   勾选「在此设备保持登录」→ token 写 localStorage
+      //   未勾选               → token 只写 sessionStorage
+      // 若直接用 supabase-js 默认的 localStorage，未勾选时从登录页跳回本页
+      // 会读不到会话，表现为「明明登录了，游戏里还是未登录」。
+      // ---------------------------------------------------------------
+      var AUTH_PERSIST_KEY = 'kj_auth_persist';
+      function authPersist() {
+        try { return localStorage.getItem(AUTH_PERSIST_KEY) !== '0'; } catch (e) { return true; }
+      }
+      var authStorage = {
+        getItem: function (k) {
+          try {
+            if (authPersist()) {
+              var l = localStorage.getItem(k);
+              if (l != null) return l;
+              try { return sessionStorage.getItem(k); } catch (e2) { return null; }
+            }
+            var s = sessionStorage.getItem(k);
+            return s != null ? s : localStorage.getItem(k);
+          } catch (e) { return null; }
+        },
+        setItem: function (k, v) {
+          try {
+            if (authPersist()) {
+              localStorage.setItem(k, v);
+              try { sessionStorage.removeItem(k); } catch (e2) {}
+            } else {
+              sessionStorage.setItem(k, v);
+              try { localStorage.removeItem(k); } catch (e2) {}
+            }
+          } catch (e) {}
+        },
+        removeItem: function (k) {
+          try { localStorage.removeItem(k); } catch (e) {}
+          try { sessionStorage.removeItem(k); } catch (e2) {}
+        }
+      };
+
       var elBest = document.getElementById('coilBest');
       var elMine = document.getElementById('coilMine');
       var elMeta = document.getElementById('coilMeta');
@@ -595,7 +635,12 @@
 
         try {
           sb = window.supabase.createClient(SB_URL, SB_KEY, {
-            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+              storage: authStorage
+            }
           });
         } catch (e) { updateAuthUI(); return; }
 
